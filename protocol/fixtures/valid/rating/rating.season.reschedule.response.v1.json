@@ -1,0 +1,14 @@
+{
+  "messageType": "rating.season.reschedule.response",
+  "messageVersion": 1,
+  "server": "mini-pvp",
+  "season": {
+    "ladder": "mini-pvp",
+    "season": 3,
+    "name": "Season 3",
+    "startsAt": "2026-07-01T00:00:00Z",
+    "endsAt": "2026-10-15T00:00:00Z"
+  },
+  "previousEndsAt": "2026-10-01T00:00:00Z",
+  "ended": false
+}

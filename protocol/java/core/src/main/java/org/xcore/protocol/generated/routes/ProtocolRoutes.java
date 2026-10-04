@@ -9,6 +9,7 @@ import org.xcore.protocol.generated.messages.discord.DiscordMessages;
 import org.xcore.protocol.generated.messages.identity.IdentityMessages;
 import org.xcore.protocol.generated.messages.maps.MapsMessages;
 import org.xcore.protocol.generated.messages.moderation.ModerationMessages;
+import org.xcore.protocol.generated.messages.rating.RatingMessages;
 import org.xcore.protocol.generated.messages.security.SecurityMessages;
 import org.xcore.protocol.generated.messages.sentinel.SentinelMessages;
 import org.xcore.protocol.generated.messages.server.ServerMessages;
@@ -636,6 +637,166 @@ public final class ProtocolRoutes {
             )
     );
 
+    public static final RouteDescriptor RATING_SEASON_STARTED_V1 = new RouteDescriptor(
+            "rating",
+            "ratingSeasonStartedV1Route",
+            "rating.season.started",
+            1,
+            RatingMessages.RatingSeasonStartedV1.class,
+            "event",
+            "xcore:evt:rating:season-started",
+            Map.of(),
+            "broadcast",
+            86400000,
+            true,
+            true,
+            "rating-seasons",
+            null
+    );
+
+    public static final RouteDescriptor RATING_SEASON_ENDING_SOON_V1 = new RouteDescriptor(
+            "rating",
+            "ratingSeasonEndingSoonV1Route",
+            "rating.season.ending-soon",
+            1,
+            RatingMessages.RatingSeasonEndingSoonV1.class,
+            "event",
+            "xcore:evt:rating:season-ending-soon",
+            Map.of(),
+            "broadcast",
+            86400000,
+            true,
+            true,
+            "rating-seasons",
+            null
+    );
+
+    public static final RouteDescriptor RATING_SEASON_ENDED_V1 = new RouteDescriptor(
+            "rating",
+            "ratingSeasonEndedV1Route",
+            "rating.season.ended",
+            1,
+            RatingMessages.RatingSeasonEndedV1.class,
+            "event",
+            "xcore:evt:rating:season-ended",
+            Map.of(),
+            "broadcast",
+            86400000,
+            true,
+            true,
+            "rating-seasons",
+            null
+    );
+
+    public static final RouteDescriptor RATING_SEASON_RESCHEDULED_V1 = new RouteDescriptor(
+            "rating",
+            "ratingSeasonRescheduledV1Route",
+            "rating.season.rescheduled",
+            1,
+            RatingMessages.RatingSeasonRescheduledV1.class,
+            "event",
+            "xcore:evt:rating:season-rescheduled",
+            Map.of(),
+            "broadcast",
+            86400000,
+            true,
+            true,
+            "rating-seasons",
+            null
+    );
+
+    public static final RouteDescriptor RATING_SEASON_RESCHEDULE_REQUEST_V1 = new RouteDescriptor(
+            "rating",
+            "ratingSeasonRescheduleRequestV1Route",
+            "rating.season.reschedule.request",
+            1,
+            RatingMessages.RatingSeasonRescheduleRequestV1.class,
+            "rpc-request",
+            "xcore:rpc:req:{server}",
+            Map.of("server", "payload.server"),
+            "server",
+            10000,
+            false,
+            true,
+            "rating-seasons",
+            new RouteResponseDescriptor(
+                    "rating.season.reschedule.response",
+                    1,
+                    RatingMessages.RatingSeasonRescheduleResponseV1.class,
+                    "xcore:rpc:resp:{requester}",
+                    Map.of("requester", "rpc.requester")
+            )
+    );
+
+    public static final RouteDescriptor RATING_ACCOUNTS_MERGE_REQUEST_V1 = new RouteDescriptor(
+            "rating",
+            "ratingAccountsMergeRequestV1Route",
+            "rating.accounts.merge.request",
+            1,
+            RatingMessages.RatingAccountsMergeRequestV1.class,
+            "rpc-request",
+            "xcore:rpc:req:{server}",
+            Map.of("server", "payload.server"),
+            "server",
+            10000,
+            false,
+            true,
+            "rating-accounts",
+            new RouteResponseDescriptor(
+                    "rating.accounts.merge.response",
+                    1,
+                    RatingMessages.RatingAccountsMergeResponseV1.class,
+                    "xcore:rpc:resp:{requester}",
+                    Map.of("requester", "rpc.requester")
+            )
+    );
+
+    public static final RouteDescriptor RATING_SEASON_PRIZES_SET_REQUEST_V1 = new RouteDescriptor(
+            "rating",
+            "ratingSeasonPrizesSetRequestV1Route",
+            "rating.season.prizes.set.request",
+            1,
+            RatingMessages.RatingSeasonPrizesSetRequestV1.class,
+            "rpc-request",
+            "xcore:rpc:req:{server}",
+            Map.of("server", "payload.server"),
+            "server",
+            10000,
+            false,
+            true,
+            "rating-prizes",
+            new RouteResponseDescriptor(
+                    "rating.season.prizes.set.response",
+                    1,
+                    RatingMessages.RatingSeasonPrizesSetResponseV1.class,
+                    "xcore:rpc:resp:{requester}",
+                    Map.of("requester", "rpc.requester")
+            )
+    );
+
+    public static final RouteDescriptor RATING_PRIZE_GRANT_UPDATE_REQUEST_V1 = new RouteDescriptor(
+            "rating",
+            "ratingPrizeGrantUpdateRequestV1Route",
+            "rating.prize.grant.update.request",
+            1,
+            RatingMessages.RatingPrizeGrantUpdateRequestV1.class,
+            "rpc-request",
+            "xcore:rpc:req:{server}",
+            Map.of("server", "payload.server"),
+            "server",
+            10000,
+            false,
+            true,
+            "rating-prizes",
+            new RouteResponseDescriptor(
+                    "rating.prize.grant.update.response",
+                    1,
+                    RatingMessages.RatingPrizeGrantUpdateResponseV1.class,
+                    "xcore:rpc:resp:{requester}",
+                    Map.of("requester", "rpc.requester")
+            )
+    );
+
     public static final Map<MessageKey, RouteDescriptor> ROUTES_BY_MESSAGE = Map.ofEntries(
             entry(key("maps.list.request", 1), MAPS_LIST_REQUEST_V1),
             entry(key("maps.remove.request", 1), MAPS_REMOVE_REQUEST_V1),
@@ -669,7 +830,15 @@ public final class ProtocolRoutes {
             entry(key("sentinel.subnet-sweep.command", 1), SENTINEL_SUBNET_SWEEP_COMMAND_V1),
             entry(key("sentinel.subnet-rules.command", 1), SENTINEL_SUBNET_RULES_COMMAND_V1),
             entry(key("sentinel.subnet-rules.list.request", 1), SENTINEL_SUBNET_RULES_LIST_REQUEST_V1),
-            entry(key("sentinel.subnet-rules.check.request", 1), SENTINEL_SUBNET_RULES_CHECK_REQUEST_V1)
+            entry(key("sentinel.subnet-rules.check.request", 1), SENTINEL_SUBNET_RULES_CHECK_REQUEST_V1),
+            entry(key("rating.season.started", 1), RATING_SEASON_STARTED_V1),
+            entry(key("rating.season.ending-soon", 1), RATING_SEASON_ENDING_SOON_V1),
+            entry(key("rating.season.ended", 1), RATING_SEASON_ENDED_V1),
+            entry(key("rating.season.rescheduled", 1), RATING_SEASON_RESCHEDULED_V1),
+            entry(key("rating.season.reschedule.request", 1), RATING_SEASON_RESCHEDULE_REQUEST_V1),
+            entry(key("rating.accounts.merge.request", 1), RATING_ACCOUNTS_MERGE_REQUEST_V1),
+            entry(key("rating.season.prizes.set.request", 1), RATING_SEASON_PRIZES_SET_REQUEST_V1),
+            entry(key("rating.prize.grant.update.request", 1), RATING_PRIZE_GRANT_UPDATE_REQUEST_V1)
     );
 
     @SuppressWarnings("unchecked")
@@ -706,7 +875,15 @@ public final class ProtocolRoutes {
             entry((Class<? extends ProtocolPayload>) SentinelMessages.SentinelSubnetSweepCommandV1.class, SENTINEL_SUBNET_SWEEP_COMMAND_V1),
             entry((Class<? extends ProtocolPayload>) SentinelMessages.SentinelSubnetRulesCommandV1.class, SENTINEL_SUBNET_RULES_COMMAND_V1),
             entry((Class<? extends ProtocolPayload>) SentinelMessages.SentinelSubnetRulesListRequestV1.class, SENTINEL_SUBNET_RULES_LIST_REQUEST_V1),
-            entry((Class<? extends ProtocolPayload>) SentinelMessages.SentinelSubnetRulesCheckRequestV1.class, SENTINEL_SUBNET_RULES_CHECK_REQUEST_V1)
+            entry((Class<? extends ProtocolPayload>) SentinelMessages.SentinelSubnetRulesCheckRequestV1.class, SENTINEL_SUBNET_RULES_CHECK_REQUEST_V1),
+            entry((Class<? extends ProtocolPayload>) RatingMessages.RatingSeasonStartedV1.class, RATING_SEASON_STARTED_V1),
+            entry((Class<? extends ProtocolPayload>) RatingMessages.RatingSeasonEndingSoonV1.class, RATING_SEASON_ENDING_SOON_V1),
+            entry((Class<? extends ProtocolPayload>) RatingMessages.RatingSeasonEndedV1.class, RATING_SEASON_ENDED_V1),
+            entry((Class<? extends ProtocolPayload>) RatingMessages.RatingSeasonRescheduledV1.class, RATING_SEASON_RESCHEDULED_V1),
+            entry((Class<? extends ProtocolPayload>) RatingMessages.RatingSeasonRescheduleRequestV1.class, RATING_SEASON_RESCHEDULE_REQUEST_V1),
+            entry((Class<? extends ProtocolPayload>) RatingMessages.RatingAccountsMergeRequestV1.class, RATING_ACCOUNTS_MERGE_REQUEST_V1),
+            entry((Class<? extends ProtocolPayload>) RatingMessages.RatingSeasonPrizesSetRequestV1.class, RATING_SEASON_PRIZES_SET_REQUEST_V1),
+            entry((Class<? extends ProtocolPayload>) RatingMessages.RatingPrizeGrantUpdateRequestV1.class, RATING_PRIZE_GRANT_UPDATE_REQUEST_V1)
     );
 
     public static RouteDescriptor routeFor(String messageType, int messageVersion) {

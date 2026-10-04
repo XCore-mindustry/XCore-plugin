@@ -67,6 +67,21 @@ from .sentinel import (
     SentinelSubnetRulesCheckResponseV1,
 )
 
+from .rating import (
+    RatingSeasonStartedV1,
+    RatingSeasonEndingSoonV1,
+    RatingSeasonEndedV1,
+    RatingSeasonRescheduledV1,
+    RatingSeasonRescheduleRequestV1,
+    RatingSeasonRescheduleResponseV1,
+    RatingAccountsMergeRequestV1,
+    RatingAccountsMergeResponseV1,
+    RatingSeasonPrizesSetRequestV1,
+    RatingSeasonPrizesSetResponseV1,
+    RatingPrizeGrantUpdateRequestV1,
+    RatingPrizeGrantUpdateResponseV1,
+)
+
 @dataclass(frozen=True, slots=True)
 class RouteResponseDescriptor:
     messageType: str
@@ -684,6 +699,166 @@ SENTINEL_SUBNET_RULES_CHECK_REQUEST_V1 = RouteDescriptor(
     ),
 )
 
+RATING_SEASON_STARTED_V1 = RouteDescriptor(
+    family='rating',
+    methodName='ratingSeasonStartedV1Route',
+    messageType='rating.season.started',
+    messageVersion=1,
+    payloadType=RatingSeasonStartedV1,
+    kind='event',
+    stream='xcore:evt:rating:season-started',
+    bindings={},
+    targetScope='broadcast',
+    ttlMs=86400000,
+    replayable=True,
+    idempotentConsumerRecommended=True,
+    owner='rating-seasons',
+    response=None,
+)
+
+RATING_SEASON_ENDING_SOON_V1 = RouteDescriptor(
+    family='rating',
+    methodName='ratingSeasonEndingSoonV1Route',
+    messageType='rating.season.ending-soon',
+    messageVersion=1,
+    payloadType=RatingSeasonEndingSoonV1,
+    kind='event',
+    stream='xcore:evt:rating:season-ending-soon',
+    bindings={},
+    targetScope='broadcast',
+    ttlMs=86400000,
+    replayable=True,
+    idempotentConsumerRecommended=True,
+    owner='rating-seasons',
+    response=None,
+)
+
+RATING_SEASON_ENDED_V1 = RouteDescriptor(
+    family='rating',
+    methodName='ratingSeasonEndedV1Route',
+    messageType='rating.season.ended',
+    messageVersion=1,
+    payloadType=RatingSeasonEndedV1,
+    kind='event',
+    stream='xcore:evt:rating:season-ended',
+    bindings={},
+    targetScope='broadcast',
+    ttlMs=86400000,
+    replayable=True,
+    idempotentConsumerRecommended=True,
+    owner='rating-seasons',
+    response=None,
+)
+
+RATING_SEASON_RESCHEDULED_V1 = RouteDescriptor(
+    family='rating',
+    methodName='ratingSeasonRescheduledV1Route',
+    messageType='rating.season.rescheduled',
+    messageVersion=1,
+    payloadType=RatingSeasonRescheduledV1,
+    kind='event',
+    stream='xcore:evt:rating:season-rescheduled',
+    bindings={},
+    targetScope='broadcast',
+    ttlMs=86400000,
+    replayable=True,
+    idempotentConsumerRecommended=True,
+    owner='rating-seasons',
+    response=None,
+)
+
+RATING_SEASON_RESCHEDULE_REQUEST_V1 = RouteDescriptor(
+    family='rating',
+    methodName='ratingSeasonRescheduleRequestV1Route',
+    messageType='rating.season.reschedule.request',
+    messageVersion=1,
+    payloadType=RatingSeasonRescheduleRequestV1,
+    kind='rpc-request',
+    stream='xcore:rpc:req:{server}',
+    bindings={'server': 'payload.server'},
+    targetScope='server',
+    ttlMs=10000,
+    replayable=False,
+    idempotentConsumerRecommended=True,
+    owner='rating-seasons',
+    response=RouteResponseDescriptor(
+        messageType='rating.season.reschedule.response',
+        messageVersion=1,
+        payloadType=RatingSeasonRescheduleResponseV1,
+        stream='xcore:rpc:resp:{requester}',
+        bindings={'requester': 'rpc.requester'},
+    ),
+)
+
+RATING_ACCOUNTS_MERGE_REQUEST_V1 = RouteDescriptor(
+    family='rating',
+    methodName='ratingAccountsMergeRequestV1Route',
+    messageType='rating.accounts.merge.request',
+    messageVersion=1,
+    payloadType=RatingAccountsMergeRequestV1,
+    kind='rpc-request',
+    stream='xcore:rpc:req:{server}',
+    bindings={'server': 'payload.server'},
+    targetScope='server',
+    ttlMs=10000,
+    replayable=False,
+    idempotentConsumerRecommended=True,
+    owner='rating-accounts',
+    response=RouteResponseDescriptor(
+        messageType='rating.accounts.merge.response',
+        messageVersion=1,
+        payloadType=RatingAccountsMergeResponseV1,
+        stream='xcore:rpc:resp:{requester}',
+        bindings={'requester': 'rpc.requester'},
+    ),
+)
+
+RATING_SEASON_PRIZES_SET_REQUEST_V1 = RouteDescriptor(
+    family='rating',
+    methodName='ratingSeasonPrizesSetRequestV1Route',
+    messageType='rating.season.prizes.set.request',
+    messageVersion=1,
+    payloadType=RatingSeasonPrizesSetRequestV1,
+    kind='rpc-request',
+    stream='xcore:rpc:req:{server}',
+    bindings={'server': 'payload.server'},
+    targetScope='server',
+    ttlMs=10000,
+    replayable=False,
+    idempotentConsumerRecommended=True,
+    owner='rating-prizes',
+    response=RouteResponseDescriptor(
+        messageType='rating.season.prizes.set.response',
+        messageVersion=1,
+        payloadType=RatingSeasonPrizesSetResponseV1,
+        stream='xcore:rpc:resp:{requester}',
+        bindings={'requester': 'rpc.requester'},
+    ),
+)
+
+RATING_PRIZE_GRANT_UPDATE_REQUEST_V1 = RouteDescriptor(
+    family='rating',
+    methodName='ratingPrizeGrantUpdateRequestV1Route',
+    messageType='rating.prize.grant.update.request',
+    messageVersion=1,
+    payloadType=RatingPrizeGrantUpdateRequestV1,
+    kind='rpc-request',
+    stream='xcore:rpc:req:{server}',
+    bindings={'server': 'payload.server'},
+    targetScope='server',
+    ttlMs=10000,
+    replayable=False,
+    idempotentConsumerRecommended=True,
+    owner='rating-prizes',
+    response=RouteResponseDescriptor(
+        messageType='rating.prize.grant.update.response',
+        messageVersion=1,
+        payloadType=RatingPrizeGrantUpdateResponseV1,
+        stream='xcore:rpc:resp:{requester}',
+        bindings={'requester': 'rpc.requester'},
+    ),
+)
+
 ROUTES_BY_MESSAGE: dict[tuple[str, int], RouteDescriptor] = {
     ('maps.list.request', 1): MAPS_LIST_REQUEST_V1,
     ('maps.remove.request', 1): MAPS_REMOVE_REQUEST_V1,
@@ -718,6 +893,14 @@ ROUTES_BY_MESSAGE: dict[tuple[str, int], RouteDescriptor] = {
     ('sentinel.subnet-rules.command', 1): SENTINEL_SUBNET_RULES_COMMAND_V1,
     ('sentinel.subnet-rules.list.request', 1): SENTINEL_SUBNET_RULES_LIST_REQUEST_V1,
     ('sentinel.subnet-rules.check.request', 1): SENTINEL_SUBNET_RULES_CHECK_REQUEST_V1,
+    ('rating.season.started', 1): RATING_SEASON_STARTED_V1,
+    ('rating.season.ending-soon', 1): RATING_SEASON_ENDING_SOON_V1,
+    ('rating.season.ended', 1): RATING_SEASON_ENDED_V1,
+    ('rating.season.rescheduled', 1): RATING_SEASON_RESCHEDULED_V1,
+    ('rating.season.reschedule.request', 1): RATING_SEASON_RESCHEDULE_REQUEST_V1,
+    ('rating.accounts.merge.request', 1): RATING_ACCOUNTS_MERGE_REQUEST_V1,
+    ('rating.season.prizes.set.request', 1): RATING_SEASON_PRIZES_SET_REQUEST_V1,
+    ('rating.prize.grant.update.request', 1): RATING_PRIZE_GRANT_UPDATE_REQUEST_V1,
 }
 
 MapsRouteResponseDescriptor = RouteResponseDescriptor
@@ -758,6 +941,14 @@ __all__ = [
     "SENTINEL_SUBNET_RULES_COMMAND_V1",
     "SENTINEL_SUBNET_RULES_LIST_REQUEST_V1",
     "SENTINEL_SUBNET_RULES_CHECK_REQUEST_V1",
+    "RATING_SEASON_STARTED_V1",
+    "RATING_SEASON_ENDING_SOON_V1",
+    "RATING_SEASON_ENDED_V1",
+    "RATING_SEASON_RESCHEDULED_V1",
+    "RATING_SEASON_RESCHEDULE_REQUEST_V1",
+    "RATING_ACCOUNTS_MERGE_REQUEST_V1",
+    "RATING_SEASON_PRIZES_SET_REQUEST_V1",
+    "RATING_PRIZE_GRANT_UPDATE_REQUEST_V1",
     "RouteDescriptor",
     "RouteResponseDescriptor",
     "ROUTES_BY_MESSAGE",

@@ -1,0 +1,6 @@
+{
+  "messageType": "rating.accounts.merge.response",
+  "messageVersion": 1,
+  "server": "mini-pvp",
+  "standingsMerged": 3
+}

@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:xcore:protocol:messages:rating:rating.prize.grant.update.request:v1",
+  "title": "RatingPrizeGrantUpdateRequestV1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "messageType",
+    "messageVersion",
+    "server",
+    "ladder",
+    "season",
+    "place",
+    "status",
+    "actor"
+  ],
+  "properties": {
+    "messageType": {
+      "const": "rating.prize.grant.update.request"
+    },
+    "messageVersion": {
+      "const": 1
+    },
+    "server": {
+      "type": "string",
+      "minLength": 1
+    },
+    "ladder": {
+      "type": "string",
+      "minLength": 1
+    },
+    "season": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "place": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "playerPid": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "delivered"
+      ]
+    },
+    "actor": {
+      "$ref": "urn:xcore:protocol:shared:types:actor-ref:v1"
+    },
+    "note": {
+      "type": "string"
+    }
+  }
+}

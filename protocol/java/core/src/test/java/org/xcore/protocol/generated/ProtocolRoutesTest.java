@@ -6,6 +6,7 @@ import org.xcore.protocol.generated.messages.discord.DiscordLinkStatusChangedV1A
 import org.xcore.protocol.generated.messages.discord.DiscordMessages.*;
 import org.xcore.protocol.generated.messages.maps.MapsMessages.*;
 import org.xcore.protocol.generated.messages.moderation.ModerationMessages.*;
+import org.xcore.protocol.generated.messages.rating.RatingMessages.*;
 import org.xcore.protocol.generated.messages.sentinel.SentinelMessages.*;
 import org.xcore.protocol.generated.routes.MapsRoutes;
 import org.xcore.protocol.generated.routes.ProtocolRoutes;
@@ -17,13 +18,14 @@ class ProtocolRoutesTest {
 
     @Test
     void aggregateCatalogIncludesAllRoutes() {
-        assertEquals(33, ProtocolRoutes.ROUTES_BY_MESSAGE.size(), "expected 33 total routes");
+        assertEquals(41, ProtocolRoutes.ROUTES_BY_MESSAGE.size(), "expected 41 total routes");
         assertNotNull(ProtocolRoutes.ROUTES_BY_MESSAGE.get(new ProtocolRoutes.MessageKey("chat.message", 1)));
         assertNotNull(ProtocolRoutes.ROUTES_BY_MESSAGE.get(new ProtocolRoutes.MessageKey("maps.list.request", 1)));
         assertNotNull(ProtocolRoutes.ROUTES_BY_MESSAGE.get(new ProtocolRoutes.MessageKey("discord.link.status-changed", 1)));
         assertNotNull(ProtocolRoutes.ROUTES_BY_MESSAGE.get(new ProtocolRoutes.MessageKey("moderation.ban.created", 1)));
         assertNotNull(ProtocolRoutes.ROUTES_BY_MESSAGE.get(new ProtocolRoutes.MessageKey("sentinel.subnet-rules.invalidated", 1)));
         assertNotNull(ProtocolRoutes.ROUTES_BY_MESSAGE.get(new ProtocolRoutes.MessageKey("sentinel.subnet-sweep.command", 1)));
+        assertNotNull(ProtocolRoutes.ROUTES_BY_MESSAGE.get(new ProtocolRoutes.MessageKey("rating.season.ended", 1)));
     }
 
     @Test
@@ -34,6 +36,7 @@ class ProtocolRoutesTest {
         assertEquals("moderation.ban.created", ProtocolRoutes.routeFor("moderation.ban.created", 1).messageType());
         assertEquals("sentinel.subnet-rules.invalidated", ProtocolRoutes.routeFor("sentinel.subnet-rules.invalidated", 1).messageType());
         assertEquals("sentinel.subnet-sweep.command", ProtocolRoutes.routeFor("sentinel.subnet-sweep.command", 1).messageType());
+        assertEquals("rating.season.ended", ProtocolRoutes.routeFor("rating.season.ended", 1).messageType());
     }
 
     @Test
@@ -88,5 +91,37 @@ class ProtocolRoutesTest {
         var familyRoute = MapsRoutes.MAPS_LIST_REQUEST_V1;
         assertNotNull(familyRoute.response());
         assertEquals("maps.list.response", familyRoute.response().messageType());
+    }
+
+    @Test
+    void ratingRoutesCarryEventsAndRpcPairs() {
+        var started = new RatingSeasonStartedV1(
+                new SeasonRefV1("mini-pvp", 4, "Season 4", "2026-10-01T00:00:00Z", "2027-01-01T00:00:00Z"),
+                3,
+                "alpha",
+                "2026-10-01T00:00:01Z"
+        );
+        var startedRoute = ProtocolRoutes.routeFor(started);
+        assertNotNull(startedRoute);
+        assertEquals("event", startedRoute.kind());
+        assertEquals("xcore:evt:rating:season-started", startedRoute.stream());
+        assertTrue(startedRoute.replayable());
+
+        var reschedule = ProtocolRoutes.RATING_SEASON_RESCHEDULE_REQUEST_V1;
+        assertEquals("rpc-request", reschedule.kind());
+        assertEquals("xcore:rpc:req:{server}", reschedule.stream());
+        assertEquals("payload.server", reschedule.bindings().get("server"));
+        assertEquals(RatingSeasonRescheduleResponseV1.class, reschedule.response().payloadType());
+
+        var merge = ProtocolRoutes.RATING_ACCOUNTS_MERGE_REQUEST_V1;
+        assertEquals(RatingAccountsMergeResponseV1.class, merge.response().payloadType());
+
+        var prizes = ProtocolRoutes.RATING_SEASON_PRIZES_SET_REQUEST_V1;
+        assertEquals("rpc-request", prizes.kind());
+        assertEquals("payload.server", prizes.bindings().get("server"));
+        assertEquals(RatingSeasonPrizesSetResponseV1.class, prizes.response().payloadType());
+
+        var grant = ProtocolRoutes.RATING_PRIZE_GRANT_UPDATE_REQUEST_V1;
+        assertEquals(RatingPrizeGrantUpdateResponseV1.class, grant.response().payloadType());
     }
 }

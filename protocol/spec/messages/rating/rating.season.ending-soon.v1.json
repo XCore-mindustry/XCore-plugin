@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:xcore:protocol:messages:rating:rating.season.ending-soon:v1",
+  "title": "RatingSeasonEndingSoonV1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "messageType",
+    "messageVersion",
+    "season",
+    "notice",
+    "server",
+    "occurredAt"
+  ],
+  "properties": {
+    "messageType": {
+      "const": "rating.season.ending-soon"
+    },
+    "messageVersion": {
+      "const": 1
+    },
+    "season": {
+      "$ref": "urn:xcore:protocol:shared:types:season-ref:v1"
+    },
+    "notice": {
+      "type": "string",
+      "minLength": 1
+    },
+    "server": {
+      "type": "string",
+      "minLength": 1
+    },
+    "occurredAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "prizes": {
+      "type": "array",
+      "items": {
+        "$ref": "urn:xcore:protocol:shared:types:season-prize:v1"
+      }
+    }
+  }
+}

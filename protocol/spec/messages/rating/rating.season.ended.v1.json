@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:xcore:protocol:messages:rating:rating.season.ended:v1",
+  "title": "RatingSeasonEndedV1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "messageType",
+    "messageVersion",
+    "season",
+    "podium",
+    "summary",
+    "server",
+    "occurredAt"
+  ],
+  "properties": {
+    "messageType": {
+      "const": "rating.season.ended"
+    },
+    "messageVersion": {
+      "const": 1
+    },
+    "season": {
+      "$ref": "urn:xcore:protocol:shared:types:season-ref:v1"
+    },
+    "podium": {
+      "type": "array",
+      "items": {
+        "$ref": "urn:xcore:protocol:shared:types:season-podium-entry:v1"
+      }
+    },
+    "summary": {
+      "$ref": "urn:xcore:protocol:shared:types:season-summary:v1"
+    },
+    "server": {
+      "type": "string",
+      "minLength": 1
+    },
+    "occurredAt": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}
