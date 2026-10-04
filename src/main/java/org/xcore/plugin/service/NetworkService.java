@@ -9,11 +9,14 @@ import io.avaje.inject.PreDestroy;
 import jakarta.inject.Singleton;
 import org.xcore.plugin.service.network.RedisNetworkBackend;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 @Singleton
 public class NetworkService {
+    private static final Duration PUBLISH_CONFIRM_TIMEOUT = Duration.ofSeconds(3);
+
     private final RedisNetworkBackend backend;
     private final List<Runnable> reconnectHooks = new CopyOnWriteArrayList<>();
     private volatile boolean deferredNoticeLogged;
@@ -63,6 +66,16 @@ public class NetworkService {
 
     public void post(Object event) {
         backend.send(event);
+    }
+
+    /**
+     * Blocking. Publishes an event and returns once Redis has stored it, for events that are
+     * retried until they get through; {@link #post} gives no such answer.
+     *
+     * @throws IllegalStateException when the event could not be confirmed
+     */
+    public void postAwait(Object event) {
+        backend.sendAwait(event, PUBLISH_CONFIRM_TIMEOUT);
     }
 
     public <T> Subscription<T> subscribe(Class<T> type, Cons<T> listener) {

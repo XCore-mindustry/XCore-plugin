@@ -26,6 +26,7 @@ import java.util.List;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
@@ -49,7 +50,7 @@ class SeasonTransportPublisherTest {
 
     private Object posted() {
         ArgumentCaptor<Object> event = ArgumentCaptor.forClass(Object.class);
-        verify(network).post(event.capture());
+        verify(network).postAwait(event.capture());
         return event.getValue();
     }
 
@@ -63,7 +64,7 @@ class SeasonTransportPublisherTest {
     }
 
     @Test
-    @DisplayName("every season transition is posted as its protocol event, stamped with this server and time")
+    @DisplayName("a season start is posted as its protocol event, stamped with this server and time, and confirmed")
     void transitionsArePosted() {
         publisher.started(season(3, SeasonStatus.CLOSING, null), season(4, SeasonStatus.ACTIVE, null));
         var started = (RatingSeasonStartedV1) posted();
@@ -85,10 +86,23 @@ class SeasonTransportPublisherTest {
                 .nameSnapshot("Console").build(), null);
 
         ArgumentCaptor<Object> events = ArgumentCaptor.forClass(Object.class);
-        verify(each, org.mockito.Mockito.times(3)).post(events.capture());
-        assertThat(events.getAllValues()).hasSize(3);
+        verify(each, org.mockito.Mockito.times(2)).post(events.capture());
         assertThat(events.getAllValues().get(0)).isInstanceOf(RatingSeasonEndingSoonV1.class);
-        assertThat(events.getAllValues().get(1)).isInstanceOf(RatingSeasonEndedV1.class);
-        assertThat(events.getAllValues().get(2)).isInstanceOf(RatingSeasonRescheduledV1.class);
+        assertThat(events.getAllValues().get(1)).isInstanceOf(RatingSeasonRescheduledV1.class);
+        ArgumentCaptor<Object> confirmed = ArgumentCaptor.forClass(Object.class);
+        verify(each).postAwait(confirmed.capture());
+        assertThat(confirmed.getValue()).isInstanceOf(RatingSeasonEndedV1.class);
+    }
+
+    @Test
+    @DisplayName("a start or end that Redis did not confirm fails, so the lifecycle publishes it again")
+    void unconfirmedTransitionsFail() {
+        org.mockito.Mockito.doThrow(new IllegalStateException("Redis is not connected"))
+                .when(network).postAwait(org.mockito.ArgumentMatchers.any());
+
+        assertThatThrownBy(() -> publisher.started(null, season(1, SeasonStatus.ACTIVE, null)))
+                .isInstanceOf(IllegalStateException.class);
+        assertThatThrownBy(() -> publisher.ended(season(3, SeasonStatus.ARCHIVED, new SeasonSummary(10, 20))))
+                .isInstanceOf(IllegalStateException.class);
     }
 }

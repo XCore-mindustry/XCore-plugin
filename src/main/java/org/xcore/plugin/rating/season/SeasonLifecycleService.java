@@ -252,8 +252,9 @@ public class SeasonLifecycleService implements LadderSeasons {
 
     /**
      * Delivers a state-changing event at least once. The first server to claim it publishes it
-     * and marks it done; if that server dies before then, the claim's lease expires and the
-     * {@link #reconcileEvents reconcile pass} on another server publishes it again. Receivers
+     * and marks it done; if that server dies before then, or a listener could not pass the event
+     * on, the claim's lease expires and the {@link #reconcileEvents reconcile pass} on any
+     * server publishes it again. Receivers
      * must therefore tolerate a repeat, which the Discord bot does by remembering what it posted.
      */
     private void announce(Season season, String event, Consumer<SeasonEvents> delivery) {

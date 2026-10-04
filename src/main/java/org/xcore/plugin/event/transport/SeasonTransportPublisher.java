@@ -19,7 +19,8 @@ import java.time.Instant;
 /**
  * Tells the rest of the network about season transitions. {@link SeasonEvents} fires on the
  * one server that performed each transition, so each event is published once unless a
- * crash made the lifecycle's reconcile pass repeat it; receivers deduplicate.
+ * crash or an unreachable Redis made the lifecycle's reconcile pass repeat it; receivers
+ * deduplicate.
  */
 @Singleton
 public class SeasonTransportPublisher implements SeasonEvents {
@@ -46,9 +47,12 @@ public class SeasonTransportPublisher implements SeasonEvents {
         lifecycle.addEvents(this);
     }
 
+    // Started and ended are retried by the lifecycle until they are delivered, so they wait for
+    // Redis to confirm and fail loudly when it does not; the other two are sent once, best effort.
+
     @Override
     public void started(@Nullable Season previous, Season season) {
-        network.post(RatingProtocolMapper.toStarted(previous, season, server(), now()));
+        network.postAwait(RatingProtocolMapper.toStarted(previous, season, server(), now()));
     }
 
     @Override
@@ -58,7 +62,7 @@ public class SeasonTransportPublisher implements SeasonEvents {
 
     @Override
     public void ended(Season archived) {
-        network.post(RatingProtocolMapper.toEnded(archived, server(), now()));
+        network.postAwait(RatingProtocolMapper.toEnded(archived, server(), now()));
     }
 
     @Override

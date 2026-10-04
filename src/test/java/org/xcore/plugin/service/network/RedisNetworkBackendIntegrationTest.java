@@ -43,6 +43,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @Testcontainers(disabledWithoutDocker = true)
 class RedisNetworkBackendIntegrationTest {
@@ -85,6 +86,29 @@ class RedisNetworkBackendIntegrationTest {
 
             assertThat(messages).isEmpty();
         }
+    }
+
+    @Test
+    @DisplayName("sendAwait returns once the event is stored and fails when Redis cannot take it")
+    void sendAwaitConfirmsOrFails() {
+        TomlXcoreConfig config = baseConfig("alpha");
+        requesterBackend = new RedisNetworkBackend(config);
+
+        assertThatThrownBy(() -> requesterBackend.sendAwait(
+                new ChatMessageV1("tester", "lost", "alpha"), java.time.Duration.ofSeconds(1)))
+                .isInstanceOf(IllegalStateException.class);
+
+        requesterBackend.connect();
+        requesterBackend.sendAwait(new ChatMessageV1("tester", "hello", "alpha"), java.time.Duration.ofSeconds(5));
+
+        assertThat(requesterBackend.metricsSnapshot().getOrDefault("published_events", 0L)).isEqualTo(1L);
+        try (RedisClient client = RedisClient.create(config.transport.redis.url);
+             StatefulRedisConnection<String, String> connection = client.connect()) {
+            assertThat(connection.sync().xlen("xcore:evt:chat:message")).isEqualTo(1L);
+        }
+
+        assertThatThrownBy(() -> requesterBackend.sendAwait(new Object(), java.time.Duration.ofSeconds(1)))
+                .isInstanceOf(IllegalStateException.class);
     }
 
     @Test

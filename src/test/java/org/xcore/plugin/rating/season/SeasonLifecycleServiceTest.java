@@ -285,6 +285,44 @@ class SeasonLifecycleServiceTest {
     }
 
     @Test
+    @DisplayName("a match ending around a rollover is calculated from the ratings of the season it settles into")
+    void seasonAt_pairsRatingsWithTheSettledSeason() {
+        standing(1, "veteran", 1400, 30);
+        clock.set(END.plusSeconds(30));
+        server.lifecycle.tick();
+        assertThat(ladder.rating("veteran")).isEqualTo(1200);
+
+        // Ended before the deadline, settled in the grace window: still the closing season's rating.
+        int closing = ladder.seasonAt(END.minusSeconds(1));
+        assertThat(closing).isEqualTo(1);
+        assertThat(ladder.rating(closing, "veteran")).isEqualTo(1400);
+        assertThat(ladder.rating(closing, "newcomer")).isEqualTo(1000);
+        ladder.settle(closing, match("m1", END.minusSeconds(1), new StandingMutation("veteran", 10, true)));
+        assertThat(standings.find("duel", 1, "veteran").orElseThrow().rating()).isEqualTo(1410);
+        assertThat(standings.find("duel", 2, "veteran")).isEmpty();
+
+        int running = ladder.seasonAt(END.plusSeconds(10));
+        assertThat(running).isEqualTo(2);
+        assertThat(ladder.rating(running, "veteran")).isEqualTo(1205);
+    }
+
+    @Test
+    @DisplayName("a match that outlives the season reads the next season's ratings before the tick rolls it over")
+    void seasonAt_rollsOverBeforeRatingsAreRead() {
+        standing(1, "veteran", 1400, 30);
+        assertThat(ladder.rating("veteran")).isEqualTo(1400);
+        clock.set(END.plusSeconds(5));
+
+        int season = ladder.seasonAt(END.plusSeconds(2));
+
+        assertThat(season).isEqualTo(2);
+        assertThat(ladder.rating(season, "veteran")).isEqualTo(1200);
+        ladder.settle(season, match("m1", END.plusSeconds(2), new StandingMutation("veteran", 10, true)));
+        assertThat(standings.find("duel", 2, "veteran").orElseThrow().rating()).isEqualTo(1210);
+        assertThat(standings.find("duel", 1, "veteran").orElseThrow().rating()).isEqualTo(1400);
+    }
+
+    @Test
     @DisplayName("replaying a settled match does not count it twice")
     void settle_replayIsCountedOnce() {
         MatchSettlement settlement = match("m1", START.plusSeconds(60), new StandingMutation("a", 16, true));

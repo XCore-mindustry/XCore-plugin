@@ -17,7 +17,10 @@ import org.xcore.plugin.rating.ladder.LadderStore;
 import org.xcore.plugin.rating.ladder.StandingPage;
 import org.xcore.plugin.rating.season.PrizeKind;
 import org.xcore.plugin.rating.season.Season;
+import org.xcore.plugin.rating.season.SeasonPodiumEntry;
 import org.xcore.plugin.rating.season.SeasonPrize;
+import org.xcore.plugin.rating.season.SeasonSchedule;
+import org.xcore.plugin.rating.season.SeasonStatus;
 import org.xcore.plugin.rating.season.SeasonStore;
 
 import java.text.NumberFormat;
@@ -47,12 +50,13 @@ public final class LadderTopCategoryProvider implements TopCategoryProvider {
     private final int priority;
     private final Ladder ladder;
     private final SeasonStore seasons;
+    private final SeasonSchedule schedule;
     private final SeasonText text;
     @Nullable
     private final PlayerDataRepository players;
 
-    LadderTopCategoryProvider(String id, int priority, Ladder ladder, SeasonStore seasons, SeasonText text,
-                              @Nullable PlayerDataRepository players) {
+    LadderTopCategoryProvider(String id, int priority, Ladder ladder, SeasonStore seasons, SeasonSchedule schedule,
+                              SeasonText text, @Nullable PlayerDataRepository players) {
         if (id == null || id.isBlank()) {
             throw new IllegalArgumentException("id must not be blank");
         }
@@ -60,6 +64,7 @@ public final class LadderTopCategoryProvider implements TopCategoryProvider {
         this.priority = priority;
         this.ladder = Objects.requireNonNull(ladder, "ladder");
         this.seasons = Objects.requireNonNull(seasons, "seasons");
+        this.schedule = Objects.requireNonNull(schedule, "schedule");
         this.text = Objects.requireNonNull(text, "text");
         this.players = players;
     }
@@ -123,6 +128,7 @@ public final class LadderTopCategoryProvider implements TopCategoryProvider {
         Map<String, PlayerData> profiles = profiles(page.standings());
 
         Season shown = seasons.find(ladder.id(), season).orElse(null);
+        Map<String, Integer> places = shown != null ? podiumPlaces(shown) : Map.of();
         List<LeaderboardEntry> entries = new ArrayList<>(page.standings().size());
         int rank = (request.page() - 1) * pageSize + 1;
         for (LadderStanding standing : page.standings()) {
@@ -131,8 +137,9 @@ public final class LadderTopCategoryProvider implements TopCategoryProvider {
             Map<String, String> attributes = LeaderboardEntry.profileAttributes(profile);
             attributes.put("leagueIcon", league.icon());
             attributes.put("leagueName", league.name());
-            if (shown != null) {
-                putPrizes(attributes, shown.prizesFor(rank));
+            Integer place = places.get(standing.uuid());
+            if (place != null) {
+                putPrizes(attributes, shown.prizesFor(place));
             }
             entries.add(new LeaderboardEntry(
                     standing.uuid(),
@@ -167,6 +174,31 @@ public final class LadderTopCategoryProvider implements TopCategoryProvider {
         }
         String prizes = PrizeText.brief(prizesOf(entry.attributes()), local);
         return prizes.isEmpty() ? value : value + "  [gold]" + Iconc.star + " " + prizes + "[]";
+    }
+
+    /**
+     * The podium place of every player who won a prize of the season, or would win one if it
+     * ended now. Places count only the players with enough matches for the podium, so a place
+     * is not the leaderboard rank.
+     */
+    private Map<String, Integer> podiumPlaces(Season season) {
+        if (season.prizes().isEmpty()) {
+            return Map.of();
+        }
+        Map<String, Integer> places = new HashMap<>();
+        if (season.status() == SeasonStatus.ARCHIVED) {
+            for (SeasonPodiumEntry entry : season.podium()) {
+                places.put(entry.uuid(), entry.place());
+            }
+            return places;
+        }
+        int lastPrizePlace = season.prizes().stream().mapToInt(SeasonPrize::placeTo).max().orElse(0);
+        List<LadderStanding> leaders = ladder.leaders(season.number(), schedule.podiumMinMatches(),
+                Math.min(lastPrizePlace, schedule.podiumSize()));
+        for (int i = 0; i < leaders.size(); i++) {
+            places.put(leaders.get(i).uuid(), i + 1);
+        }
+        return places;
     }
 
     /** Prizes ride on the row as flat attributes, because the row is built before the viewer's language is known. */

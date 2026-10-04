@@ -3,7 +3,11 @@ package org.xcore.plugin.event.transport;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import org.xcore.plugin.common.PLog;
+import org.jspecify.annotations.Nullable;
 import org.xcore.plugin.config.TomlXcoreConfig;
+import org.xcore.plugin.integration.idempotency.LedgerClaim;
+import org.xcore.plugin.integration.idempotency.PluginIdempotencyLedger;
+import org.xcore.plugin.integration.idempotency.PluginIdempotencyLedgerFactory;
 import org.xcore.plugin.model.AuditActor;
 import org.xcore.plugin.rating.ladder.LadderService;
 import org.xcore.plugin.rating.prize.PrizeService;
@@ -13,6 +17,7 @@ import org.xcore.plugin.rating.season.SeasonLifecycleService;
 import org.xcore.plugin.rating.season.SeasonReschedule;
 import org.xcore.plugin.service.NetworkService;
 import org.xcore.plugin.service.network.RatingProtocolMapper;
+import org.xcore.protocol.generated.messages.server.ServerMessages.PlayerDataCacheReloadCommandV1;
 import org.xcore.protocol.generated.messages.rating.RatingMessages.RatingAccountsMergeRequestV1;
 import org.xcore.protocol.generated.messages.rating.RatingMessages.RatingPrizeGrantUpdateRequestV1;
 import org.xcore.protocol.generated.messages.rating.RatingMessages.RatingSeasonPrizesSetRequestV1;
@@ -28,29 +33,48 @@ import java.time.DateTimeException;
  * <p>The seasons and standings live in the shared database, so any server can answer for any
  * ladder; the caller names the server it picked. Requests arrive on a redis-sub thread, where
  * blocking storage work is fine.</p>
+ *
+ * <p>A caller that hears nothing in time asks the next server, although the first one may
+ * still carry the request out. Changes that are not safe to apply twice therefore carry a
+ * request id, which the first server to see it records in the shared ledger; every other
+ * server refuses that request.</p>
  */
 @Singleton
 public class RatingTransportHandler {
     static final String REJECTED = "REJECTED";
     static final String FAILED = "FAILED";
+    private static final String LEDGER_ID = "rating";
+    private static final String REQUEST_OPERATION = "SEASON_REQUEST";
 
     private final NetworkService network;
     private final TomlXcoreConfig config;
     private final SeasonLifecycleService lifecycle;
     private final LadderService ladders;
     private final PrizeService prizes;
+    private final PluginIdempotencyLedger ledger;
 
     @Inject
     public RatingTransportHandler(NetworkService network,
                                   TomlXcoreConfig config,
                                   SeasonLifecycleService lifecycle,
                                   LadderService ladders,
-                                  PrizeService prizes) {
+                                  PrizeService prizes,
+                                  PluginIdempotencyLedgerFactory ledgerFactory) {
+        this(network, config, lifecycle, ladders, prizes, ledgerFactory.create(LEDGER_ID));
+    }
+
+    RatingTransportHandler(NetworkService network,
+                           TomlXcoreConfig config,
+                           SeasonLifecycleService lifecycle,
+                           LadderService ladders,
+                           PrizeService prizes,
+                           PluginIdempotencyLedger ledger) {
         this.network = network;
         this.config = config;
         this.lifecycle = lifecycle;
         this.ladders = ladders;
         this.prizes = prizes;
+        this.ledger = ledger;
     }
 
     public void registerListeners() {
@@ -63,6 +87,7 @@ public class RatingTransportHandler {
     void reschedule(RatingSeasonRescheduleRequestV1 request) {
         if (!request.server().equals(config.server.name)) return;
         try {
+            claimRequest(request.requestId(), request.ladder());
             AuditActor actor = RatingProtocolMapper.toAuditActor(request.actor());
             String ladder = request.ladder();
             boolean ended = false;
@@ -102,6 +127,9 @@ public class RatingTransportHandler {
         try {
             int merged = ladders.mergePlayer(null, request.sourceUuid(), request.targetUuid());
             network.respond(request, RatingProtocolMapper.toMergeResponse(request.server(), merged));
+            if (merged > 0) {
+                refreshStandings();
+            }
         } catch (RuntimeException e) {
             PLog.err("Rating merge of @ into @ failed: @", request.sourceUuid(), request.targetUuid(),
                     e.getMessage());
@@ -112,6 +140,7 @@ public class RatingTransportHandler {
     void setPrizes(RatingSeasonPrizesSetRequestV1 request) {
         if (!request.server().equals(config.server.name)) return;
         try {
+            claimRequest(request.requestId(), request.ladder());
             AuditActor actor = RatingProtocolMapper.toAuditActor(request.actor());
             Season season = switch (request.operation()) {
                 case ADD -> {
@@ -150,6 +179,33 @@ public class RatingTransportHandler {
         } catch (RuntimeException e) {
             PLog.err("Prize delivery update for '@' failed: @", request.ladder(), e.getMessage());
             network.respondError(request, FAILED, "The prize could not be updated; see the server log");
+        }
+    }
+
+    /**
+     * Takes a request for this server, unless another server got to it first.
+     *
+     * @throws SeasonException when the request already belongs to another server, which may
+     *                         have applied it
+     */
+    private void claimRequest(@Nullable String requestId, String ladder) {
+        if (requestId == null || requestId.isBlank()) {
+            return; // A sender that does not name its requests gets no protection against repeats.
+        }
+        LedgerClaim claim = ledger.claim("season-request:" + requestId, REQUEST_OPERATION, ladder);
+        if (!claim.acquired()) {
+            throw new SeasonException("Another server has already taken this request and may have applied it; "
+                    + "check the season before repeating it");
+        }
+    }
+
+    /** The merge changed standings that this server, and the others, may hold in memory. */
+    private void refreshStandings() {
+        try {
+            ladders.reloadCaches();
+            network.post(new PlayerDataCacheReloadCommandV1(config.server.name));
+        } catch (RuntimeException e) {
+            PLog.err("Standings merged, but the cached ones could not be refreshed: @", e.getMessage());
         }
     }
 

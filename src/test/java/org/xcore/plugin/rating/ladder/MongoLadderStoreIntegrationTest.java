@@ -307,6 +307,27 @@ class MongoLadderStoreIntegrationTest {
     }
 
     @Test
+    @DisplayName("a merge that stopped before removing the source does not count it twice when retried")
+    void mergePlayer_retryAfterInterruption() {
+        store.applyOnce("duel", 1, "op-1", new StandingMutation("old", 300, true), 1000, 100);
+        store.applyOnce("duel", 1, "op-2", new StandingMutation("new", 100, true), 1000, 100);
+        Document source = collection().find(new Document("player_uuid", "old")).first();
+
+        store.mergePlayer(null, "old", "new");
+        // What a crash between the two writes leaves behind: the target merged, the source still there.
+        collection().insertOne(source);
+
+        assertThat(store.mergePlayer(null, "old", "new")).isEqualTo(1);
+
+        LadderStanding merged = store.find("duel", 1, "new").orElseThrow();
+        assertThat(merged.rating()).isEqualTo(1300);
+        assertThat(merged.matches()).isEqualTo(2);
+        assertThat(merged.wins()).isEqualTo(2);
+        assertThat(store.find("duel", 1, "old")).isEmpty();
+        assertThat(collection().countDocuments()).isEqualTo(1);
+    }
+
+    @Test
     @DisplayName("a read-only store refuses writes and creates no indexes")
     void readOnly_refusesWrites() {
         TomlSecretsConfig readOnly = new TomlSecretsConfig();

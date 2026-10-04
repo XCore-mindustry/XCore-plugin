@@ -81,6 +81,31 @@ public final class Ladder {
         return uuid == null || uuid.isBlank() ? defaultRating() : standing(uuid).rating();
     }
 
+    /**
+     * Blocking. The season a match that ended at {@code when} counts towards. A mode resolves
+     * it once, reads the ratings its calculation needs with {@link #rating(int, String)} and
+     * settles with {@link #settle(int, MatchSettlement)}, so that a match finishing around a
+     * rollover is calculated from the same season it is written to.
+     */
+    public int seasonAt(Instant when) {
+        return seasons.at(id(), Objects.requireNonNull(when, "when"));
+    }
+
+    /**
+     * Blocking. The rating a player holds in {@code season}, or would enter it with; unknown
+     * or blank players have the default rating.
+     */
+    public int rating(int season, @Nullable String uuid) {
+        if (uuid == null || uuid.isBlank()) {
+            return defaultRating();
+        }
+        SeasonCache current = currentCache();
+        if (current.season() == season) {
+            return standing(uuid).rating();
+        }
+        return load(season, uuid).rating();
+    }
+
     /** Never blocks. Empty until the player's standing in the current season has been loaded. */
     public Optional<LadderStanding> cachedStanding(@Nullable String uuid) {
         SeasonCache current = cache;
@@ -101,7 +126,22 @@ public final class Ladder {
      *
      * @throws IllegalStateException when the match was already settled with a different result
      */
-    public synchronized SettlementResult settle(MatchSettlement settlement) {
+    public SettlementResult settle(MatchSettlement settlement) {
+        return settle(null, settlement);
+    }
+
+    /**
+     * {@link #settle(MatchSettlement)} into a season the caller already resolved with
+     * {@link #seasonAt}, so its calculation and the stored result agree. Blocking.
+     */
+    public SettlementResult settle(int season, MatchSettlement settlement) {
+        if (season < FIRST_SEASON) {
+            throw new IllegalArgumentException("season must be positive");
+        }
+        return settle(Integer.valueOf(season), settlement);
+    }
+
+    private synchronized SettlementResult settle(@Nullable Integer resolved, MatchSettlement settlement) {
         Objects.requireNonNull(settlement, "settlement");
         String operationId = operationId(settlement.matchId(), settlement.algorithmVersion());
         LedgerClaim claim = ledger.claim(operationId, OPERATION_TYPE, settlement.resultHash());
@@ -113,7 +153,9 @@ public final class Ladder {
             return SettlementResult.skipped(operationId, settlement.skipReason());
         }
 
-        int season = seasons.at(id(), settlement.endedAt() != null ? settlement.endedAt() : Instant.now());
+        int season = resolved != null
+                ? resolved
+                : seasons.at(id(), settlement.endedAt() != null ? settlement.endedAt() : Instant.now());
         // A match that ended just before a rollover settles into the season that is closing,
         // which the cache no longer holds.
         SeasonCache current = currentCache();
@@ -132,6 +174,11 @@ public final class Ladder {
             changed |= result.applied();
             if (cached) {
                 current.standings().put(mutation.uuid(), result.standing());
+            } else if (season < current.season()) {
+                // The rating this player enters the current season with follows from the one
+                // just changed, so a starting rating remembered from before is out of date.
+                current.standings().computeIfPresent(mutation.uuid(),
+                        (_, standing) -> standing.placed() ? standing : null);
             }
             standings.put(mutation.uuid(), result.standing());
         }
@@ -173,6 +220,14 @@ public final class Ladder {
     /** Blocking. Number of players with a standing in {@code season}. */
     public long count(int season) {
         return store.count(id(), season);
+    }
+
+    /**
+     * Blocking. The best standings of {@code season} among players with at least
+     * {@code minMatches} matches: the order a season's podium is taken from.
+     */
+    public List<LadderStanding> leaders(int season, int minMatches, int limit) {
+        return limit < 1 ? List.of() : store.leaders(id(), season, minMatches, limit);
     }
 
     /** Blocking. The standing a player finished or currently holds in {@code season}, if they played in it. */

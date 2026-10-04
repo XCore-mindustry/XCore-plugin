@@ -11,8 +11,9 @@ import org.xcore.plugin.model.AuditActor;
  *
  * <p>Called on the thread that advanced the season, never the Mindustry main thread, and a
  * failure in one listener does not stop the others or the season. Delivery of {@link #started} and {@link #ended}
- * is at least once: a server that dies right after winning the write is covered by the
- * lifecycle's reconcile pass. The other events are at most once.</p>
+ * is at least once: a server that dies right after winning the write, or a listener that
+ * throws, is covered by the lifecycle's reconcile pass. A listener must therefore throw from
+ * those two when it could not pass the event on. The other events are at most once.</p>
  */
 public interface SeasonEvents {
 

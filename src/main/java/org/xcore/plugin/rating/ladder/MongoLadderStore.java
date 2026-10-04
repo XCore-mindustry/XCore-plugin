@@ -29,6 +29,7 @@ import static com.mongodb.client.model.Filters.eq;
 import static com.mongodb.client.model.Filters.gt;
 import static com.mongodb.client.model.Filters.gte;
 import static com.mongodb.client.model.Filters.lt;
+import static com.mongodb.client.model.Filters.ne;
 import static com.mongodb.client.model.Filters.or;
 import static com.mongodb.client.model.Sorts.ascending;
 import static com.mongodb.client.model.Sorts.descending;
@@ -44,6 +45,8 @@ public class MongoLadderStore implements LadderStore {
     private static final int DUPLICATE_KEY = 11000;
     private static final int APPLY_ATTEMPTS = 3;
     private static final int RANK_BATCH_SIZE = 500;
+    /** Ids of the standings already folded into this one by {@link #mergePlayer}. */
+    private static final String MERGED_FROM = "merged_from";
 
     private final MongoCollection<Document> collection;
     private final TomlSecretsConfig config;
@@ -250,8 +253,14 @@ public class MongoLadderStore implements LadderStore {
                         .append("$currentDate", new Document("updated_at", true)));
                 continue;
             }
-            update(session, eq("_id", target.get("_id")), new Document("$set", merged(source, target))
-                    .append("$currentDate", new Document("updated_at", true)));
+            // Without a transaction this merge can stop between the two writes below. The marker
+            // makes the retry skip a source the target already took in, instead of adding its
+            // counters a second time.
+            Object mergedId = source.get("_id");
+            update(session, and(eq("_id", target.get("_id")), ne(MERGED_FROM, mergedId)),
+                    new Document("$set", merged(source, target))
+                            .append("$addToSet", new Document(MERGED_FROM, mergedId))
+                            .append("$currentDate", new Document("updated_at", true)));
             if (session != null) {
                 collection.deleteOne(session, sourceId);
             } else {

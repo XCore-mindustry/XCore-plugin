@@ -122,12 +122,16 @@ public class MiniPvPRatingSettler {
     }
 
     private Settlement settleMatch(MiniPvPMatchSnapshot match, Map<String, String> names) {
-        var calculation = calculator.calculate(match.ratedTeams(policy, ladder::rating), policy);
+        // One season for both the ratings the deltas are calculated from and the standings they
+        // are written to: around a rollover the current season is not the one the match counts towards.
+        int season = ladder.seasonAt(Instant.ofEpochMilli(match.endedAt()));
+        var calculation = calculator.calculate(
+                match.ratedTeams(policy, uuid -> ladder.rating(season, uuid)), policy);
 
         List<StandingMutation> mutations = calculation.deltas().stream()
                 .map(delta -> new StandingMutation(delta.uuid(), delta.delta(), delta.placement() == 1))
                 .toList();
-        SettlementResult result = ladder.settle(MatchSettlement.rated(
+        SettlementResult result = ladder.settle(season, MatchSettlement.rated(
                         match.matchId(), calculation.algorithmVersion(), match.resultHash(), mutations)
                 .withEndedAt(Instant.ofEpochMilli(match.endedAt())));
 

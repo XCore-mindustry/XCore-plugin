@@ -77,7 +77,7 @@ public class LadderViews {
 
     /** The ladder's {@code /top} category, one scope per season. */
     public LadderTopCategoryProvider topCategory(String id, int priority, Ladder ladder) {
-        return new LadderTopCategoryProvider(id, priority, ladder, seasons, text, players);
+        return new LadderTopCategoryProvider(id, priority, ladder, seasons, schedule, text, players);
     }
 
     /**

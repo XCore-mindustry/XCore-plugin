@@ -185,4 +185,31 @@ class LadderTopCategoryProviderTest {
         assertThat(provider.formatValue(page.entries().get(1), local)).contains("Sticker").doesNotContain("+");
         assertThat(provider.formatValue(page.entries().get(2), local)).isEqualTo("900 ELO");
     }
+
+    @Test
+    @DisplayName("prizes follow podium places, which skip players with too few matches")
+    void prizesFollowPodiumPlaces() {
+        AuditActor console = AuditActor.builder()
+                .type(AuditActorType.SERVER_CONSOLE).id("console").nameSnapshot("Console").build();
+        world.lifecycle.addPrize("duel", new SeasonPrize(1, 1, PrizeKind.CUSTOM, "Nitro", ""), console);
+        world.lifecycle.addPrize("duel", new SeasonPrize(2, 2, PrizeKind.CUSTOM, "Sticker", ""), console);
+        // Tops the leaderboard, but has not played enough to stand on the podium.
+        world.standing(1, "u0", 1900, 1900, 3, 3);
+        Localization local = RatingWorld.echo();
+
+        LeaderboardPage running = provider.loadPage(new LeaderboardPageRequest("DUEL", 1, 4, null, null));
+
+        assertThat(running.entries()).extracting(LeaderboardEntry::playerUuid).containsExactly("u0", "u1", "u2", "u3");
+        assertThat(provider.formatValue(running.entries().get(0), local)).isEqualTo("1,900 ELO");
+        assertThat(provider.formatValue(running.entries().get(1), local)).contains("Nitro");
+        assertThat(provider.formatValue(running.entries().get(2), local)).contains("Sticker");
+        assertThat(provider.formatValue(running.entries().get(3), local)).isEqualTo("900 ELO");
+
+        world.finishSeason();
+        LeaderboardPage archived = provider.loadPage(new LeaderboardPageRequest("DUEL", 1, 4, null, null, "1"));
+
+        assertThat(provider.formatValue(archived.entries().get(0), local)).isEqualTo("1,900 ELO");
+        assertThat(provider.formatValue(archived.entries().get(1), local)).contains("Nitro");
+        assertThat(provider.formatValue(archived.entries().get(2), local)).contains("Sticker");
+    }
 }

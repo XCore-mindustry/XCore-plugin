@@ -17,6 +17,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.xcore.plugin.config.TomlXcoreConfig;
+import org.xcore.plugin.integration.idempotency.InMemoryIdempotencyLedger;
+import org.xcore.protocol.generated.messages.server.ServerMessages.PlayerDataCacheReloadCommandV1;
 import org.xcore.plugin.model.AuditActor;
 import org.xcore.plugin.model.AuditActorType;
 import org.xcore.plugin.rating.ladder.LadderService;
@@ -65,7 +67,8 @@ class RatingTransportHandlerTest {
     void setUp() {
         TomlXcoreConfig config = new TomlXcoreConfig();
         config.server.name = "mini-pvp";
-        handler = new RatingTransportHandler(network, config, lifecycle, ladders, prizes);
+        handler = new RatingTransportHandler(network, config, lifecycle, ladders, prizes,
+                new InMemoryIdempotencyLedger());
     }
 
     private static Season season(Instant endsAt, List<SeasonReschedule> history, SeasonStatus status) {
@@ -74,7 +77,13 @@ class RatingTransportHandlerTest {
 
     private static RatingSeasonRescheduleRequestV1 request(String server, RatingSeasonRescheduleRequestV1Operation op,
                                                            Integer extendSeconds, String endsAt) {
-        return new RatingSeasonRescheduleRequestV1(server, "minipvp", op, extendSeconds, endsAt, ADMIN, "Tournament");
+        return request(server, op, extendSeconds, endsAt, null);
+    }
+
+    private static RatingSeasonRescheduleRequestV1 request(String server, RatingSeasonRescheduleRequestV1Operation op,
+                                                           Integer extendSeconds, String endsAt, String requestId) {
+        return new RatingSeasonRescheduleRequestV1(server, "minipvp", op, extendSeconds, endsAt, ADMIN, "Tournament",
+                requestId);
     }
 
     private AuditActor discordActor() {
@@ -198,6 +207,63 @@ class RatingTransportHandlerTest {
     }
 
     @Test
+    @DisplayName("after a merge the cached standings are re-read here and on every other server")
+    void mergeRefreshesCaches() {
+        when(ladders.mergePlayer(isNull(), eq("uuid-old"), eq("uuid-new"))).thenReturn(1);
+
+        handler.merge(new RatingAccountsMergeRequestV1("mini-pvp", "uuid-old", "uuid-new"));
+
+        verify(ladders).reloadCaches();
+        verify(network).post(any(PlayerDataCacheReloadCommandV1.class));
+    }
+
+    @Test
+    @DisplayName("a merge that moved nothing leaves the caches alone")
+    void emptyMergeKeepsCaches() {
+        handler.merge(new RatingAccountsMergeRequestV1("mini-pvp", "uuid-old", "uuid-new"));
+
+        verify(ladders, never()).reloadCaches();
+        verify(network, never()).post(any());
+    }
+
+    @Test
+    @DisplayName("a request another server already took is refused instead of being applied a second time")
+    void repeatedRequestIsRefused() {
+        Instant now = Instant.parse("2026-09-01T00:00:00Z");
+        when(lifecycle.endNow(eq("minipvp"), any(), any())).thenReturn(
+                season(now, List.of(new SeasonReschedule(ENDS, now, "discord_user:222", now, "")),
+                        SeasonStatus.CLOSING));
+        var first = request("mini-pvp", RatingSeasonRescheduleRequestV1Operation.END_NOW, null, null, "req-1");
+        var repeat = request("mini-pvp", RatingSeasonRescheduleRequestV1Operation.END_NOW, null, null, "req-1");
+        var another = request("mini-pvp", RatingSeasonRescheduleRequestV1Operation.END_NOW, null, null, "req-2");
+
+        handler.reschedule(first);
+        handler.reschedule(repeat);
+        handler.reschedule(another);
+
+        verify(lifecycle, org.mockito.Mockito.times(2)).endNow(eq("minipvp"), any(), any());
+        verify(network).respond(eq(first), any(RatingSeasonRescheduleResponseV1.class));
+        verify(network).respondError(eq(repeat), eq("REJECTED"), anyString());
+        verify(network).respond(eq(another), any(RatingSeasonRescheduleResponseV1.class));
+    }
+
+    @Test
+    @DisplayName("a repeated prize request does not add the prize twice")
+    void repeatedPrizeRequestIsRefused() {
+        var prize = new SeasonPrizeV1(1, 1, SeasonPrizeV1Kind.CUSTOM, "Nitro", null);
+        when(lifecycle.addPrize(eq("minipvp"), any(), any())).thenReturn(
+                season(ENDS, List.of(), SeasonStatus.ACTIVE));
+        var first = prizeRequest(RatingSeasonPrizesSetRequestV1Operation.ADD, prize, null, null, "req-1");
+        var repeat = prizeRequest(RatingSeasonPrizesSetRequestV1Operation.ADD, prize, null, null, "req-1");
+
+        handler.setPrizes(first);
+        handler.setPrizes(repeat);
+
+        verify(lifecycle).addPrize(eq("minipvp"), any(), any());
+        verify(network).respondError(eq(repeat), eq("REJECTED"), anyString());
+    }
+
+    @Test
     @DisplayName("a failed merge is reported as an error")
     void mergeFailure() {
         when(ladders.mergePlayer(any(), anyString(), anyString())).thenThrow(new IllegalStateException("boom"));
@@ -219,7 +285,13 @@ class RatingTransportHandlerTest {
 
     private static RatingSeasonPrizesSetRequestV1 prizeRequest(RatingSeasonPrizesSetRequestV1Operation op,
                                                                 SeasonPrizeV1 prize, Integer from, Integer to) {
-        return new RatingSeasonPrizesSetRequestV1("mini-pvp", "minipvp", op, prize, from, to, ADMIN);
+        return prizeRequest(op, prize, from, to, null);
+    }
+
+    private static RatingSeasonPrizesSetRequestV1 prizeRequest(RatingSeasonPrizesSetRequestV1Operation op,
+                                                                SeasonPrizeV1 prize, Integer from, Integer to,
+                                                                String requestId) {
+        return new RatingSeasonPrizesSetRequestV1("mini-pvp", "minipvp", op, prize, from, to, ADMIN, requestId);
     }
 
     @Test
