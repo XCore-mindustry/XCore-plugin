@@ -2,6 +2,7 @@ package org.xcore.plugin.gamemode.pvp.rating;
 
 import org.xcore.plugin.config.TomlSecretsConfig;
 import org.xcore.plugin.integration.profile.ProfileSectionRegistry;
+import org.xcore.plugin.rating.prize.InMemoryPrizeGrantRepository;
 import org.xcore.plugin.rating.season.InMemorySeasonStore;
 import org.xcore.plugin.rating.season.SeasonResolver;
 import org.xcore.plugin.rating.season.SeasonSchedule;
@@ -65,7 +66,8 @@ class MiniPvPRatingSettlerTest {
         MiniPvPLadder miniPvPLadder = new MiniPvPLadder(
                 new LadderService(store, new InMemoryIdempotencyLedger()),
                 new TopCategoryRegistry(), new ProfileSectionRegistry(),
-                new LadderViews(new InMemorySeasonStore(), new SeasonResolver(), schedule, playerRepo),
+                new LadderViews(new InMemorySeasonStore(), new SeasonResolver(), schedule, playerRepo,
+                        new InMemoryPrizeGrantRepository()),
                 mock(SeasonAnnouncer.class), config);
         ladder = miniPvPLadder.ladder();
 
@@ -73,7 +75,6 @@ class MiniPvPRatingSettlerTest {
                 tracker,
                 miniPvPLadder,
                 sessionService,
-                playerRepo,
                 displayRefresh,
                 gameDataService,
                 // Storage work runs on real threads; the "game thread" continuation runs inline.
@@ -94,7 +95,6 @@ class MiniPvPRatingSettlerTest {
         Session session = mock(Session.class);
         PlayerData data = new PlayerData(uuid, true);
         data.nickname = nickname;
-        data.pvpRating = 1000;
         session.data = data;
         when(session.locale()).thenReturn(mock(Localization.class));
         when(sessionService.get(uuid)).thenReturn(session);
@@ -149,16 +149,7 @@ class MiniPvPRatingSettlerTest {
         assertThat(ladder.count()).isEqualTo(4);
         assertThat(ladder.cachedRating("p2")).isEqualTo(winnerStanding.rating());
 
-        // Online sessions and the players collection carry a copy.
-        assertThat(winner.pvpRating).isEqualTo(winnerStanding.rating());
-        assertThat(winner.pvpMatches).isEqualTo(1);
-        assertThat(winner.pvpWins).isEqualTo(1);
-        assertThat(loser.pvpRating).isEqualTo(loserStanding.rating());
-        assertThat(loser.pvpMatches).isEqualTo(1);
-        assertThat(loser.pvpWins).isZero();
-        verify(playerRepo).mirrorPvpStanding("p1", winnerStanding.rating(), 1, 1);
-        verify(playerRepo).mirrorPvpStanding("p3", loserStanding.rating(), 1, 0);
-        verify(playerRepo, times(4)).mirrorPvpStanding(anyString(), anyInt(), anyInt(), anyInt());
+        verifyNoInteractions(playerRepo);
 
         verify(sessionService.get("p1").locale()).send(eq("pvp-match-settlement-win"), anyMap());
         verify(sessionService.get("p3").locale()).send(eq("pvp-match-settlement-loss"), anyMap());

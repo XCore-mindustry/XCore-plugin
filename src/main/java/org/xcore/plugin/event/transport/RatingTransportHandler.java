@@ -141,7 +141,7 @@ public class RatingTransportHandler {
     void updateGrants(RatingPrizeGrantUpdateRequestV1 request) {
         if (!request.server().equals(config.server.name)) return;
         try {
-            int updated = prizes.markDelivered(request.ladder(), request.season(), request.place(),
+            int updated = prizes.markDelivered(request.ladder(), request.season(), request.place(), request.playerPid(),
                     RatingProtocolMapper.toAuditActor(request.actor()), request.note());
             network.respond(request, RatingProtocolMapper.toGrantUpdateResponse(
                     request.server(), request.season(), request.place(), updated));

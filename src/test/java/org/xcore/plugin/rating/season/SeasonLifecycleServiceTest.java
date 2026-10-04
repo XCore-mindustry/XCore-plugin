@@ -89,7 +89,7 @@ class SeasonLifecycleServiceTest {
 
         @Override
         public void started(Season previous, Season season) {
-            told.add("started " + previous.number() + "->" + season.number());
+            told.add("started " + (previous == null ? "" : previous.number()) + "->" + season.number());
         }
 
         @Override
@@ -523,18 +523,19 @@ class SeasonLifecycleServiceTest {
         clock.set(END.minus(Duration.ofDays(7)));
         server.lifecycle.tick();
         other.lifecycle.tick();
-        assertThat(told(server, other)).containsExactly("notice 7d");
+        assertThat(told(server, other)).containsExactlyInAnyOrder("started ->1", "notice 7d");
 
         clock.set(END);
         other.lifecycle.tick();
         server.lifecycle.tick();
-        assertThat(told(server, other)).containsExactlyInAnyOrder("notice 7d", "started 1->2");
+        assertThat(told(server, other)).containsExactlyInAnyOrder("started ->1", "notice 7d", "started 1->2");
 
         clock.set(END.plus(Duration.ofMinutes(5)));
         server.lifecycle.tick();
         other.lifecycle.tick();
         // Which server wins each step is up to the race; that it is exactly one is the point.
-        assertThat(told(server, other)).containsExactlyInAnyOrder("notice 7d", "started 1->2", "ended 1 podium=0");
+        assertThat(told(server, other))
+                .containsExactlyInAnyOrder("started ->1", "notice 7d", "started 1->2", "ended 1 podium=0");
     }
 
     @Test
@@ -544,7 +545,7 @@ class SeasonLifecycleServiceTest {
         server.lifecycle.tick();
 
         assertThat(season(1).sentNotices()).containsExactlyInAnyOrder("7d", "3d", "24h", "1h");
-        assertThat(told(server)).containsExactly("notice 1h");
+        assertThat(told(server)).containsExactlyInAnyOrder("started ->1", "notice 1h");
     }
 
     @Test
@@ -554,8 +555,89 @@ class SeasonLifecycleServiceTest {
         server.lifecycle.reschedule("duel", newEnd, CONSOLE, null);
         assertThat(told(server)).containsExactly("rescheduled " + END + "->" + newEnd + " by Console");
 
+        server.events.told.clear();
+        clock.advance(Duration.ofDays(10));
+        Instant now = clock.instant();
         server.lifecycle.endNow("duel", CONSOLE, null);
-        assertThat(told(server)).contains("started 1->2");
+        assertThat(told(server)).containsExactly("rescheduled " + newEnd + "->" + now + " by Console", "started 1->2");
+    }
+
+    @Test
+    @DisplayName("the first season of a ladder is announced too, once however many servers tick")
+    void events_announceFirstSeason() {
+        Server other = new Server();
+        other.ladders.register(DUEL);
+
+        server.lifecycle.tick();
+        other.lifecycle.tick();
+        server.lifecycle.tick();
+
+        assertThat(told(server, other)).containsExactly("started ->1");
+    }
+
+    @Test
+    @DisplayName("a start announcement a dead server never finished is repeated by another server")
+    void events_repeatUnfinishedStart() {
+        // The server that opened season 2 claimed its announcement and died before posting it.
+        clock.set(END);
+        ledger.claim("season:duel:2:event:started", "SEASON_EVENT", "duel:2");
+        Server other = new Server();
+        other.ladders.register(DUEL);
+        server.lifecycle.tick();
+        assertThat(season(2).status()).isEqualTo(SeasonStatus.ACTIVE);
+        assertThat(told(server, other)).containsExactly("started ->1");
+
+        other.lifecycle.tick();
+        assertThat(told(server, other)).containsExactly("started ->1"); // the lease is still held
+
+        ledger.expireLeases();
+        other.lifecycle.tick();
+        server.lifecycle.tick();
+
+        assertThat(told(server, other)).containsExactlyInAnyOrder("started ->1", "started 1->2");
+    }
+
+    @Test
+    @DisplayName("an end announcement lost after the season was archived is delivered by the next tick")
+    void events_repeatUnfinishedEnd() {
+        clock.set(END);
+        server.lifecycle.tick();
+        ledger.claim("season:duel:1:event:ended", "SEASON_EVENT", "duel:1");
+
+        clock.set(END.plus(Duration.ofMinutes(5)));
+        server.lifecycle.tick();
+        assertThat(season(1).status()).isEqualTo(SeasonStatus.ARCHIVED);
+        assertThat(told(server)).doesNotContain("ended 1 podium=0");
+
+        ledger.expireLeases();
+        server.lifecycle.tick();
+        server.lifecycle.tick();
+
+        assertThat(told(server).stream().filter("ended 1 podium=0"::equals)).hasSize(1);
+    }
+
+    @Test
+    @DisplayName("a failing listener leaves the announcement to be retried")
+    void events_retryAfterListenerFailure() {
+        RecordingEvents later = new RecordingEvents();
+        boolean[] failing = {true};
+        server.lifecycle.addEvents(new SeasonEvents() {
+            @Override
+            public void started(Season previous, Season season) {
+                if (failing[0]) throw new IllegalStateException("redis is down");
+            }
+        });
+        server.lifecycle.addEvents(later);
+
+        server.lifecycle.tick();
+        assertThat(later.told).containsExactly("started ->1");
+
+        failing[0] = false;
+        ledger.expireLeases();
+        server.lifecycle.tick();
+        server.lifecycle.tick();
+
+        assertThat(later.told).containsExactly("started ->1", "started ->1");
     }
 
     @Test

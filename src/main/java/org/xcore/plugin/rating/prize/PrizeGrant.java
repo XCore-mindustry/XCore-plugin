@@ -61,6 +61,11 @@ public record PrizeGrant(
                 note);
     }
 
+    /** The season's number, the part of {@link #seasonId} after the ladder. */
+    public int seasonNumber() {
+        return Integer.parseInt(seasonId.substring(seasonId.lastIndexOf(':') + 1));
+    }
+
     public SeasonPrize prize() {
         return new SeasonPrize(place, place, kind, value, description);
     }

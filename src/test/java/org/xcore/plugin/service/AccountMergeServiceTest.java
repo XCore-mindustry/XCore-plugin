@@ -90,7 +90,6 @@ class AccountMergeServiceTest {
         data.pid = pid;
         data.nickname = name;
         data.totalPlayTime = playtime;
-        data.pvpRating = rating;
         data.hexedPoints = points;
         data.hexedRank = HexedRanks.HexedRank.newbie.ordinal();
         data.unlockedBadges = new HashSet<>();
@@ -125,7 +124,6 @@ class AccountMergeServiceTest {
         PlayerData targetAfter = result.targetAfter();
         assertThat(targetAfter.pid).isEqualTo(20);
         assertThat(targetAfter.totalPlayTime).isEqualTo(150); // 120 + 30
-        assertThat(targetAfter.pvpRating).isEqualTo(1600); // max(1400, 1600)
         assertThat(targetAfter.hexedPoints).isEqualTo(25); // 15 + 10
         assertThat(targetAfter.unlockedBadges).containsExactlyInAnyOrder("badge-veteran", "badge-builder");
         assertThat(targetAfter.discordId).isEqualTo("discord-123");
@@ -157,11 +155,7 @@ class AccountMergeServiceTest {
     @DisplayName("Merge folds ladder standings into the target and refreshes ladder caches")
     void merge_validAccounts_mergesLadderStandings() {
         PlayerData source = createPlayer(10, "uuid-source", "OldPlayer", 120, 1400, 15);
-        source.pvpMatches = 12;
-        source.pvpWins = 7;
         PlayerData target = createPlayer(20, "uuid-target", "NewPlayer", 30, 1600, 10);
-        target.pvpMatches = 3;
-        target.pvpWins = 1;
 
         when(findService.playerData("10")).thenReturn(source);
         when(findService.playerData("20")).thenReturn(target);

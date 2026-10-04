@@ -168,10 +168,18 @@ granted_by, updated_at, note
 - `xcore_plugin_hexedcore_rating_players` → `rating_standings {ladder: "hexed", season: 1}`;
 - only players with at least one rated match are copied; `merged:` accounts are skipped;
 - existing standings are never overwritten (`$merge … whenMatched: keepExisting`), so the migration is safe to re-run;
-- the old fields and collection are left untouched until the next release (rollback), then removed by a separate migration;
+- the old fields and collection are left untouched by V5 (rollback); phase 6 retires them with migration V6 (below);
 - there is no migration for `rating_seasons`: season 1 of a ladder is created the first time a server registers that ladder (`LadderSeasons.open`, an idempotent insert), with `starts_at` = now and `ends_at` from the schedule. A ladder added later gets its season the same way.
 
-Until phases 3 and 4, Mini-PVP standings are mirrored back into `players.pvp_rating/pvp_matches/pvp_wins` after every settlement (`LegacyPvpRatingMirror`): the profile menu and the Discord bot still read them. The ladder is the source of truth.
+Until phase 6, Mini-PVP standings were mirrored back into `players.pvp_rating/pvp_matches/pvp_wins` after every settlement (`LegacyPvpRatingMirror`) for the profile menu and the Discord bot. The ladder is the source of truth; the mirror is gone (phase 6).
+
+### 4.5. Migration V6
+
+- unsets `players.pvp_rating`, `pvp_matches` and `pvp_wins`. `legacy_pvp_rating`, the pre-Elo rating the Mini-PVP profile still shows, is kept;
+- renames `xcore_plugin_hexedcore_rating_players` to `xcore_plugin_hexedcore_rating_players_legacy` instead of dropping it, so an operator can still inspect it; it is no longer read or written, and can be dropped by hand;
+- is a no-op on a second run and never overwrites an existing archive collection.
+
+Run it only once every server runs the phase 6 plugin: an older server would write the `pvp_*` fields again after the unset (harmless, but the fields come back).
 
 ## 5. Season lifecycle
 
@@ -249,7 +257,7 @@ One shared `LadderTopCategoryProvider` serves both modes: a scope is a season nu
 
 The page is read off the game thread: `TopUiController` starts the load with `Async.supply`, keeps showing the old page meanwhile, and dispatches `TopEvent.Loaded` back; a result for a dialog that has moved on is dropped. Turning a page patches the list, switching category or season redraws the dialog.
 
-Prizes next to a placement are not shown in game (see the gaps in 9.5).
+Rows on prized places of a season (running or past) carry the first prize and how many more there are, e.g. "1,500 ELO ★ Season Champion +1". The prize rides on the row as flat attributes (`prizes`, `prize.N.kind|value|description`) because the row is built before the viewer's language is known; `formatValue(entry, local)` words it.
 
 ### 6.2. `/stats` — done
 
@@ -264,7 +272,7 @@ Sections are read together with the match statistics, off the game thread (`Play
 
 ### 6.3. `/season` command — done
 
-For players: opens a dialog with a card per ladder this server hosts (every registered ladder on a server that hosts none) — the season and its end date, time left, number of players, the viewer's own league / rating / rank / progress, the previous season's top three — and a button that opens `/top` on that ladder. The card does not list prizes (see 9.5).
+For players: opens a dialog with a card per ladder this server hosts (every registered ladder on a server that hosts none) — the season and its end date, time left, number of players, the viewer's own league / rating / rank / progress, the previous season's top three — and a button that opens `/top` on that ladder. The card also lists the prizes the running season promises, what the previous season's winners won (a suffix on each podium line) and the viewer's own prizes with their status (waiting / received / delivered). Prizes the admin sets show at once on that server and within a tick on the others.
 
 ## 7. Discord
 
@@ -316,6 +324,7 @@ season prize set <ladder> <places> <kind> <value>
 season prize clear <ladder> <places>
 season prize list <ladder> [season]
 season prize delivered <ladder> <season> <place> [note]
+season prize delivered-to <ladder> <season> <place> <pid> [note]
 ```
 
 `<duration>` is `90m`, `12h`, `7d`, `2w`, `1mo`; `<datetime>` is `2027-01-01` or `2027-01-01T18:00` in the season time zone. `<places>` is `1` or `1-3`. `prize clear` removes the prizes that lie entirely within the places given. The console takes the prize value only; the description is set from Discord.
@@ -351,6 +360,7 @@ reset_carry = 0.5
 3. **Interface — done.** Scope in the leaderboard SPI and the season switcher; profile sections; `/season`.
 4. **Protocol and bot — done.** The `rating` family, the channel, `/season`, the updated `/stats`, rating merge over RPC.
 5. **Prizes — done.** Model, handlers, commands, delivery tracking.
+6. **Follow-up — done.** Prizes in game and per-player delivery; the legacy mirror and its migration; reliable season events.
 
 Each phase ships separately.
 
@@ -406,11 +416,9 @@ Known gaps:
 
 Known gaps:
 
-- Event delivery is at-most-once from the plugin: a server that dies right after winning a transition loses its event. The bot's dedup protects against replays, not against a lost event; a reconcile pass over `rating_seasons` is the follow-up if this ever matters.
-- The first season of a ladder, created when a server first registers the ladder, publishes no `started` event.
-- `season end-now` publishes `ended` and then `started` of the next season, not `rescheduled`.
+- Event delivery was at-most-once, the first season of a ladder published no `started`, and `season end-now` published no `rescheduled` (all fixed in phase 6, see 9.6).
 - `extend` is relative to the end read just before the compare-and-set; two simultaneous extends can both apply against the same base and one wins.
-- The legacy `players.pvp_*` mirror is still written; nothing but the merge embed reads it now, so it can be removed once phase 5 is out.
+- The legacy `players.pvp_*` mirror was still written for the merge embed (removed in phase 6).
 - `PROTOCOL_SURFACE.md` is not regenerated for the new family.
 
 ### 9.5. What phase 5 changed for players and operators
@@ -422,11 +430,26 @@ Known gaps:
 
 Known gaps:
 
-- Delivery is by place, not per winner: `delivered` settles every waiting grant of that place. Two players sharing a range each get their own grant, but they are marked together.
-- The in-game `/season` card, `/top` and the winner's profile do not show prizes yet.
+- Delivery was by place only, and the in-game `/season` card, `/top` and the profile showed no prizes (both fixed in phase 6, see 9.6).
 - A prize edited after the season has ended changes nothing: the grants were created from the prizes at archive time.
 - Prizes can only be edited while the season is running; once it is closing they are final. A new season starts with no prizes, so they have to be set again each season.
-- The legacy `players.pvp_*` mirror is still written, now only for the merge embed. Removing it is a separate migration.
+- The legacy `players.pvp_*` mirror is still written, now only for the merge embed. Removing it is a separate migration (done in phase 6).
+
+### 9.6. What phase 6 changed for players and operators
+
+- **Prizes in game.** `/season` lists the running season's prizes, what last season's winners won and the viewer's own prizes with their status; the profile section lists the viewer's last four prizes on that ladder; `/top` marks prized places. Past seasons keep showing the prizes their season promised.
+- **Per-player delivery.** `season prize delivered-to <ladder> <season> <place> <pid> [note]` and `/season prize delivered … player:<pid>` settle one winner; `rating.prize.grant.update.request` gains an optional `playerPid` (xcore-protocol 0.10.0, additive). The PID must be the player's on the podium of that place, so a typo cannot settle someone else's grant. Without it a whole place is settled, as before.
+- **The legacy mirror is gone.** `LegacyPvpRatingMirror`, `PlayerDataRepository.mirrorPvpStanding` and the `PlayerData.pvp*` fields are removed, migration V6 unsets the fields and archives the old HexedCore collection (4.5), and the bot's merge embeds and account merge stop reading `pvp_rating`. The old Mini-PVP rating that the profile shows (`legacy_pvp_rating`) is untouched.
+- **Reliable events.** `started` and `ended` are now delivered at least once: the server that wins a transition claims an idempotency-ledger entry `season:{id}:event:{started|ended}`, publishes and marks it completed. If that server dies in between, the claim's lease expires (5 minutes) and the reconcile pass that every server runs on each tick publishes it again, for seasons running or ended in the last 7 days. The bot's `discord_season_posts` dedup absorbs the repeat. `ending-soon` and `rescheduled` stay at-most-once (an ending-soon notice that is late is useless; a lost `rescheduled` is visible from the next `ended`/`info`).
+- **First season and `end-now`.** The first season of a ladder now publishes `started` (without `previousSeason`; the bot words it as "the ladder now plays in seasons", not as a reset), through the same reconcile pass, so it appears within a tick of the server starting. `season end-now` publishes `rescheduled` (the end moved to now, with the reason) before the `started` of the next season.
+
+Known gaps:
+
+- Account merge after a season is archived still does not recompute `final_rank` or the podium.
+- `ending-soon` and `rescheduled` are still at-most-once.
+- A prize edited after the season has ended changes nothing, and prizes are not inherited by the next season.
+- `PROTOCOL_SURFACE.md` is not regenerated for the `rating` family.
+- The legacy `xcore_plugin_hexedcore_rating_players_legacy` collection has to be dropped by hand once nobody needs it.
 
 ## 10. Decisions
 

@@ -10,20 +10,24 @@ import org.xcore.plugin.model.AuditActor;
  * telling other services.
  *
  * <p>Called on the thread that advanced the season, never the Mindustry main thread, and a
- * failure in one listener does not stop the others or the season. Delivery is at most once:
- * a server that dies right after winning the write does not repeat it.</p>
+ * failure in one listener does not stop the others or the season. Delivery of {@link #started} and {@link #ended}
+ * is at least once: a server that dies right after winning the write is covered by the
+ * lifecycle's reconcile pass. The other events are at most once.</p>
  */
 public interface SeasonEvents {
 
-    /** A new season began; {@code previous} is the one it replaced. */
-    default void started(Season previous, Season season) {
+    /**
+     * A new season began; {@code previous} is the one it replaced, or {@code null} for the first
+     * season of a ladder. May be delivered more than once if the first attempt did not finish.
+     */
+    default void started(@Nullable Season previous, Season season) {
     }
 
     /** The most urgent of the notices that just became due for a running season. */
     default void noticeDue(Season season, SeasonNotice notice) {
     }
 
-    /** A finished season was archived; its podium and summary are final. */
+    /** A finished season was archived; its podium and summary are final. May repeat, as {@link #started}. */
     default void ended(Season archived) {
     }
 

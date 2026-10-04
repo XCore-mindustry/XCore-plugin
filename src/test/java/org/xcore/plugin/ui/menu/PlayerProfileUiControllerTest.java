@@ -48,7 +48,6 @@ class PlayerProfileUiControllerTest {
         data.customNickname = "[#2CABFEFF]EpicBuilder";
         data.description = "Logic master";
         data.admin = false;
-        data.pvpRating = 1250;
         data.hexedPoints = 15;
         data.hexedRank(HexedRanks.HexedRank.advanced);
         data.unlockedBadges = Set.of(Badge.DEVELOPER.id());

@@ -18,7 +18,8 @@ import java.time.Instant;
 
 /**
  * Tells the rest of the network about season transitions. {@link SeasonEvents} fires on the
- * one server that performed each transition, so every event is published exactly once.
+ * one server that performed each transition, so each event is published once unless a
+ * crash made the lifecycle's reconcile pass repeat it; receivers deduplicate.
  */
 @Singleton
 public class SeasonTransportPublisher implements SeasonEvents {
@@ -46,7 +47,7 @@ public class SeasonTransportPublisher implements SeasonEvents {
     }
 
     @Override
-    public void started(Season previous, Season season) {
+    public void started(@Nullable Season previous, Season season) {
         network.post(RatingProtocolMapper.toStarted(previous, season, server(), now()));
     }
 

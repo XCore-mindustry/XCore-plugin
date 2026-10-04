@@ -10,6 +10,7 @@ import org.jspecify.annotations.Nullable;
 import org.xcore.plugin.common.PLog;
 import org.xcore.plugin.concurrent.Async;
 import org.xcore.plugin.config.TomlSecretsConfig;
+import org.xcore.plugin.integration.idempotency.LedgerClaim;
 import org.xcore.plugin.integration.idempotency.PluginIdempotencyLedger;
 import org.xcore.plugin.integration.idempotency.PluginIdempotencyLedgerFactory;
 import org.xcore.plugin.model.AuditAction;
@@ -24,6 +25,7 @@ import org.xcore.plugin.rating.ladder.LadderSeasons;
 import org.xcore.plugin.service.moderation.AuditService;
 
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -51,6 +53,9 @@ import java.util.function.UnaryOperator;
 public class SeasonLifecycleService implements LadderSeasons {
     private static final String LEDGER_ID = "rating";
     private static final String FINALIZE_OPERATION = "SEASON_FINALIZE";
+    private static final String EVENT_OPERATION = "SEASON_EVENT";
+    /** How long after a season is over its missed events are still delivered. */
+    private static final Duration RECONCILE_WINDOW = Duration.ofDays(7);
     private static final float TICK_SECONDS = 30f;
     private static final int UPDATE_ATTEMPTS = 3;
 
@@ -69,6 +74,8 @@ public class SeasonLifecycleService implements LadderSeasons {
     private final List<SeasonObserver> observers = new CopyOnWriteArrayList<>();
     private final List<SeasonEvents> events = new CopyOnWriteArrayList<>();
     private final Object refreshLock = new Object();
+    /** Events this server knows are delivered, so the reconcile pass does not ask the ledger again. */
+    private final Set<String> announced = ConcurrentHashMap.newKeySet();
     private Timer.@Nullable Task tickTask;
 
     @Inject
@@ -143,6 +150,7 @@ public class SeasonLifecycleService implements LadderSeasons {
                     Log.err("Season " + season.id() + " could not be advanced", e);
                 }
             }
+            reconcileEvents(now);
         }
         refresh();
     }
@@ -199,7 +207,7 @@ public class SeasonLifecycleService implements LadderSeasons {
         Season opened = Season.opening(closed.ladderId(), number, startsAt, endsAt);
         if (store.create(opened)) {
             PLog.info("Season @ has started and runs until @", opened.id(), endsAt);
-            publish(listener -> listener.started(closed, opened));
+            announce(opened, "started", listener -> listener.started(closed, opened));
         }
     }
 
@@ -239,17 +247,80 @@ public class SeasonLifecycleService implements LadderSeasons {
         ledger.markCompleted(operationId, season.id());
         PLog.info("Season @ archived: @ participants, @ matches, podium of @", archived.id(),
                 archived.summary().participants(), archived.summary().matches(), archived.podium().size());
-        publish(listener -> listener.ended(archived));
+        announce(archived, "ended", listener -> listener.ended(archived));
     }
 
-    private void publish(Consumer<SeasonEvents> delivery) {
+    /**
+     * Delivers a state-changing event at least once. The first server to claim it publishes it
+     * and marks it done; if that server dies before then, the claim's lease expires and the
+     * {@link #reconcileEvents reconcile pass} on another server publishes it again. Receivers
+     * must therefore tolerate a repeat, which the Discord bot does by remembering what it posted.
+     */
+    private void announce(Season season, String event, Consumer<SeasonEvents> delivery) {
+        String operationId = "season:" + season.id() + ":event:" + event;
+        if (events.isEmpty() || announced.contains(operationId)) {
+            return; // Nobody to tell yet: the reconcile pass tries again once a listener is registered.
+        }
+        try {
+            LedgerClaim claim = ledger.claim(operationId, EVENT_OPERATION, season.id());
+            if (!claim.acquired()) {
+                if (claim.entry() != null && "COMPLETED".equals(claim.entry().status())) {
+                    announced.add(operationId);
+                }
+                return;
+            }
+            if (publish(delivery)) {
+                ledger.markCompleted(operationId, season.id());
+                announced.add(operationId);
+            }
+        } catch (RuntimeException e) {
+            // Left for the next reconcile pass.
+            Log.err("Season " + season.id() + " event '" + event + "' could not be announced", e);
+        }
+    }
+
+    /**
+     * Publishes whatever a transition should have announced but did not, such as when the
+     * server performing it stopped halfway. Covers seasons that are running or ended recently.
+     */
+    private void reconcileEvents(Instant now) {
+        if (events.isEmpty()) {
+            return;
+        }
+        for (String ladderId : seasonChangedCallbacks.keySet()) {
+            try {
+                List<Season> seasons = store.list(ladderId);
+                for (Season season : seasons) {
+                    if (now.isAfter(season.endsAt().plus(schedule.settlementGrace()).plus(RECONCILE_WINDOW))) {
+                        continue;
+                    }
+                    Season previous = seasons.stream()
+                            .filter(candidate -> candidate.number() == season.number() - 1)
+                            .findFirst()
+                            .orElse(null);
+                    announce(season, "started", listener -> listener.started(previous, season));
+                    if (season.status() == SeasonStatus.ARCHIVED) {
+                        announce(season, "ended", listener -> listener.ended(season));
+                    }
+                }
+            } catch (RuntimeException e) {
+                Log.err("Season events of ladder " + ladderId + " could not be reconciled", e);
+            }
+        }
+    }
+
+    /** Whether every listener took the event; one that fails does not stop the others. */
+    private boolean publish(Consumer<SeasonEvents> delivery) {
+        boolean delivered = true;
         for (SeasonEvents listener : events) {
             try {
                 delivery.accept(listener);
             } catch (RuntimeException e) {
+                delivered = false;
                 Log.err("A season event listener failed", e);
             }
         }
+        return delivered;
     }
 
     /** Re-reads the open seasons and tells this server's ladders and observers what changed. */
@@ -421,6 +492,7 @@ public class SeasonLifecycleService implements LadderSeasons {
             Optional<Season> moved = move(season, now, now, actor, reason);
             if (moved.isPresent()) {
                 recordAudit(season, moved.get(), actor, reason);
+                publish(listener -> listener.rescheduled(season, moved.get(), actor, reason));
                 // Losing this race means a tick on another server closed it first.
                 close(moved.get(), now);
                 refresh();
@@ -472,6 +544,8 @@ public class SeasonLifecycleService implements LadderSeasons {
             if (stored.isPresent()) {
                 recordAudit(stored.get(), event, summary, Map.of("prizes", String.valueOf(edited.prizes().size())),
                         actor, "Season prizes changed");
+                // So /season on this server lists the change now instead of at the next tick.
+                refresh();
                 return stored.get();
             }
         }

@@ -77,7 +77,6 @@ class TopUiClientIntegrationTest {
         PlayerData data = new PlayerData("viewer-uuid", true);
         data.pid = 42;
         data.nickname = "Alice";
-        data.pvpRating = 1350;
         data.totalPlayTime = 240;
 
         Bundle bundle = mock(Bundle.class);

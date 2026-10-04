@@ -79,6 +79,9 @@ class RatingProtocolMapperTest {
         Season started = season(4, "", SeasonStatus.ACTIVE, List.of(), null);
 
         assertThat(RatingProtocolMapper.toStarted(previous, started, "mini-pvp", AT).previousSeason()).isEqualTo(3);
+        var first = RatingProtocolMapper.toStarted(null, started, "mini-pvp", AT);
+        assertThat(first.previousSeason()).isNull();
+        assertThat(first.toPayload()).doesNotContainKey("previousSeason");
         var soon = RatingProtocolMapper.toEndingSoon(started, new SeasonNotice("7d", Duration.ofDays(7)),
                 "mini-pvp", AT);
         assertThat(soon.notice()).isEqualTo("7d");

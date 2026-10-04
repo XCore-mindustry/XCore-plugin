@@ -280,9 +280,9 @@ class RatingTransportHandlerTest {
     @Test
     @DisplayName("marking a place delivered answers with how many grants changed")
     void updateGrants() {
-        when(prizes.markDelivered(eq("minipvp"), eq(2), eq(5), discordActor(), eq("code sent"))).thenReturn(2);
+        when(prizes.markDelivered(eq("minipvp"), eq(2), eq(5), eq(14), discordActor(), eq("code sent"))).thenReturn(2);
 
-        handler.updateGrants(new RatingPrizeGrantUpdateRequestV1("mini-pvp", "minipvp", 2, 5,
+        handler.updateGrants(new RatingPrizeGrantUpdateRequestV1("mini-pvp", "minipvp", 2, 5, 14,
                 RatingPrizeGrantUpdateRequestV1Status.DELIVERED, ADMIN, "code sent"));
 
         ArgumentCaptor<RatingPrizeGrantUpdateResponseV1> response = ArgumentCaptor.forClass(
@@ -295,11 +295,11 @@ class RatingTransportHandlerTest {
     @Test
     @DisplayName("marking a place nobody is waiting on is rejected; other servers' requests are ignored")
     void updateGrants_rejectionAndOtherServer() {
-        when(prizes.markDelivered(any(), anyInt(), anyInt(), any(), any()))
+        when(prizes.markDelivered(any(), anyInt(), anyInt(), any(), any(), any()))
                 .thenThrow(new SeasonException("No prize of season minipvp:2 is waiting at place 5"));
-        var mine = new RatingPrizeGrantUpdateRequestV1("mini-pvp", "minipvp", 2, 5,
+        var mine = new RatingPrizeGrantUpdateRequestV1("mini-pvp", "minipvp", 2, 5, null,
                 RatingPrizeGrantUpdateRequestV1Status.DELIVERED, ADMIN, null);
-        var other = new RatingPrizeGrantUpdateRequestV1("hexed", "minipvp", 2, 5,
+        var other = new RatingPrizeGrantUpdateRequestV1("hexed", "minipvp", 2, 5, null,
                 RatingPrizeGrantUpdateRequestV1Status.DELIVERED, ADMIN, null);
 
         handler.updateGrants(other);

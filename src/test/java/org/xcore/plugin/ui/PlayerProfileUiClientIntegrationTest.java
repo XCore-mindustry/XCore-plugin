@@ -76,7 +76,6 @@ class PlayerProfileUiClientIntegrationTest {
         data.nickname = "TestUser";
         data.customNickname = "[#2CABFEFF]Tester";
         data.description = "Profile tester";
-        data.pvpRating = 1300;
         data.hexedPoints = 12;
         data.hexedRank(HexedRanks.HexedRank.regular);
         data.unlockedBadges = Set.of(Badge.DEVELOPER.id());

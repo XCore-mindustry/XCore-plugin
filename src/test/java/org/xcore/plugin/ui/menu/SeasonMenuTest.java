@@ -1,5 +1,6 @@
 package org.xcore.plugin.ui.menu;
 
+import org.xcore.plugin.rating.prize.InMemoryPrizeGrantRepository;
 import org.xcore.plugin.rating.season.SeasonPrizes;
 import com.ospx.flubundle.Bundle;
 import com.ospx.flubundle.Localizer;
@@ -66,6 +67,7 @@ class SeasonMenuTest {
     private SeasonMenu seasonMenu;
     private Session session;
     private LadderViews views;
+    private final InMemoryPrizeGrantRepository grants = new InMemoryPrizeGrantRepository();
 
     @BeforeEach
     @SuppressWarnings("unchecked")
@@ -84,7 +86,7 @@ class SeasonMenuTest {
         duel = ladders.register(new LadderDefinition("duel", "top-menu-category-duel", RatingPolicy.teamEloV1()));
         brawl = ladders.register(new LadderDefinition("brawl", "top-menu-category-brawl", RatingPolicy.teamEloV1()));
 
-        views = new LadderViews(seasons, resolver, schedule, mock(PlayerDataRepository.class), clock);
+        views = new LadderViews(seasons, resolver, schedule, mock(PlayerDataRepository.class), grants, clock);
         announcer = mock(SeasonAnnouncer.class);
         topCategories = new TopCategoryRegistry();
         topCategories.register(views.topCategory("DUEL", 10, duel));

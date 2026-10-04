@@ -244,10 +244,7 @@ public class AccountMergeService {
 
     private void consolidateData(PlayerData source, PlayerData target) {
         target.totalPlayTime += source.totalPlayTime;
-        target.pvpRating = Math.max(target.pvpRating, source.pvpRating);
         target.legacyPvpRating = Math.max(target.legacyPvpRating, source.legacyPvpRating);
-        target.pvpMatches += source.pvpMatches;
-        target.pvpWins += source.pvpWins;
         target.hexedPoints += source.hexedPoints;
         target.hexedRank = computeHexedRank(target.hexedPoints).ordinal();
 
@@ -495,10 +492,7 @@ public class AccountMergeService {
         dest.uuid = src.uuid;
         dest.pid = src.pid;
         dest.totalPlayTime = src.totalPlayTime;
-        dest.pvpRating = src.pvpRating;
         dest.legacyPvpRating = src.legacyPvpRating;
-        dest.pvpMatches = src.pvpMatches;
-        dest.pvpWins = src.pvpWins;
         dest.hexedPoints = src.hexedPoints;
         dest.hexedRank = src.hexedRank;
         dest.unlockedBadges = src.unlockedBadges != null ? new HashSet<>(src.unlockedBadges) : new HashSet<>();
@@ -572,10 +566,7 @@ public class AccountMergeService {
         copy.translatorLanguage = original.translatorLanguage;
         copy.globalChatVisible = original.globalChatVisible;
         copy.discordRelayVisible = original.discordRelayVisible;
-        copy.pvpRating = original.pvpRating;
         copy.legacyPvpRating = original.legacyPvpRating;
-        copy.pvpMatches = original.pvpMatches;
-        copy.pvpWins = original.pvpWins;
         copy.hexedRank = original.hexedRank;
         copy.hexedPoints = original.hexedPoints;
         copy.totalPlayTime = original.totalPlayTime;

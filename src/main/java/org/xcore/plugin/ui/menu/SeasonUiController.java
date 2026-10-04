@@ -138,6 +138,12 @@ public class SeasonUiController implements UiController<SeasonUiController.Seaso
                 card.label(Text.raw(line), l -> l.align("left").growX().padBottom(2f)).row();
             }
         }
+        if (!text.prizes().isEmpty()) {
+            card.label(Text.raw(text.prizeTitle()), l -> l.align("left").growX().padTop(6f).padBottom(2f)).row();
+            for (String line : text.prizes()) {
+                card.label(Text.raw(line), l -> l.align("left").growX().padBottom(2f)).row();
+            }
+        }
         if (!text.podium().isEmpty()) {
             card.label(Text.raw(text.podiumTitle()), l -> l.align("left").growX().padTop(6f).padBottom(2f)).row();
             for (String line : text.podium()) {

@@ -35,8 +35,9 @@ public final class RatingProtocolMapper {
     private RatingProtocolMapper() {
     }
 
-    public static RatingSeasonStartedV1 toStarted(Season previous, Season started, String server, Instant at) {
-        return new RatingSeasonStartedV1(toSeasonRef(started), previous.number(), server, at.toString());
+    public static RatingSeasonStartedV1 toStarted(@Nullable Season previous, Season started, String server, Instant at) {
+        Integer previousNumber = previous == null ? null : previous.number();
+        return new RatingSeasonStartedV1(toSeasonRef(started), previousNumber, server, at.toString());
     }
 
     public static RatingSeasonEndingSoonV1 toEndingSoon(Season season, SeasonNotice notice, String server,

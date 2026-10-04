@@ -1,5 +1,6 @@
 package org.xcore.plugin.rating.view;
 
+import arc.util.Log;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import org.jspecify.annotations.Nullable;
@@ -8,13 +9,17 @@ import org.xcore.plugin.localization.Localization;
 import org.xcore.plugin.rating.RatingLeague;
 import org.xcore.plugin.rating.ladder.Ladder;
 import org.xcore.plugin.rating.ladder.LadderStanding;
+import org.xcore.plugin.rating.prize.PrizeGrant;
+import org.xcore.plugin.rating.prize.PrizeGrantRepository;
 import org.xcore.plugin.rating.season.Season;
+import org.xcore.plugin.rating.season.SeasonPrize;
 import org.xcore.plugin.rating.season.SeasonResolver;
 import org.xcore.plugin.rating.season.SeasonSchedule;
 import org.xcore.plugin.rating.season.SeasonStore;
 
 import java.time.Clock;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 import java.util.OptionalLong;
@@ -32,6 +37,8 @@ public class LadderViews {
     static final int HISTORY_SEASONS = 3;
     /** Winners of the previous season named in {@code /season}; the full table is in {@code /top}. */
     static final int PODIUM_PLACES = 3;
+    /** Prizes listed for one player; older ones are in the Discord archive. */
+    static final int PRIZES_SHOWN = 4;
     private static final String DETAIL_SEPARATOR = "  [darkgray]|[]  ";
 
     private final SeasonStore seasons;
@@ -39,21 +46,23 @@ public class LadderViews {
     private final SeasonSchedule schedule;
     @Nullable
     private final PlayerDataRepository players;
+    private final PrizeGrantRepository grants;
     private final SeasonText text;
     private final LadderProgressText progressText;
 
     @Inject
     public LadderViews(SeasonStore seasons, SeasonResolver resolver, SeasonSchedule schedule,
-                       PlayerDataRepository players) {
-        this(seasons, resolver, schedule, players, Clock.systemUTC());
+                       PlayerDataRepository players, PrizeGrantRepository grants) {
+        this(seasons, resolver, schedule, players, grants, Clock.systemUTC());
     }
 
     public LadderViews(SeasonStore seasons, SeasonResolver resolver, SeasonSchedule schedule,
-                       @Nullable PlayerDataRepository players, Clock clock) {
+                       @Nullable PlayerDataRepository players, PrizeGrantRepository grants, Clock clock) {
         this.seasons = Objects.requireNonNull(seasons, "seasons");
         this.resolver = Objects.requireNonNull(resolver, "resolver");
         this.schedule = Objects.requireNonNull(schedule, "schedule");
         this.players = players;
+        this.grants = Objects.requireNonNull(grants, "grants");
         this.text = new SeasonText(schedule.zone(), clock);
         this.progressText = new LadderProgressText(text);
     }
@@ -90,7 +99,24 @@ public class LadderViews {
                 resolver.current(ladder.id()).orElse(null),
                 standing,
                 rank.isPresent() ? rank.getAsLong() : null,
-                ladder.history(uuid, HISTORY_SEASONS));
+                ladder.history(uuid, HISTORY_SEASONS),
+                prizesOf(ladder, uuid));
+    }
+
+    /** The player's most recent prizes on the ladder. Prizes are a courtesy: a failed read shows none. */
+    private List<PrizeGrant> prizesOf(Ladder ladder, String uuid) {
+        try {
+            String prefix = ladder.id() + ":";
+            return grants.findByPlayer(uuid).stream()
+                    .filter(grant -> grant.seasonId().startsWith(prefix))
+                    .sorted(Comparator.comparingInt(PrizeGrant::seasonNumber).reversed()
+                            .thenComparingInt(PrizeGrant::prizeIndex))
+                    .limit(PRIZES_SHOWN)
+                    .toList();
+        } catch (RuntimeException e) {
+            Log.err("Failed to read the prizes of " + uuid + " on ladder " + ladder.id(), e);
+            return List.of();
+        }
     }
 
     /** Blocking. The ladder's season as {@code /season} shows it to the player {@code uuid}. */
@@ -118,25 +144,33 @@ public class LadderViews {
         lines.add(local.t("season-menu-you", args("standing", progressText.standing(progress, local))));
         lines.add(String.join(DETAIL_SEPARATOR, progressText.details(progress, local)));
         lines.add(progressText.leagueProgress(progress, local));
+        lines.addAll(progressText.prizes(progress, local));
 
         Season previous = overview.previous();
         List<String> podium = new ArrayList<>();
         if (previous != null) {
             previous.podium().stream().limit(PODIUM_PLACES).forEach(entry -> {
                 RatingLeague league = RatingLeague.fromRating(entry.rating());
-                podium.add(local.t("season-menu-podium-entry", args(
+                String line = local.t("season-menu-podium-entry", args(
                         "place", entry.place(),
                         "name", entry.nickname(),
                         "league", league.icon() + " " + local.t(league.localizationKey()),
-                        "rating", entry.rating())));
+                        "rating", entry.rating()));
+                List<SeasonPrize> won = previous.prizesFor(entry.place());
+                podium.add(won.isEmpty() ? line
+                        : line + local.t("season-menu-podium-prizes", args("prizes", PrizeText.labels(won, local))));
             });
         }
+        List<String> prizes = season == null ? List.of()
+                : season.prizes().stream().map(prize -> PrizeText.entry(prize, local)).toList();
         return new SeasonCard(
                 season != null
                         ? local.t("season-menu-card-title", args("ladder", ladderName, "season", text.title(season, local)))
                         : ladderName,
                 lines,
                 podium.isEmpty() ? "" : local.t("season-menu-previous", args("season", text.title(previous, local))),
-                podium);
+                podium,
+                prizes.isEmpty() ? "" : local.t("season-menu-prizes"),
+                prizes);
     }
 }

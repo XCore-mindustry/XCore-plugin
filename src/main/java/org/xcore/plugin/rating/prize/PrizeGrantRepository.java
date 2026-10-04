@@ -1,5 +1,7 @@
 package org.xcore.plugin.rating.prize;
 
+import org.jspecify.annotations.Nullable;
+
 import java.time.Instant;
 import java.util.List;
 
@@ -10,6 +12,9 @@ public interface PrizeGrantRepository {
     boolean createIfAbsent(PrizeGrant grant);
 
     List<PrizeGrant> findBySeason(String seasonId);
+
+    /** Every grant a player has been promised, in no particular order. */
+    List<PrizeGrant> findByPlayer(String playerUuid);
 
     /**
      * Sets a grant's status only while it still has {@code expected}, so two servers racing to
@@ -22,7 +27,8 @@ public interface PrizeGrantRepository {
     /**
      * Marks a person's delivery of every unsettled grant of one place of a season.
      *
+     * @param playerUuid limits it to that player's grants; {@code null} settles the whole place
      * @return how many grants changed
      */
-    int markDelivered(String seasonId, int place, String by, String note, Instant now);
+    int markDelivered(String seasonId, int place, @Nullable String playerUuid, String by, String note, Instant now);
 }

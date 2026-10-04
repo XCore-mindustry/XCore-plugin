@@ -5,7 +5,6 @@ import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import mindustry.game.Team;
 import org.xcore.plugin.concurrent.Async;
-import org.xcore.plugin.database.repository.PlayerDataRepository;
 import org.xcore.plugin.integration.PlayerDisplayRefreshService;
 import org.xcore.plugin.integration.gamehistory.MatchHistoryRecord;
 import org.xcore.plugin.rating.RatingLeague;
@@ -36,7 +35,6 @@ public class MiniPvPRatingSettler {
     private final TeamEloCalculator calculator = new TeamEloCalculator();
     private final Ladder ladder;
     private final RatingPolicy policy;
-    private final LegacyPvpRatingMirror legacyMirror;
 
     private final SessionService sessionService;
     private final PlayerDisplayRefreshService playerDisplayRefreshService;
@@ -50,7 +48,6 @@ public class MiniPvPRatingSettler {
             MiniPvPMatchTracker matchTracker,
             MiniPvPLadder miniPvPLadder,
             SessionService sessionService,
-            PlayerDataRepository playerDataRepository,
             PlayerDisplayRefreshService playerDisplayRefreshService,
             GameDataService gameDataService,
             Async async
@@ -58,7 +55,6 @@ public class MiniPvPRatingSettler {
         this.matchTracker = matchTracker;
         this.ladder = miniPvPLadder.ladder();
         this.policy = miniPvPLadder.policy();
-        this.legacyMirror = new LegacyPvpRatingMirror(playerDataRepository);
         this.sessionService = sessionService;
         this.playerDisplayRefreshService = playerDisplayRefreshService;
         this.gameDataService = gameDataService;
@@ -138,9 +134,6 @@ public class MiniPvPRatingSettler {
         if (result.claimed()) {
             recordMatchHistory(match, calculation.deltas(), names);
         }
-        if (result.applied()) {
-            legacyMirror.persist(result.standings().values());
-        }
         return new Settlement(result, calculation.deltas());
     }
 
@@ -149,10 +142,6 @@ public class MiniPvPRatingSettler {
             Session session = sessionService.get(delta.uuid());
             if (session == null || session.data == null) continue;
 
-            LadderStanding standing = settlement.result().standings().get(delta.uuid());
-            if (standing != null) {
-                LegacyPvpRatingMirror.apply(session.data, standing);
-            }
             notifyPlayer(session, delta);
         }
 

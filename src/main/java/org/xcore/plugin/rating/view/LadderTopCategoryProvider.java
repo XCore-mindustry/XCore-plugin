@@ -1,5 +1,6 @@
 package org.xcore.plugin.rating.view;
 
+import mindustry.gen.Iconc;
 import org.jspecify.annotations.Nullable;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
 import org.xcore.plugin.integration.top.LeaderboardEntry;
@@ -14,7 +15,9 @@ import org.xcore.plugin.rating.ladder.Ladder;
 import org.xcore.plugin.rating.ladder.LadderStanding;
 import org.xcore.plugin.rating.ladder.LadderStore;
 import org.xcore.plugin.rating.ladder.StandingPage;
+import org.xcore.plugin.rating.season.PrizeKind;
 import org.xcore.plugin.rating.season.Season;
+import org.xcore.plugin.rating.season.SeasonPrize;
 import org.xcore.plugin.rating.season.SeasonStore;
 
 import java.text.NumberFormat;
@@ -37,6 +40,8 @@ public final class LadderTopCategoryProvider implements TopCategoryProvider {
     private static final String NAME = "name";
     private static final String STARTS_AT = "startsAt";
     private static final String ENDS_AT = "endsAt";
+    private static final String PRIZE_COUNT = "prizes";
+    private static final String PRIZE_PREFIX = "prize.";
 
     private final String id;
     private final int priority;
@@ -117,6 +122,7 @@ public final class LadderTopCategoryProvider implements TopCategoryProvider {
         StandingPage page = ladder.top(season, pageSize, request.cursor());
         Map<String, PlayerData> profiles = profiles(page.standings());
 
+        Season shown = seasons.find(ladder.id(), season).orElse(null);
         List<LeaderboardEntry> entries = new ArrayList<>(page.standings().size());
         int rank = (request.page() - 1) * pageSize + 1;
         for (LadderStanding standing : page.standings()) {
@@ -125,6 +131,9 @@ public final class LadderTopCategoryProvider implements TopCategoryProvider {
             Map<String, String> attributes = LeaderboardEntry.profileAttributes(profile);
             attributes.put("leagueIcon", league.icon());
             attributes.put("leagueName", league.name());
+            if (shown != null) {
+                putPrizes(attributes, shown.prizesFor(rank));
+            }
             entries.add(new LeaderboardEntry(
                     standing.uuid(),
                     rank++,
@@ -148,6 +157,47 @@ public final class LadderTopCategoryProvider implements TopCategoryProvider {
 
         return new LeaderboardPage(request.page(), entries, page.hasNext(), page.nextCursor(),
                 ladder.count(season), selfRank, selfValue);
+    }
+
+    @Override
+    public String formatValue(LeaderboardEntry entry, Localization local) {
+        String value = entry != null ? formatValue(entry.primaryValue(), local) : "-";
+        if (entry == null || local == null) {
+            return value;
+        }
+        String prizes = PrizeText.brief(prizesOf(entry.attributes()), local);
+        return prizes.isEmpty() ? value : value + "  [gold]" + Iconc.star + " " + prizes + "[]";
+    }
+
+    /** Prizes ride on the row as flat attributes, because the row is built before the viewer's language is known. */
+    private static void putPrizes(Map<String, String> attributes, List<SeasonPrize> prizes) {
+        attributes.put(PRIZE_COUNT, String.valueOf(prizes.size()));
+        for (int i = 0; i < prizes.size(); i++) {
+            attributes.put(PRIZE_PREFIX + i + ".kind", prizes.get(i).kind().name());
+            attributes.put(PRIZE_PREFIX + i + ".value", prizes.get(i).value());
+            attributes.put(PRIZE_PREFIX + i + ".description", prizes.get(i).description());
+        }
+    }
+
+    private static List<SeasonPrize> prizesOf(Map<String, String> attributes) {
+        int count;
+        try {
+            count = Integer.parseInt(attributes.getOrDefault(PRIZE_COUNT, "0"));
+        } catch (NumberFormatException e) {
+            return List.of();
+        }
+        List<SeasonPrize> prizes = new ArrayList<>(count);
+        for (int i = 0; i < count; i++) {
+            String value = attributes.get(PRIZE_PREFIX + i + ".value");
+            String kind = attributes.get(PRIZE_PREFIX + i + ".kind");
+            if (value == null || kind == null) {
+                continue;
+            }
+            // Only the words matter here, so the places are a placeholder.
+            prizes.add(new SeasonPrize(1, 1, PrizeKind.valueOf(kind), value,
+                    attributes.getOrDefault(PRIZE_PREFIX + i + ".description", "")));
+        }
+        return prizes;
     }
 
     @Override

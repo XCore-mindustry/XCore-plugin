@@ -428,18 +428,6 @@ public class PlayerDataRepository extends DataRepository<PlayerData> {
         return updateByUuidAsync(uuid, Updates.pull("blocked_private_uuids", blockedUuid));
     }
 
-    /**
-     * Copies a Mini-PVP ladder standing into the legacy {@code pvp_*} fields, which the
-     * profile menu and the Discord bot still read.
-     */
-    public boolean mirrorPvpStanding(String uuid, int rating, int matches, int wins) {
-        return updateByUuid(uuid, Updates.combine(
-                Updates.set("pvp_rating", rating),
-                Updates.set("pvp_matches", matches),
-                Updates.set("pvp_wins", wins)
-        ));
-    }
-
     public boolean updateHexedProgress(String uuid, int rank, int points) {
         return updateByUuid(uuid, Updates.combine(
                 Updates.set("hexed_rank", rank),

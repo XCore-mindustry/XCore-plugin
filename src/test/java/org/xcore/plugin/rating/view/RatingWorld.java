@@ -1,5 +1,6 @@
 package org.xcore.plugin.rating.view;
 
+import org.xcore.plugin.rating.prize.InMemoryPrizeGrantRepository;
 import org.xcore.plugin.rating.season.SeasonPrizes;
 import org.xcore.plugin.concurrent.Async;
 import org.xcore.plugin.concurrent.InlineStorageExecutor;
@@ -71,6 +72,8 @@ final class RatingWorld {
         }
     };
 
+    final InMemoryPrizeGrantRepository grants = new InMemoryPrizeGrantRepository();
+
     RatingWorld() {
         when(players.findByUuids(anyCollection())).thenReturn(List.of());
         TomlSecretsConfig config = new TomlSecretsConfig();
@@ -81,7 +84,7 @@ final class RatingWorld {
                 new Async(InlineStorageExecutor.create(), Runnable::run), clock);
         ladder = new LadderService(standings, ledger, lifecycle)
                 .register(new LadderDefinition("duel", "top-menu-category-duel", RatingPolicy.teamEloV1()));
-        views = new LadderViews(seasons, resolver, schedule, players, clock);
+        views = new LadderViews(seasons, resolver, schedule, players, grants, clock);
     }
 
     void setTime(Instant instant) {

@@ -85,6 +85,7 @@ public final class LadderProfileSection implements ProfileSectionProvider {
         lines.add(text.leagueProgress(progress, local));
         lines.addAll(text.seasonLine(progress, local));
         lines.addAll(text.history(progress, local));
+        lines.addAll(text.prizes(progress, local));
         return new ProfileSection(text.headline(icon, progress, local), details, lines);
     }
 }

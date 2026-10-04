@@ -180,7 +180,19 @@ public class SeasonController implements CloudServerController {
                                @Argument(value = "place", description = "Place on the podium") int place,
                                @Nullable @Argument(value = "note", description = "For example, the gift code that was sent") @Greedy String note) {
         run(() -> PLog.info("&gMarked @ prize(s) of place @ delivered",
-                prizes.markDelivered(ladder, season, place, console(), note), place));
+                prizes.markDelivered(ladder, season, place, null, console(), note), place));
+    }
+
+    @Command("season prize delivered-to <ladder> <season> <place> <player> [note]")
+    @CommandDescription("Records that one player's prizes of a finished season's place were handed over.")
+    public void prizeDeliveredTo(XCoreSender sender,
+                                 @Argument(value = "ladder", description = "Ladder ID, e.g. minipvp or hexed") String ladder,
+                                 @Argument(value = "season", description = "Season number") int season,
+                                 @Argument(value = "place", description = "Place on the podium") int place,
+                                 @Argument(value = "player", description = "PID of the player standing on that place") int player,
+                                 @Nullable @Argument(value = "note", description = "For example, the gift code that was sent") @Greedy String note) {
+        run(() -> PLog.info("&gMarked @ prize(s) of place @ delivered to player #@",
+                prizes.markDelivered(ladder, season, place, player, console(), note), place, player));
     }
 
     private void describe(Season season) {

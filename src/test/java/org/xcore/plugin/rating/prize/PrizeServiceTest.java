@@ -179,7 +179,7 @@ class PrizeServiceTest {
         seasons.create(archived(CHAMPION, NITRO));
         service.award(archived(CHAMPION, NITRO));
 
-        int changed = service.markDelivered("minipvp", 1, 2, ADMIN, " code sent ");
+        int changed = service.markDelivered("minipvp", 1, 2, null, ADMIN, " code sent ");
 
         assertThat(changed).isEqualTo(1);
         PrizeGrant grant = grants.findBySeason("minipvp:1").stream()
@@ -195,13 +195,41 @@ class PrizeServiceTest {
     void markDelivered_refusals() {
         seasons.create(archived(CHAMPION, NITRO));
         service.award(archived(CHAMPION, NITRO));
-        service.markDelivered("minipvp", 1, 2, ADMIN, null);
+        service.markDelivered("minipvp", 1, 2, null, ADMIN, null);
 
         // First place's badge was already granted by the plugin: nothing is waiting except the Nitro.
-        assertThat(service.markDelivered("minipvp", 1, 1, ADMIN, null)).isEqualTo(1);
-        assertThatThrownBy(() -> service.markDelivered("minipvp", 1, 2, ADMIN, null))
+        assertThat(service.markDelivered("minipvp", 1, 1, null, ADMIN, null)).isEqualTo(1);
+        assertThatThrownBy(() -> service.markDelivered("minipvp", 1, 2, null, ADMIN, null))
                 .isInstanceOf(SeasonException.class).hasMessageContaining("waiting");
-        assertThatThrownBy(() -> service.markDelivered("minipvp", 9, 1, ADMIN, null))
+        assertThatThrownBy(() -> service.markDelivered("minipvp", 9, 1, null, ADMIN, null))
                 .isInstanceOf(SeasonException.class).hasMessageContaining("does not exist");
+    }
+
+    @Test
+    @DisplayName("delivering to one player leaves the other places waiting")
+    void markDelivered_singlePlayer() {
+        Season season = archived(NITRO);
+        seasons.create(season);
+        service.award(season);
+        assertThat(service.markDelivered("minipvp", 1, 2, 2, ADMIN, "sent")).isEqualTo(1);
+
+        assertThat(grants.findBySeason("minipvp:1")).filteredOn(grant -> grant.place() == 2)
+                .extracting(PrizeGrant::status).containsOnly(PrizeStatus.DELIVERED);
+        assertThat(grants.findBySeason("minipvp:1")).filteredOn(grant -> grant.place() == 1)
+                .extracting(PrizeGrant::status).containsOnly(PrizeStatus.PENDING);
+    }
+
+    @Test
+    @DisplayName("a player who did not stand on that place cannot be marked as delivered to")
+    void markDelivered_wrongPlayer() {
+        Season season = archived(NITRO);
+        seasons.create(season);
+        service.award(season);
+
+        assertThatThrownBy(() -> service.markDelivered("minipvp", 1, 2, 1, ADMIN, null))
+                .isInstanceOf(SeasonException.class).hasMessageContaining("Player #1 is not at place 2");
+        assertThatThrownBy(() -> service.markDelivered("minipvp", 1, 8, 8, ADMIN, null))
+                .isInstanceOf(SeasonException.class).hasMessageContaining("not at place 8");
+        assertThat(grants.findBySeason("minipvp:1")).extracting(PrizeGrant::status).containsOnly(PrizeStatus.PENDING);
     }
 }

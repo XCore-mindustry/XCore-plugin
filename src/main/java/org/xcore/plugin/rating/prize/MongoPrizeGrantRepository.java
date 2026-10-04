@@ -11,6 +11,7 @@ import org.bson.Document;
 import org.bson.conversions.Bson;
 import org.xcore.plugin.config.TomlSecretsConfig;
 import org.xcore.plugin.rating.season.PrizeKind;
+import org.jspecify.annotations.Nullable;
 
 import java.time.Instant;
 import java.util.Date;
@@ -62,6 +63,13 @@ public class MongoPrizeGrantRepository implements PrizeGrantRepository {
     }
 
     @Override
+    public List<PrizeGrant> findByPlayer(String playerUuid) {
+        return collection.find(eq("player_uuid", playerUuid))
+                .map(MongoPrizeGrantRepository::grant)
+                .into(new java.util.ArrayList<>());
+    }
+
+    @Override
     public boolean transition(String id, PrizeStatus expected, PrizeStatus status, String by, String note,
                               Instant now) {
         writable();
@@ -71,11 +79,16 @@ public class MongoPrizeGrantRepository implements PrizeGrantRepository {
     }
 
     @Override
-    public int markDelivered(String seasonId, int place, String by, String note, Instant now) {
+    public int markDelivered(String seasonId, int place, @Nullable String playerUuid, String by, String note,
+                             Instant now) {
         writable();
         Bson unsettled = in("status", PrizeStatus.PENDING.name(), PrizeStatus.FAILED.name());
+        Bson target = and(eq("season_id", seasonId), eq("place", place), unsettled);
+        if (playerUuid != null) {
+            target = and(target, eq("player_uuid", playerUuid));
+        }
         return (int) collection.updateMany(
-                and(eq("season_id", seasonId), eq("place", place), unsettled),
+                target,
                 update(PrizeStatus.DELIVERED, by, note, now)).getModifiedCount();
     }
 

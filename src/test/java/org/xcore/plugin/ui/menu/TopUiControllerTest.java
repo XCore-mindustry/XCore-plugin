@@ -67,7 +67,6 @@ class TopUiControllerTest {
         viewerData = new PlayerData("viewer-uuid", true);
         viewerData.pid = 1;
         viewerData.nickname = "Alice";
-        viewerData.pvpRating = 1200;
         viewerData.totalPlayTime = 300;
         viewerData.hexedPoints = 25;
 

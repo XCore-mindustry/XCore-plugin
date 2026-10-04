@@ -3,6 +3,7 @@ package org.xcore.plugin.rating.view;
 import org.xcore.plugin.localization.Localization;
 import org.xcore.plugin.rating.RatingLeague;
 import org.xcore.plugin.rating.ladder.LadderStanding;
+import org.xcore.plugin.rating.prize.PrizeGrant;
 import org.xcore.plugin.ui.menu.PlayerProfileUiController;
 
 import java.util.ArrayList;
@@ -81,6 +82,18 @@ final class LadderProgressText {
                 ? local.t("ladder-profile-season", args(
                         "season", title, "remaining", seasons.remaining(progress.season(), local)))
                 : local.t("ladder-profile-season-closing", args("season", title)));
+    }
+
+    /** "Season 2 · prize: Season Champion (delivered)" for each prize the player has won or been promised. */
+    List<String> prizes(LadderProgress progress, Localization local) {
+        List<String> lines = new ArrayList<>();
+        for (PrizeGrant grant : progress.prizes()) {
+            lines.add(local.t("prize-grant-line", args(
+                    "season", seasons.title(grant.seasonNumber(), "", local),
+                    "prize", PrizeText.label(grant.kind(), grant.value(), grant.description(), local),
+                    "status", PrizeText.status(grant.status(), local))));
+        }
+        return lines;
     }
 
     /** "Season 2 — #4, Titanium, 1642" for each earlier season the player took part in. */

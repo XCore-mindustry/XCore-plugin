@@ -1,5 +1,9 @@
 package org.xcore.plugin.rating.view;
 
+import org.xcore.plugin.rating.season.SeasonPrize;
+import org.xcore.plugin.rating.season.PrizeKind;
+import org.xcore.plugin.model.AuditActorType;
+import org.xcore.plugin.model.AuditActor;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -162,5 +166,23 @@ class LadderTopCategoryProviderTest {
     void formatValue() {
         assertThat(provider.formatValue("1642", null)).isEqualTo("1,642 ELO");
         assertThat(provider.formatValue("", null)).isEqualTo("-");
+    }
+
+    @Test
+    @DisplayName("rows on prized places carry the prize, which is worded in the viewer's language")
+    void prizesOnRows() {
+        world.lifecycle.addPrize("duel", new SeasonPrize(1, 1, PrizeKind.CUSTOM, "Nitro", "1 month of Nitro"),
+                AuditActor.builder().type(AuditActorType.SERVER_CONSOLE).id("console").nameSnapshot("Console").build());
+        world.lifecycle.addPrize("duel", new SeasonPrize(1, 2, PrizeKind.CUSTOM, "Sticker", ""),
+                AuditActor.builder().type(AuditActorType.SERVER_CONSOLE).id("console").nameSnapshot("Console").build());
+        when(world.players.findByUuids(anyCollection())).thenReturn(List.of());
+
+        LeaderboardPage page = provider.loadPage(new LeaderboardPageRequest("DUEL", 1, 3, null, null));
+        Localization local = RatingWorld.echo();
+
+        String first = provider.formatValue(page.entries().get(0), local);
+        assertThat(first).startsWith("1,500 ELO").contains("1 month of Nitro +1");
+        assertThat(provider.formatValue(page.entries().get(1), local)).contains("Sticker").doesNotContain("+");
+        assertThat(provider.formatValue(page.entries().get(2), local)).isEqualTo("900 ELO");
     }
 }

@@ -3,6 +3,7 @@ package org.xcore.plugin.rating.prize;
 import arc.util.Log;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
+import org.jspecify.annotations.Nullable;
 import org.xcore.plugin.common.PLog;
 import org.xcore.plugin.model.AuditActor;
 import org.xcore.plugin.rating.season.PrizeKind;
@@ -102,17 +103,33 @@ public class PrizeService implements SeasonPrizes {
      * @return how many grants were marked
      * @throws SeasonException when the season does not exist or nothing at that place is waiting
      */
-    public int markDelivered(String ladderId, int seasonNumber, int place, AuditActor actor, String note) {
+    public int markDelivered(String ladderId, int seasonNumber, int place, @Nullable Integer playerPid,
+                             AuditActor actor, String note) {
         Season season = seasons.find(ladderId, seasonNumber)
                 .orElseThrow(() -> new SeasonException("Season " + Season.id(ladderId, seasonNumber) + " does not exist"));
+        String playerUuid = playerPid == null ? null : podiumPlayer(season, place, playerPid);
         String by = actor.type == null ? "system" : actor.type.name().toLowerCase();
         by += ":" + (actor.id == null || actor.id.isBlank() ? "unknown" : actor.id);
-        int changed = grants.markDelivered(season.id(), place, by, note == null ? "" : note.strip(), clock.instant());
+        int changed = grants.markDelivered(season.id(), place, playerUuid, by, note == null ? "" : note.strip(),
+                clock.instant());
         if (changed == 0) {
-            throw new SeasonException("No prize of season " + season.id() + " is waiting at place " + place);
+            throw new SeasonException("No prize of season " + season.id() + " is waiting at place " + place
+                    + (playerPid == null ? "" : " for player #" + playerPid));
         }
-        PLog.info("Prizes of season @ place @ marked delivered by @ (@)", season.id(), place, by, changed);
+        PLog.info("Prizes of season @ place @@ marked delivered by @ (@)", season.id(), place,
+                playerPid == null ? "" : " (player #" + playerPid + ")", by, changed);
         return changed;
+    }
+
+    /** The podium is the record of who stood where, so it also resolves a player named by PID. */
+    private static String podiumPlayer(Season season, int place, int playerPid) {
+        return season.podium().stream()
+                .filter(entry -> entry.place() == place)
+                .findFirst()
+                .filter(entry -> entry.pid() == playerPid)
+                .map(SeasonPodiumEntry::uuid)
+                .orElseThrow(() -> new SeasonException("Player #" + playerPid + " is not at place " + place
+                        + " of season " + season.id()));
     }
 
     private PrizeHandler handler(PrizeKind kind) {

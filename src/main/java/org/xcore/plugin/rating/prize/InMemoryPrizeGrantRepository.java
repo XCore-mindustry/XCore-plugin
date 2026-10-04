@@ -1,5 +1,7 @@
 package org.xcore.plugin.rating.prize;
 
+import org.jspecify.annotations.Nullable;
+
 import java.time.Instant;
 import java.util.Comparator;
 import java.util.List;
@@ -26,6 +28,11 @@ public class InMemoryPrizeGrantRepository implements PrizeGrantRepository {
     }
 
     @Override
+    public List<PrizeGrant> findByPlayer(String playerUuid) {
+        return grants.values().stream().filter(grant -> grant.playerUuid().equals(playerUuid)).toList();
+    }
+
+    @Override
     public boolean transition(String id, PrizeStatus expected, PrizeStatus status, String by, String note,
                               Instant now) {
         boolean[] changed = {false};
@@ -38,10 +45,12 @@ public class InMemoryPrizeGrantRepository implements PrizeGrantRepository {
     }
 
     @Override
-    public int markDelivered(String seasonId, int place, String by, String note, Instant now) {
+    public int markDelivered(String seasonId, int place, @Nullable String playerUuid, String by, String note,
+                             Instant now) {
         int changed = 0;
         for (PrizeGrant grant : findBySeason(seasonId)) {
             if (grant.place() != place || grant.status().settled()) continue;
+            if (playerUuid != null && !playerUuid.equals(grant.playerUuid())) continue;
             if (transition(grant.id(), grant.status(), PrizeStatus.DELIVERED, by, note, now)) changed++;
         }
         return changed;

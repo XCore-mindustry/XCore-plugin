@@ -105,7 +105,7 @@ class MongoPrizeGrantRepositoryIntegrationTest {
         repository.createIfAbsent(grant(2, "bob", 1, PrizeKind.CUSTOM, "Nitro"));
         repository.transition("duel:1:1:ace:0", PrizeStatus.PENDING, PrizeStatus.GRANTED, "system", "", NOW);
 
-        int changed = repository.markDelivered("duel:1", 1, "discord_user:222", "code sent", NOW.plusSeconds(60));
+        int changed = repository.markDelivered("duel:1", 1, null, "discord_user:222", "code sent", NOW.plusSeconds(60));
 
         assertThat(changed).isEqualTo(1);
         var grants = repository.findBySeason("duel:1");
@@ -113,7 +113,21 @@ class MongoPrizeGrantRepositoryIntegrationTest {
                 PrizeStatus.GRANTED, PrizeStatus.DELIVERED, PrizeStatus.PENDING);
         assertThat(grants.get(1).grantedBy()).isEqualTo("discord_user:222");
         assertThat(grants.get(1).note()).isEqualTo("code sent");
-        assertThat(repository.markDelivered("duel:1", 1, "x", "", NOW)).isZero();
+        assertThat(repository.markDelivered("duel:1", 1, null, "x", "", NOW)).isZero();
+    }
+
+    @Test
+    @DisplayName("delivering to one player settles only that player's grants")
+    void markDelivered_onePlayer() {
+        repository.createIfAbsent(grant(1, "ace", 0, PrizeKind.CUSTOM, "Nitro"));
+        repository.createIfAbsent(grant(1, "bob", 0, PrizeKind.CUSTOM, "Nitro"));
+
+        assertThat(repository.markDelivered("duel:1", 1, "bob", "discord_user:222", "sent", NOW)).isEqualTo(1);
+
+        assertThat(repository.findBySeason("duel:1")).extracting(PrizeGrant::playerUuid, PrizeGrant::status)
+                .containsExactlyInAnyOrder(
+                        org.assertj.core.groups.Tuple.tuple("ace", PrizeStatus.PENDING),
+                        org.assertj.core.groups.Tuple.tuple("bob", PrizeStatus.DELIVERED));
     }
 
     @Test

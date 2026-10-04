@@ -1,5 +1,11 @@
 package org.xcore.plugin.rating.view;
 
+import org.xcore.plugin.rating.season.SeasonPodiumEntry;
+import org.xcore.plugin.rating.season.SeasonPrize;
+import org.xcore.plugin.rating.season.PrizeKind;
+import org.xcore.plugin.rating.prize.PrizeGrant;
+import org.xcore.plugin.model.AuditActorType;
+import org.xcore.plugin.model.AuditActor;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -142,5 +148,83 @@ class LadderViewsTest {
 
         assertThat(world.views.text().remaining(RatingWorld.START.plus(Duration.ofSeconds(3541)), local))
                 .isEqualTo("player-menu-time-hours{value=1}");
+    }
+
+    private static final AuditActor CONSOLE = AuditActor.builder()
+            .type(AuditActorType.SERVER_CONSOLE).id("console").nameSnapshot("Console").build();
+
+    private void promise(SeasonPrize... prizes) {
+        for (SeasonPrize prize : prizes) {
+            world.lifecycle.addPrize("duel", prize, CONSOLE);
+        }
+    }
+
+    private void owe(String uuid, int place, SeasonPrize prize) {
+        world.grants.createIfAbsent(PrizeGrant.pending("duel:1",
+                new SeasonPodiumEntry(place, uuid, place, uuid, 1500, "GOLD", 10, 5, "", ""), 0, prize,
+                RatingWorld.START));
+    }
+
+    @Test
+    @DisplayName("the season card lists what the running season promises and what last season's winners won")
+    void card_prizes() {
+        SeasonPrize champion = new SeasonPrize(1, 1, PrizeKind.BADGE, "season-champion", "");
+        SeasonPrize nitro = new SeasonPrize(2, 3, PrizeKind.CUSTOM, "Nitro", "1 month of Nitro");
+        promise(champion, nitro);
+        world.standing(1, "ace", 1700, 1750, 12, 9);
+        world.standing(1, "bob", 1300, 1300, 10, 4);
+        when(world.players.findByUuids(anyCollection())).thenReturn(List.of(player("ace"), player("bob")));
+        world.finishSeason();
+        world.standing(2, "bob", 1500, 1500, 3, 3);
+
+        SeasonCard card = world.views.card(world.views.overview(world.ladder, "bob"), local);
+
+        // Prizes are promised per season: the new season has none until an admin adds them.
+        assertThat(card.prizes()).isEmpty();
+        assertThat(card.prizeTitle()).isEmpty();
+        assertThat(card.podium().get(0)).contains("season-menu-podium-prizes{prizes=").contains("badge-season-champion-name");
+        assertThat(card.podium().get(1)).contains("1 month of Nitro");
+
+        promise(champion);
+        SeasonCard promised = world.views.card(world.views.overview(world.ladder, "bob"), local);
+        assertThat(promised.prizeTitle()).isEqualTo("season-menu-prizes");
+        assertThat(promised.prizes()).hasSize(1);
+        assertThat(promised.prizes().getFirst()).startsWith("season-menu-prize-entry{places=1, prize=");
+    }
+
+    @Test
+    @DisplayName("a player sees their own prizes with where each one stands, in the card and the profile")
+    void ownPrizes() {
+        SeasonPrize nitro = new SeasonPrize(1, 1, PrizeKind.CUSTOM, "Nitro", "1 month of Nitro");
+        world.standing(1, "ace", 1700, 1750, 12, 9);
+        world.finishSeason();
+        owe("ace", 1, nitro);
+
+        LadderProgress progress = world.views.progress(world.ladder, "ace");
+        SeasonCard card = world.views.card(world.views.overview(world.ladder, "ace"), local);
+        ProfileSection section = world.views.profileSection(world.ladder, "X", 10, false)
+                .load(player("ace")).orElseThrow().render(local);
+
+        assertThat(progress.prizes()).extracting(PrizeGrant::value).containsExactly("Nitro");
+        String line = "prize-grant-line{prize=1 month of Nitro, season=season-title{number=1}, status=prize-status-pending}";
+        assertThat(card.lines()).contains(line);
+        assertThat(section.lines()).contains(line);
+        assertThat(world.views.progress(world.ladder, "bob").prizes()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("only the newest few prizes of the ladder are listed, newest first")
+    void ownPrizes_limited() {
+        for (int season = 1; season <= 6; season++) {
+            world.grants.createIfAbsent(PrizeGrant.pending("duel:" + season,
+                    new SeasonPodiumEntry(1, "ace", 1, "ace", 1500, "GOLD", 10, 5, "", ""), 0,
+                    new SeasonPrize(1, 1, PrizeKind.CUSTOM, "gift" + season, ""), RatingWorld.START));
+        }
+        world.grants.createIfAbsent(PrizeGrant.pending("other:9",
+                new SeasonPodiumEntry(1, "ace", 1, "ace", 1500, "GOLD", 10, 5, "", ""), 0,
+                new SeasonPrize(1, 1, PrizeKind.CUSTOM, "elsewhere", ""), RatingWorld.START));
+
+        assertThat(world.views.progress(world.ladder, "ace").prizes()).extracting(PrizeGrant::value)
+                .containsExactly("gift6", "gift5", "gift4", "gift3");
     }
 }
