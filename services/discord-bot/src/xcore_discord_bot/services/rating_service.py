@@ -5,13 +5,16 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 
 from xcore_protocol.generated.rating import (
+    RatingPrizeGrantUpdateResponseV1,
+    RatingSeasonPrizesSetResponseV1,
     RatingSeasonRescheduleRequestV1Operation,
     RatingSeasonRescheduleResponseV1,
 )
+from xcore_protocol.generated.shared import SeasonPrizeV1, SeasonPrizeV1Kind
 
 from ..dto import AccountMergeResult
-from ..redis_bus import RpcRejected
 from ..rating_store import RatingStore
+from ..redis_bus import RpcRejected
 from ..rpc.mindustry_rpc import MindustryRpcClient
 
 logger = logging.getLogger(__name__)
@@ -110,6 +113,73 @@ class RatingService:
             extend_seconds=extend_seconds,
             ends_at=ends_at,
             reason=reason,
+        )
+
+    # ------------------------------------------------------------------ prizes
+
+    async def add_prize(
+        self,
+        *,
+        ladder: str,
+        place_from: int,
+        place_to: int,
+        kind: SeasonPrizeV1Kind,
+        value: str,
+        description: str | None,
+        discord_id: str,
+        actor_name: str,
+    ) -> RatingSeasonPrizesSetResponseV1:
+        """Adds a prize to the ladder's running season; the server checks it can be given."""
+        return await self._rpc.add_season_prize(
+            ladder=ladder,
+            prize=SeasonPrizeV1(
+                placeFrom=place_from,
+                placeTo=place_to,
+                kind=kind,
+                value=value,
+                description=description or None,
+            ),
+            discord_id=discord_id,
+            actor_name=actor_name,
+            timeout_ms=self._timeout_ms,
+        )
+
+    async def clear_prizes(
+        self,
+        *,
+        ladder: str,
+        place_from: int,
+        place_to: int,
+        discord_id: str,
+        actor_name: str,
+    ) -> RatingSeasonPrizesSetResponseV1:
+        return await self._rpc.remove_season_prizes(
+            ladder=ladder,
+            place_from=place_from,
+            place_to=place_to,
+            discord_id=discord_id,
+            actor_name=actor_name,
+            timeout_ms=self._timeout_ms,
+        )
+
+    async def mark_prize_delivered(
+        self,
+        *,
+        ladder: str,
+        season: int,
+        place: int,
+        discord_id: str,
+        actor_name: str,
+        note: str | None,
+    ) -> RatingPrizeGrantUpdateResponseV1:
+        return await self._rpc.mark_prize_delivered(
+            ladder=ladder,
+            season=season,
+            place=place,
+            discord_id=discord_id,
+            actor_name=actor_name,
+            note=note,
+            timeout_ms=self._timeout_ms,
         )
 
     # ----------------------------------------------------------- account merge

@@ -26,6 +26,10 @@ from xcore_protocol.generated.moderation import (
 )
 from xcore_protocol.generated.rating import (
     RatingAccountsMergeRequestV1,
+    RatingPrizeGrantUpdateRequestV1,
+    RatingPrizeGrantUpdateRequestV1Status,
+    RatingSeasonPrizesSetRequestV1,
+    RatingSeasonPrizesSetRequestV1Operation,
     RatingSeasonRescheduleRequestV1,
     RatingSeasonRescheduleRequestV1Operation,
 )
@@ -45,6 +49,7 @@ from xcore_protocol.generated.shared import (
     MapFileSourceV1,
     PlayerCommandTargetV1,
     PlayerRefV1,
+    SeasonPrizeV1,
 )
 
 
@@ -345,3 +350,69 @@ def build_ratings_merge_request(
         sourceUuid=source_uuid,
         targetUuid=target_uuid,
     )
+
+
+def _discord_actor(discord_id: str, actor_name: str) -> ActorRefV1:
+    return ActorRefV1(
+        actorName=actor_name,
+        actorDiscordId=str(discord_id),
+        actorType=ActorRefV1ActorType.DISCORD,
+    )
+
+
+def build_season_prize_add_request(
+    *,
+    server: str,
+    ladder: str,
+    prize: SeasonPrizeV1,
+    discord_id: str,
+    actor_name: str,
+) -> RatingSeasonPrizesSetRequestV1:
+    return RatingSeasonPrizesSetRequestV1(
+        server=server,
+        ladder=ladder,
+        operation=RatingSeasonPrizesSetRequestV1Operation.ADD,
+        prize=prize,
+        actor=_discord_actor(discord_id, actor_name),
+    )
+
+
+def build_season_prize_remove_request(
+    *,
+    server: str,
+    ladder: str,
+    place_from: int,
+    place_to: int,
+    discord_id: str,
+    actor_name: str,
+) -> RatingSeasonPrizesSetRequestV1:
+    return RatingSeasonPrizesSetRequestV1(
+        server=server,
+        ladder=ladder,
+        operation=RatingSeasonPrizesSetRequestV1Operation.REMOVE,
+        placeFrom=place_from,
+        placeTo=place_to,
+        actor=_discord_actor(discord_id, actor_name),
+    )
+
+
+def build_prize_delivered_request(
+    *,
+    server: str,
+    ladder: str,
+    season: int,
+    place: int,
+    discord_id: str,
+    actor_name: str,
+    note: str | None = None,
+) -> RatingPrizeGrantUpdateRequestV1:
+    return RatingPrizeGrantUpdateRequestV1(
+        server=server,
+        ladder=ladder,
+        season=season,
+        place=place,
+        status=RatingPrizeGrantUpdateRequestV1Status.DELIVERED,
+        actor=_discord_actor(discord_id, actor_name),
+        note=note or None,
+    )
+

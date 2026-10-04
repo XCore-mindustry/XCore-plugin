@@ -24,10 +24,10 @@ dependencies = [
 # bot imports (v0.6.2 predates it and fails collection). The tag is annotated, so uv records
 # the commit it peels to and the build stays reproducible.
 #
-# TEMPORARY: the seasonal-rating work needs the `rating` family from xcore-protocol#2, which
-# has no tag yet. Until v0.8.0 is released this is pinned to that PR's commit; switch it back
-# to `tag = "v0.8.0"` before merging.
-xcore-protocol = { git = "https://github.com/XCore-mindustry/xcore-protocol.git", rev = "1f1da10932daaa023701d77dd515d84b29a1db10" }
+# TEMPORARY: the seasonal-rating work needs the `rating` family (with prizes) from
+# xcore-protocol#2, which has no tag yet. Until v0.9.0 is released this is pinned to that PR's
+# commit; switch it back to `tag = "v0.9.0"` before merging.
+xcore-protocol = { git = "https://github.com/XCore-mindustry/xcore-protocol.git", rev = "e4608fcf2c321a70f3f915f23078358510bda8e3" }
 
 [project.scripts]
 xcore-discord-bot = "xcore_discord_bot.main:main"

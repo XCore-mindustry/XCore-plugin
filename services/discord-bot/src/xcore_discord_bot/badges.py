@@ -21,6 +21,7 @@ BADGES: Final[tuple[BadgeDef, ...]] = (
     BadgeDef(id="bug-finder", label="Bug Finder"),
     BadgeDef(id="event-winner", label="Event Winner"),
     BadgeDef(id="veteran", label="Veteran"),
+    BadgeDef(id="season-champion", label="Season Champion"),
 )
 
 BADGE_BY_ID: Final[dict[str, BadgeDef]] = {badge.id: badge for badge in BADGES}

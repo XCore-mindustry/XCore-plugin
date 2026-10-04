@@ -14,7 +14,7 @@ from .contracts import (
     RatingSeasonRescheduledV1,
     RatingSeasonStartedV1,
 )
-from .rating_store import PodiumEntry
+from .rating_store import PodiumEntry, Prize
 from .season_embeds import (
     allowed_mentions_for,
     build_season_ended_embed,
@@ -34,6 +34,20 @@ def parse_instant(value: str) -> datetime:
     return parsed if parsed.tzinfo is not None else parsed.replace(tzinfo=UTC)
 
 
+def prizes_from_event(prizes) -> tuple[Prize, ...]:
+    """The prizes an event carries; an event without any has none."""
+    return tuple(
+        Prize(
+            place_from=prize.placeFrom,
+            place_to=prize.placeTo,
+            kind=str(prize.kind.value),
+            value=prize.value,
+            description=prize.description,
+        )
+        for prize in prizes or ()
+    )
+
+
 def podium_from_event(event: RatingSeasonEndedV1) -> tuple[PodiumEntry, ...]:
     entries: list[PodiumEntry] = []
     for entry in event.podium:
@@ -51,6 +65,7 @@ def podium_from_event(event: RatingSeasonEndedV1) -> tuple[PodiumEntry, ...]:
                 wins=entry.wins,
                 discord_id=discord_id or None,
                 discord_username=username or None,
+                prizes=prizes_from_event(entry.prizes),
             )
         )
     return tuple(entries)
@@ -118,6 +133,7 @@ async def on_season_ending_soon(
             name=season.name,
             number=season.season,
             ends_at=parse_instant(season.endsAt),
+            prizes=prizes_from_event(event.prizes),
         ),
     )
 

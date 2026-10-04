@@ -5,9 +5,12 @@ from typing import Any, TypeVar
 
 from xcore_protocol.generated.rating import (
     RatingAccountsMergeResponseV1,
+    RatingPrizeGrantUpdateResponseV1,
+    RatingSeasonPrizesSetResponseV1,
     RatingSeasonRescheduleRequestV1Operation,
     RatingSeasonRescheduleResponseV1,
 )
+from xcore_protocol.generated.shared import SeasonPrizeV1
 
 from ..redis_bus import RedisBus
 from ..registry import server_registry
@@ -74,6 +77,72 @@ class MindustryRpcClient:
                 extend_seconds=extend_seconds,
                 ends_at=ends_at,
                 reason=reason,
+            )
+        )
+
+    async def add_season_prize(
+        self,
+        *,
+        ladder: str,
+        prize: SeasonPrizeV1,
+        discord_id: str,
+        actor_name: str,
+        timeout_ms: int,
+    ) -> RatingSeasonPrizesSetResponseV1:
+        return await self.on_any_live_server(
+            lambda server: self._bus.rpc_season_prize_add(
+                server=server,
+                ladder=ladder,
+                prize=prize,
+                discord_id=discord_id,
+                actor_name=actor_name,
+                timeout_ms=timeout_ms,
+            )
+        )
+
+    async def remove_season_prizes(
+        self,
+        *,
+        ladder: str,
+        place_from: int,
+        place_to: int,
+        discord_id: str,
+        actor_name: str,
+        timeout_ms: int,
+    ) -> RatingSeasonPrizesSetResponseV1:
+        return await self.on_any_live_server(
+            lambda server: self._bus.rpc_season_prize_remove(
+                server=server,
+                ladder=ladder,
+                place_from=place_from,
+                place_to=place_to,
+                discord_id=discord_id,
+                actor_name=actor_name,
+                timeout_ms=timeout_ms,
+            )
+        )
+
+    async def mark_prize_delivered(
+        self,
+        *,
+        ladder: str,
+        season: int,
+        place: int,
+        discord_id: str,
+        actor_name: str,
+        note: str | None,
+        timeout_ms: int,
+    ) -> RatingPrizeGrantUpdateResponseV1:
+        return await self.on_any_live_server(
+            lambda server: self._bus.rpc_prize_delivered(
+                server=server,
+                ladder=ladder,
+                season=season,
+                place=place,
+                discord_id=discord_id,
+                actor_name=actor_name,
+                note=note,
+                timeout_ms=timeout_ms,
             )
         )
 

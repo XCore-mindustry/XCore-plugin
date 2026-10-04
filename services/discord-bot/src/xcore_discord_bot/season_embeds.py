@@ -7,7 +7,15 @@ from datetime import datetime
 
 import discord
 
-from .rating_store import Placing, PodiumEntry, RankedStanding, Season
+from .badges import get_badge
+from .rating_store import (
+    Placing,
+    PodiumEntry,
+    Prize,
+    PrizeGrantRecord,
+    RankedStanding,
+    Season,
+)
 
 LADDER_NAMES = {
     "minipvp": "Mini-PvP",
@@ -15,6 +23,13 @@ LADDER_NAMES = {
 }
 PLACE_MARKS = {1: "🥇", 2: "🥈", 3: "🥉"}
 EMBED_TITLE_LIMIT = 256
+FIELD_LIMIT = 1024
+GRANT_MARKS = {
+    "PENDING": "⏳ waiting",
+    "GRANTED": "✅ given",
+    "DELIVERED": "📦 delivered",
+    "FAILED": "⚠️ failed",
+}
 
 
 def ladder_name(ladder: str) -> str:
@@ -37,12 +52,39 @@ def _escape(text: str) -> str:
     return discord.utils.escape_markdown(text)
 
 
+def prize_text(prize: Prize) -> str:
+    """One prize as players read it: a badge by its name, anything else as written."""
+    if prize.kind == "badge":
+        badge = get_badge(prize.value)
+        return f"🎖️ {badge.label if badge else _escape(prize.value)} badge"
+    return f"🎁 {_escape(prize.label)}"
+
+
+def prize_lines(prizes: Sequence[Prize]) -> str:
+    """The prizes of a season, one line per place or range, cut to fit an embed field."""
+    ordered = sorted(prizes, key=lambda prize: (prize.place_from, prize.place_to))
+    lines = [f"{_place_range(prize)} {prize_text(prize)}" for prize in ordered]
+    text = "\n".join(lines)
+    if len(text) <= FIELD_LIMIT:
+        return text
+    return text[: FIELD_LIMIT - 1].rsplit("\n", 1)[0] + "\n…"
+
+
+def _place_range(prize: Prize) -> str:
+    if prize.place_from == prize.place_to:
+        return _place(prize.place_from)
+    return f"`#{prize.place_from}-{prize.place_to}`"
+
+
 def podium_line(entry: PodiumEntry) -> str:
     winner = f"**{_escape(entry.nickname)}**"
     if entry.discord_id:
         winner += f" (<@{entry.discord_id}>)"
     games = f"{entry.wins}/{entry.matches}" if entry.matches else "-"
-    return f"{_place(entry.place)} {winner} · `{entry.rating}` · {games} wins"
+    line = f"{_place(entry.place)} {winner} · `{entry.rating}` · {games} wins"
+    if entry.prizes:
+        line += "\n └ " + " · ".join(prize_text(prize) for prize in entry.prizes)
+    return line
 
 
 def mentioned_user_ids(podium: Sequence[PodiumEntry]) -> list[discord.Object]:
@@ -81,7 +123,12 @@ def build_season_started_embed(
 
 
 def build_season_ending_soon_embed(
-    *, ladder: str, name: str | None, number: int, ends_at: datetime
+    *,
+    ladder: str,
+    name: str | None,
+    number: int,
+    ends_at: datetime,
+    prizes: Sequence[Prize] = (),
 ) -> discord.Embed:
     embed = discord.Embed(
         title=f"⏳ {season_title(ladder, name, number)} is ending soon",
@@ -89,6 +136,8 @@ def build_season_ending_soon_embed(
         color=discord.Color.orange(),
     )
     embed.add_field(name="Ends", value=timestamp(ends_at), inline=False)
+    if prizes:
+        embed.add_field(name="Prizes", value=prize_lines(prizes), inline=False)
     return embed
 
 
@@ -166,6 +215,37 @@ def build_season_info_embed(
         embed.add_field(name="Ended", value=timestamp(season.ends_at), inline=True)
     embed.add_field(name="Players", value=f"`{participants}`", inline=True)
     embed.add_field(name="Matches", value=f"`{season.matches}`", inline=True)
+    if season.prizes and season.running:
+        embed.add_field(name="Prizes", value=prize_lines(season.prizes), inline=False)
+    return embed
+
+
+def build_season_prizes_embed(
+    season: Season, grants: Sequence[PrizeGrantRecord], *, names: dict[str, str] | None = None
+) -> discord.Embed:
+    """What the admins see in `/season prize list`: the prizes set and who they went to."""
+    embed = discord.Embed(
+        title=f"🎁 {season_title(season.ladder, season.name, season.number)} · Prizes",
+        color=discord.Color.gold(),
+    )
+    embed.description = (
+        prize_lines(season.prizes) if season.prizes else "No prizes are set for this season."
+    )
+    if grants:
+        names = names or {}
+        lines = []
+        for grant in grants:
+            who = _escape(names.get(grant.player_uuid, grant.player_uuid))
+            what = prize_text(
+                Prize(grant.place, grant.place, grant.kind, grant.value, grant.description)
+            )
+            status = GRANT_MARKS.get(grant.status, grant.status)
+            note = f" — {_escape(grant.note)}" if grant.note else ""
+            lines.append(f"{_place(grant.place)} {who}: {what} · {status}{note}")
+        text = "\n".join(lines)
+        if len(text) > FIELD_LIMIT:
+            text = text[: FIELD_LIMIT - 1].rsplit("\n", 1)[0] + "\n…"
+        embed.add_field(name="Grants", value=text, inline=False)
     return embed
 
 

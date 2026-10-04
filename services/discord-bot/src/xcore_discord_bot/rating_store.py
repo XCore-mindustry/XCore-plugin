@@ -24,6 +24,7 @@ STANDINGS = "rating_standings"
 PLAYERS = "players"
 SEASON_POSTS = "discord_season_posts"
 PENDING_MERGES = "rating_merge_pending"
+PRIZE_GRANTS = "rating_prize_grants"
 
 ACTIVE = "ACTIVE"
 CLOSING = "CLOSING"
@@ -44,6 +45,45 @@ def _utc(value: Any) -> datetime:
 
 
 @dataclass(frozen=True, slots=True)
+class Prize:
+    """What a season gives to a place or a range of places."""
+
+    place_from: int
+    place_to: int
+    kind: str  # "badge" or "custom"
+    value: str
+    description: str | None = None
+
+    def covers(self, place: int) -> bool:
+        return self.place_from <= place <= self.place_to
+
+    @property
+    def places(self) -> str:
+        if self.place_from == self.place_to:
+            return str(self.place_from)
+        return f"{self.place_from}-{self.place_to}"
+
+    @property
+    def label(self) -> str:
+        return self.description or self.value
+
+
+@dataclass(frozen=True, slots=True)
+class PrizeGrantRecord:
+    """A prize owed to one player, and whether it reached them."""
+
+    season_id: str
+    place: int
+    player_uuid: str
+    kind: str
+    value: str
+    description: str | None
+    status: str  # PENDING, GRANTED, DELIVERED or FAILED
+    granted_by: str
+    note: str | None
+
+
+@dataclass(frozen=True, slots=True)
 class PodiumEntry:
     place: int
     uuid: str
@@ -55,6 +95,7 @@ class PodiumEntry:
     wins: int
     discord_id: str | None
     discord_username: str | None
+    prizes: tuple[Prize, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -68,6 +109,10 @@ class Season:
     matches: int
     participants: int | None
     podium: tuple[PodiumEntry, ...]
+    prizes: tuple[Prize, ...] = ()
+
+    def prizes_for(self, place: int) -> tuple[Prize, ...]:
+        return tuple(prize for prize in self.prizes if prize.covers(place))
 
     @property
     def id(self) -> str:
@@ -117,6 +162,33 @@ def season_from_doc(doc: dict[str, Any]) -> Season:
         matches=_int(doc.get("matches")),
         participants=_int(summary["participants"]) if "participants" in summary else None,
         podium=tuple(_podium_entry(entry) for entry in doc.get("podium") or ()),
+        prizes=tuple(_prize(entry) for entry in doc.get("prizes") or ()),
+    )
+
+
+def _prize(doc: dict[str, Any]) -> Prize:
+    place_from = max(_int(doc.get("place_from"), 1), 1)
+    return Prize(
+        place_from=place_from,
+        place_to=max(_int(doc.get("place_to"), place_from), place_from),
+        kind=str(doc.get("kind") or "custom").lower(),
+        value=str(doc.get("value") or ""),
+        description=str(doc.get("description") or "").strip() or None,
+    )
+
+
+def grant_from_doc(doc: dict[str, Any]) -> PrizeGrantRecord:
+    prize = doc.get("prize") or {}
+    return PrizeGrantRecord(
+        season_id=str(doc.get("season_id") or ""),
+        place=_int(doc.get("place")),
+        player_uuid=str(doc.get("player_uuid") or ""),
+        kind=str(prize.get("kind") or "custom").lower(),
+        value=str(prize.get("value") or ""),
+        description=str(prize.get("description") or "").strip() or None,
+        status=str(doc.get("status") or "PENDING"),
+        granted_by=str(doc.get("granted_by") or "system"),
+        note=str(doc.get("note") or "").strip() or None,
     )
 
 
@@ -166,6 +238,15 @@ class RatingStore:
         return next((season for season in seasons if season.running), None) or (
             seasons[0] if seasons else None
         )
+
+    async def prize_grants(self, ladder: str, number: int) -> list[PrizeGrantRecord]:
+        """The grants of a finished season, by place."""
+        cursor = (
+            self._collection(PRIZE_GRANTS)
+            .find({"season_id": f"{ladder}:{number}"})
+            .sort([("place", ASCENDING), ("prize_index", ASCENDING)])
+        )
+        return [grant_from_doc(doc) async for doc in cursor]
 
     # ---------------------------------------------------------------- standings
 
@@ -236,6 +317,9 @@ class RatingStore:
                 )
             )
         return placings
+
+    async def nicknames(self, uuids: list[str]) -> dict[str, str]:
+        return {uuid: nickname for uuid, (nickname, _) in (await self._players(uuids)).items()}
 
     async def _players(self, uuids: list[str]) -> dict[str, tuple[str, int | None]]:
         if not uuids:

@@ -2,17 +2,20 @@ from __future__ import annotations
 
 import logging
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 import discord
 from discord import Interaction, app_commands
 from discord.ext import commands
+from xcore_protocol.generated.shared import SeasonPrizeV1Kind
 
+from ..badges import badge_choice_label, grantable_badges
 from ..redis_bus import RpcRejected
 from ..rpc.mindustry_rpc import NoLiveServerError
 from ..season_embeds import (
     LADDER_NAMES,
     build_season_info_embed,
+    build_season_prizes_embed,
     build_season_top_embed,
     ladder_name,
     season_title,
@@ -29,6 +32,8 @@ logger = logging.getLogger(__name__)
 
 TOP_SIZE = 10
 MAX_REASON = 200
+MAX_PRIZE_VALUE = 200
+MAX_NOTE = 300
 
 
 def parse_end_at(text: str) -> datetime:
@@ -40,6 +45,34 @@ def parse_end_at(text: str) -> datetime:
         except ValueError:
             continue
     raise ValueError("Use a date like 2026-07-01 or 2026-07-01 18:00 (UTC).")
+
+
+def parse_places(text: str) -> tuple[int, int]:
+    """`1` or `1-3`."""
+    value = text.strip()
+    try:
+        first, _, last = value.partition("-")
+        place_from = int(first)
+        place_to = int(last) if last else place_from
+    except ValueError:
+        place_from = place_to = 0
+    if place_from < 1 or place_to < place_from:
+        raise ValueError("Use a place like 1, or a range like 1-3.")
+    return place_from, place_to
+
+
+async def _autocomplete_badge(
+    interaction: Interaction, current: str
+) -> list[app_commands.Choice[str]]:
+    """Badge ids for a `badge` prize; a `custom` prize is free text and gets no suggestions."""
+    if getattr(interaction.namespace, "kind", None) != "badge":
+        return []
+    needle = current.strip().lower()
+    return [
+        app_commands.Choice(name=badge_choice_label(badge), value=badge.id)
+        for badge in grantable_badges()
+        if not needle or needle in badge.id or needle in badge.label.lower()
+    ][:25]
 
 
 async def _autocomplete_ladder(
@@ -119,6 +152,12 @@ class SeasonsCog(commands.Cog):
     season_group = app_commands.Group(
         name="season",
         description="Rating seasons",
+    )
+
+    prize_group = app_commands.Group(
+        name="prize",
+        description="Season prizes (head admin)",
+        parent=season_group,
     )
 
     def __init__(self, bot: XCoreDiscordBot) -> None:
@@ -292,6 +331,141 @@ class SeasonsCog(commands.Cog):
             ephemeral=True,
         )
         view.message = await interaction.original_response()
+
+    # ------------------------------------------------------------------ prizes
+
+    @prize_group.command(name="set", description="Add a prize to the running season")
+    @app_commands.describe(
+        ladder="Ladder",
+        places="A place or a range, e.g. 1 or 1-3",
+        kind="badge unlocks a badge by itself; custom is handed over by an admin",
+        value="Badge id, or the prize itself (e.g. Discord Nitro, 1 month)",
+        description="Text shown to players instead of the value",
+    )
+    @app_commands.autocomplete(ladder=_autocomplete_ladder, value=_autocomplete_badge)
+    @head_admin_check()
+    async def cmd_prize_set(
+        self,
+        interaction: Interaction,
+        ladder: str,
+        places: str,
+        kind: Literal["badge", "custom"],
+        value: app_commands.Range[str, 1, MAX_PRIZE_VALUE],
+        description: app_commands.Range[str, 1, MAX_PRIZE_VALUE] | None = None,
+    ) -> None:
+        try:
+            place_from, place_to = parse_places(places)
+        except ValueError as error:
+            await interaction.response.send_message(str(error), ephemeral=True)
+            return
+        await self._admin_reply(
+            interaction,
+            lambda ratings: ratings.add_prize(
+                ladder=ladder,
+                place_from=place_from,
+                place_to=place_to,
+                kind=SeasonPrizeV1Kind(kind),
+                value=value.strip(),
+                description=(description or "").strip() or None,
+                discord_id=str(interaction.user.id),
+                actor_name=interaction.user.display_name,
+            ),
+            describe=lambda response: (
+                f"Prize added. **{ladder_name(ladder)}** now has "
+                f"{len(response.prizes)} prize(s) this season."
+            ),
+        )
+
+    @prize_group.command(name="clear", description="Remove prizes from the running season")
+    @app_commands.describe(ladder="Ladder", places="A place or a range, e.g. 1 or 1-3")
+    @app_commands.autocomplete(ladder=_autocomplete_ladder)
+    @head_admin_check()
+    async def cmd_prize_clear(
+        self, interaction: Interaction, ladder: str, places: str
+    ) -> None:
+        try:
+            place_from, place_to = parse_places(places)
+        except ValueError as error:
+            await interaction.response.send_message(str(error), ephemeral=True)
+            return
+        await self._admin_reply(
+            interaction,
+            lambda ratings: ratings.clear_prizes(
+                ladder=ladder,
+                place_from=place_from,
+                place_to=place_to,
+                discord_id=str(interaction.user.id),
+                actor_name=interaction.user.display_name,
+            ),
+            describe=lambda response: (
+                f"Prizes within places {places.strip()} removed. "
+                f"**{ladder_name(ladder)}** has {len(response.prizes)} prize(s) left."
+            ),
+        )
+
+    @prize_group.command(name="list", description="Show a season's prizes and who got them")
+    @app_commands.describe(
+        ladder="Ladder", season="Season number (the current one when omitted)"
+    )
+    @app_commands.autocomplete(ladder=_autocomplete_ladder)
+    @head_admin_check()
+    async def cmd_prize_list(
+        self,
+        interaction: Interaction,
+        ladder: str,
+        season: app_commands.Range[int, 1] | None = None,
+    ) -> None:
+        ratings = self.bot.container.ratings
+        found = (
+            await ratings.find_season(ladder, season)
+            if season is not None
+            else await ratings.current_season(ladder)
+        )
+        if found is None:
+            await interaction.response.send_message(
+                f"No such season for {ladder_name(ladder)}.", ephemeral=True
+            )
+            return
+        grants = await ratings.prize_grants(ladder, found.number)
+        names = await ratings.nicknames([grant.player_uuid for grant in grants])
+        await interaction.response.send_message(
+            embed=build_season_prizes_embed(found, grants, names=names), ephemeral=True
+        )
+
+    @prize_group.command(
+        name="delivered", description="Record that a place's prizes were handed over"
+    )
+    @app_commands.describe(
+        ladder="Ladder",
+        season="Season number",
+        place="Place on the podium",
+        note="For example, how it was sent",
+    )
+    @app_commands.autocomplete(ladder=_autocomplete_ladder)
+    @head_admin_check()
+    async def cmd_prize_delivered(
+        self,
+        interaction: Interaction,
+        ladder: str,
+        season: app_commands.Range[int, 1],
+        place: app_commands.Range[int, 1],
+        note: app_commands.Range[str, 1, MAX_NOTE] | None = None,
+    ) -> None:
+        await self._admin_reply(
+            interaction,
+            lambda ratings: ratings.mark_prize_delivered(
+                ladder=ladder,
+                season=season,
+                place=place,
+                discord_id=str(interaction.user.id),
+                actor_name=interaction.user.display_name,
+                note=(note or "").strip() or None,
+            ),
+            describe=lambda response: (
+                f"Marked {response.updated} prize(s) of place {place} in "
+                f"**{ladder_name(ladder)}** season {season} as delivered."
+            ),
+        )
 
     @staticmethod
     def _describe_moved(ladder: str, response) -> str:

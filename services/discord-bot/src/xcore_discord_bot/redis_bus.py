@@ -19,6 +19,8 @@ from xcore_protocol.generated.maps import (
 )
 from xcore_protocol.generated.rating import (
     RatingAccountsMergeResponseV1,
+    RatingPrizeGrantUpdateResponseV1,
+    RatingSeasonPrizesSetResponseV1,
     RatingSeasonRescheduleRequestV1Operation,
     RatingSeasonRescheduleResponseV1,
 )
@@ -30,7 +32,11 @@ from xcore_protocol.generated.sentinel import (
     SentinelSubnetRulesListResponseV1,
     SentinelSubnetRulesResponseV1,
 )
-from xcore_protocol.generated.shared import ActorRefV1ActorType, MapEntryV1
+from xcore_protocol.generated.shared import (
+    ActorRefV1ActorType,
+    MapEntryV1,
+    SeasonPrizeV1,
+)
 
 from .contracts import (
     ChatGlobalV1,
@@ -73,7 +79,10 @@ from .protocol_outbound import (
     build_player_active_badge_changed_command,
     build_player_badge_inventory_changed_command,
     build_player_password_reset_command,
+    build_prize_delivered_request,
     build_ratings_merge_request,
+    build_season_prize_add_request,
+    build_season_prize_remove_request,
     build_season_reschedule_request,
     build_sentinel_subnet_rules_check_request,
     build_sentinel_subnet_rules_command,
@@ -984,6 +993,90 @@ class RedisBus:
             timeout_ms=timeout_ms,
         )
         return RatingAccountsMergeResponseV1.from_payload(
+            json.loads(body.get("payload_json", "{}"))
+        )
+
+    async def rpc_season_prize_add(
+        self,
+        *,
+        server: str,
+        ladder: str,
+        prize: SeasonPrizeV1,
+        discord_id: str,
+        actor_name: str,
+        timeout_ms: int,
+    ) -> RatingSeasonPrizesSetResponseV1:
+        body = await self._rpc_request(
+            server=server,
+            rpc_type="rating.season.prizes.set.request",
+            payload=build_season_prize_add_request(
+                server=server,
+                ladder=ladder,
+                prize=prize,
+                discord_id=discord_id,
+                actor_name=actor_name,
+            ).to_payload(),
+            timeout_ms=timeout_ms,
+        )
+        return RatingSeasonPrizesSetResponseV1.from_payload(
+            json.loads(body.get("payload_json", "{}"))
+        )
+
+    async def rpc_season_prize_remove(
+        self,
+        *,
+        server: str,
+        ladder: str,
+        place_from: int,
+        place_to: int,
+        discord_id: str,
+        actor_name: str,
+        timeout_ms: int,
+    ) -> RatingSeasonPrizesSetResponseV1:
+        body = await self._rpc_request(
+            server=server,
+            rpc_type="rating.season.prizes.set.request",
+            payload=build_season_prize_remove_request(
+                server=server,
+                ladder=ladder,
+                place_from=place_from,
+                place_to=place_to,
+                discord_id=discord_id,
+                actor_name=actor_name,
+            ).to_payload(),
+            timeout_ms=timeout_ms,
+        )
+        return RatingSeasonPrizesSetResponseV1.from_payload(
+            json.loads(body.get("payload_json", "{}"))
+        )
+
+    async def rpc_prize_delivered(
+        self,
+        *,
+        server: str,
+        ladder: str,
+        season: int,
+        place: int,
+        discord_id: str,
+        actor_name: str,
+        note: str | None,
+        timeout_ms: int,
+    ) -> RatingPrizeGrantUpdateResponseV1:
+        body = await self._rpc_request(
+            server=server,
+            rpc_type="rating.prize.grant.update.request",
+            payload=build_prize_delivered_request(
+                server=server,
+                ladder=ladder,
+                season=season,
+                place=place,
+                discord_id=discord_id,
+                actor_name=actor_name,
+                note=note,
+            ).to_payload(),
+            timeout_ms=timeout_ms,
+        )
+        return RatingPrizeGrantUpdateResponseV1.from_payload(
             json.loads(body.get("payload_json", "{}"))
         )
 
