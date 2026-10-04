@@ -690,4 +690,8 @@ public class PlayerDataRepository extends DataRepository<PlayerData> {
                 Updates.set("can_change_username", canChangeUsername)
         ));
     }
+
+    public boolean updateIdentityDisplayMode(String uuid, org.xcore.plugin.model.enums.IdentityDisplayMode mode) {
+        return updateByUuid(uuid, com.mongodb.client.model.Updates.set("identity_display_mode", mode != null ? mode.name() : "PID"));
+    }
 }

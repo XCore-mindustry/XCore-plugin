@@ -884,8 +884,22 @@ pvp-you-spectator = [scarlet]You have been eliminated. Please wait for the next 
 # ==============================================================================
 # Events & Notifications
 # ==============================================================================
-player-joined = { $nickname } [grey]#[white]{ $pid }[grey] [accent]has joined.
-player-left = { $nickname } [grey]#[white]{ $pid }[grey] [accent]has left.
+player-joined-pid = { $nickname } [grey]#[white]{ $pid }[grey] [accent]joined.
+player-joined-username = { $nickname } [grey]@[white]{ $username }[grey] [accent]joined.
+player-joined-both = { $nickname } [accent]@{ $username } [grey]#[white]{ $pid }[grey] [accent]joined.
+player-joined-none = { $nickname } [accent]joined.
+
+player-left-pid = { $nickname } [grey]#[white]{ $pid }[grey] [accent]left.
+player-left-username = { $nickname } [grey]@[white]{ $username }[grey] [accent]left.
+player-left-both = { $nickname } [accent]@{ $username } [grey]#[white]{ $pid }[grey] [accent]left.
+player-left-none = { $nickname } [accent]left.
+
+player-settings-identity-mode = [accent]Identity tag in broadcasts:[]
+player-settings-identity-mode-pid = ID only (#12)
+player-settings-identity-mode-username = Username only (@Steve)
+player-settings-identity-mode-both = Both (@Steve #12)
+player-settings-identity-mode-none = Hidden
+
 notification-votekick-playtime =
     [accent]Congratulations! You have played for [lightgray]{ $votekickPlayTime }[] { $votekickPlayTime ->
         [one] minute

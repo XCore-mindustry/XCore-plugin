@@ -13,6 +13,7 @@ import org.xcore.plugin.config.TomlSecretsConfig;
 import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.localization.Localization;
 import org.xcore.plugin.model.PlayerData;
+import org.xcore.plugin.model.enums.IdentityDisplayMode;
 import org.xcore.plugin.service.NetworkService;
 import org.xcore.plugin.service.PlayerDisplayService;
 import org.xcore.plugin.service.PrivateMessageService;
@@ -71,9 +72,6 @@ public class ConnectionHandler {
         if (event == null || event.player == null) return;
         var player = event.player;
 
-        // Snapshot the join-time facts the later steps need. These are cheap reads of live
-        // game state, so they belong here on the game thread; everything downstream is
-        // either Mongo or a packet.
         var join = new JoinSnapshot(
                 player.uuid(),
                 player.ip(),
@@ -83,40 +81,10 @@ public class ConnectionHandler {
                 player
         );
 
-        // Quarantine the runtime admin flag before anything can be slow.
-        //
-        // Mindustry sets player.admin during connectConfirm, before this event fires, so the
-        // player is already privileged for the whole storage phase - 50-200ms normally, and
-        // seconds when Mongo is struggling. Every admin permission check reads this field
-        // (see CloudPermissionPolicy), so clearing it here closes that window instead of
-        // merely narrowing it.
-        //
-        // Only the transient Player flag is cleared. netServer.admins is deliberately left
-        // alone: it is the persistent registry, mutating it would revoke the account rather
-        // than pause the session, and restoring a real admin after an IP change is a
-        // separate decision made below once the stored IP is known.
-        //
-        // The flag is restored in completeJoin, which runs whenever the player is still here
-        // and the load succeeded. Every path that skips it also removes the player, so there
-        // is no way to strand a legitimate admin without their privileges.
         if (join.admin()) {
             player.admin(false);
         }
 
-        // The four Mongo round-trips this method used to make - load, connection-data
-        // update, first-save and the unread count - now run together on the storage
-        // executor, and the session is registered once in a single step on the game thread.
-        //
-        // forPlayer drops the continuation when the player left while the load was in
-        // flight, so a join-then-immediately-quit no longer registers an orphaned session.
-        // The data writes still happen, which is correct: the new IP and nickname are real
-        // regardless of how long the connection lasted, and markOnline is never reached so
-        // there is no online flag for onPlayerLeave to clear.
-        //
-        // The failure path matters just as much. This player is already in Groups.player, so
-        // a storage error that only logged would leave someone in the world with no session:
-        // every session-backed guard then reads null and passes them through, and
-        // onPlayerLeave finds no session so it clears nothing. Evict them instead.
         async.forPlayer(
                 player,
                 () -> prepareJoin(join),
@@ -125,19 +93,6 @@ public class ConnectionHandler {
         );
     }
 
-    /**
-     * Runs on the storage executor. Loads the player row, applies the join-time changes and
-     * writes them back, so the game thread never waits on Mongo and the session is only
-     * published once the data is already settled.
-     *
-     * <p>Safe to touch {@code PlayerData} here: it was loaded by this thread and is not
-     * reachable from {@code sessionCache} until the continuation registers it, so no later
-     * gameplay mutation can race this phase.
-     *
-     * <p>{@link JoinSnapshot} carries the player only so the transient
-     * {@code PlayerData.player} back-reference can be set before publication, and
-     * {@code loadPlayerData} reads its uuid. No live game state is called here.
-     */
     private PreparedJoin prepareJoin(JoinSnapshot join) {
         PlayerData data = sessionService.loadPlayerData(join.uuid());
 
@@ -146,8 +101,6 @@ public class ConnectionHandler {
         boolean ipChanged = !Objects.equals(data.ip, currentIp);
         boolean nameChanged = !Objects.equals(data.nickname, currentName);
 
-        // Both are transient/BsonIgnore, so they never reach the repository. data.player is
-        // set before publication so the game thread sees it fully initialised.
         data.nickname = currentName;
         data.player = join.player();
 
@@ -167,12 +120,7 @@ public class ConnectionHandler {
         return new PreparedJoin(data, ipChanged, unreadMessages);
     }
 
-    /** Runs on the game thread. Publishes the session and performs the game-state steps. */
     private void completeJoin(Player player, JoinSnapshot join, PreparedJoin prepared) {
-        // Resolve the quarantined admin flag first, before any step that can throw. Every
-        // continuation that does not reach this line also removes the player, so restoring
-        // here is the difference between "reconnect to get your admin back" and a session
-        // that silently runs deprivileged for as long as the player stays.
         boolean admin = join.admin();
         boolean revokeAdmin = admin && prepared.ipChanged();
         if (admin && !revokeAdmin) {
@@ -199,13 +147,6 @@ public class ConnectionHandler {
             Call.clientPacketReliable(player.con, "adm_mod_begin", "");
         }
 
-        // Revoked here rather than beside the write above: it is game state, and the
-        // storage write landing first does not affect what the player is told.
-        //
-        // This tests join.admin(), not player.admin: the flag was cleared at the top of
-        // onPlayerJoin to quarantine it, so testing the live field would report "no change
-        // needed" and leave the revocation to the disconnect path - which never fires while
-        // the player stays online. The snapshot is the record of what they connected with.
         if (revokeAdmin) {
             discordAdminAccessService.deactivateRuntimeAdmin(player, player.uuid());
             if (locale != null) {
@@ -227,20 +168,17 @@ public class ConnectionHandler {
         }
 
         Log.info("@ #@ @ joined", player.plainName(), data.pid, player.uuid());
-        sessionService.broadcast("player-joined", args(
-                "nickname", player.coloredName(),
-                "pid", data.pid));
+
+        // Відправка локалізованого входу відповідно до налаштувань відображення
+        broadcastJoin(player, data);
+
         network.post(new PlayerJoinLeaveV1(
-                player.plainName() + " #" + data.pid,
+                formatNetworkIdentity(player, data),
                 config.server.name,
                 true)
         );
     }
 
-    /**
-     * The game-thread facts a join needs, read once so the storage phase never touches
-     * {@code Player}.
-     */
     private record JoinSnapshot(
             String uuid,
             String ip,
@@ -251,7 +189,6 @@ public class ConnectionHandler {
     ) {
     }
 
-    /** The result of the storage phase: settled data plus the decisions it implies. */
     private record PreparedJoin(PlayerData data, boolean ipChanged, long unreadMessages) {
     }
 
@@ -268,16 +205,82 @@ public class ConnectionHandler {
         if (data != null) {
             sessionService.markOffline(data);
             Log.info("@ #@ @ left", player.plainName(), data.pid, player.uuid());
-            sessionService.broadcast("player-left", args(
-                    "nickname", player.coloredName(),
-                    "pid", data.pid)
-            );
+
+            // Відправка локалізованого виходу відповідно до налаштувань відображення
+            broadcastLeave(player, data);
 
             network.post(new PlayerJoinLeaveV1(
-                    player.plainName() + " #" + data.pid,
+                    formatNetworkIdentity(player, data),
                     config.server.name,
                     false)
             );
         }
+    }
+
+    // =========================================================================
+    // Допоміжні методи форматування ідентифікаторів та відправки
+    // =========================================================================
+
+    private void broadcastJoin(Player player, PlayerData data) {
+        IdentityDisplayMode mode = resolveEffectiveDisplayMode(data);
+        String key = switch (mode) {
+            case USERNAME -> "player-joined-username";
+            case BOTH -> "player-joined-both";
+            case NONE -> "player-joined-none";
+            case PID -> "player-joined-pid";
+        };
+
+        sessionService.broadcast(key, args(
+                "nickname", player.coloredName(),
+                "pid", data.pid,
+                "username", data.username != null ? data.username : ""
+        ));
+    }
+
+    private void broadcastLeave(Player player, PlayerData data) {
+        IdentityDisplayMode mode = resolveEffectiveDisplayMode(data);
+        String key = switch (mode) {
+            case USERNAME -> "player-left-username";
+            case BOTH -> "player-left-both";
+            case NONE -> "player-left-none";
+            case PID -> "player-left-pid";
+        };
+
+        sessionService.broadcast(key, args(
+                "nickname", player.coloredName(),
+                "pid", data.pid,
+                "username", data.username != null ? data.username : ""
+        ));
+    }
+
+    /**
+     * Визначає реальний режим відображення: якщо юзернейма немає, але вибрано USERNAME або BOTH,
+     * робиться автоматичний відкат на PID.
+     */
+    private IdentityDisplayMode resolveEffectiveDisplayMode(PlayerData data) {
+        if (data == null) return IdentityDisplayMode.PID;
+        IdentityDisplayMode mode = data.identityDisplayMode != null ? data.identityDisplayMode : IdentityDisplayMode.PID;
+        boolean hasUsername = data.username != null && !data.username.isBlank();
+
+        if (!hasUsername && (mode == IdentityDisplayMode.USERNAME || mode == IdentityDisplayMode.BOTH)) {
+            return IdentityDisplayMode.PID;
+        }
+        return mode;
+    }
+
+    /**
+     * Форматує ім'я для мережевих пакетів (Discord релею тощо)
+     */
+    private String formatNetworkIdentity(Player player, PlayerData data) {
+        IdentityDisplayMode mode = resolveEffectiveDisplayMode(data);
+        String plain = player != null ? player.plainName() : (data != null ? data.nickname : "Player");
+        if (data == null) return plain;
+
+        return switch (mode) {
+            case USERNAME -> plain + " @" + data.username;
+            case BOTH -> plain + " @" + data.username + " #" + data.pid;
+            case NONE -> plain;
+            case PID -> plain + " #" + data.pid;
+        };
     }
 }

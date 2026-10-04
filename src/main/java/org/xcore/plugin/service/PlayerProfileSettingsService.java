@@ -247,4 +247,13 @@ public class PlayerProfileSettingsService {
     private boolean containsBadgeLikeGlyphs(String input) {
         return input.codePoints().anyMatch(Badge::containsReservedGlyph);
     }
+
+    public void updateIdentityDisplayMode(PlayerData targetData, org.xcore.plugin.model.enums.IdentityDisplayMode mode) {
+        mutate(targetData,
+                data -> data.identityDisplayMode = mode,
+                data -> playerDataRepository.updateIdentityDisplayMode(data.uuid, mode),
+                null,
+                false,
+                false);
+    }
 }

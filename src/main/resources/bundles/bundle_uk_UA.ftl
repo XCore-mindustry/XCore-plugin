@@ -667,8 +667,22 @@ pvp-you-spectator = [scarlet]Ви програли. Будь ласка, зач�
 # ==============================================================================
 # Events & Notifications
 # ==============================================================================
-player-joined = { $nickname } [grey]#[white]{ $pid }[grey] [accent]приєднався.
-player-left = { $nickname } [grey]#[white]{ $pid }[grey] [accent]вийшов.
+player-joined-pid = { $nickname } [grey]#[white]{ $pid }[grey] [accent]приєднався.
+player-joined-username = { $nickname } [grey]@[white]{ $username }[grey] [accent]приєднався.
+player-joined-both = { $nickname } [accent]@{ $username } [grey]#[white]{ $pid }[grey] [accent]приєднався.
+player-joined-none = { $nickname } [accent]приєднався.
+
+player-left-pid = { $nickname } [grey]#[white]{ $pid }[grey] [accent]вийшов.
+player-left-username = { $nickname } [grey]@[white]{ $username }[grey] [accent]вийшов.
+player-left-both = { $nickname } [accent]@{ $username } [grey]#[white]{ $pid }[grey] [accent]вийшов.
+player-left-none = { $nickname } [accent]вийшов.
+
+player-settings-identity-mode = [accent]Показ ідентифікатора у сповіщеннях:[]
+player-settings-identity-mode-pid = Тільки номер (#12)
+player-settings-identity-mode-username = Тільки ім'я (@Steve)
+player-settings-identity-mode-both = Ім'я та номер (@Steve #12)
+player-settings-identity-mode-none = Приховати все
+
 notification-votekick-playtime =
     [accent]Вітаємо! Ви відіграли [lightgray]{ $votekickPlayTime }[] { $votekickPlayTime ->
         [one] хвилину
