@@ -7,7 +7,8 @@ from typing import TYPE_CHECKING
 import discord
 
 if TYPE_CHECKING:
-    from ..services.rating_service import RatingService
+    from ..bot import XCoreDiscordBot
+    from ..services.rating_service import RatingService, RefusedMerge
 
 logger = logging.getLogger(__name__)
 
@@ -19,7 +20,7 @@ class RatingMergeDaemon:
 
     def __init__(
         self,
-        bot: discord.Client,
+        bot: XCoreDiscordBot,
         ratings: RatingService,
         *,
         interval_seconds: float = RETRY_INTERVAL_SECONDS,
@@ -41,11 +42,40 @@ class RatingMergeDaemon:
         await self._bot.wait_until_ready()
         while not self._bot.is_closed():
             try:
-                done = await self._ratings.retry_pending_merges()
-                if done:
-                    logger.info("Delivered %s queued rating merge(s)", done)
+                await self.run_once()
             except asyncio.CancelledError:
                 raise
             except Exception:
                 logger.exception("Failed to retry queued rating merges")
             await asyncio.sleep(self._interval)
+
+    async def run_once(self) -> None:
+        report = await self._ratings.retry_pending_merges()
+        if report.delivered:
+            logger.info("Delivered %s queued rating merge(s)", report.delivered)
+        for refused in report.refused:
+            await self._report_refusal(refused)
+
+    async def _report_refusal(self, refused: RefusedMerge) -> None:
+        """Tells the administrators: they were promised a retry that will not happen."""
+        channel_id = self._bot.private_channel_id
+        if not channel_id:
+            return
+        try:
+            channel = await self._bot._resolve_messageable_channel(
+                channel_id, context="rating merge refusal"
+            )
+            if channel is None:
+                return
+            await channel.send(
+                f"⚠️ The queued rating merge `{refused.source_uuid}` → `{refused.target_uuid}` "
+                f"was refused by the server and will not be retried: {refused.error}\n"
+                "The ratings are still on the closed account and have to be moved by hand.",
+                allowed_mentions=discord.AllowedMentions.none(),
+            )
+        except Exception:
+            logger.exception(
+                "Failed to report the refused rating merge %s -> %s",
+                refused.source_uuid,
+                refused.target_uuid,
+            )

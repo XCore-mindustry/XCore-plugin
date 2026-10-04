@@ -550,10 +550,13 @@ async def test_list_is_private_and_shows_the_season_and_its_grants() -> None:
     await cog.cmd_prize_list.callback(cog, interaction, "minipvp", 3)
     await cog.cmd_prize_list.callback(cog, interaction, "minipvp", 9)
 
-    shown = interaction.response.sent[0]
+    # Deferred first: the reads may take longer than Discord waits for a first answer.
+    assert interaction.response.deferred is True
+    assert interaction.response.sent == []
+    shown = interaction.followup.sent[0]
     assert shown["ephemeral"] is True
     assert "Ace" in shown["embed"].fields[0].value
-    assert "No such season" in interaction.response.sent[1]["content"]
+    assert "No such season" in interaction.followup.sent[1]["content"]
 
 
 @pytest.mark.asyncio

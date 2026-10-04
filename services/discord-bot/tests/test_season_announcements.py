@@ -217,6 +217,22 @@ async def test_failed_post_is_released_so_a_replay_can_retry() -> None:
 
 
 @pytest.mark.asyncio
+async def test_cancelled_post_is_released_so_a_replay_can_retry() -> None:
+    class _CancelledChannel(_Channel):
+        async def send(self, *, embed, allowed_mentions) -> Any:
+            raise asyncio.CancelledError()
+
+    bot = _Bot(_CancelledChannel())
+    event = _ended((_entry(1, "Ann", None),))
+
+    with pytest.raises(asyncio.CancelledError):
+        await on_season_ended(bot, event)
+
+    # The consumer was stopped mid-post; the claim must not outlive it.
+    assert bot.container.ratings.claimed == set()
+
+
+@pytest.mark.asyncio
 async def test_rescheduling_announces_each_move_once() -> None:
     channel = _Channel()
     bot = _Bot(channel)

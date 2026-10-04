@@ -29,6 +29,21 @@ class RatingMergeOutcome:
     error: str | None = None
 
 
+@dataclass(frozen=True, slots=True)
+class RefusedMerge:
+    source_uuid: str
+    target_uuid: str
+    error: str
+
+
+@dataclass(frozen=True, slots=True)
+class MergeRetryReport:
+    """What a retry pass over the queued merges did."""
+
+    delivered: int = 0
+    refused: tuple[RefusedMerge, ...] = ()
+
+
 class RatingService:
     """What the bot asks of the game servers about ratings: season administration and
     carrying a player's standings over when two accounts are merged.
@@ -228,21 +243,24 @@ class RatingService:
         await self._store.clear_pending_merge(source_uuid, target_uuid)
         return RatingMergeOutcome(merged=True)
 
-    async def retry_pending_merges(self) -> int:
-        """Retries the queued merges; returns how many went through."""
-        done = 0
+    async def retry_pending_merges(self) -> MergeRetryReport:
+        """Retries the queued merges and reports which went through and which were refused."""
+        delivered = 0
+        refused: list[RefusedMerge] = []
         for source, target in await self._store.pending_merges():
             try:
                 await self._rpc.merge_ratings(
                     source_uuid=source, target_uuid=target, timeout_ms=self._timeout_ms
                 )
             except RpcRejected as error:
-                # Retrying cannot change a refusal; drop it and leave it in the log.
+                # Retrying cannot change a refusal. The administrator was told the merge
+                # would be retried, so it stays on record and is reported, not dropped.
                 logger.error("Queued rating merge %s -> %s refused: %s", source, target, error)
-                await self._store.clear_pending_merge(source, target)
+                await self._store.fail_pending_merge(source, target, str(error))
+                refused.append(RefusedMerge(source, target, str(error)))
             except Exception as error:
                 logger.info("Queued rating merge %s -> %s still waiting: %s", source, target, error)
             else:
                 await self._store.clear_pending_merge(source, target)
-                done += 1
-        return done
+                delivered += 1
+        return MergeRetryReport(delivered=delivered, refused=tuple(refused))

@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from pymongo import ASCENDING, DESCENDING
@@ -23,6 +23,8 @@ SEASONS = "rating_seasons"
 STANDINGS = "rating_standings"
 PLAYERS = "players"
 SEASON_POSTS = "discord_season_posts"
+# A claim this old with no message recorded belongs to a poster that stopped mid-way.
+STALE_POST_CLAIM = timedelta(minutes=5)
 PENDING_MERGES = "rating_merge_pending"
 PRIZE_GRANTS = "rating_prize_grants"
 
@@ -337,19 +339,33 @@ class RatingStore:
     # ----------------------------------------------------- announcement bookkeeping
 
     async def claim_post(self, season_id: str, kind: str) -> bool:
-        """True for the one caller that may post this announcement; false if it was posted."""
+        """True for the one caller that may post this announcement; false if it was posted.
+
+        A claim left without a message for longer than ``STALE_POST_CLAIM`` is taken over:
+        its poster was stopped before it could post or hand the claim back.
+        """
+        key = f"{season_id}:{kind}"
+        now = datetime.now(UTC)
         try:
             await self._collection(SEASON_POSTS).insert_one(
                 {
-                    "_id": f"{season_id}:{kind}",
+                    "_id": key,
                     "season_id": season_id,
                     "kind": kind,
                     "message_id": None,
-                    "claimed_at": datetime.now(UTC),
+                    "claimed_at": now,
                 }
             )
         except DuplicateKeyError:
-            return False
+            taken = await self._collection(SEASON_POSTS).update_one(
+                {
+                    "_id": key,
+                    "message_id": None,
+                    "claimed_at": {"$lt": now - STALE_POST_CLAIM},
+                },
+                {"$set": {"claimed_at": now}},
+            )
+            return taken.modified_count == 1
         return True
 
     async def record_post(self, season_id: str, kind: str, message_id: int) -> None:
@@ -369,13 +385,23 @@ class RatingStore:
             {
                 "$set": {"source_uuid": source_uuid, "target_uuid": target_uuid},
                 "$setOnInsert": {"created_at": datetime.now(UTC)},
+                # Queued again by hand after a refusal: it is waiting once more.
+                "$unset": {"failed_at": "", "error": ""},
             },
             upsert=True,
         )
 
     async def pending_merges(self) -> list[tuple[str, str]]:
-        cursor = self._collection(PENDING_MERGES).find({})
+        """The merges still waiting for a server; refused ones are kept but not retried."""
+        cursor = self._collection(PENDING_MERGES).find({"failed_at": None})
         return [(str(doc["source_uuid"]), str(doc["target_uuid"])) async for doc in cursor]
+
+    async def fail_pending_merge(self, source_uuid: str, target_uuid: str, error: str) -> None:
+        """Keeps a refused merge on record for an administrator instead of retrying it."""
+        await self._collection(PENDING_MERGES).update_one(
+            {"_id": f"{source_uuid}>{target_uuid}"},
+            {"$set": {"failed_at": datetime.now(UTC), "error": error}},
+        )
 
     async def clear_pending_merge(self, source_uuid: str, target_uuid: str) -> None:
         await self._collection(PENDING_MERGES).delete_one(

@@ -8,6 +8,7 @@ from typing import Any
 import pytest
 from xcore_protocol.generated.rating import RatingSeasonRescheduleRequestV1Operation
 
+from xcore_discord_bot.daemons.rating_merge_daemon import RatingMergeDaemon
 from xcore_discord_bot.dto import AccountMergeResult, PlayerRecord
 from xcore_discord_bot.redis_bus import RedisBus, RpcRejected
 from xcore_discord_bot.registry import server_registry
@@ -17,12 +18,13 @@ from xcore_discord_bot.rpc.mindustry_rpc import (
     NoLiveServerError,
 )
 from xcore_discord_bot.services.player_service import PlayerService
-from xcore_discord_bot.services.rating_service import RatingService
+from xcore_discord_bot.services.rating_service import RatingService, RefusedMerge
 
 
 class _Store:
     def __init__(self) -> None:
         self.pending: set[tuple[str, str]] = set()
+        self.failed: dict[tuple[str, str], str] = {}
 
     async def add_pending_merge(self, source: str, target: str) -> None:
         self.pending.add((source, target))
@@ -31,7 +33,10 @@ class _Store:
         self.pending.discard((source, target))
 
     async def pending_merges(self) -> list[tuple[str, str]]:
-        return sorted(self.pending)
+        return sorted(self.pending - set(self.failed))
+
+    async def fail_pending_merge(self, source: str, target: str, error: str) -> None:
+        self.failed[(source, target)] = error
 
 
 class _Rpc:
@@ -75,7 +80,8 @@ async def test_unreachable_servers_queue_the_merge_and_a_retry_delivers_it() -> 
     assert (outcome.merged, outcome.queued) == (False, True)
     assert store.pending == {("s", "t")}
 
-    assert await service.retry_pending_merges() == 1
+    report = await service.retry_pending_merges()
+    assert (report.delivered, report.refused) == (1, ())
     assert store.pending == set()
     assert rpc.merged == [("s", "t")]
 
@@ -93,12 +99,59 @@ async def test_refused_merge_is_reported_and_never_queued() -> None:
 
 
 @pytest.mark.asyncio
-async def test_a_queued_merge_that_is_refused_is_dropped() -> None:
+async def test_a_queued_merge_that_is_refused_is_kept_reported_and_not_retried() -> None:
+    service, store, rpc = _service(RpcRejected("x", "REJECTED", "nope"))
+    store.pending.add(("s", "t"))
+
+    report = await service.retry_pending_merges()
+
+    assert report.delivered == 0
+    assert [(r.source_uuid, r.target_uuid) for r in report.refused] == [("s", "t")]
+    assert "nope" in report.refused[0].error
+    # Still on record for an administrator, but out of the retry queue.
+    assert store.pending == {("s", "t")}
+    assert "nope" in store.failed[("s", "t")]
+    assert (await service.retry_pending_merges()).refused == ()
+    assert rpc.merged == []
+
+
+@pytest.mark.asyncio
+async def test_the_daemon_tells_the_administrators_about_a_refused_merge() -> None:
+    sent: list[str] = []
+
+    class _Channel:
+        async def send(self, content, **kwargs) -> None:
+            sent.append(content)
+
+    class _Bot:
+        private_channel_id = 42
+
+        async def _resolve_messageable_channel(self, channel_id, *, context):
+            assert channel_id == 42
+            return _Channel()
+
     service, store, _ = _service(RpcRejected("x", "REJECTED", "nope"))
     store.pending.add(("s", "t"))
 
-    assert await service.retry_pending_merges() == 0
-    assert store.pending == set()
+    await RatingMergeDaemon(_Bot(), service).run_once()
+    await RatingMergeDaemon(_Bot(), service).run_once()
+
+    assert len(sent) == 1
+    assert "`s` → `t`" in sent[0] and "nope" in sent[0]
+
+
+@pytest.mark.asyncio
+async def test_the_daemon_survives_a_refusal_it_cannot_report() -> None:
+    class _Bot:
+        private_channel_id = 0
+
+    class _Ratings:
+        async def retry_pending_merges(self):
+            from xcore_discord_bot.services.rating_service import MergeRetryReport
+
+            return MergeRetryReport(refused=(RefusedMerge("s", "t", "nope"),))
+
+    await RatingMergeDaemon(_Bot(), _Ratings()).run_once()
 
 
 @pytest.mark.asyncio
@@ -106,7 +159,8 @@ async def test_a_queued_merge_stays_until_a_server_answers() -> None:
     service, store, _ = _service(TimeoutError())
     store.pending.add(("s", "t"))
 
-    assert await service.retry_pending_merges() == 0
+    report = await service.retry_pending_merges()
+    assert (report.delivered, report.refused) == (0, ())
     assert store.pending == {("s", "t")}
 
 
@@ -157,6 +211,28 @@ async def test_player_service_reports_the_rating_outcome_on_the_merge_result() -
     assert result.success is True
     assert result.ratings_merged is False
     assert result.ratings_pending is True
+
+
+@pytest.mark.asyncio
+async def test_a_kick_that_cannot_be_sent_does_not_skip_the_rating_merge() -> None:
+    class _PlayerStore:
+        async def merge_player_accounts(self, **kwargs):
+            return _merge_result()
+
+    class _Bus:
+        async def publish_kick_banned(self, **kwargs) -> None:
+            raise ConnectionError("redis is down")
+
+    service, store, _ = _service(TimeoutError())
+    players = PlayerService(_PlayerStore(), _Bus(), ratings=service)
+
+    with pytest.raises(ConnectionError):
+        await players.merge_player_accounts(
+            source_pid=1, target_pid=2, actor_name="a", actor_discord_id=None, reason="r"
+        )
+
+    # The accounts are merged already, so the ratings were attempted and queued regardless.
+    assert len(store.pending) == 1
 
 
 @pytest.mark.asyncio

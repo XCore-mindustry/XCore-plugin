@@ -1,13 +1,17 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 from typing import Any
 
 import pytest
 from pymongo.errors import DuplicateKeyError
 
-from xcore_discord_bot.rating_store import RatingStore, season_from_doc
+from xcore_discord_bot.rating_store import (
+    STALE_POST_CLAIM,
+    RatingStore,
+    season_from_doc,
+)
 
 
 def _matches(doc: dict[str, Any], query: dict[str, Any]) -> bool:
@@ -76,11 +80,14 @@ class _Collection:
         target = next((doc for doc in self.docs if _matches(doc, query)), None)
         if target is None:
             if not upsert:
-                return
+                return SimpleNamespace(modified_count=0)
             target = {"_id": query["_id"]}
             target.update(update.get("$setOnInsert", {}))
             self.docs.append(target)
         target.update(update.get("$set", {}))
+        for key in update.get("$unset", {}):
+            target.pop(key, None)
+        return SimpleNamespace(modified_count=1)
 
     async def delete_one(self, query):
         self.docs = [doc for doc in self.docs if not _matches(doc, query)]
@@ -223,6 +230,45 @@ async def test_post_claims_are_exclusive_until_released() -> None:
 
     await store.release_post("minipvp:1", "ended")
     assert await store.claim_post("minipvp:1", "ended") is True
+
+
+@pytest.mark.asyncio
+async def test_a_claim_left_without_a_message_is_taken_over_once_it_is_stale() -> None:
+    store, db = _store()
+    assert await store.claim_post("minipvp:1", "ended") is True
+    claim = db["discord_season_posts"].docs[0]
+
+    # Fresh: its poster may still be sending.
+    assert await store.claim_post("minipvp:1", "ended") is False
+
+    # The poster was stopped before it posted or released the claim.
+    claim["claimed_at"] = datetime.now(UTC) - STALE_POST_CLAIM - timedelta(seconds=1)
+    assert await store.claim_post("minipvp:1", "ended") is True
+    assert await store.claim_post("minipvp:1", "ended") is False
+
+
+@pytest.mark.asyncio
+async def test_a_posted_announcement_is_never_taken_over() -> None:
+    store, db = _store()
+    assert await store.claim_post("minipvp:1", "ended") is True
+    await store.record_post("minipvp:1", "ended", 99)
+    db["discord_season_posts"].docs[0]["claimed_at"] = datetime.now(UTC) - timedelta(days=1)
+
+    assert await store.claim_post("minipvp:1", "ended") is False
+
+
+@pytest.mark.asyncio
+async def test_a_refused_merge_stays_on_record_but_out_of_the_queue() -> None:
+    store, db = _store()
+    await store.add_pending_merge("s", "t")
+
+    await store.fail_pending_merge("s", "t", "nope")
+    assert await store.pending_merges() == []
+    assert db["rating_merge_pending"].docs[0]["error"] == "nope"
+
+    # Queued again by hand: it waits for a server once more.
+    await store.add_pending_merge("s", "t")
+    assert await store.pending_merges() == [("s", "t")]
 
 
 @pytest.mark.asyncio

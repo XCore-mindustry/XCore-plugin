@@ -169,6 +169,8 @@ class SeasonsCog(commands.Cog):
     @app_commands.describe(ladder="Ladder (all of them when omitted)")
     @app_commands.autocomplete(ladder=_autocomplete_ladder)
     async def cmd_info(self, interaction: Interaction, ladder: str | None = None) -> None:
+        # The reads below can outlast Discord's three seconds for a first answer.
+        await interaction.response.defer(thinking=True)
         ratings = self.bot.container.ratings
         ladders = [ladder] if ladder else await ratings.ladders()
         now = datetime.now(UTC)
@@ -185,11 +187,9 @@ class SeasonsCog(commands.Cog):
                 )
             )
         if not embeds:
-            await interaction.response.send_message(
-                "No rating seasons yet.", ephemeral=True
-            )
+            await interaction.followup.send("No rating seasons yet.")
             return
-        await interaction.response.send_message(embeds=embeds[:10])
+        await interaction.followup.send(embeds=embeds[:10])
 
     @season_group.command(name="top", description="Show a season's leaderboard")
     @app_commands.describe(
@@ -202,6 +202,7 @@ class SeasonsCog(commands.Cog):
         ladder: str,
         season: app_commands.Range[int, 1] | None = None,
     ) -> None:
+        await interaction.response.defer(thinking=True)
         ratings = self.bot.container.ratings
         found = (
             await ratings.find_season(ladder, season)
@@ -209,9 +210,7 @@ class SeasonsCog(commands.Cog):
             else await ratings.current_season(ladder)
         )
         if found is None:
-            await interaction.response.send_message(
-                f"No such season for {ladder_name(ladder)}.", ephemeral=True
-            )
+            await interaction.followup.send(f"No such season for {ladder_name(ladder)}.")
             return
         standings = await ratings.top(ladder, found.number, TOP_SIZE)
         embed = build_season_top_embed(
@@ -219,7 +218,7 @@ class SeasonsCog(commands.Cog):
             standings,
             participants=await ratings.count(ladder, found.number),
         )
-        await interaction.response.send_message(embed=embed)
+        await interaction.followup.send(embed=embed)
 
     # ---------------------------------------------------------- administration
 
@@ -415,6 +414,7 @@ class SeasonsCog(commands.Cog):
         ladder: str,
         season: app_commands.Range[int, 1] | None = None,
     ) -> None:
+        await interaction.response.defer(ephemeral=True, thinking=True)
         ratings = self.bot.container.ratings
         found = (
             await ratings.find_season(ladder, season)
@@ -422,13 +422,13 @@ class SeasonsCog(commands.Cog):
             else await ratings.current_season(ladder)
         )
         if found is None:
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 f"No such season for {ladder_name(ladder)}.", ephemeral=True
             )
             return
         grants = await ratings.prize_grants(ladder, found.number)
         names = await ratings.nicknames([grant.player_uuid for grant in grants])
-        await interaction.response.send_message(
+        await interaction.followup.send(
             embed=build_season_prizes_embed(found, grants, names=names), ephemeral=True
         )
 

@@ -55,11 +55,17 @@ class PlayerService:
             reason=reason,
             keep_pid=keep_pid,
         )
+        kick_error: Exception | None = None
         if result.success and result.source_before and result.source_before.uuid:
-            await self._bus.publish_kick_banned(
-                uuid_value=result.source_before.uuid,
-                ip=None,
-            )
+            try:
+                await self._bus.publish_kick_banned(
+                    uuid_value=result.source_before.uuid,
+                    ip=None,
+                )
+            except Exception as error:
+                # The accounts are merged already; a kick that could not be sent must not
+                # leave the ratings behind unattempted and unqueued.
+                kick_error = error
         if result.success and self._ratings is not None:
             outcome = await self._ratings.merge_after_account_merge(result)
             if outcome is not None:
@@ -69,6 +75,8 @@ class PlayerService:
                     ratings_pending=outcome.queued,
                     ratings_error=outcome.error,
                 )
+        if kick_error is not None:
+            raise kick_error
         return result
 
     async def find_player_by_uuid(self, uuid: str) -> PlayerRecord | None:

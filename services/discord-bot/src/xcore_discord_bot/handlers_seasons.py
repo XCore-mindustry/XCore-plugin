@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
@@ -96,9 +97,10 @@ async def _post_once(
         message = await channel.send(
             embed=embed, allowed_mentions=allowed_mentions or discord.AllowedMentions.none()
         )
-    except Exception:
-        # Hand the claim back so a replay of the event can try again.
-        await store.release_post(season_id, kind)
+    except (Exception, asyncio.CancelledError):
+        # Hand the claim back so a replay of the event can try again. A cancelled consumer
+        # (shutdown, reconnect) counts too: the event was not acknowledged and comes back.
+        await asyncio.shield(store.release_post(season_id, kind))
         raise
     await store.record_post(season_id, kind, message.id)
     return True
