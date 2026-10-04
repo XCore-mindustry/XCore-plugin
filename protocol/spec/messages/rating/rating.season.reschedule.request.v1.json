@@ -12,6 +12,42 @@
     "operation",
     "actor"
   ],
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "operation": {
+            "const": "extend"
+          }
+        },
+        "required": [
+          "operation"
+        ]
+      },
+      "then": {
+        "required": [
+          "extendSeconds"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "operation": {
+            "const": "set-end"
+          }
+        },
+        "required": [
+          "operation"
+        ]
+      },
+      "then": {
+        "required": [
+          "endsAt"
+        ]
+      }
+    }
+  ],
   "properties": {
     "messageType": {
       "const": "rating.season.reschedule.request"

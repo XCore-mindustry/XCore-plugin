@@ -12,6 +12,42 @@
     "operation",
     "actor"
   ],
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "operation": {
+            "const": "add"
+          }
+        },
+        "required": [
+          "operation"
+        ]
+      },
+      "then": {
+        "required": [
+          "prize"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "operation": {
+            "const": "remove"
+          }
+        },
+        "required": [
+          "operation"
+        ]
+      },
+      "then": {
+        "required": [
+          "placeFrom"
+        ]
+      }
+    }
+  ],
   "properties": {
     "messageType": {
       "const": "rating.season.prizes.set.request"

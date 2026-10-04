@@ -39,6 +39,10 @@ INVALID_CASES = [
         ("rating.prize.grant.update.request", "unknown-status"),
         ("rating.prize.grant.update.request", "zero-place"),
         ("rating.prize.grant.update.request", "zero-pid"),
+        ("rating.season.reschedule.request", "extend-without-seconds"),
+        ("rating.season.reschedule.request", "set-end-without-ends-at"),
+        ("rating.season.prizes.set.request", "add-without-prize"),
+        ("rating.season.prizes.set.request", "remove-without-place-from"),
     )
 ]
 
