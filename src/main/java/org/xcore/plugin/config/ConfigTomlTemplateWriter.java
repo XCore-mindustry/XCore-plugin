@@ -194,6 +194,23 @@ public final class ConfigTomlTemplateWriter {
         unread_limit = 30
         blocked_limit = 100
 
+        [rating.seasons]
+        # Default season length: a number and a unit (d, w, mo, y). Applies to seasons that have not started yet.
+        length = "3mo"
+        # Time zone season deadlines are aligned to (midnight) and shown in.
+        timezone = "UTC"
+        # How long before the end of a season players are reminded of it.
+        notice_thresholds = ["7d", "3d", "24h", "1h"]
+        # How long a finished season waits for matches that are still being settled.
+        settlement_grace = "5m"
+        podium_size = 10
+        # Matches a player needs in a season to appear on its podium.
+        podium_min_matches = 10
+        # Rating carried into the next season: soft, hard or none.
+        reset = "soft"
+        # Soft reset: share of the distance from the default rating that is kept.
+        reset_carry = 0.5
+
         [translation.providers.google]
         type = "google"
         enabled = true

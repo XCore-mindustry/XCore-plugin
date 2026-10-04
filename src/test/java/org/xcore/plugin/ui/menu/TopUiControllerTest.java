@@ -11,6 +11,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.xcore.plugin.concurrent.Async;
+import org.xcore.plugin.concurrent.InlineStorageExecutor;
 import org.xcore.plugin.config.TomlSecretsConfig;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
 import org.xcore.plugin.integration.top.LeaderboardEntry;
@@ -18,15 +19,18 @@ import org.xcore.plugin.integration.top.LeaderboardPage;
 import org.xcore.plugin.integration.top.LeaderboardPageRequest;
 import org.xcore.plugin.integration.top.TopCategoryProvider;
 import org.xcore.plugin.integration.top.TopCategoryRegistry;
+import org.xcore.plugin.integration.top.TopScope;
 import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.session.Session;
 import org.xcore.plugin.session.SessionService;
 import org.xcore.ui.VNode;
 import org.xcore.ui.VNodeCompiler;
 import org.xcore.ui.LocalizerResolver;
+import org.xcore.ui.runtime.UiSession;
 import org.xcore.ui.runtime.UpdateResult;
 
 import java.util.ArrayDeque;
+import java.util.Deque;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -45,6 +49,7 @@ class TopUiControllerTest {
     private PlayerMenu playerMenu;
     private SessionService sessionService;
     private Async async;
+    private Deque<Runnable> mainThread;
     private Session session;
     private PlayerData viewerData;
 
@@ -55,12 +60,13 @@ class TopUiControllerTest {
         registry = new TopCategoryRegistry();
         playerMenu = mock(PlayerMenu.class);
         sessionService = mock(SessionService.class);
-        async = mock(Async.class);
+        mainThread = new ArrayDeque<>();
+        // Storage work runs inline; what it hands to the game thread waits until the test runs it.
+        async = spy(new Async(InlineStorageExecutor.create(), mainThread::add));
 
         viewerData = new PlayerData("viewer-uuid", true);
         viewerData.pid = 1;
         viewerData.nickname = "Alice";
-        viewerData.pvpRating = 1200;
         viewerData.totalPlayTime = 300;
         viewerData.hexedPoints = 25;
 
@@ -105,6 +111,32 @@ class TopUiControllerTest {
         registry.register(provider);
     }
 
+    /**
+     * Sends {@code event} to a dialog showing {@code model} and, once the page it asks for
+     * has been read, the {@link TopUiController.TopEvent.Loaded} that follows.
+     */
+    @SuppressWarnings("unchecked")
+    private UpdateResult<TopUiController.TopModel> loadThrough(TopUiController controller,
+                                                               TopUiController.TopModel model,
+                                                               TopUiController.TopEvent event) {
+        UiSession<TopUiController.TopModel, TopUiController.TopEvent> ui = mock(UiSession.class);
+        when(ui.model()).thenReturn(model);
+        session.setActiveUiSession(ui);
+
+        UpdateResult<TopUiController.TopModel> pending = controller.update(model, event, null);
+        // Until the page arrives the dialog keeps showing what it had.
+        assertThat(pending.isNoop()).isTrue();
+        verify(ui, never()).dispatch(any());
+
+        while (!mainThread.isEmpty()) {
+            mainThread.poll().run();
+        }
+        ArgumentCaptor<TopUiController.TopEvent> dispatched = ArgumentCaptor.forClass(TopUiController.TopEvent.class);
+        verify(ui).dispatch(dispatched.capture());
+        assertThat(dispatched.getValue()).isInstanceOf(TopUiController.TopEvent.Loaded.class);
+        return controller.update(model, dispatched.getValue(), null);
+    }
+
     @Test
     @DisplayName("initialModel loads first category by priority and populates entries")
     void initialModel_loadsFirstCategoryByPriority() {
@@ -116,7 +148,7 @@ class TopUiControllerTest {
         registerMockProvider("PLAYTIME", 10, List.of(), false, null, null);
 
         TopUiController controller = new TopUiController(topMenu, registry, playerMenu, sessionService, async, session);
-        TopUiController.TopModel model = controller.createInitialModel(null, 1, null, null);
+        TopUiController.TopModel model = controller.createInitialModel(null, null, 1, null, null);
 
         assertThat(model.selectedCategoryId()).isEqualTo("MINI_PVP");
         assertThat(model.categories()).hasSize(2);
@@ -137,11 +169,10 @@ class TopUiControllerTest {
         registerMockProvider("PLAYTIME", 10, playtimeEntries, false, null, 2);
 
         TopUiController controller = new TopUiController(topMenu, registry, playerMenu, sessionService, async, session);
-        TopUiController.TopModel initial = controller.createInitialModel("MINI_PVP", 1, null, null);
+        TopUiController.TopModel initial = controller.createInitialModel("MINI_PVP", null, 1, null, null);
 
-        UpdateResult<TopUiController.TopModel> res = controller.update(
-                initial, new TopUiController.TopEvent.SelectCategory("PLAYTIME"), null
-        );
+        UpdateResult<TopUiController.TopModel> res = loadThrough(
+                controller, initial, new TopUiController.TopEvent.SelectCategory("PLAYTIME"));
 
         assertThat(res.model().selectedCategoryId()).isEqualTo("PLAYTIME");
         assertThat(res.model().entries()).hasSize(1);
@@ -149,6 +180,9 @@ class TopUiControllerTest {
         assertThat(res.model().selfRank()).isEqualTo(2);
         assertThat(res.model().currentPage()).isEqualTo(1);
         assertThat(res.model().cursorBackStack()).isEmpty();
+        // The header names the category, so the whole dialog is redrawn.
+        assertThat(res.dirtySlots()).isEmpty();
+        assertThat(res.isNoop()).isFalse();
     }
 
     @Test
@@ -169,11 +203,10 @@ class TopUiControllerTest {
         registry.register(provider);
 
         TopUiController controller = new TopUiController(topMenu, registry, playerMenu, sessionService, async, session);
-        TopUiController.TopModel initial = controller.createInitialModel("MINI_PVP", 1, null, null);
+        TopUiController.TopModel initial = controller.createInitialModel("MINI_PVP", null, 1, null, null);
 
-        UpdateResult<TopUiController.TopModel> nextRes = controller.update(
-                initial, new TopUiController.TopEvent.NextPage(), null
-        );
+        UpdateResult<TopUiController.TopModel> nextRes = loadThrough(
+                controller, initial, new TopUiController.TopEvent.NextPage());
 
         assertThat(nextRes.model().currentPage()).isEqualTo(2);
         assertThat(nextRes.model().cursorBackStack()).containsExactly(TopUiController.FIRST_PAGE_CURSOR_TOKEN);
@@ -184,9 +217,8 @@ class TopUiControllerTest {
         );
 
         // Now test PrevPage restores back stack and cursor
-        UpdateResult<TopUiController.TopModel> prevRes = controller.update(
-                nextRes.model(), new TopUiController.TopEvent.PrevPage(), null
-        );
+        UpdateResult<TopUiController.TopModel> prevRes = loadThrough(
+                controller, nextRes.model(), new TopUiController.TopEvent.PrevPage());
 
         assertThat(prevRes.model().currentPage()).isEqualTo(1);
         assertThat(prevRes.model().cursorBackStack()).isEmpty();
@@ -194,12 +226,170 @@ class TopUiControllerTest {
         assertThat(prevRes.model().entries().getFirst().displayName()).isEqualTo("P1");
     }
 
+    /** A category with two seasons: "2" is running, "1" is over. */
+    private TopCategoryProvider seasonalProvider() {
+        return new TopCategoryProvider() {
+            @Override
+            public String id() {
+                return "DUEL";
+            }
+
+            @Override
+            public String displayName(org.xcore.plugin.localization.Localization local) {
+                return "Duel";
+            }
+
+            @Override
+            public int priority() {
+                return 30;
+            }
+
+            @Override
+            public List<TopScope> scopes() {
+                return List.of(new TopScope("2", true, Map.of()), new TopScope("1", false, Map.of()));
+            }
+
+            @Override
+            public String formatScope(TopScope scope, org.xcore.plugin.localization.Localization local) {
+                return "Season " + scope.id();
+            }
+
+            @Override
+            public LeaderboardPage loadPage(LeaderboardPageRequest request) {
+                String season = request.scopeId() == null ? "2" : request.scopeId();
+                return new LeaderboardPage(request.page(),
+                        List.of(new LeaderboardEntry("p" + season, 1, "Champion of " + season, "1500", Map.of(), "")),
+                        false, null, 1L, 4, "1642");
+            }
+
+            @Override
+            public String formatValue(String primaryValue, org.xcore.plugin.localization.Localization local) {
+                return primaryValue + " ELO";
+            }
+        };
+    }
+
+    @Test
+    @DisplayName("a category with seasons opens on the running one and offers a switcher")
+    void scopes_openOnCurrent() {
+        registry.register(seasonalProvider());
+        TopUiController controller = new TopUiController(topMenu, registry, playerMenu, sessionService, async, session);
+
+        TopUiController.TopModel model = controller.createInitialModel("DUEL", null, 1, null, null);
+
+        assertThat(model.scopes()).extracting(TopScope::id).containsExactly("2", "1");
+        assertThat(model.selectedScopeId()).isEqualTo("2");
+        assertThat(model.entries().getFirst().displayName()).isEqualTo("Champion of 2");
+        // The viewer is not on the page, so their value comes from the page and is worded by the category.
+        assertThat(model.selfRank()).isEqualTo(4);
+        assertThat(model.selfPrimaryValue()).isEqualTo("1642 ELO");
+
+        String dsl = UiDslWriter.write(new VNodeCompiler(LocalizerResolver.IDENTITY).compile(controller.render(model)));
+        assertThat(dsl).contains("Season 2", "action:scope:1");
+    }
+
+    @Test
+    @DisplayName("update SelectScope loads the chosen season and keeps the switcher")
+    void update_selectScope_loadsSeason() {
+        registry.register(seasonalProvider());
+        TopUiController controller = new TopUiController(topMenu, registry, playerMenu, sessionService, async, session);
+        TopUiController.TopModel initial = controller.createInitialModel("DUEL", null, 1, null, null);
+
+        UpdateResult<TopUiController.TopModel> res = loadThrough(
+                controller, initial, new TopUiController.TopEvent.SelectScope("1"));
+
+        assertThat(res.model().selectedScopeId()).isEqualTo("1");
+        assertThat(res.model().scopes()).isEqualTo(initial.scopes());
+        assertThat(res.model().entries().getFirst().displayName()).isEqualTo("Champion of 1");
+        assertThat(res.model().currentPage()).isEqualTo(1);
+        assertThat(res.dirtySlots()).isEmpty();
+
+        String dsl = UiDslWriter.write(new VNodeCompiler(LocalizerResolver.IDENTITY).compile(controller.render(res.model())));
+        assertThat(dsl).contains("Season 1", "action:scope:2");
+    }
+
+    @Test
+    @DisplayName("update SelectScope ignores the shown scope and scopes the category does not have")
+    void update_selectScope_ignoresUnknown() {
+        registry.register(seasonalProvider());
+        TopUiController controller = new TopUiController(topMenu, registry, playerMenu, sessionService, async, session);
+        TopUiController.TopModel initial = controller.createInitialModel("DUEL", null, 1, null, null);
+
+        assertThat(controller.update(initial, new TopUiController.TopEvent.SelectScope("2"), null).isNoop()).isTrue();
+        assertThat(controller.update(initial, new TopUiController.TopEvent.SelectScope("9"), null).isNoop()).isTrue();
+        assertThat(controller.update(initial, new TopUiController.TopEvent.SelectScope(""), null).isNoop()).isTrue();
+        assertThat(mainThread).isEmpty();
+    }
+
+    @Test
+    @DisplayName("a page that arrives after the dialog moved on is dropped")
+    @SuppressWarnings("unchecked")
+    void load_dropsStaleResult() {
+        registry.register(seasonalProvider());
+        TopUiController controller = new TopUiController(topMenu, registry, playerMenu, sessionService, async, session);
+        TopUiController.TopModel initial = controller.createInitialModel("DUEL", null, 1, null, null);
+        UiSession<TopUiController.TopModel, TopUiController.TopEvent> ui = mock(UiSession.class);
+        when(ui.model()).thenReturn(initial);
+        session.setActiveUiSession(ui);
+
+        controller.update(initial, new TopUiController.TopEvent.SelectScope("1"), null);
+        // The player switched to something else before the page came back.
+        when(ui.model()).thenReturn(controller.createInitialModel("DUEL", null, 1, null, null));
+        mainThread.forEach(Runnable::run);
+
+        verify(ui, never()).dispatch(any());
+    }
+
+    @Test
+    @DisplayName("of two requests still loading only the latest one is applied")
+    @SuppressWarnings("unchecked")
+    void load_appliesOnlyTheLatestRequest() {
+        registerMockProvider("MINI_PVP", 30, List.of(), false, null, null);
+        registerMockProvider("PLAYTIME", 20, List.of(), false, null, null);
+        registerMockProvider("HEXED", 10, List.of(), false, null, null);
+        TopUiController controller = new TopUiController(topMenu, registry, playerMenu, sessionService, async, session);
+        TopUiController.TopModel initial = controller.createInitialModel("MINI_PVP", null, 1, null, null);
+        UiSession<TopUiController.TopModel, TopUiController.TopEvent> ui = mock(UiSession.class);
+        when(ui.model()).thenReturn(initial);
+        session.setActiveUiSession(ui);
+
+        // Both taps land before either page is back, so both start from the same model.
+        controller.update(initial, new TopUiController.TopEvent.SelectCategory("PLAYTIME"), null);
+        controller.update(initial, new TopUiController.TopEvent.SelectCategory("HEXED"), null);
+        while (!mainThread.isEmpty()) {
+            mainThread.poll().run();
+        }
+
+        ArgumentCaptor<TopUiController.TopEvent> dispatched = ArgumentCaptor.forClass(TopUiController.TopEvent.class);
+        verify(ui).dispatch(dispatched.capture());
+        assertThat(((TopUiController.TopEvent.Loaded) dispatched.getValue()).data().query().categoryId())
+                .isEqualTo("HEXED");
+    }
+
+    @Test
+    @DisplayName("a category that fails to load shows an empty page instead of breaking the dialog")
+    void fetch_survivesProviderFailure() {
+        TopCategoryProvider broken = mock(TopCategoryProvider.class);
+        when(broken.id()).thenReturn("BROKEN");
+        when(broken.displayName(any())).thenReturn("Broken");
+        when(broken.scopes()).thenThrow(new IllegalStateException("no scopes"));
+        when(broken.loadPage(any())).thenThrow(new IllegalStateException("no page"));
+        registry.register(broken);
+        TopUiController controller = new TopUiController(topMenu, registry, playerMenu, sessionService, async, session);
+
+        TopUiController.TopModel model = controller.createInitialModel("BROKEN", null, 1, null, null);
+
+        assertThat(model.entries()).isEmpty();
+        assertThat(model.scopes()).isEmpty();
+        assertThat(model.selectedScopeId()).isNull();
+    }
+
     @Test
     @DisplayName("update InspectPlayer opens profile directly for self")
     void update_inspectPlayer_self() {
         registerMockProvider("MINI_PVP", 20, List.of(), false, null, null);
         TopUiController controller = new TopUiController(topMenu, registry, playerMenu, sessionService, async, session);
-        TopUiController.TopModel model = controller.createInitialModel("MINI_PVP", 1, null, null);
+        TopUiController.TopModel model = controller.createInitialModel("MINI_PVP", null, 1, null, null);
 
         controller.update(model, new TopUiController.TopEvent.InspectPlayer("viewer-uuid"), null);
 
@@ -219,7 +409,7 @@ class TopUiControllerTest {
         when(sessionService.get("other-uuid")).thenReturn(otherSession);
 
         TopUiController controller = new TopUiController(topMenu, registry, playerMenu, sessionService, async, session);
-        TopUiController.TopModel model = controller.createInitialModel("MINI_PVP", 1, null, null);
+        TopUiController.TopModel model = controller.createInitialModel("MINI_PVP", null, 1, null, null);
 
         controller.update(model, new TopUiController.TopEvent.InspectPlayer("other-uuid"), null);
 
@@ -248,7 +438,7 @@ class TopUiControllerTest {
         }).when(async).onMainForPlayer(any(), any(), any());
 
         TopUiController controller = new TopUiController(topMenu, registry, playerMenu, sessionService, async, session);
-        TopUiController.TopModel model = controller.createInitialModel("MINI_PVP", 1, null, null);
+        TopUiController.TopModel model = controller.createInitialModel("MINI_PVP", null, 1, null, null);
         org.xcore.ui.runtime.UiSession mockSession = mock(org.xcore.ui.runtime.UiSession.class);
         when(mockSession.model()).thenReturn(model);
         session.setActiveUiSession(mockSession);
@@ -279,6 +469,7 @@ class TopUiControllerTest {
         assertThat(controller.parseEvent(new MenuResult("action:page:prev"))).isInstanceOf(TopUiController.TopEvent.PrevPage.class);
         assertThat(controller.parseEvent(new MenuResult("action:refresh"))).isInstanceOf(TopUiController.TopEvent.Refresh.class);
         assertThat(controller.parseEvent(new MenuResult("action:tab:HEXED"))).isEqualTo(new TopUiController.TopEvent.SelectCategory("HEXED"));
+        assertThat(controller.parseEvent(new MenuResult("action:scope:2"))).isEqualTo(new TopUiController.TopEvent.SelectScope("2"));
         assertThat(controller.parseEvent(new MenuResult("action:inspect:some-uuid"))).isEqualTo(new TopUiController.TopEvent.InspectPlayer("some-uuid"));
         assertThat(controller.parseEvent(new MenuResult((String) null))).isInstanceOf(TopUiController.TopEvent.Close.class);
     }
@@ -294,7 +485,7 @@ class TopUiControllerTest {
         registerMockProvider("PLAYTIME", 10, List.of(), false, null, null);
 
         TopUiController controller = new TopUiController(topMenu, registry, playerMenu, sessionService, async, session);
-        TopUiController.TopModel model = controller.createInitialModel("MINI_PVP", 1, null, null);
+        TopUiController.TopModel model = controller.createInitialModel("MINI_PVP", null, 1, null, null);
 
         VNode tree = controller.render(model);
         assertThat(tree).isNotNull();

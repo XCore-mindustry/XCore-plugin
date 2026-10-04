@@ -1,16 +1,15 @@
 package org.xcore.plugin.gamemode.pvp.rating;
 
+import arc.Events;
 import io.avaje.inject.PostConstruct;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
-import mindustry.gen.Player;
+import mindustry.game.EventType;
+import org.xcore.plugin.concurrent.Async;
 import org.xcore.plugin.config.TomlXcoreConfig;
-import org.xcore.plugin.integration.PlayerDisplayProvider;
+import org.xcore.plugin.integration.PlayerDisplayRefreshService;
 import org.xcore.plugin.integration.PlayerDisplayRegistry;
-import org.xcore.plugin.model.PlayerData;
-import org.xcore.plugin.rating.RatingLeague;
-import org.xcore.plugin.session.Session;
-import org.xcore.plugin.session.SessionService;
+import org.xcore.plugin.rating.ladder.LadderLeagueDisplay;
 
 @Singleton
 public class MiniPvPDisplayService {
@@ -18,18 +17,20 @@ public class MiniPvPDisplayService {
 
     private final TomlXcoreConfig config;
     private final PlayerDisplayRegistry registry;
-    private final SessionService sessionService;
+    private final LadderLeagueDisplay display;
     private PlayerDisplayRegistry.Registration registration;
 
     @Inject
     public MiniPvPDisplayService(
             TomlXcoreConfig config,
             PlayerDisplayRegistry registry,
-            SessionService sessionService
+            PlayerDisplayRefreshService refreshService,
+            MiniPvPLadder miniPvPLadder,
+            Async async
     ) {
         this.config = config;
         this.registry = registry;
-        this.sessionService = sessionService;
+        this.display = new LadderLeagueDisplay(PROVIDER_ID, 10, miniPvPLadder.ladder(), refreshService, async);
     }
 
     @PostConstruct
@@ -37,38 +38,12 @@ public class MiniPvPDisplayService {
         if (!"mini-pvp".equals(config.server.name)) return;
 
         start();
+        Events.on(EventType.PlayerJoin.class, e -> display.preload(e.player));
     }
 
     public void start() {
         if (registration != null) return;
-
-        registration = registry.register(new PlayerDisplayProvider() {
-            @Override
-            public String id() {
-                return PROVIDER_ID;
-            }
-
-            @Override
-            public int priority() {
-                return 10;
-            }
-
-            @Override
-            public String resolve(PlayerData data, Player player) {
-                int rating = 0;
-                if (data != null && data.pvpRating > 0) {
-                    rating = data.pvpRating;
-                } else if (player != null && player.uuid() != null) {
-                    Session s = sessionService.get(player);
-                    if (s != null && s.data != null) {
-                        rating = s.data.pvpRating;
-                    }
-                }
-
-                if (rating <= 0) return "";
-                return RatingLeague.fromRating(rating).icon();
-            }
-        });
+        registration = registry.register(display);
     }
 
     public void stop() {

@@ -5,9 +5,6 @@ import jakarta.inject.Singleton;
 import org.xcore.plugin.common.CustomGatherers;
 import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
-import org.xcore.plugin.integration.top.LeaderboardEntry;
-import org.xcore.plugin.integration.top.LeaderboardPage;
-import org.xcore.plugin.integration.top.LeaderboardPageRequest;
 import org.xcore.plugin.integration.top.TopCategoryProvider;
 import org.xcore.plugin.integration.top.TopCategoryRegistry;
 import org.xcore.plugin.model.LeaderboardCursor;
@@ -15,11 +12,8 @@ import org.xcore.plugin.model.LeaderboardSlice;
 import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.model.enums.TopCategory;
 import org.xcore.plugin.service.top.BuiltInTopCategoryProvider;
-import org.xcore.plugin.service.top.LeaderboardCursorCodec;
 
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 import java.util.Optional;
 
 @Singleton
@@ -49,9 +43,7 @@ public class TopMenuService {
     }
 
     private void registerBuiltInProviders() {
-        boolean isMini = isMiniPvPServer();
-        categoryRegistry.registerIfAbsent(new BuiltInTopCategoryProvider(TopCategory.MINI_PVP, isMini ? 20 : 10, this));
-        categoryRegistry.registerIfAbsent(new BuiltInTopCategoryProvider(TopCategory.PLAYTIME, isMini ? 10 : 20, this));
+        categoryRegistry.registerIfAbsent(new BuiltInTopCategoryProvider(TopCategory.PLAYTIME, isMiniPvPServer() ? 10 : 20, this));
     }
 
     public TopCategoryRegistry categoryRegistry() {
@@ -63,66 +55,7 @@ public class TopMenuService {
     }
 
     public Optional<TopCategoryProvider> resolveDefaultProvider() {
-        TopCategory enumDefault = resolveDefaultCategory();
-        String fallbackId = enumDefault != null ? enumDefault.name() : null;
-        return categoryRegistry.resolveDefault(fallbackId);
-    }
-
-    public LeaderboardPage loadPage(LeaderboardPageRequest request) {
-        Objects.requireNonNull(request, "request");
-        String categoryId = request.categoryId();
-
-        TopCategory enumCat = parseEnumCategory(categoryId);
-        if (enumCat != null) {
-            LeaderboardCursor cursor = LeaderboardCursorCodec.decode(request.cursor());
-            TopCursorPage cursorPage = loadCursorPage(enumCat, cursor, request.page(), request.pageSize(), request.viewerData());
-            return adaptToLeaderboardPage(cursorPage);
-        }
-
-        TopCategoryProvider provider = categoryRegistry.resolve(categoryId)
-                .orElseThrow(() -> new IllegalArgumentException("Unknown top category provider: " + categoryId));
-        return provider.loadPage(request);
-    }
-
-    private TopCategory parseEnumCategory(String value) {
-        if (value == null || value.isBlank()) return null;
-        try {
-            return TopCategory.valueOf(value);
-        } catch (IllegalArgumentException e) {
-            return null;
-        }
-    }
-
-    private LeaderboardPage adaptToLeaderboardPage(TopCursorPage cursorPage) {
-        List<LeaderboardEntry> entries = new ArrayList<>();
-        for (int i = 0; i < cursorPage.players().size(); i++) {
-            PlayerData player = cursorPage.players().get(i);
-            int rank = cursorPage.displayRank(i);
-            entries.add(new LeaderboardEntry(
-                    player.uuid,
-                    rank,
-                    player.nickname != null ? player.nickname : player.uuid,
-                    String.valueOf(player.pvpRating),
-                    java.util.Map.of(),
-                    ""
-            ));
-        }
-        return new LeaderboardPage(
-                cursorPage.currentPage(),
-                entries,
-                cursorPage.hasNext(),
-                LeaderboardCursorCodec.encode(cursorPage.nextCursor()),
-                cursorPage.totalEntries(),
-                cursorPage.selfRank()
-        );
-    }
-
-    public TopCategory resolveDefaultCategory() {
-        if (isMiniPvPServer()) {
-            return TopCategory.MINI_PVP;
-        }
-
-        return TopCategory.PLAYTIME;
+        return categoryRegistry.resolveDefault(TopCategory.PLAYTIME.name());
     }
 
     private boolean isMiniPvPServer() {
@@ -138,7 +71,7 @@ public class TopMenuService {
                                         int page,
                                         int pageSize,
                                         PlayerData viewerData) {
-        TopCategory resolvedCategory = category == null ? resolveDefaultCategory() : category;
+        TopCategory resolvedCategory = category == null ? TopCategory.PLAYTIME : category;
         int safePageSize = Math.max(1, pageSize);
         int safePage = Math.max(1, page);
         long version = topMenuCacheService.currentVersion();

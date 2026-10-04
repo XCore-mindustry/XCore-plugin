@@ -1,5 +1,7 @@
 package org.xcore.plugin.ui;
 
+import org.xcore.plugin.concurrent.Async;
+import org.xcore.plugin.concurrent.InlineStorageExecutor;
 import com.ospx.flubundle.Bundle;
 import jakarta.inject.Provider;
 import mindustry.gen.Player;
@@ -58,7 +60,8 @@ class TopMenuTest {
         when(sessionProvider.get()).thenReturn(sessionService);
         menuService = new MenuService(sessionProvider, gateway);
 
-        topMenu = new TopMenu(new TomlSecretsConfig(), sessionService, menuService, topMenuService, playerMenu, registry);
+        topMenu = new TopMenu(new TomlSecretsConfig(), sessionService, menuService, topMenuService, playerMenu, registry,
+                new Async(InlineStorageExecutor.create(), Runnable::run));
         topMenu.init();
 
         Player player = Player.create();
@@ -107,11 +110,53 @@ class TopMenuTest {
     @DisplayName("top with default category opens reactive UI")
     void top_defaultCategory_opensReactiveUi() {
         registerMockProvider("MINI_PVP", 20);
-        when(topMenuService.resolveDefaultCategory()).thenReturn(TopCategory.MINI_PVP);
+        registry.setDefaultCategory("MINI_PVP");
 
         topMenu.top("viewer-1");
 
         verify(gateway).menuBuilder(eq(session.player), anyInt(), anyLong(), any(), anyBoolean(), anyBoolean(), anyBoolean(), any());
+    }
+
+    /** A menu whose results wait in {@code mainThread} until the test delivers them. */
+    private TopMenu deferredMenu(java.util.Deque<Runnable> mainThread) {
+        return new TopMenu(new TomlSecretsConfig(), sessionService, menuService, topMenuService, playerMenu, registry,
+                new Async(InlineStorageExecutor.create(), mainThread::add));
+    }
+
+    @Test
+    @DisplayName("a leaderboard that finishes loading after the player opened something else is not shown")
+    void openTopUi_dropsResultSupersededByAnotherMenu() {
+        registerMockProvider("PLAYTIME", 20);
+        java.util.Deque<Runnable> mainThread = new java.util.ArrayDeque<>();
+
+        deferredMenu(mainThread).openTopUi(session, "PLAYTIME");
+        menuService.openTextPrompt(session, "title", "content", 16, "", false, value -> { }, () -> { });
+        mainThread.forEach(Runnable::run);
+
+        verify(gateway, never()).menuBuilder(any(), anyInt(), anyLong(), any(), anyBoolean(), anyBoolean(),
+                anyBoolean(), any());
+        assertThat(session.activeUiSession()).isNull();
+        assertThat(session.activePrompt()).isNotNull();
+    }
+
+    @Test
+    @DisplayName("asking for the leaderboard twice opens it once, for the later request")
+    void openTopUi_opensOnlyTheLatestRequest() {
+        registerMockProvider("PLAYTIME", 20);
+        registerMockProvider("CUSTOM_SEASON", 10);
+        java.util.Deque<Runnable> mainThread = new java.util.ArrayDeque<>();
+        TopMenu menu = deferredMenu(mainThread);
+
+        menu.openTopUi(session, "PLAYTIME");
+        menu.openTopUi(session, "CUSTOM_SEASON");
+        mainThread.forEach(Runnable::run);
+
+        verify(gateway, times(1)).menuBuilder(eq(session.player), anyInt(), anyLong(), any(), anyBoolean(),
+                anyBoolean(), anyBoolean(), any());
+        @SuppressWarnings("unchecked")
+        var ui = (org.xcore.ui.runtime.UiSession<TopUiController.TopModel, TopUiController.TopEvent>)
+                session.activeUiSession();
+        assertThat(ui.model().selectedCategoryId()).isEqualTo("CUSTOM_SEASON");
     }
 
     @Test
@@ -139,7 +184,7 @@ class TopMenuTest {
     void openTopUi_mountsController() {
         registerMockProvider("MINI_PVP", 10);
 
-        topMenu.openTopUi(session, "MINI_PVP", 1, null, new ArrayDeque<>());
+        topMenu.openTopUi(session, "MINI_PVP", null, 1, null, new ArrayDeque<>());
 
         assertThat(session.activeUiSession()).isNotNull();
         assertThat(session.activeUiSession().model()).isInstanceOf(TopUiController.TopModel.class);

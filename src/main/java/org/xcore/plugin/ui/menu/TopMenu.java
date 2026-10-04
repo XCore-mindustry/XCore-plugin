@@ -1,5 +1,6 @@
 package org.xcore.plugin.ui.menu;
 
+import arc.util.Log;
 import io.avaje.inject.PostConstruct;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
@@ -19,7 +20,6 @@ import org.xcore.plugin.ui.route.MenuRoute;
 
 import java.util.ArrayDeque;
 import java.util.Deque;
-import java.util.Optional;
 
 @Singleton
 public class TopMenu extends Menu {
@@ -46,23 +46,6 @@ public class TopMenu extends Menu {
         this.categoryRegistry = initRegistry(categoryRegistry, topMenuService);
     }
 
-    public TopMenu(TomlSecretsConfig secretsConfig,
-                   SessionService sessionService,
-                   MenuService menuService,
-                   TopMenuService topMenuService,
-                   PlayerMenu playerMenu,
-                   TopCategoryRegistry categoryRegistry) {
-        this(secretsConfig, sessionService, menuService, topMenuService, playerMenu, categoryRegistry, null);
-    }
-
-    public TopMenu(TomlSecretsConfig secretsConfig,
-                   SessionService sessionService,
-                   MenuService menuService,
-                   TopMenuService topMenuService,
-                   PlayerMenu playerMenu) {
-        this(secretsConfig, sessionService, menuService, topMenuService, playerMenu, null, null);
-    }
-
     private static TopCategoryRegistry initRegistry(TopCategoryRegistry registry, TopMenuService topMenuService) {
         TopCategoryRegistry effective = registry;
         if (effective == null && topMenuService != null) {
@@ -71,7 +54,6 @@ public class TopMenu extends Menu {
         if (effective == null) {
             effective = new TopCategoryRegistry();
         }
-        effective.registerIfAbsent(new BuiltInTopCategoryProvider(TopCategory.MINI_PVP, 20, topMenuService));
         effective.registerIfAbsent(new BuiltInTopCategoryProvider(TopCategory.PLAYTIME, 10, topMenuService));
         return effective;
     }
@@ -89,22 +71,11 @@ public class TopMenu extends Menu {
     }
 
     public void top(String uuid) {
-        Optional<String> customDefault = categoryRegistry.defaultCategoryId();
-        if (customDefault.isPresent()) {
-            topById(uuid, customDefault.get(), 1);
-        } else {
-            top(uuid, null, 1);
-        }
+        topById(uuid, null, 1);
     }
 
     public void top(String uuid, TopCategory category, int page) {
-        Session session = sessionService.get(uuid);
-        if (session == null || session.data == null) return;
-        session.clear();
-
-        TopCategory resolvedCategory = category == null ? topMenuService.resolveDefaultCategory() : category;
-        String catId = resolvedCategory != null ? resolvedCategory.name() : "MINI_PVP";
-        openTopUi(session, catId, page, null, null);
+        topById(uuid, category != null ? category.name() : null, page);
     }
 
     public void topById(String uuid, String categoryId, int page) {
@@ -114,11 +85,12 @@ public class TopMenu extends Menu {
 
         String resolvedId = categoryId;
         if (resolvedId == null || resolvedId.isBlank()) {
-            var defaultProvider = categoryRegistry.resolveDefault(null);
-            resolvedId = defaultProvider.map(TopCategoryProvider::id).orElse("MINI_PVP");
+            resolvedId = categoryRegistry.resolveDefault(TopCategory.PLAYTIME.name())
+                    .map(TopCategoryProvider::id)
+                    .orElse(TopCategory.PLAYTIME.name());
         }
 
-        openTopUi(session, resolvedId, page, null, null);
+        openTopUi(session, resolvedId, null, page, null, null);
     }
 
     public void categories(String uuid, TopCategory currentCategory) {
@@ -130,10 +102,17 @@ public class TopMenu extends Menu {
     }
 
     public void openTopUi(Session session, String categoryId) {
-        openTopUi(session, categoryId, 1, null, null);
+        openTopUi(session, categoryId, null, 1, null, null);
     }
 
-    public void openTopUi(Session session, String categoryId, int page, String cursor, Deque<String> backStack) {
+    /**
+     * Opens the leaderboard on the given page. The page is read off the game thread, so the
+     * dialog appears a moment after the call.
+     *
+     * @param scopeId one of the category's scopes (a season), {@code null} for the current one
+     */
+    public void openTopUi(Session session, String categoryId, String scopeId, int page, String cursor,
+                          Deque<String> backStack) {
         if (session == null || session.player == null) return;
         session.clear();
 
@@ -145,7 +124,18 @@ public class TopMenu extends Menu {
                 async,
                 session
         );
-        var initialModel = controller.createInitialModel(categoryId, page, cursor, backStack);
-        menuService.openUi(session, controller, initialModel);
+        var query = controller.query(categoryId, scopeId, page, cursor, backStack);
+        var viewer = session.data;
+        long requested = session.nextUiVersion();
+        async.supply(() -> controller.fetch(query, viewer)).thenMain((data, error) -> {
+            if (session.uiVersion() != requested) {
+                return; // The player opened something else while this was loading.
+            }
+            if (error != null) {
+                Log.err("Failed to open top category " + query.categoryId(), error);
+                return;
+            }
+            menuService.openUi(session, controller, controller.model(data));
+        });
     }
 }

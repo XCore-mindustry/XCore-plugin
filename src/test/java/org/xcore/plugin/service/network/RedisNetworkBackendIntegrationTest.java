@@ -15,6 +15,7 @@ import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatMessageV1;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
+import org.xcore.protocol.generated.messages.rating.RatingMessages.RatingAccountsMergeRequestV1;
 import org.xcore.protocol.generated.messages.maps.MapsMessages.MapsListRequestV1;
 import org.xcore.protocol.generated.messages.maps.MapsMessages.MapsListResponseV1;
 import org.xcore.protocol.generated.messages.maps.MapsMessages.MapsLoadCommandV1;
@@ -42,6 +43,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @Testcontainers(disabledWithoutDocker = true)
 class RedisNetworkBackendIntegrationTest {
@@ -84,6 +86,29 @@ class RedisNetworkBackendIntegrationTest {
 
             assertThat(messages).isEmpty();
         }
+    }
+
+    @Test
+    @DisplayName("sendAwait returns once the event is stored and fails when Redis cannot take it")
+    void sendAwaitConfirmsOrFails() {
+        TomlXcoreConfig config = baseConfig("alpha");
+        requesterBackend = new RedisNetworkBackend(config);
+
+        assertThatThrownBy(() -> requesterBackend.sendAwait(
+                new ChatMessageV1("tester", "lost", "alpha"), java.time.Duration.ofSeconds(1)))
+                .isInstanceOf(IllegalStateException.class);
+
+        requesterBackend.connect();
+        requesterBackend.sendAwait(new ChatMessageV1("tester", "hello", "alpha"), java.time.Duration.ofSeconds(5));
+
+        assertThat(requesterBackend.metricsSnapshot().getOrDefault("published_events", 0L)).isEqualTo(1L);
+        try (RedisClient client = RedisClient.create(config.transport.redis.url);
+             StatefulRedisConnection<String, String> connection = client.connect()) {
+            assertThat(connection.sync().xlen("xcore:evt:chat:message")).isEqualTo(1L);
+        }
+
+        assertThatThrownBy(() -> requesterBackend.sendAwait(new Object(), java.time.Duration.ofSeconds(1)))
+                .isInstanceOf(IllegalStateException.class);
     }
 
     @Test
@@ -519,6 +544,51 @@ class RedisNetworkBackendIntegrationTest {
 
         listSubscription.unsubscribe();
         removeSubscription.unsubscribe();
+    }
+
+    @Test
+    @DisplayName("a refused rpc request is answered with status=error and the reason")
+    void rpcRespondErrorCarriesStatusAndReason() throws InterruptedException {
+        TomlXcoreConfig serverConfig = baseConfig("target");
+        serverBackend = new RedisNetworkBackend(serverConfig);
+        serverBackend.connect();
+
+        Subscription<RatingAccountsMergeRequestV1> subscription = serverBackend.subscribe(
+                RatingAccountsMergeRequestV1.class,
+                request -> serverBackend.respondError(request, "REJECTED", "nothing to merge"));
+
+        try (RedisClient client = RedisClient.create(serverConfig.transport.redis.url);
+             StatefulRedisConnection<String, String> connection = client.connect()) {
+            long now = System.currentTimeMillis();
+            connection.sync().xadd("xcore:rpc:req:target", java.util.Map.ofEntries(
+                    java.util.Map.entry("schema_version", "1"),
+                    java.util.Map.entry("rpc_type", "rating.accounts.merge.request"),
+                    java.util.Map.entry("correlation_id", "c-merge"),
+                    java.util.Map.entry("request_id", "r-merge"),
+                    java.util.Map.entry("reply_to", "xcore:rpc:resp:discord"),
+                    java.util.Map.entry("requested_by", "discord-bot"),
+                    java.util.Map.entry("server", "target"),
+                    java.util.Map.entry("timeout_ms", "5000"),
+                    java.util.Map.entry("created_at", String.valueOf(now)),
+                    java.util.Map.entry("expires_at", String.valueOf(now + 10_000)),
+                    java.util.Map.entry("payload_json",
+                            "{\"messageType\":\"rating.accounts.merge.request\",\"messageVersion\":1,"
+                                    + "\"server\":\"target\",\"sourceUuid\":\"a\",\"targetUuid\":\"b\"}")
+            ));
+
+            waitForMetricAtLeast("rpc_responses", 1L, serverBackend, 5);
+
+            List<StreamMessage<String, String>> replies = connection.sync().xread(
+                    XReadArgs.StreamOffset.from("xcore:rpc:resp:discord", "0-0"));
+            assertThat(replies).hasSize(1);
+            var reply = replies.get(0).getBody();
+            assertThat(reply.get("correlation_id")).isEqualTo("c-merge");
+            assertThat(reply.get("status")).isEqualTo("error");
+            assertThat(reply.get("error_code")).isEqualTo("REJECTED");
+            assertThat(reply.get("error_message")).isEqualTo("nothing to merge");
+        }
+
+        subscription.unsubscribe();
     }
 
     @Test

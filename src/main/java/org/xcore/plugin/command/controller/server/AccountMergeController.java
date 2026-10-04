@@ -75,7 +75,6 @@ public class AccountMergeController implements CloudServerController {
             PLog.info("  Source (Closed): #@ '@' (UUID: @)", s.pid, s.nickname, s.uuid);
             PLog.info("  Target (Active): #@ '@' (UUID: @)", tAfter.pid, tAfter.nickname, tAfter.uuid);
             PLog.info("  Playtime:        @m + @m -> @m", s.totalPlayTime, tBefore.totalPlayTime, tAfter.totalPlayTime);
-            PLog.info("  PvP Rating:      @ vs @ -> @", s.pvpRating, tBefore.pvpRating, tAfter.pvpRating);
             PLog.info("  Hexed Points:    @ + @ -> @ (Rank: @)", s.hexedPoints, tBefore.hexedPoints, tAfter.hexedPoints, tAfter.hexedRank().name());
             PLog.info("  Badges:          total unlocked: @", tAfter.unlockedBadges != null ? tAfter.unlockedBadges.size() : 0);
             PLog.info("  Games Updated:   @ matches", result.gamesTransferred());

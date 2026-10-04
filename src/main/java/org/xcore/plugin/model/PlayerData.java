@@ -54,14 +54,8 @@ public class PlayerData extends ModelData {
     @BsonProperty("show_discord_relay")
     @Builder.Default public Boolean discordRelayVisible = true;
 
-    @BsonProperty("pvp_rating")
-    @Builder.Default public int pvpRating = 1000;
     @BsonProperty("legacy_pvp_rating")
     @Builder.Default public int legacyPvpRating = 0;
-    @BsonProperty("pvp_matches")
-    @Builder.Default public int pvpMatches = 0;
-    @BsonProperty("pvp_wins")
-    @Builder.Default public int pvpWins = 0;
     @BsonProperty("hexed_rank")
     @Builder.Default public int hexedRank = 0;
     @BsonProperty("hexed_points")

@@ -8,6 +8,7 @@ import org.xcore.plugin.concurrent.Async;
 import org.xcore.plugin.config.TomlSecretsConfig;
 import org.xcore.plugin.database.repository.GameDataRepository;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
+import org.xcore.plugin.integration.profile.ProfileSectionRegistry;
 import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.model.PlayerStatsOverview;
 import org.xcore.plugin.model.enums.TopCategory;
@@ -29,6 +30,7 @@ public class PlayerMenu extends Menu {
     private final PlayerDataRepository playerDataRepository;
     private final Async async;
     private final AuditHistoryMenu auditHistoryMenu;
+    private final ProfileSectionRegistry profileSections;
 
     @Inject
     public PlayerMenu(TomlSecretsConfig secretsConfig,
@@ -40,8 +42,10 @@ public class PlayerMenu extends Menu {
                       PlayerProfileSettingsService profileSettings,
                       AuditHistoryMenu auditHistoryMenu,
                       MenuService menuService,
-                      Async async) {
+                      Async async,
+                      ProfileSectionRegistry profileSections) {
         super(secretsConfig, sessionService);
+        this.profileSections = profileSections;
         this.bundle = bundle;
         this.profileSettings = profileSettings;
         this.playerDisplayService = playerDisplayService;
@@ -61,7 +65,7 @@ public class PlayerMenu extends Menu {
                       AuditHistoryMenu auditHistoryMenu,
                       MenuService menuService,
                       Async async) {
-        this(secretsConfig, sessionService, gameDataRepository, null, bundle, playerDisplayService, profileSettings, auditHistoryMenu, menuService, async);
+        this(secretsConfig, sessionService, gameDataRepository, null, bundle, playerDisplayService, profileSettings, auditHistoryMenu, menuService, async, null);
     }
 
     public PlayerMenu(TomlSecretsConfig secretsConfig,
@@ -72,7 +76,7 @@ public class PlayerMenu extends Menu {
                       PlayerProfileSettingsService profileSettings,
                       AuditHistoryMenu auditHistoryMenu,
                       MenuService menuService) {
-        this(secretsConfig, sessionService, gameDataRepository, null, bundle, playerDisplayService, profileSettings, auditHistoryMenu, menuService, null);
+        this(secretsConfig, sessionService, gameDataRepository, null, bundle, playerDisplayService, profileSettings, auditHistoryMenu, menuService, null, null);
     }
 
     @PostConstruct
@@ -93,15 +97,16 @@ public class PlayerMenu extends Menu {
     }
 
     public void openProfileUi(Session session, PlayerData targetData) {
-        openProfileUi(session, targetData, PlayerProfileUiController.Tab.OVERVIEW, null, null);
+        openProfileUi(session, targetData, PlayerProfileUiController.Tab.OVERVIEW, null);
     }
 
     public void openProfileUi(Session session, PlayerData targetData, PlayerProfileUiController.Tab tab) {
-        openProfileUi(session, targetData, tab, null, null);
+        openProfileUi(session, targetData, tab, null);
     }
 
+    /** @param preloaded what is already known about the target; {@code null} to read it after opening */
     public void openProfileUi(Session session, PlayerData targetData, PlayerProfileUiController.Tab tab,
-                             PlayerStatsOverview preloadedStats, Integer preloadedHexedTop) {
+                             ProfileDetails preloaded) {
         if (session == null || session.player == null) return;
         session.clear();
 
@@ -113,38 +118,44 @@ public class PlayerMenu extends Menu {
         }
 
         var controller = new PlayerProfileUiController(
-                this, auditHistoryMenu, sessionService, playerDisplayService,
-                playerDataRepository, gameDataRepository, async, session, targetData
+                this, auditHistoryMenu, sessionService, playerDisplayService, session, targetData
         );
 
-        var initialModel = controller.createInitialModel(tab, preloadedStats, preloadedHexedTop);
+        var initialModel = controller.createInitialModel(tab, preloaded);
         menuService.openUi(session, controller, initialModel);
 
-        if (preloadedStats == null && async != null && session.player != null) {
-            async.forPlayer(session.player, () -> {
-                Integer hexedTop = playerDataRepository != null
-                        ? playerDataRepository.findTopRank(TopCategory.HEXED, targetData)
-                        : (session.playerDataRepository != null
-                                ? session.playerDataRepository.findTopRank(TopCategory.HEXED, targetData)
-                                : null);
-                PlayerStatsOverview stats = gameDataRepository != null
-                        ? gameDataRepository.aggregatePlayerStatsOverview(targetData.uuid)
-                        : null;
-                return new ProfileDataBundle(stats, hexedTop);
-            }, (player, bundle) -> {
-                var active = session.activeUiSession();
-                if (active != null && active.model() instanceof PlayerProfileUiController.ProfileModel) {
-                    @SuppressWarnings("unchecked")
-                    var profileSession = (org.xcore.ui.runtime.UiSession<PlayerProfileUiController.ProfileModel, PlayerProfileUiController.ProfileEvent>) active;
-                    profileSession.dispatch(new PlayerProfileUiController.ProfileEvent.StatsLoaded(
-                            targetData.uuid, bundle.stats(), bundle.hexedTop()
-                    ));
-                }
-            });
+        if (preloaded == null) {
+            loadDetails(session, targetData);
         }
     }
 
-    private record ProfileDataBundle(PlayerStatsOverview stats, Integer hexedTop) {}
+    /**
+     * Reads the storage-backed part of {@code target}'s profile off the game thread and hands
+     * it to the profile dialog {@code session} has open, if it is still showing that player.
+     */
+    public void loadDetails(Session session, PlayerData target) {
+        if (async == null || session == null || session.player == null || target == null) return;
+
+        async.forPlayer(session.player, () -> details(session, target), (player, details) -> {
+            var active = session.activeUiSession();
+            if (active != null && active.model() instanceof PlayerProfileUiController.ProfileModel) {
+                @SuppressWarnings("unchecked")
+                var profileSession = (org.xcore.ui.runtime.UiSession<PlayerProfileUiController.ProfileModel, PlayerProfileUiController.ProfileEvent>) active;
+                profileSession.dispatch(new PlayerProfileUiController.ProfileEvent.DetailsLoaded(target.uuid, details));
+            }
+        });
+    }
+
+    /** Blocking. */
+    private ProfileDetails details(Session session, PlayerData target) {
+        PlayerDataRepository players = playerDataRepository != null ? playerDataRepository : session.playerDataRepository;
+        Integer hexedTop = players != null ? players.findTopRank(TopCategory.HEXED, target) : null;
+        PlayerStatsOverview stats = gameDataRepository != null
+                ? gameDataRepository.aggregatePlayerStatsOverview(target.uuid)
+                : null;
+        return new ProfileDetails(stats, hexedTop,
+                profileSections != null ? profileSections.load(target) : java.util.List.of());
+    }
 
     public void players(String uuid, int page) {
         Session session = sessionService.get(uuid);

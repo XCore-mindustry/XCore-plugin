@@ -144,6 +144,7 @@ class PlayerSettingsUiClientIntegrationTest {
                 profileSettings,
                 null,
                 menuService,
+                null,
                 null
         );
     }

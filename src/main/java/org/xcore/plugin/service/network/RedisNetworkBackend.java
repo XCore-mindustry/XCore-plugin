@@ -18,6 +18,7 @@ import jakarta.inject.Singleton;
 import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.protocol.generated.runtime.ProtocolPayload;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -26,8 +27,10 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.atomic.AtomicLong;
@@ -176,6 +179,36 @@ public final class RedisNetworkBackend {
         }
     }
 
+    /**
+     * Publishes an event and waits until Redis has stored it. Blocking; for the few events
+     * whose sender must know they were not lost.
+     *
+     * @throws IllegalStateException when Redis is unavailable, refuses the event or does not
+     *                               confirm it within {@code timeout}
+     */
+    public void sendAwait(Object event, Duration timeout) {
+        RedisAsyncCommands<String, String> asyncCommands =
+                connectionManager.hasAsyncCommands() ? connectionManager.asyncCommands() : null;
+        if (asyncCommands == null) {
+            publishFailures.incrementAndGet();
+            throw new IllegalStateException("Redis is not connected");
+        }
+        try {
+            var route = router.route(event, config.server.name);
+            streamSupport.xaddWithTrimAsync(asyncCommands, route.streamKey(),
+                            envelopeFactory.eventFields(route, payloadJson(event), System.currentTimeMillis()))
+                    .get(timeout.toMillis(), TimeUnit.MILLISECONDS);
+            publishedEvents.incrementAndGet();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            publishFailures.incrementAndGet();
+            throw new IllegalStateException("Interrupted while publishing to Redis", e);
+        } catch (ExecutionException | TimeoutException | RuntimeException e) {
+            publishFailures.incrementAndGet();
+            throw new IllegalStateException("Redis publish was not confirmed: " + e, e);
+        }
+    }
+
     public <T> Subscription<T> subscribe(Class<T> type, Cons<T> listener) {
         if (!supportsSubscribeType(type)) {
             throw new UnsupportedOperationException("Redis subscribe does not support type: " + type.getName());
@@ -268,6 +301,18 @@ public final class RedisNetworkBackend {
     }
 
     public void respond(Object request, Object response) {
+        sendRpcResponse(request, context ->
+                envelopeFactory.rpcResponseFields(context, payloadJson(response), System.currentTimeMillis()));
+    }
+
+    /** Answers a request with a failure the caller can tell apart from a successful reply. */
+    public void respondError(Object request, String errorCode, String errorMessage) {
+        sendRpcResponse(request, context ->
+                envelopeFactory.rpcErrorFields(context, errorCode, errorMessage, System.currentTimeMillis()));
+    }
+
+    private void sendRpcResponse(Object request,
+                                 java.util.function.Function<RedisRpcTracker.RpcInboundContext, Map<String, String>> fields) {
         RedisRpcTracker.RpcInboundContext context = rpcTracker.take(request);
         if (context == null) {
             Log.warn("Redis respond context is missing for request: @", request.getClass().getName());
@@ -283,8 +328,7 @@ public final class RedisNetworkBackend {
                 return;
             }
 
-            streamSupport.xaddWithTrimAsync(asyncCommands, context.replyTo(),
-                    envelopeFactory.rpcResponseFields(context, payloadJson(response), System.currentTimeMillis()))
+            streamSupport.xaddWithTrimAsync(asyncCommands, context.replyTo(), fields.apply(context))
                     .whenComplete((messageId, error) -> {
                         if (error == null) {
                             rpcResponses.incrementAndGet();

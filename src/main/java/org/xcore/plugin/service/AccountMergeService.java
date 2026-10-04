@@ -20,6 +20,7 @@ import org.xcore.plugin.database.repository.MuteDataRepository;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
 import org.xcore.plugin.gamemode.hexed.HexedRanks;
 import org.xcore.plugin.model.*;
+import org.xcore.plugin.rating.ladder.LadderService;
 import org.xcore.plugin.service.moderation.AuditService;
 import org.xcore.plugin.session.Session;
 import org.xcore.plugin.session.SessionService;
@@ -83,6 +84,7 @@ public class AccountMergeService {
     private final NetworkService networkService;
     private final FindService findService;
     private final TopMenuCacheService topMenuCacheService;
+    private final LadderService ladderService;
     private final TomlXcoreConfig config;
 
     @Inject
@@ -98,6 +100,7 @@ public class AccountMergeService {
             NetworkService networkService,
             FindService findService,
             TopMenuCacheService topMenuCacheService,
+            LadderService ladderService,
             TomlXcoreConfig config
     ) {
         this.mongoClient = mongoClient;
@@ -111,6 +114,7 @@ public class AccountMergeService {
         this.networkService = networkService;
         this.findService = findService;
         this.topMenuCacheService = topMenuCacheService;
+        this.ladderService = ladderService;
         this.config = config;
     }
 
@@ -125,9 +129,10 @@ public class AccountMergeService {
             NetworkService networkService,
             FindService findService,
             TopMenuCacheService topMenuCacheService,
+            LadderService ladderService,
             TomlXcoreConfig config
     ) {
-        this(null, playerDataRepository, gameDataRepository, banDataRepository, muteDataRepository, auditService, sessionService, playerDisplayService, networkService, findService, topMenuCacheService, config);
+        this(null, playerDataRepository, gameDataRepository, banDataRepository, muteDataRepository, auditService, sessionService, playerDisplayService, networkService, findService, topMenuCacheService, ladderService, config);
     }
 
     public CompletableFuture<MergeResult> mergeAsync(MergeRequest request) {
@@ -220,9 +225,14 @@ public class AccountMergeService {
             }
         }
 
-        // 6. Invalidate top menu cache
+        // 6. Invalidate top menu cache and re-read the standings this server has cached
         if (topMenuCacheService != null) {
             topMenuCacheService.invalidateAllAsync();
+        }
+        try {
+            ladderService.reloadCaches();
+        } catch (RuntimeException e) {
+            Log.warn("Failed to reload ladder standings after merge: @", e.getMessage());
         }
 
         PlayerData targetAfter = clonePlayerData(targetWorking);
@@ -234,10 +244,7 @@ public class AccountMergeService {
 
     private void consolidateData(PlayerData source, PlayerData target) {
         target.totalPlayTime += source.totalPlayTime;
-        target.pvpRating = Math.max(target.pvpRating, source.pvpRating);
         target.legacyPvpRating = Math.max(target.legacyPvpRating, source.legacyPvpRating);
-        target.pvpMatches += source.pvpMatches;
-        target.pvpWins += source.pvpWins;
         target.hexedPoints += source.hexedPoints;
         target.hexedRank = computeHexedRank(target.hexedPoints).ordinal();
 
@@ -422,7 +429,10 @@ public class AccountMergeService {
                 ? gameDataRepository.reassignPlayerMatches(session, oldSourceUuid, targetWorking.uuid)
                 : gameDataRepository.reassignPlayerMatches(oldSourceUuid, targetWorking.uuid);
 
-        // 4. Record AuditRecord within same transaction boundary
+        // 4. Fold ladder standings of every ladder and season into the target account
+        int standingsMerged = ladderService.mergePlayer(session, oldSourceUuid, targetWorking.uuid);
+
+        // 5. Record AuditRecord within same transaction boundary
         Map<String, String> auditDetails = new HashMap<>();
         auditDetails.put("source_pid", String.valueOf(sourceBefore.pid));
         auditDetails.put("source_uuid", oldSourceUuid);
@@ -433,6 +443,7 @@ public class AccountMergeService {
         auditDetails.put("playtime_added_minutes", String.valueOf(sourceBefore.totalPlayTime));
         auditDetails.put("hexed_points_added", String.valueOf(sourceBefore.hexedPoints));
         auditDetails.put("games_transferred", String.valueOf(gamesTransferred));
+        auditDetails.put("standings_merged", String.valueOf(standingsMerged));
         auditDetails.put("ban_transferred", String.valueOf(banTransferred));
         auditDetails.put("mute_transferred", String.valueOf(muteTransferred));
         auditDetails.put("atomic_transaction", String.valueOf(session != null));
@@ -481,7 +492,7 @@ public class AccountMergeService {
         dest.uuid = src.uuid;
         dest.pid = src.pid;
         dest.totalPlayTime = src.totalPlayTime;
-        dest.pvpRating = src.pvpRating;
+        dest.legacyPvpRating = src.legacyPvpRating;
         dest.hexedPoints = src.hexedPoints;
         dest.hexedRank = src.hexedRank;
         dest.unlockedBadges = src.unlockedBadges != null ? new HashSet<>(src.unlockedBadges) : new HashSet<>();
@@ -555,7 +566,7 @@ public class AccountMergeService {
         copy.translatorLanguage = original.translatorLanguage;
         copy.globalChatVisible = original.globalChatVisible;
         copy.discordRelayVisible = original.discordRelayVisible;
-        copy.pvpRating = original.pvpRating;
+        copy.legacyPvpRating = original.legacyPvpRating;
         copy.hexedRank = original.hexedRank;
         copy.hexedPoints = original.hexedPoints;
         copy.totalPlayTime = original.totalPlayTime;

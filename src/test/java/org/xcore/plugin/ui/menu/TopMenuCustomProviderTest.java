@@ -1,5 +1,7 @@
 package org.xcore.plugin.ui.menu;
 
+import org.xcore.plugin.concurrent.Async;
+import org.xcore.plugin.concurrent.InlineStorageExecutor;
 import com.ospx.flubundle.Bundle;
 import jakarta.inject.Provider;
 import mindustry.gen.Player;
@@ -65,7 +67,8 @@ class TopMenuCustomProviderTest {
 
         registry = new TopCategoryRegistry();
         topMenuService = new TopMenuService(tomlConfig, playerRepo, cacheService, registry);
-        topMenu = new TopMenu(secretsConfig, sessionService, menuService, topMenuService, playerMenu, registry);
+        topMenu = new TopMenu(secretsConfig, sessionService, menuService, topMenuService, playerMenu, registry,
+                new Async(InlineStorageExecutor.create(), Runnable::run));
         topMenu.init();
 
         Player player = Player.create();

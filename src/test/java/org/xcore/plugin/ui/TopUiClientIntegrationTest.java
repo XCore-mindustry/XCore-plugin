@@ -77,7 +77,6 @@ class TopUiClientIntegrationTest {
         PlayerData data = new PlayerData("viewer-uuid", true);
         data.pid = 42;
         data.nickname = "Alice";
-        data.pvpRating = 1350;
         data.totalPlayTime = 240;
 
         Bundle bundle = mock(Bundle.class);
@@ -127,7 +126,8 @@ class TopUiClientIntegrationTest {
         var cacheService = mock(TopMenuCacheService.class);
         TopMenuService topMenuService = new TopMenuService(tomlConfig, playerRepo, cacheService, registry);
 
-        topMenu = new TopMenu(new TomlSecretsConfig(), sessionService, menuService, topMenuService, playerMenu, registry);
+        topMenu = new TopMenu(new TomlSecretsConfig(), sessionService, menuService, topMenuService, playerMenu, registry,
+                new org.xcore.plugin.concurrent.Async(org.xcore.plugin.concurrent.InlineStorageExecutor.create(), Runnable::run));
         topMenu.init();
 
         Player player = Player.create();

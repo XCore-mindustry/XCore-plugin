@@ -1,122 +1,201 @@
 package org.xcore.plugin.gamemode.pvp.rating;
 
+import org.xcore.plugin.config.TomlSecretsConfig;
+import org.xcore.plugin.integration.profile.ProfileSectionRegistry;
+import org.xcore.plugin.rating.prize.InMemoryPrizeGrantRepository;
+import org.xcore.plugin.rating.season.InMemorySeasonStore;
+import org.xcore.plugin.rating.season.SeasonResolver;
+import org.xcore.plugin.rating.season.SeasonSchedule;
+import org.xcore.plugin.rating.view.LadderViews;
 import mindustry.game.Team;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.xcore.plugin.concurrent.Async;
+import org.xcore.plugin.concurrent.StorageExecutor;
+import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
 import org.xcore.plugin.integration.PlayerDisplayRefreshService;
+import org.xcore.plugin.integration.gamehistory.MatchHistoryRecord;
+import org.xcore.plugin.integration.idempotency.InMemoryIdempotencyLedger;
+import org.xcore.plugin.integration.top.TopCategoryRegistry;
 import org.xcore.plugin.localization.Localization;
 import org.xcore.plugin.model.PlayerData;
+import org.xcore.plugin.rating.ladder.InMemoryLadderStore;
+import org.xcore.plugin.rating.ladder.Ladder;
+import org.xcore.plugin.rating.ladder.LadderService;
+import org.xcore.plugin.rating.season.SeasonAnnouncer;
+import org.xcore.plugin.rating.ladder.LadderStanding;
 import org.xcore.plugin.service.GameDataService;
-import org.xcore.plugin.service.TopMenuCacheService;
 import org.xcore.plugin.session.Session;
 import org.xcore.plugin.session.SessionService;
 
-import java.util.concurrent.CompletableFuture;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 class MiniPvPRatingSettlerTest {
+    private MiniPvPMatchTracker tracker;
+    private InMemoryLadderStore store;
+    private Ladder ladder;
+    private SessionService sessionService;
+    private PlayerDataRepository playerRepo;
+    private PlayerDisplayRefreshService displayRefresh;
+    private GameDataService gameDataService;
+    private MiniPvPRatingSettler settler;
 
-    @Test
-    @DisplayName("settle skips settlement when match duration is under 30 seconds")
-    void settle_skipsWhenTooShort() {
-        MiniPvPMatchTracker tracker = mock(MiniPvPMatchTracker.class);
-        when(tracker.startedAt()).thenReturn(System.currentTimeMillis() - 10_000L); // 10 seconds ago
+    @BeforeEach
+    void setUp() {
+        tracker = new MiniPvPMatchTracker();
+        tracker.startMatch(null);
+        store = new InMemoryLadderStore();
+        sessionService = mock(SessionService.class);
+        playerRepo = mock(PlayerDataRepository.class);
+        displayRefresh = mock(PlayerDisplayRefreshService.class);
+        gameDataService = mock(GameDataService.class);
 
-        MiniPvPRatingSettler settler = new MiniPvPRatingSettler(
+        TomlXcoreConfig config = new TomlXcoreConfig();
+        config.server.name = "mini-pvp";
+        SeasonSchedule schedule = SeasonSchedule.from(new TomlSecretsConfig().rating.seasons);
+        MiniPvPLadder miniPvPLadder = new MiniPvPLadder(
+                new LadderService(store, new InMemoryIdempotencyLedger()),
+                new TopCategoryRegistry(), new ProfileSectionRegistry(),
+                new LadderViews(new InMemorySeasonStore(), new SeasonResolver(), schedule, playerRepo,
+                        new InMemoryPrizeGrantRepository()),
+                mock(SeasonAnnouncer.class), config);
+        ladder = miniPvPLadder.ladder();
+
+        settler = new MiniPvPRatingSettler(
                 tracker,
-                mock(SessionService.class),
-                mock(PlayerDataRepository.class),
-                mock(TopMenuCacheService.class),
-                mock(PlayerDisplayRefreshService.class),
-                mock(GameDataService.class),
-                mock(Async.class)
+                miniPvPLadder,
+                sessionService,
+                displayRefresh,
+                gameDataService,
+                // Storage work runs on real threads; the "game thread" continuation runs inline.
+                new Async(new StorageExecutor(4), Runnable::run)
         );
+    }
 
-        boolean settled = settler.settle(Team.sharded);
-        assertThat(settled).isFalse();
-        assertThat(settler.isSettled()).isFalse();
+    private void twoTeamsOfTwo(long startedAgoMs) {
+        long started = System.currentTimeMillis() - startedAgoMs;
+        tracker.setStartedAt(started);
+        tracker.trackParticipant(new MiniPvPMatchTracker.ParticipantInfo("p1", "Winner 1", Team.sharded.id, started, 0L));
+        tracker.trackParticipant(new MiniPvPMatchTracker.ParticipantInfo("p2", "Winner 2", Team.sharded.id, started, 0L));
+        tracker.trackParticipant(new MiniPvPMatchTracker.ParticipantInfo("p3", "Loser 1", Team.crux.id, started, 0L));
+        tracker.trackParticipant(new MiniPvPMatchTracker.ParticipantInfo("p4", "Loser 2", Team.crux.id, started, 0L));
+    }
+
+    private PlayerData onlinePlayer(String uuid, String nickname) {
+        Session session = mock(Session.class);
+        PlayerData data = new PlayerData(uuid, true);
+        data.nickname = nickname;
+        session.data = data;
+        when(session.locale()).thenReturn(mock(Localization.class));
+        when(sessionService.get(uuid)).thenReturn(session);
+        return data;
     }
 
     @Test
-    @DisplayName("settle applies rating changes, updates in-memory player data, and executes once")
-    void settle_successfulRoundSettlement() {
-        MiniPvPMatchTracker tracker = new MiniPvPMatchTracker();
-        tracker.startMatch(null);
+    @DisplayName("settle skips a match that ended before the minimum play time")
+    void settle_skipsWhenTooShort() {
+        twoTeamsOfTwo(10_000L);
 
-        long started = System.currentTimeMillis() - 120_000L; // 2 minutes ago
+        assertThat(settler.settle(Team.sharded).join()).isFalse();
+
+        assertThat(settler.isSettled()).isFalse();
+        assertThat(ladder.count()).isZero();
+        verifyNoInteractions(gameDataService);
+    }
+
+    @Test
+    @DisplayName("settle skips a match without an opposing team")
+    void settle_skipsWithoutOpponents() {
+        long started = System.currentTimeMillis() - 120_000L;
         tracker.setStartedAt(started);
-        var p1 = new MiniPvPMatchTracker.ParticipantInfo("p1", "Winner 1", Team.sharded.id, started, 0L);
-        var p2 = new MiniPvPMatchTracker.ParticipantInfo("p2", "Winner 2", Team.sharded.id, started, 0L);
-        var p3 = new MiniPvPMatchTracker.ParticipantInfo("p3", "Loser 1", Team.crux.id, started, 0L);
-        var p4 = new MiniPvPMatchTracker.ParticipantInfo("p4", "Loser 2", Team.crux.id, started, 0L);
+        tracker.trackParticipant(new MiniPvPMatchTracker.ParticipantInfo("p1", "Solo 1", Team.sharded.id, started, 0L));
+        tracker.trackParticipant(new MiniPvPMatchTracker.ParticipantInfo("p2", "Solo 2", Team.sharded.id, started, 0L));
 
-        tracker.trackParticipant(p1);
-        tracker.trackParticipant(p2);
-        tracker.trackParticipant(p3);
-        tracker.trackParticipant(p4);
+        assertThat(settler.settle(Team.sharded).join()).isFalse();
+        assertThat(settler.settle(Team.derelict).join()).isFalse();
+        assertThat(settler.settle(null).join()).isFalse();
 
-        SessionService sessionService = mock(SessionService.class);
-        PlayerDataRepository playerRepo = mock(PlayerDataRepository.class);
-        TopMenuCacheService topMenuCache = mock(TopMenuCacheService.class);
-        PlayerDisplayRefreshService displayRefresh = mock(PlayerDisplayRefreshService.class);
-        GameDataService gameDataService = mock(GameDataService.class);
-        Async async = mock(Async.class);
+        assertThat(ladder.count()).isZero();
+    }
 
-        when(playerRepo.updatePvpRatingAndStatsAsync(anyString(), anyInt(), anyBoolean()))
-                .thenReturn(CompletableFuture.completedFuture(true));
+    @Test
+    @DisplayName("settle writes the ladder, mirrors the legacy profile fields and notifies once")
+    void settle_successfulRoundSettlement() {
+        twoTeamsOfTwo(120_000L);
+        PlayerData winner = onlinePlayer("p1", "Winner 1");
+        PlayerData loser = onlinePlayer("p3", "Loser 1");
 
-        Session s1 = mock(Session.class);
-        PlayerData d1 = new PlayerData("p1", true);
-        d1.pvpRating = 1000;
-        s1.data = d1;
-        when(s1.locale()).thenReturn(mock(Localization.class));
-        when(sessionService.get("p1")).thenReturn(s1);
-
-        Session s3 = mock(Session.class);
-        PlayerData d3 = new PlayerData("p3", true);
-        d3.pvpRating = 1000;
-        s3.data = d3;
-        when(s3.locale()).thenReturn(mock(Localization.class));
-        when(sessionService.get("p3")).thenReturn(s3);
-
-        MiniPvPRatingSettler settler = new MiniPvPRatingSettler(
-                tracker,
-                sessionService,
-                playerRepo,
-                topMenuCache,
-                displayRefresh,
-                gameDataService,
-                async
-        );
-
-        boolean settled = settler.settle(Team.sharded);
-        assertThat(settled).isTrue();
+        assertThat(settler.settle(Team.sharded).join()).isTrue();
         assertThat(settler.isSettled()).isTrue();
 
-        // Winner rating increased
-        assertThat(d1.pvpRating).isGreaterThan(1000);
-        assertThat(d1.pvpMatches).isEqualTo(1);
-        assertThat(d1.pvpWins).isEqualTo(1);
+        // The ladder is the source of truth.
+        LadderStanding winnerStanding = store.find(MiniPvPLadder.LADDER_ID, Ladder.FIRST_SEASON, "p1").orElseThrow();
+        LadderStanding loserStanding = store.find(MiniPvPLadder.LADDER_ID, Ladder.FIRST_SEASON, "p3").orElseThrow();
+        assertThat(winnerStanding.rating()).isGreaterThan(1000);
+        assertThat(winnerStanding.matches()).isEqualTo(1);
+        assertThat(winnerStanding.wins()).isEqualTo(1);
+        assertThat(loserStanding.rating()).isLessThan(1000);
+        assertThat(loserStanding.wins()).isZero();
+        assertThat(ladder.count()).isEqualTo(4);
+        assertThat(ladder.cachedRating("p2")).isEqualTo(winnerStanding.rating());
 
-        // Loser rating decreased
-        assertThat(d3.pvpRating).isLessThan(1000);
-        assertThat(d3.pvpMatches).isEqualTo(1);
-        assertThat(d3.pvpWins).isEqualTo(0);
+        verifyNoInteractions(playerRepo);
 
-        // Exactly once: second settle call does nothing
-        boolean secondSettle = settler.settle(Team.sharded);
-        assertThat(secondSettle).isFalse();
+        verify(sessionService.get("p1").locale()).send(eq("pvp-match-settlement-win"), anyMap());
+        verify(sessionService.get("p3").locale()).send(eq("pvp-match-settlement-loss"), anyMap());
+        verify(displayRefresh).refreshAll();
 
-        // New round resets settled state
-        settler.onNewRound();
+        var history = org.mockito.ArgumentCaptor.forClass(MatchHistoryRecord.class);
+        verify(gameDataService).recordMatch(history.capture());
+        assertThat(history.getValue().participants()).hasSize(4);
+
+        // Exactly once: a second call for the same match does nothing.
+        assertThat(settler.settle(Team.sharded).join()).isFalse();
+        assertThat(ladder.standing("p1").matches()).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("the ledger refuses a match that was already settled, even after the round flag is reset")
+    void settle_ledgerBlocksResettlement() {
+        twoTeamsOfTwo(120_000L);
+        assertThat(settler.settle(Team.sharded).join()).isTrue();
+        int rating = ladder.rating("p1");
+
+        settler.onNewRound(); // the tracker still holds the same match
         assertThat(settler.isSettled()).isFalse();
+
+        assertThat(settler.settle(Team.sharded).join()).isFalse();
+        assertThat(ladder.rating("p1")).isEqualTo(rating);
+        assertThat(ladder.standing("p1").matches()).isEqualTo(1);
+        verify(gameDataService, times(1)).recordMatch(any());
+        verify(displayRefresh, times(1)).refreshAll();
+    }
+
+    @Test
+    @DisplayName("ratings carry over from the ladder into the next match")
+    void settle_usesLadderRatings() {
+        store.put(new LadderStanding(MiniPvPLadder.LADDER_ID, Ladder.FIRST_SEASON, "p3", 1600, 1600, 20, 15, Map.of()));
+        store.put(new LadderStanding(MiniPvPLadder.LADDER_ID, Ladder.FIRST_SEASON, "p4", 1600, 1600, 20, 15, Map.of()));
+        twoTeamsOfTwo(120_000L);
+
+        assertThat(settler.settle(Team.sharded).join()).isTrue();
+
+        // An even 2v2 pays each winner a quarter of the K-factor; an upset pays more.
+        assertThat(ladder.rating("p1") - 1000).isGreaterThan(8);
+        LadderStanding favourite = ladder.standing("p3");
+        assertThat(favourite.rating()).isLessThan(1600);
+        assertThat(favourite.peakRating()).isEqualTo(1600);
+        assertThat(favourite.matches()).isEqualTo(21);
+        assertThat(favourite.wins()).isEqualTo(15);
     }
 }

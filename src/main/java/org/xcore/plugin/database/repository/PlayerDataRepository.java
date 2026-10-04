@@ -57,7 +57,6 @@ public class PlayerDataRepository extends DataRepository<PlayerData> {
         collection.createIndex(new Document("nickname", 1));
         collection.createIndex(new Document("discord_id", 1));
         collection.createIndex(new Document("total_play_time", -1).append("pid", 1));
-        collection.createIndex(new Document("pvp_rating", -1).append("pid", 1));
         collection.createIndex(new Document("hexed_rank", -1).append("hexed_points", -1).append("pid", 1));
     }
 
@@ -155,6 +154,13 @@ public class PlayerDataRepository extends DataRepository<PlayerData> {
             return collection.find(session, eq("uuid", uuid)).first();
         }
         return collection.find(eq("uuid", uuid)).first();
+    }
+
+    public List<PlayerData> findByUuids(java.util.Collection<String> uuids) {
+        if (uuids == null || uuids.isEmpty()) {
+            return List.of();
+        }
+        return collection.find(Filters.in("uuid", uuids)).into(new ArrayList<>());
     }
 
     public java.util.concurrent.CompletionStage<PlayerData> findByUuidAsync(String uuid) {
@@ -422,30 +428,6 @@ public class PlayerDataRepository extends DataRepository<PlayerData> {
         return updateByUuidAsync(uuid, Updates.pull("blocked_private_uuids", blockedUuid));
     }
 
-    public boolean updatePvpRating(String uuid, int rating) {
-        return updateByUuid(uuid, Updates.set("pvp_rating", rating));
-    }
-
-    public java.util.concurrent.CompletionStage<Boolean> updatePvpRatingAsync(String uuid, int rating) {
-        return updateByUuidAsync(uuid, Updates.set("pvp_rating", rating));
-    }
-
-    public boolean updatePvpRatingAndStats(String uuid, int rating, boolean won) {
-        return updateByUuid(uuid, Updates.combine(
-                Updates.set("pvp_rating", rating),
-                Updates.inc("pvp_matches", 1),
-                Updates.inc("pvp_wins", won ? 1 : 0)
-        ));
-    }
-
-    public java.util.concurrent.CompletionStage<Boolean> updatePvpRatingAndStatsAsync(String uuid, int rating, boolean won) {
-        return updateByUuidAsync(uuid, Updates.combine(
-                Updates.set("pvp_rating", rating),
-                Updates.inc("pvp_matches", 1),
-                Updates.inc("pvp_wins", won ? 1 : 0)
-        ));
-    }
-
     public boolean updateHexedProgress(String uuid, int rank, int points) {
         return updateByUuid(uuid, Updates.combine(
                 Updates.set("hexed_rank", rank),
@@ -588,7 +570,6 @@ public class PlayerDataRepository extends DataRepository<PlayerData> {
         return switch (category) {
             case HEXED -> orderBy(descending("hexed_rank"), descending("hexed_points"), ascending("pid"));
             case PLAYTIME -> orderBy(descending("total_play_time"), ascending("pid"));
-            case MINI_PVP -> orderBy(descending("pvp_rating"), ascending("pid"));
         };
     }
 
@@ -610,13 +591,6 @@ public class PlayerDataRepository extends DataRepository<PlayerData> {
                     gt("total_play_time", playerData.totalPlayTime),
                     Filters.and(
                             eq("total_play_time", playerData.totalPlayTime),
-                            lt("pid", playerData.pid)
-                    )
-            );
-            case MINI_PVP -> Filters.or(
-                    gt("pvp_rating", playerData.pvpRating),
-                    Filters.and(
-                            eq("pvp_rating", playerData.pvpRating),
                             lt("pid", playerData.pid)
                     )
             );
@@ -643,13 +617,6 @@ public class PlayerDataRepository extends DataRepository<PlayerData> {
                             gt("pid", cursor.pid())
                     )
             );
-            case MINI_PVP -> Filters.or(
-                    lt("pvp_rating", cursor.primaryValue()),
-                    Filters.and(
-                            eq("pvp_rating", cursor.primaryValue()),
-                            gt("pid", cursor.pid())
-                    )
-            );
             case HEXED -> Filters.or(
                     lt("hexed_rank", cursor.primaryValue()),
                     Filters.and(
@@ -668,7 +635,6 @@ public class PlayerDataRepository extends DataRepository<PlayerData> {
     private LeaderboardCursor leaderboardCursor(TopCategory category, PlayerData playerData) {
         return switch (category) {
             case PLAYTIME -> new LeaderboardCursor(playerData.totalPlayTime, 0, playerData.pid);
-            case MINI_PVP -> new LeaderboardCursor(playerData.pvpRating, 0, playerData.pid);
             case HEXED -> new LeaderboardCursor(playerData.hexedRank, playerData.hexedPoints, playerData.pid);
         };
     }

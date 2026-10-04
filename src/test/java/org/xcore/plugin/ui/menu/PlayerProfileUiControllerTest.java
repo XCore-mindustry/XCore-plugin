@@ -11,6 +11,8 @@ import org.xcore.plugin.config.TomlSecretsConfig;
 import org.xcore.plugin.database.repository.GameDataRepository;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
 import org.xcore.plugin.gamemode.hexed.HexedRanks;
+import org.xcore.plugin.integration.profile.ProfileSection;
+import org.xcore.plugin.integration.profile.ProfileSectionView;
 import org.xcore.plugin.rating.RatingLeague;
 import org.xcore.plugin.model.AggregatedPlayerStats;
 import org.xcore.plugin.model.ModeStatsSummary;
@@ -35,6 +37,8 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 class PlayerProfileUiControllerTest {
+    private static final ProfileSectionView SECTION = local -> new ProfileSection(
+            "Duel: Titanium 1642", List.of("12 matches", "place 4"), List.of("Season 3 ends in 12d"));
 
     @SuppressWarnings("unchecked")
     private Session createTestSession(String uuid, boolean mobile) {
@@ -44,7 +48,6 @@ class PlayerProfileUiControllerTest {
         data.customNickname = "[#2CABFEFF]EpicBuilder";
         data.description = "Logic master";
         data.admin = false;
-        data.pvpRating = 1250;
         data.hexedPoints = 15;
         data.hexedRank(HexedRanks.HexedRank.advanced);
         data.unlockedBadges = Set.of(Badge.DEVELOPER.id());
@@ -88,7 +91,7 @@ class PlayerProfileUiControllerTest {
     void createModel_initializesFromPlayerData() {
         Session session = createTestSession("uuid-1", false);
         PlayerProfileUiController.ProfileModel model = PlayerProfileUiController.createModel(
-                session, session.data, PlayerProfileUiController.Tab.OVERVIEW, null, null, null, null
+                session, session.data, PlayerProfileUiController.Tab.OVERVIEW, null, null, null
         );
 
         assertThat(model.targetUuid()).isEqualTo("uuid-1");
@@ -96,7 +99,7 @@ class PlayerProfileUiControllerTest {
         assertThat(model.nickname()).isEqualTo("TestUser");
         assertThat(model.customNickname()).isEqualTo("[#2CABFEFF]EpicBuilder");
         assertThat(model.description()).isEqualTo("Logic master");
-        assertThat(model.pvpRating()).isEqualTo(1250);
+        assertThat(model.sections()).isEmpty();
         assertThat(model.hexedPoints()).isEqualTo(15);
         assertThat(model.hexedRank()).isEqualTo(HexedRanks.HexedRank.advanced);
         assertThat(model.tab()).isEqualTo(PlayerProfileUiController.Tab.OVERVIEW);
@@ -156,10 +159,10 @@ class PlayerProfileUiControllerTest {
     void update_selectTab_changesTab() {
         Session session = createTestSession("uuid-1", false);
         PlayerProfileUiController controller = new PlayerProfileUiController(
-                null, null, null, null, null, null, null, session, session.data
+                null, null, null, null, session, session.data
         );
         PlayerProfileUiController.ProfileModel model = controller.createInitialModel(
-                PlayerProfileUiController.Tab.OVERVIEW, null, null
+                PlayerProfileUiController.Tab.OVERVIEW, null
         );
 
         UpdateResult<PlayerProfileUiController.ProfileModel> res = controller.update(
@@ -170,41 +173,45 @@ class PlayerProfileUiControllerTest {
     }
 
     @Test
-    @DisplayName("update StatsLoaded populates telemetry when target UUID matches")
+    @DisplayName("update DetailsLoaded populates telemetry when target UUID matches")
     void update_statsLoaded_populatesStats() {
         Session session = createTestSession("uuid-1", false);
         PlayerProfileUiController controller = new PlayerProfileUiController(
-                null, null, null, null, null, null, null, session, session.data
+                null, null, null, null, session, session.data
         );
         PlayerProfileUiController.ProfileModel model = controller.createInitialModel(
-                PlayerProfileUiController.Tab.OVERVIEW, null, null
+                PlayerProfileUiController.Tab.OVERVIEW, null
         );
         assertThat(model.isStatsLoading()).isTrue();
 
         PlayerStatsOverview stats = createSampleStats();
         UpdateResult<PlayerProfileUiController.ProfileModel> res = controller.update(
-                model, new PlayerProfileUiController.ProfileEvent.StatsLoaded("uuid-1", stats, 3), null
+                model, new PlayerProfileUiController.ProfileEvent.DetailsLoaded(
+                        "uuid-1", new ProfileDetails(stats, 3, List.of(SECTION))), null
         );
 
         assertThat(res.model().isStatsLoading()).isFalse();
         assertThat(res.model().stats()).isSameAs(stats);
         assertThat(res.model().hexedTopRank()).isEqualTo(3);
+        assertThat(res.model().sections()).containsExactly(SECTION);
+        assertThat(res.model().details()).isEqualTo(new ProfileDetails(stats, 3, List.of(SECTION)));
     }
 
     @Test
-    @DisplayName("update StatsLoaded ignores mismatched target UUID")
+    @DisplayName("update DetailsLoaded ignores mismatched target UUID")
     void update_statsLoaded_ignoresMismatchedUuid() {
         Session session = createTestSession("uuid-1", false);
         PlayerProfileUiController controller = new PlayerProfileUiController(
-                null, null, null, null, null, null, null, session, session.data
+                null, null, null, null, session, session.data
         );
         PlayerProfileUiController.ProfileModel model = controller.createInitialModel(
-                PlayerProfileUiController.Tab.OVERVIEW, null, null
+                PlayerProfileUiController.Tab.OVERVIEW, null
         );
 
         PlayerStatsOverview stats = createSampleStats();
         UpdateResult<PlayerProfileUiController.ProfileModel> res = controller.update(
-                model, new PlayerProfileUiController.ProfileEvent.StatsLoaded("other-uuid", stats, 3), null
+                model, new PlayerProfileUiController.ProfileEvent.DetailsLoaded(
+                        "other-uuid", new ProfileDetails(stats, 3, List.of(SECTION))), null
         );
 
         assertThat(res.isNoop()).isTrue();
@@ -219,10 +226,10 @@ class PlayerProfileUiControllerTest {
         when(sessionService.streamCached()).thenAnswer(inv -> Stream.of(session));
 
         PlayerProfileUiController controller = new PlayerProfileUiController(
-                null, null, sessionService, null, null, null, null, session, session.data
+                null, null, sessionService, null, session, session.data
         );
         PlayerProfileUiController.ProfileModel model = controller.createInitialModel(
-                PlayerProfileUiController.Tab.PLAYERS, null, null
+                PlayerProfileUiController.Tab.PLAYERS, null
         );
 
         assertThat(model.adminFilter()).isEqualTo(PlayerProfileUiController.AdminFilter.ALL);
@@ -248,10 +255,10 @@ class PlayerProfileUiControllerTest {
     void update_changePlayersPage_clamps() {
         Session session = createTestSession("uuid-1", false);
         PlayerProfileUiController controller = new PlayerProfileUiController(
-                null, null, null, null, null, null, null, session, session.data
+                null, null, null, null, session, session.data
         );
         PlayerProfileUiController.ProfileModel model = controller.createInitialModel(
-                PlayerProfileUiController.Tab.PLAYERS, null, null
+                PlayerProfileUiController.Tab.PLAYERS, null
         );
 
         UpdateResult<PlayerProfileUiController.ProfileModel> res = controller.update(
@@ -270,10 +277,10 @@ class PlayerProfileUiControllerTest {
     void update_backToPlayers_switchesToPlayersTab() {
         Session session = createTestSession("uuid-1", false);
         PlayerProfileUiController controller = new PlayerProfileUiController(
-                null, null, null, null, null, null, null, session, session.data
+                null, null, null, null, session, session.data
         );
         PlayerProfileUiController.ProfileModel model = controller.createInitialModel(
-                PlayerProfileUiController.Tab.OVERVIEW, null, null
+                PlayerProfileUiController.Tab.OVERVIEW, null
         );
 
         UpdateResult<PlayerProfileUiController.ProfileModel> res = controller.update(
@@ -298,10 +305,10 @@ class PlayerProfileUiControllerTest {
         when(sessionService.get("other-uuid")).thenReturn(otherSession);
 
         PlayerProfileUiController controller = new PlayerProfileUiController(
-                null, null, sessionService, null, null, null, null, session, session.data
+                null, null, sessionService, null, session, session.data
         );
         PlayerProfileUiController.ProfileModel model = controller.createInitialModel(
-                PlayerProfileUiController.Tab.PLAYERS, null, null
+                PlayerProfileUiController.Tab.PLAYERS, null
         );
 
         UpdateResult<PlayerProfileUiController.ProfileModel> res = controller.update(
@@ -331,10 +338,10 @@ class PlayerProfileUiControllerTest {
         when(sessionService.get("alice-uuid")).thenReturn(session);
 
         PlayerProfileUiController controller = new PlayerProfileUiController(
-                null, null, sessionService, null, null, null, null, session, session.data
+                null, null, sessionService, null, session, session.data
         );
         PlayerProfileUiController.ProfileModel model = controller.createInitialModel(
-                PlayerProfileUiController.Tab.PLAYERS, null, null
+                PlayerProfileUiController.Tab.PLAYERS, null
         );
 
         // Alice inspects Bob -> isSelf must be FALSE
@@ -358,10 +365,10 @@ class PlayerProfileUiControllerTest {
         when(sessionService.get("ghost-uuid")).thenReturn(null);
 
         PlayerProfileUiController controller = new PlayerProfileUiController(
-                null, null, sessionService, null, null, null, null, session, session.data
+                null, null, sessionService, null, session, session.data
         );
         PlayerProfileUiController.ProfileModel model = controller.createInitialModel(
-                PlayerProfileUiController.Tab.PLAYERS, null, null
+                PlayerProfileUiController.Tab.PLAYERS, null
         );
 
         UpdateResult<PlayerProfileUiController.ProfileModel> res = controller.update(
@@ -379,10 +386,10 @@ class PlayerProfileUiControllerTest {
         AuditHistoryMenu auditMenu = mock(AuditHistoryMenu.class);
 
         PlayerProfileUiController controller = new PlayerProfileUiController(
-                null, auditMenu, null, null, null, null, null, session, session.data
+                null, auditMenu, null, null, session, session.data
         );
         PlayerProfileUiController.ProfileModel model = controller.createInitialModel(
-                PlayerProfileUiController.Tab.OVERVIEW, null, null
+                PlayerProfileUiController.Tab.OVERVIEW, null
         );
         assertThat(model.isViewerAdmin()).isFalse();
 
@@ -410,10 +417,10 @@ class PlayerProfileUiControllerTest {
         other.admin = false;
 
         PlayerProfileUiController controller = new PlayerProfileUiController(
-                playerMenu, null, null, null, null, null, null, session, other
+                playerMenu, null, null, null, session, other
         );
         PlayerProfileUiController.ProfileModel model = controller.createInitialModel(
-                PlayerProfileUiController.Tab.OVERVIEW, null, null
+                PlayerProfileUiController.Tab.OVERVIEW, null
         );
         assertThat(model.isSelf()).isFalse();
         assertThat(model.isViewerAdmin()).isFalse();
@@ -434,10 +441,10 @@ class PlayerProfileUiControllerTest {
         when(sessionService.streamCached()).thenAnswer(inv -> Stream.of(session));
 
         PlayerProfileUiController controller = new PlayerProfileUiController(
-                null, null, sessionService, null, null, null, null, session, session.data
+                null, null, sessionService, null, session, session.data
         );
         PlayerProfileUiController.ProfileModel model = controller.createInitialModel(
-                PlayerProfileUiController.Tab.PLAYERS, null, null
+                PlayerProfileUiController.Tab.PLAYERS, null
         );
         PlayerProfileUiController.ProfileModel pageModel = model.withPlayersPage(2);
 
@@ -455,10 +462,10 @@ class PlayerProfileUiControllerTest {
         PlayerMenu playerMenu = mock(PlayerMenu.class);
 
         PlayerProfileUiController controller = new PlayerProfileUiController(
-                playerMenu, null, null, null, null, null, null, session, session.data
+                playerMenu, null, null, null, session, session.data
         );
         PlayerProfileUiController.ProfileModel model = controller.createInitialModel(
-                PlayerProfileUiController.Tab.OVERVIEW, null, null
+                PlayerProfileUiController.Tab.OVERVIEW, null
         );
 
         UpdateResult<PlayerProfileUiController.ProfileModel> res = controller.update(
@@ -470,9 +477,53 @@ class PlayerProfileUiControllerTest {
     }
 
     @Test
+    @DisplayName("a mode section that fails to render is left out without breaking the profile")
+    void render_skipsBrokenSection() {
+        Session session = createTestSession("uuid-1", false);
+        PlayerProfileUiController controller = new PlayerProfileUiController(
+                null, null, null, null, session, session.data
+        );
+        ProfileSectionView broken = local -> {
+            throw new IllegalStateException("boom");
+        };
+
+        VNode tree = controller.render(controller.createInitialModel(
+                PlayerProfileUiController.Tab.OVERVIEW,
+                new ProfileDetails(createSampleStats(), null, List.of(broken, SECTION))));
+
+        String dsl = UiDslWriter.write(new VNodeCompiler(LocalizerResolver.IDENTITY).compile(tree));
+        assertThat(dsl).contains("Duel: Titanium 1642");
+    }
+
+    @Test
+    @DisplayName("InspectPlayer switches the target and asks the menu for that player's details")
+    void update_inspectPlayer_loadsDetails() {
+        Session session = createTestSession("uuid-1", false);
+        Session otherSession = createTestSession("uuid-2", false);
+        SessionService sessionService = mock(SessionService.class);
+        when(sessionService.get("uuid-2")).thenReturn(otherSession);
+        when(sessionService.getAllCachedSnapshot()).thenReturn(List.of(session, otherSession));
+        PlayerMenu playerMenu = mock(PlayerMenu.class);
+        PlayerProfileUiController controller = new PlayerProfileUiController(
+                playerMenu, null, sessionService, null, session, session.data
+        );
+        PlayerProfileUiController.ProfileModel model = controller.createInitialModel(
+                PlayerProfileUiController.Tab.PLAYERS, new ProfileDetails(createSampleStats(), 1, List.of(SECTION)));
+
+        UpdateResult<PlayerProfileUiController.ProfileModel> res = controller.update(
+                model, new PlayerProfileUiController.ProfileEvent.InspectPlayer("uuid-2"), null);
+
+        assertThat(res.model().targetUuid()).isEqualTo("uuid-2");
+        assertThat(res.model().isStatsLoading()).isTrue();
+        assertThat(res.model().sections()).isEmpty();
+        assertThat(res.model().details()).isNull();
+        verify(playerMenu).loadDetails(session, otherSession.data);
+    }
+
+    @Test
     @DisplayName("parseEvent correctly routes actions")
     void parseEvent_routesActions() {
-        PlayerProfileUiController controller = new PlayerProfileUiController(null, null, null, null, null, null, null, null, null);
+        PlayerProfileUiController controller = new PlayerProfileUiController(null, null, null, null, null, null);
 
         assertThat(controller.parseEvent(new MenuResult("action:close"))).isInstanceOf(PlayerProfileUiController.ProfileEvent.Close.class);
         assertThat(controller.parseEvent(new MenuResult("action:settings"))).isInstanceOf(PlayerProfileUiController.ProfileEvent.OpenSettings.class);
@@ -492,7 +543,7 @@ class PlayerProfileUiControllerTest {
     void render_compilesAcrossTabs() {
         Session session = createTestSession("uuid-1", false);
         PlayerProfileUiController controller = new PlayerProfileUiController(
-                null, null, null, null, null, null, null, session, session.data
+                null, null, null, null, session, session.data
         );
         PlayerStatsOverview stats = createSampleStats();
 
@@ -500,7 +551,7 @@ class PlayerProfileUiControllerTest {
 
         // 1. Overview tab
         PlayerProfileUiController.ProfileModel overviewModel = controller.createInitialModel(
-                PlayerProfileUiController.Tab.OVERVIEW, stats, 1
+                PlayerProfileUiController.Tab.OVERVIEW, new ProfileDetails(stats, 1, List.of(SECTION))
         );
         VNode overviewTree = controller.render(overviewModel);
         assertThat(overviewTree).isNotNull();
@@ -508,6 +559,7 @@ class PlayerProfileUiControllerTest {
         var builder = compiler.compile(overviewTree);
         String dsl = UiDslWriter.write(builder);
         assertThat(dsl).contains("table");
+        assertThat(dsl).contains("Duel: Titanium 1642", "12 matches", "place 4", "Season 3 ends in 12d");
 
         // 2. Stats tab
         PlayerProfileUiController.ProfileModel statsModel = overviewModel.withTab(PlayerProfileUiController.Tab.STATS);
@@ -515,6 +567,8 @@ class PlayerProfileUiControllerTest {
         assertThat(statsTree).isNotNull();
         String statsDsl = UiDslWriter.write(compiler.compile(statsTree));
         assertThat(statsDsl).contains("table");
+        assertThat(statsDsl).contains("Duel: Titanium 1642", "12 matches");
+        assertThat(statsDsl).doesNotContain("Season 3 ends in 12d");
 
         // 3. Players tab
         PlayerProfileUiController.OnlinePlayerRow row = new PlayerProfileUiController.OnlinePlayerRow(
@@ -537,10 +591,10 @@ class PlayerProfileUiControllerTest {
         session.data.description = "[#f7b6c]Ri[#f5a9b]T[#f39cac]r [gray] - my [white]Y [red]T [gray] ( [#f7b6c]@Ri[#f5a9b]T[#f39cac]rmm [gray]) [sky] Telegram [gray] - ( [#f7b6c]@Ri[#f5a9b]T[#f39cac]raa [gray])";
 
         PlayerProfileUiController controller = new PlayerProfileUiController(
-                null, null, null, null, null, null, null, session, session.data
+                null, null, null, null, session, session.data
         );
         PlayerProfileUiController.ProfileModel model = controller.createInitialModel(
-                PlayerProfileUiController.Tab.OVERVIEW, null, 1
+                PlayerProfileUiController.Tab.OVERVIEW, new ProfileDetails(null, 1, List.of())
         );
 
         VNode overviewTree = controller.render(model);

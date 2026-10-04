@@ -246,21 +246,21 @@ class DataControllerTest {
         var player = new PlayerData("u-1", true);
         player.pid = 0;
         player.nickname = "pizduk";
-        player.pvpRating = 123;
+        player.hexedPoints = 123;
         player.id = new ObjectId();
 
         when(find.playerData("#0")).thenReturn(player);
         when(repository.save(org.mockito.ArgumentMatchers.any(PlayerData.class))).thenReturn(true);
 
         var controller = new DataController(repository, config, gson, find, topMenuCacheService, pathEditor, tomlRenderer, tomlStore);
-        controller.editData(sender, "#0", "pvpRating", "0");
+        controller.editData(sender, "#0", "hexedPoints", "0");
 
         var captor = ArgumentCaptor.forClass(PlayerData.class);
         verify(repository).save(captor.capture());
 
         var saved = captor.getValue();
         assertThat(saved.id).isEqualTo(player.id);
-        assertThat(saved.pvpRating).isEqualTo(0);
+        assertThat(saved.hexedPoints).isEqualTo(0);
         assertThat(saved.uuid).isEqualTo("u-1");
         verify(topMenuCacheService).invalidateAllAsync();
     }
