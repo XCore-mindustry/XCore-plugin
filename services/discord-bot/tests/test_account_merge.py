@@ -122,7 +122,6 @@ def _source_player(**overrides: Any) -> PlayerRecord:
         "nickname": "OldAcc",
         "uuid": "uuid-source",
         "total_play_time": 120,
-        "pvp_rating": 1500,
         "hexed_points": 10,
         "unlocked_badges": ("badge-1",),
     }
@@ -136,7 +135,6 @@ def _target_player(**overrides: Any) -> PlayerRecord:
         "nickname": "NewAcc",
         "uuid": "uuid-target",
         "total_play_time": 30,
-        "pvp_rating": 1600,
         "hexed_points": 5,
         "unlocked_badges": ("badge-2",),
     }
@@ -386,7 +384,7 @@ async def test_mongo_store_merge_player_accounts_logic() -> None:
     target_set = _set_fields(cols, "t-id")
     assert target_set["pid"] == 20
     assert target_set["total_play_time"] == 150
-    assert target_set["pvp_rating"] == 1600
+    assert "pvp_rating" not in target_set
     assert target_set["hexed_points"] == 20
     assert (
         "b1" in target_set["unlocked_badges"] and "b2" in target_set["unlocked_badges"]

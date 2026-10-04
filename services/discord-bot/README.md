@@ -27,7 +27,7 @@ Standalone Discord bot for XCore transport migration.
   - `/season prize set|clear|list|delivered` (head admins): a `badge` prize is unlocked by the game server when
     the season ends; a `custom` prize (e.g. Nitro) waits for an admin to hand it over and record it with `delivered`.
     `set`/`clear`/`delivered` go over `rating.season.prizes.set.request` and `rating.prize.grant.update.request`;
-    `list` reads `rating_seasons` and `rating_prize_grants`. Prizes are listed in the ending-soon and results posts
+    `list` reads `rating_seasons` and `rating_prize_grants`; `delivered` takes an optional `player` (PID) to settle one winner. Prizes are listed in the ending-soon and results posts
   - `/stats` shows the player's rating and place on every ladder for the current season
   - account merges move rating standings through `rating.accounts.merge.request`; if no server
     answers, the merge is queued in `rating_merge_pending` and retried every minute

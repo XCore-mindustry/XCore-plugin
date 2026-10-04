@@ -72,7 +72,6 @@ def player_record_from_doc(doc: Mapping[str, object]) -> PlayerRecord:
         language=_normalized_optional_str(doc.get("local_language")),
         translator_language=_normalized_optional_str(doc.get("translator_language")),
         total_play_time=_int_or_default(doc.get("total_play_time"), default=0),
-        pvp_rating=_int_or_default(doc.get("pvp_rating"), default=0),
         hexed_rank=_int_or_default(doc.get("hexed_rank"), default=0),
         hexed_points=_int_or_default(doc.get("hexed_points"), default=0),
         leaderboard=_bool_or_default(doc.get("leaderboard"), default=True),

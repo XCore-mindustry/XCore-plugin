@@ -171,6 +171,7 @@ class RatingService:
         discord_id: str,
         actor_name: str,
         note: str | None,
+        player_pid: int | None = None,
     ) -> RatingPrizeGrantUpdateResponseV1:
         return await self._rpc.mark_prize_delivered(
             ladder=ladder,
@@ -180,6 +181,7 @@ class RatingService:
             actor_name=actor_name,
             note=note,
             timeout_ms=self._timeout_ms,
+            player_pid=player_pid,
         )
 
     # ----------------------------------------------------------- account merge

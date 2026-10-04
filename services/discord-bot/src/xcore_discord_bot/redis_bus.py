@@ -1061,6 +1061,7 @@ class RedisBus:
         actor_name: str,
         note: str | None,
         timeout_ms: int,
+        player_pid: int | None = None,
     ) -> RatingPrizeGrantUpdateResponseV1:
         body = await self._rpc_request(
             server=server,
@@ -1073,6 +1074,7 @@ class RedisBus:
                 discord_id=discord_id,
                 actor_name=actor_name,
                 note=note,
+                player_pid=player_pid,
             ).to_payload(),
             timeout_ms=timeout_ms,
         )

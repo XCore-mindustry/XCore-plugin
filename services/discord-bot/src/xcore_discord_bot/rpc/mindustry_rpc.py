@@ -132,6 +132,7 @@ class MindustryRpcClient:
         actor_name: str,
         note: str | None,
         timeout_ms: int,
+        player_pid: int | None = None,
     ) -> RatingPrizeGrantUpdateResponseV1:
         return await self.on_any_live_server(
             lambda server: self._bus.rpc_prize_delivered(
@@ -143,6 +144,7 @@ class MindustryRpcClient:
                 actor_name=actor_name,
                 note=note,
                 timeout_ms=timeout_ms,
+                player_pid=player_pid,
             )
         )
 

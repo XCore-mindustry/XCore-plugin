@@ -405,12 +405,14 @@ def build_prize_delivered_request(
     discord_id: str,
     actor_name: str,
     note: str | None = None,
+    player_pid: int | None = None,
 ) -> RatingPrizeGrantUpdateRequestV1:
     return RatingPrizeGrantUpdateRequestV1(
         server=server,
         ladder=ladder,
         season=season,
         place=place,
+        playerPid=player_pid,
         status=RatingPrizeGrantUpdateRequestV1Status.DELIVERED,
         actor=_discord_actor(discord_id, actor_name),
         note=note or None,

@@ -103,14 +103,27 @@ def allowed_mentions_for(podium: Sequence[PodiumEntry]) -> discord.AllowedMentio
 
 
 def build_season_started_embed(
-    *, ladder: str, name: str | None, number: int, starts_at: datetime, ends_at: datetime
+    *,
+    ladder: str,
+    name: str | None,
+    number: int,
+    starts_at: datetime,
+    ends_at: datetime,
+    first: bool = False,
 ) -> discord.Embed:
-    embed = discord.Embed(
-        title=f"🏁 {season_title(ladder, name, number)} has started",
-        description=(
+    if first:
+        description = (
+            "This ladder now plays in seasons. Your current rating carries on, and "
+            "every match you play counts towards this season's leaderboard."
+        )
+    else:
+        description = (
             "Ratings were softly reset. Every match you play now counts towards "
             "the new leaderboard."
-        ),
+        )
+    embed = discord.Embed(
+        title=f"🏁 {season_title(ladder, name, number)} has started",
+        description=description,
         color=discord.Color.green(),
     )
     embed.add_field(name="Started", value=timestamp(starts_at), inline=True)

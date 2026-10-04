@@ -121,6 +121,33 @@ async def test_started_is_posted_once_even_when_replayed() -> None:
 
 
 @pytest.mark.asyncio
+async def test_started_tells_the_first_season_apart_from_a_reset() -> None:
+    channel = _Channel()
+    bot = _Bot(channel)
+
+    await on_season_started(
+        bot,
+        RatingSeasonStartedV1(
+            season=SEASON, server="mini-pvp", occurredAt="2026-01-01T00:00:00Z"
+        ),
+    )
+    await on_season_started(
+        bot,
+        RatingSeasonStartedV1(
+            season=SEASON,
+            previousSeason=2,
+            server="mini-pvp",
+            occurredAt="2026-01-01T00:00:00Z",
+        ),
+    )
+
+    # Both are the same season's start, so only the first one is posted.
+    assert len(channel.sent) == 1
+    assert "softly reset" not in channel.sent[0]["embed"].description
+    assert "carries on" in channel.sent[0]["embed"].description
+
+
+@pytest.mark.asyncio
 async def test_nothing_is_posted_without_a_configured_channel() -> None:
     channel = _Channel()
     bot = _Bot(channel, channel_id=0)

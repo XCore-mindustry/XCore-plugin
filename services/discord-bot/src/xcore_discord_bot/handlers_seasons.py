@@ -116,6 +116,7 @@ async def on_season_started(bot: XCoreDiscordBot, event: RatingSeasonStartedV1) 
             number=season.season,
             starts_at=parse_instant(season.startsAt),
             ends_at=parse_instant(season.endsAt),
+            first=event.previousSeason is None,
         ),
     )
 

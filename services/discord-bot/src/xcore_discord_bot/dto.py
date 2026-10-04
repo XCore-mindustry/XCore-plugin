@@ -20,7 +20,6 @@ class PlayerRecord:
     language: str | None = None
     translator_language: str | None = None
     total_play_time: int = 0
-    pvp_rating: int = 0
     hexed_rank: int = 0
     hexed_points: int = 0
     leaderboard: bool = True

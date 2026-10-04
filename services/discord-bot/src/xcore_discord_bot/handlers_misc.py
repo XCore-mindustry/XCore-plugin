@@ -359,7 +359,6 @@ def _player_record_as_mapping(player: PlayerRecord) -> dict[str, object]:
         "language": player.language,
         "translator_language": player.translator_language,
         "total_play_time": player.total_play_time,
-        "pvp_rating": player.pvp_rating,
         "hexed_rank": player.hexed_rank,
         "hexed_points": player.hexed_points,
         "leaderboard": player.leaderboard,

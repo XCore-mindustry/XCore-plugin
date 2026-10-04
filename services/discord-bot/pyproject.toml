@@ -25,9 +25,9 @@ dependencies = [
 # the commit it peels to and the build stays reproducible.
 #
 # TEMPORARY: the seasonal-rating work needs the `rating` family (with prizes) from
-# xcore-protocol#2, which has no tag yet. Until v0.9.0 is released this is pinned to that PR's
-# commit; switch it back to `tag = "v0.9.0"` before merging.
-xcore-protocol = { git = "https://github.com/XCore-mindustry/xcore-protocol.git", rev = "e4608fcf2c321a70f3f915f23078358510bda8e3" }
+# xcore-protocol#2, which has no tag yet. Until v0.10.0 is released this is pinned to that PR's
+# commit; switch it back to `tag = "v0.10.0"` before merging.
+xcore-protocol = { git = "https://github.com/XCore-mindustry/xcore-protocol.git", rev = "6b5ac61b28cc3243b7c9b3711f2d61554a991fc8" }
 
 [project.scripts]
 xcore-discord-bot = "xcore_discord_bot.main:main"

@@ -440,6 +440,7 @@ class SeasonsCog(commands.Cog):
         season="Season number",
         place="Place on the podium",
         note="For example, how it was sent",
+        player="PID of the winner, to settle only their prize (default: the whole place)",
     )
     @app_commands.autocomplete(ladder=_autocomplete_ladder)
     @head_admin_check()
@@ -450,6 +451,7 @@ class SeasonsCog(commands.Cog):
         season: app_commands.Range[int, 1],
         place: app_commands.Range[int, 1],
         note: app_commands.Range[str, 1, MAX_NOTE] | None = None,
+        player: app_commands.Range[int, 1] | None = None,
     ) -> None:
         await self._admin_reply(
             interaction,
@@ -460,9 +462,11 @@ class SeasonsCog(commands.Cog):
                 discord_id=str(interaction.user.id),
                 actor_name=interaction.user.display_name,
                 note=(note or "").strip() or None,
+                player_pid=player,
             ),
             describe=lambda response: (
-                f"Marked {response.updated} prize(s) of place {place} in "
+                f"Marked {response.updated} prize(s) of place {place}"
+                f"{f' for player #{player}' if player else ''} in "
                 f"**{ladder_name(ladder)}** season {season} as delivered."
             ),
         )

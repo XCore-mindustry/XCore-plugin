@@ -376,10 +376,14 @@ async def test_the_bus_sends_the_canonical_prize_requests() -> None:
         server="mini-pvp", ladder="minipvp", season=3, place=2,
         discord_id="5", actor_name="Head", note="sent", timeout_ms=100,
     )
+    await bus.rpc_prize_delivered(
+        server="mini-pvp", ladder="minipvp", season=3, place=2,
+        discord_id="5", actor_name="Head", note=None, timeout_ms=100, player_pid=14,
+    )
 
     assert added.prizes[0].value == "veteran"
     assert delivered.updated == 1
-    (_, add), (_, remove), (grant_type, grant) = sent
+    (_, add), (_, remove), (grant_type, grant), (_, one_player) = sent
     assert add["operation"] == "add"
     assert add["prize"] == {"placeFrom": 1, "placeTo": 1, "kind": "badge", "value": "veteran"}
     assert add["actor"]["actorDiscordId"] == "5"
@@ -389,6 +393,8 @@ async def test_the_bus_sends_the_canonical_prize_requests() -> None:
     assert grant_type == "rating.prize.grant.update.request"
     assert grant["status"] == "delivered"
     assert (grant["season"], grant["place"], grant["note"]) == (3, 2, "sent")
+    assert "playerPid" not in grant
+    assert one_player["playerPid"] == 14
 
 
 # -------------------------------------------------------------------- cog
@@ -511,10 +517,14 @@ async def test_clear_and_delivered_report_what_changed() -> None:
 
     await cog.cmd_prize_clear.callback(cog, interaction, "minipvp", "2")
     await cog.cmd_prize_delivered.callback(cog, interaction, "minipvp", 3, 2, " sent ")
+    await cog.cmd_prize_delivered.callback(cog, interaction, "minipvp", 3, 2, None, 14)
 
-    assert [name for name, _ in service.calls] == ["clear", "delivered"]
+    assert [name for name, _ in service.calls] == ["clear", "delivered", "delivered"]
     assert service.calls[1][1]["note"] == "sent"
-    assert "Marked 2 prize(s) of place 2" in interaction.followup.sent[1]["content"]
+    assert service.calls[1][1]["player_pid"] is None
+    assert service.calls[2][1]["player_pid"] == 14
+    assert "Marked 2 prize(s) of place 2 in" in interaction.followup.sent[1]["content"]
+    assert "of place 2 for player #14 in" in interaction.followup.sent[2]["content"]
 
 
 @pytest.mark.asyncio
