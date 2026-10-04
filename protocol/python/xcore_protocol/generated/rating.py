@@ -12,9 +12,11 @@ from .shared import (
     DiscordIdentityRefV1,
     PlayerRefV1,
     SeasonPodiumEntryV1,
+    SeasonPrizeV1,
     SeasonRefV1,
     SeasonSummaryV1,
     ActorRefV1ActorType,
+    SeasonPrizeV1Kind,
 )
 
 def _expect_mapping(value: Any, field_name: str) -> Mapping[str, Any]:
@@ -196,6 +198,115 @@ class RatingAccountsMergeResponseV1:
         payload['standingsMerged'] = self.standingsMerged
         return payload
 
+class RatingPrizeGrantUpdateRequestV1Status(StrEnum):
+    DELIVERED = 'delivered'
+
+@dataclass(frozen=True, slots=True)
+class RatingPrizeGrantUpdateRequestV1:
+    server: str
+    ladder: str
+    season: int
+    place: int
+    status: RatingPrizeGrantUpdateRequestV1Status
+    actor: ActorRefV1
+    note: str | None = None
+
+    MESSAGE_TYPE: ClassVar[str] = 'rating.prize.grant.update.request'
+    MESSAGE_VERSION: ClassVar[int] = 1
+    def __post_init__(self) -> None:
+        _expect_str(self.server, 'server')
+        _expect_str(self.ladder, 'ladder')
+        _expect_int(self.season, 'season')
+        _expect_int(self.place, 'place')
+        _expect_instance(self.status, 'status', RatingPrizeGrantUpdateRequestV1Status)
+        _expect_instance(self.actor, 'actor', ActorRefV1)
+        if self.note is not None:
+            _expect_str(self.note, 'note')
+
+    @classmethod
+    def from_payload(cls, payload: Mapping[str, Any]) -> "RatingPrizeGrantUpdateRequestV1":
+        mapping = _expect_mapping(payload, "RatingPrizeGrantUpdateRequestV1")
+        _expect_exact_keys(
+            mapping,
+            required=frozenset(('messageType', 'messageVersion', 'server', 'ladder', 'season', 'place', 'status', 'actor')),
+            allowed=frozenset(('messageType', 'messageVersion', 'server', 'ladder', 'season', 'place', 'status', 'actor', 'note')),
+            model_name="RatingPrizeGrantUpdateRequestV1",
+        )
+        if mapping['messageType'] != cls.MESSAGE_TYPE:
+            raise ValueError('messageType' + " must equal " + repr(cls.MESSAGE_TYPE))
+        if mapping['messageVersion'] != cls.MESSAGE_VERSION:
+            raise ValueError('messageVersion' + " must equal " + repr(cls.MESSAGE_VERSION))
+        return cls(
+            server=_expect_str(mapping['server'], 'server'),
+            ladder=_expect_str(mapping['ladder'], 'ladder'),
+            season=_expect_int(mapping['season'], 'season'),
+            place=_expect_int(mapping['place'], 'place'),
+            status=_expect_enum(mapping['status'], 'status', RatingPrizeGrantUpdateRequestV1Status),
+            actor=ActorRefV1.from_payload(_expect_mapping(mapping['actor'], 'actor')),
+            note=(_expect_str(mapping['note'], 'note') if 'note' in mapping else None),
+        )
+
+    def to_payload(self) -> dict[str, Any]:
+        payload: dict[str, Any] = {
+            'messageType': self.MESSAGE_TYPE,
+            'messageVersion': self.MESSAGE_VERSION,
+        }
+        payload['server'] = self.server
+        payload['ladder'] = self.ladder
+        payload['season'] = self.season
+        payload['place'] = self.place
+        payload['status'] = str(self.status)
+        payload['actor'] = self.actor.to_payload()
+        if self.note is not None:
+            payload['note'] = self.note
+        return payload
+
+@dataclass(frozen=True, slots=True)
+class RatingPrizeGrantUpdateResponseV1:
+    server: str
+    season: int
+    place: int
+    updated: int
+
+    MESSAGE_TYPE: ClassVar[str] = 'rating.prize.grant.update.response'
+    MESSAGE_VERSION: ClassVar[int] = 1
+    def __post_init__(self) -> None:
+        _expect_str(self.server, 'server')
+        _expect_int(self.season, 'season')
+        _expect_int(self.place, 'place')
+        _expect_int(self.updated, 'updated')
+
+    @classmethod
+    def from_payload(cls, payload: Mapping[str, Any]) -> "RatingPrizeGrantUpdateResponseV1":
+        mapping = _expect_mapping(payload, "RatingPrizeGrantUpdateResponseV1")
+        _expect_exact_keys(
+            mapping,
+            required=frozenset(('messageType', 'messageVersion', 'server', 'season', 'place', 'updated')),
+            allowed=frozenset(('messageType', 'messageVersion', 'server', 'season', 'place', 'updated')),
+            model_name="RatingPrizeGrantUpdateResponseV1",
+        )
+        if mapping['messageType'] != cls.MESSAGE_TYPE:
+            raise ValueError('messageType' + " must equal " + repr(cls.MESSAGE_TYPE))
+        if mapping['messageVersion'] != cls.MESSAGE_VERSION:
+            raise ValueError('messageVersion' + " must equal " + repr(cls.MESSAGE_VERSION))
+        return cls(
+            server=_expect_str(mapping['server'], 'server'),
+            season=_expect_int(mapping['season'], 'season'),
+            place=_expect_int(mapping['place'], 'place'),
+            updated=_expect_int(mapping['updated'], 'updated'),
+        )
+
+    def to_payload(self) -> dict[str, Any]:
+        payload: dict[str, Any] = {
+            'messageType': self.MESSAGE_TYPE,
+            'messageVersion': self.MESSAGE_VERSION,
+        }
+        payload['server'] = self.server
+        payload['season'] = self.season
+        payload['place'] = self.place
+        payload['updated'] = self.updated
+        return payload
+
 @dataclass(frozen=True, slots=True)
 class RatingSeasonEndedV1:
     season: SeasonRefV1
@@ -255,6 +366,7 @@ class RatingSeasonEndingSoonV1:
     notice: str
     server: str
     occurredAt: str
+    prizes: tuple[SeasonPrizeV1, ...] | None = None
 
     MESSAGE_TYPE: ClassVar[str] = 'rating.season.ending-soon'
     MESSAGE_VERSION: ClassVar[int] = 1
@@ -263,6 +375,11 @@ class RatingSeasonEndingSoonV1:
         _expect_str(self.notice, 'notice')
         _expect_str(self.server, 'server')
         _expect_str(self.occurredAt, 'occurredAt')
+        if self.prizes is not None:
+            if not isinstance(self.prizes, tuple):
+                raise TypeError("prizes must be a tuple")
+            for item in self.prizes:
+                _expect_instance(item, 'prizes[]', SeasonPrizeV1)
 
     @classmethod
     def from_payload(cls, payload: Mapping[str, Any]) -> "RatingSeasonEndingSoonV1":
@@ -270,7 +387,7 @@ class RatingSeasonEndingSoonV1:
         _expect_exact_keys(
             mapping,
             required=frozenset(('messageType', 'messageVersion', 'season', 'notice', 'server', 'occurredAt')),
-            allowed=frozenset(('messageType', 'messageVersion', 'season', 'notice', 'server', 'occurredAt')),
+            allowed=frozenset(('messageType', 'messageVersion', 'season', 'notice', 'server', 'occurredAt', 'prizes')),
             model_name="RatingSeasonEndingSoonV1",
         )
         if mapping['messageType'] != cls.MESSAGE_TYPE:
@@ -282,6 +399,7 @@ class RatingSeasonEndingSoonV1:
             notice=_expect_str(mapping['notice'], 'notice'),
             server=_expect_str(mapping['server'], 'server'),
             occurredAt=_expect_str(mapping['occurredAt'], 'occurredAt'),
+            prizes=(tuple(SeasonPrizeV1.from_payload(_expect_mapping(item, 'prizes[]')) for item in _expect_list(mapping['prizes'], 'prizes')) if 'prizes' in mapping else None),
         )
 
     def to_payload(self) -> dict[str, Any]:
@@ -293,6 +411,121 @@ class RatingSeasonEndingSoonV1:
         payload['notice'] = self.notice
         payload['server'] = self.server
         payload['occurredAt'] = self.occurredAt
+        if self.prizes is not None:
+            payload['prizes'] = [item.to_payload() for item in self.prizes]
+        return payload
+
+class RatingSeasonPrizesSetRequestV1Operation(StrEnum):
+    ADD = 'add'
+    REMOVE = 'remove'
+
+@dataclass(frozen=True, slots=True)
+class RatingSeasonPrizesSetRequestV1:
+    server: str
+    ladder: str
+    operation: RatingSeasonPrizesSetRequestV1Operation
+    actor: ActorRefV1
+    prize: SeasonPrizeV1 | None = None
+    placeFrom: int | None = None
+    placeTo: int | None = None
+
+    MESSAGE_TYPE: ClassVar[str] = 'rating.season.prizes.set.request'
+    MESSAGE_VERSION: ClassVar[int] = 1
+    def __post_init__(self) -> None:
+        _expect_str(self.server, 'server')
+        _expect_str(self.ladder, 'ladder')
+        _expect_instance(self.operation, 'operation', RatingSeasonPrizesSetRequestV1Operation)
+        if self.prize is not None:
+            _expect_instance(self.prize, 'prize', SeasonPrizeV1)
+        if self.placeFrom is not None:
+            _expect_int(self.placeFrom, 'placeFrom')
+        if self.placeTo is not None:
+            _expect_int(self.placeTo, 'placeTo')
+        _expect_instance(self.actor, 'actor', ActorRefV1)
+
+    @classmethod
+    def from_payload(cls, payload: Mapping[str, Any]) -> "RatingSeasonPrizesSetRequestV1":
+        mapping = _expect_mapping(payload, "RatingSeasonPrizesSetRequestV1")
+        _expect_exact_keys(
+            mapping,
+            required=frozenset(('messageType', 'messageVersion', 'server', 'ladder', 'operation', 'actor')),
+            allowed=frozenset(('messageType', 'messageVersion', 'server', 'ladder', 'operation', 'prize', 'placeFrom', 'placeTo', 'actor')),
+            model_name="RatingSeasonPrizesSetRequestV1",
+        )
+        if mapping['messageType'] != cls.MESSAGE_TYPE:
+            raise ValueError('messageType' + " must equal " + repr(cls.MESSAGE_TYPE))
+        if mapping['messageVersion'] != cls.MESSAGE_VERSION:
+            raise ValueError('messageVersion' + " must equal " + repr(cls.MESSAGE_VERSION))
+        return cls(
+            server=_expect_str(mapping['server'], 'server'),
+            ladder=_expect_str(mapping['ladder'], 'ladder'),
+            operation=_expect_enum(mapping['operation'], 'operation', RatingSeasonPrizesSetRequestV1Operation),
+            prize=(SeasonPrizeV1.from_payload(_expect_mapping(mapping['prize'], 'prize')) if 'prize' in mapping else None),
+            placeFrom=(_expect_int(mapping['placeFrom'], 'placeFrom') if 'placeFrom' in mapping else None),
+            placeTo=(_expect_int(mapping['placeTo'], 'placeTo') if 'placeTo' in mapping else None),
+            actor=ActorRefV1.from_payload(_expect_mapping(mapping['actor'], 'actor')),
+        )
+
+    def to_payload(self) -> dict[str, Any]:
+        payload: dict[str, Any] = {
+            'messageType': self.MESSAGE_TYPE,
+            'messageVersion': self.MESSAGE_VERSION,
+        }
+        payload['server'] = self.server
+        payload['ladder'] = self.ladder
+        payload['operation'] = str(self.operation)
+        if self.prize is not None:
+            payload['prize'] = self.prize.to_payload()
+        if self.placeFrom is not None:
+            payload['placeFrom'] = self.placeFrom
+        if self.placeTo is not None:
+            payload['placeTo'] = self.placeTo
+        payload['actor'] = self.actor.to_payload()
+        return payload
+
+@dataclass(frozen=True, slots=True)
+class RatingSeasonPrizesSetResponseV1:
+    server: str
+    season: SeasonRefV1
+    prizes: tuple[SeasonPrizeV1, ...]
+
+    MESSAGE_TYPE: ClassVar[str] = 'rating.season.prizes.set.response'
+    MESSAGE_VERSION: ClassVar[int] = 1
+    def __post_init__(self) -> None:
+        _expect_str(self.server, 'server')
+        _expect_instance(self.season, 'season', SeasonRefV1)
+        if not isinstance(self.prizes, tuple):
+            raise TypeError("prizes must be a tuple")
+        for item in self.prizes:
+            _expect_instance(item, 'prizes[]', SeasonPrizeV1)
+
+    @classmethod
+    def from_payload(cls, payload: Mapping[str, Any]) -> "RatingSeasonPrizesSetResponseV1":
+        mapping = _expect_mapping(payload, "RatingSeasonPrizesSetResponseV1")
+        _expect_exact_keys(
+            mapping,
+            required=frozenset(('messageType', 'messageVersion', 'server', 'season', 'prizes')),
+            allowed=frozenset(('messageType', 'messageVersion', 'server', 'season', 'prizes')),
+            model_name="RatingSeasonPrizesSetResponseV1",
+        )
+        if mapping['messageType'] != cls.MESSAGE_TYPE:
+            raise ValueError('messageType' + " must equal " + repr(cls.MESSAGE_TYPE))
+        if mapping['messageVersion'] != cls.MESSAGE_VERSION:
+            raise ValueError('messageVersion' + " must equal " + repr(cls.MESSAGE_VERSION))
+        return cls(
+            server=_expect_str(mapping['server'], 'server'),
+            season=SeasonRefV1.from_payload(_expect_mapping(mapping['season'], 'season')),
+            prizes=tuple(SeasonPrizeV1.from_payload(_expect_mapping(item, 'prizes[]')) for item in _expect_list(mapping['prizes'], 'prizes')),
+        )
+
+    def to_payload(self) -> dict[str, Any]:
+        payload: dict[str, Any] = {
+            'messageType': self.MESSAGE_TYPE,
+            'messageVersion': self.MESSAGE_VERSION,
+        }
+        payload['server'] = self.server
+        payload['season'] = self.season.to_payload()
+        payload['prizes'] = [item.to_payload() for item in self.prizes]
         return payload
 
 class RatingSeasonRescheduleRequestV1Operation(StrEnum):
@@ -517,11 +750,17 @@ class RatingSeasonStartedV1:
 __all__ = [
     "RatingAccountsMergeRequestV1",
     "RatingAccountsMergeResponseV1",
+    "RatingPrizeGrantUpdateRequestV1",
+    "RatingPrizeGrantUpdateResponseV1",
     "RatingSeasonEndedV1",
     "RatingSeasonEndingSoonV1",
+    "RatingSeasonPrizesSetRequestV1",
+    "RatingSeasonPrizesSetResponseV1",
     "RatingSeasonRescheduleRequestV1",
     "RatingSeasonRescheduleResponseV1",
     "RatingSeasonRescheduledV1",
     "RatingSeasonStartedV1",
+    "RatingPrizeGrantUpdateRequestV1Status",
+    "RatingSeasonPrizesSetRequestV1Operation",
     "RatingSeasonRescheduleRequestV1Operation",
 ]

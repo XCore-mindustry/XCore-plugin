@@ -1,0 +1,8 @@
+{
+  "messageType": "rating.prize.grant.update.response",
+  "messageVersion": 1,
+  "server": "mini-pvp",
+  "season": 3,
+  "place": 2,
+  "updated": 1
+}

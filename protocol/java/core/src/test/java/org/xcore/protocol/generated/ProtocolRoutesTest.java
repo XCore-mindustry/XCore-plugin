@@ -18,7 +18,7 @@ class ProtocolRoutesTest {
 
     @Test
     void aggregateCatalogIncludesAllRoutes() {
-        assertEquals(39, ProtocolRoutes.ROUTES_BY_MESSAGE.size(), "expected 39 total routes");
+        assertEquals(41, ProtocolRoutes.ROUTES_BY_MESSAGE.size(), "expected 41 total routes");
         assertNotNull(ProtocolRoutes.ROUTES_BY_MESSAGE.get(new ProtocolRoutes.MessageKey("chat.message", 1)));
         assertNotNull(ProtocolRoutes.ROUTES_BY_MESSAGE.get(new ProtocolRoutes.MessageKey("maps.list.request", 1)));
         assertNotNull(ProtocolRoutes.ROUTES_BY_MESSAGE.get(new ProtocolRoutes.MessageKey("discord.link.status-changed", 1)));
@@ -115,5 +115,13 @@ class ProtocolRoutesTest {
 
         var merge = ProtocolRoutes.RATING_ACCOUNTS_MERGE_REQUEST_V1;
         assertEquals(RatingAccountsMergeResponseV1.class, merge.response().payloadType());
+
+        var prizes = ProtocolRoutes.RATING_SEASON_PRIZES_SET_REQUEST_V1;
+        assertEquals("rpc-request", prizes.kind());
+        assertEquals("payload.server", prizes.bindings().get("server"));
+        assertEquals(RatingSeasonPrizesSetResponseV1.class, prizes.response().payloadType());
+
+        var grant = ProtocolRoutes.RATING_PRIZE_GRANT_UPDATE_REQUEST_V1;
+        assertEquals(RatingPrizeGrantUpdateResponseV1.class, grant.response().payloadType());
     }
 }

@@ -1,6 +1,7 @@
 package org.xcore.protocol.generated.shared;
 
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import org.xcore.protocol.generated.runtime.ProtocolPayload;
@@ -12,7 +13,8 @@ public record SeasonPodiumEntryV1(
         int rating,
         String league,
         int matches,
-        int wins
+        int wins,
+        List<SeasonPrizeV1> prizes
 ) implements ProtocolPayload {
     public SeasonPodiumEntryV1 {
         if (place < 1) {
@@ -32,6 +34,13 @@ public record SeasonPodiumEntryV1(
         if (wins < 0) {
             throw new IllegalArgumentException("wins must be >= 0");
         }
+        if (prizes != null) {
+            prizes = Objects.requireNonNull(prizes, "prizes must not be null");
+            prizes = List.copyOf(prizes);
+            for (SeasonPrizeV1 item : prizes) {
+                Objects.requireNonNull(item, "prizes[] must not be null");
+            }
+        }
     }
 
     @Override
@@ -46,6 +55,14 @@ public record SeasonPodiumEntryV1(
         payload.put("league", league);
         payload.put("matches", matches);
         payload.put("wins", wins);
+        if (prizes != null) {
+            payload.put(
+        "prizes",
+        prizes.stream()
+            .map(item -> item.toPayload())
+            .toList()
+    );
+        }
         return payload;
     }
 }

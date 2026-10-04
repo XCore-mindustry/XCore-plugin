@@ -4,7 +4,14 @@
   "title": "SeasonPodiumEntryV1",
   "type": "object",
   "additionalProperties": false,
-  "required": ["place", "player", "rating", "league", "matches", "wins"],
+  "required": [
+    "place",
+    "player",
+    "rating",
+    "league",
+    "matches",
+    "wins"
+  ],
   "properties": {
     "place": {
       "type": "integer",
@@ -30,6 +37,12 @@
     "wins": {
       "type": "integer",
       "minimum": 0
+    },
+    "prizes": {
+      "type": "array",
+      "items": {
+        "$ref": "urn:xcore:protocol:shared:types:season-prize:v1"
+      }
     }
   }
 }

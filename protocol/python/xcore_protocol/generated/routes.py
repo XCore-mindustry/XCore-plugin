@@ -76,6 +76,10 @@ from .rating import (
     RatingSeasonRescheduleResponseV1,
     RatingAccountsMergeRequestV1,
     RatingAccountsMergeResponseV1,
+    RatingSeasonPrizesSetRequestV1,
+    RatingSeasonPrizesSetResponseV1,
+    RatingPrizeGrantUpdateRequestV1,
+    RatingPrizeGrantUpdateResponseV1,
 )
 
 @dataclass(frozen=True, slots=True)
@@ -809,6 +813,52 @@ RATING_ACCOUNTS_MERGE_REQUEST_V1 = RouteDescriptor(
     ),
 )
 
+RATING_SEASON_PRIZES_SET_REQUEST_V1 = RouteDescriptor(
+    family='rating',
+    methodName='ratingSeasonPrizesSetRequestV1Route',
+    messageType='rating.season.prizes.set.request',
+    messageVersion=1,
+    payloadType=RatingSeasonPrizesSetRequestV1,
+    kind='rpc-request',
+    stream='xcore:rpc:req:{server}',
+    bindings={'server': 'payload.server'},
+    targetScope='server',
+    ttlMs=10000,
+    replayable=False,
+    idempotentConsumerRecommended=True,
+    owner='rating-prizes',
+    response=RouteResponseDescriptor(
+        messageType='rating.season.prizes.set.response',
+        messageVersion=1,
+        payloadType=RatingSeasonPrizesSetResponseV1,
+        stream='xcore:rpc:resp:{requester}',
+        bindings={'requester': 'rpc.requester'},
+    ),
+)
+
+RATING_PRIZE_GRANT_UPDATE_REQUEST_V1 = RouteDescriptor(
+    family='rating',
+    methodName='ratingPrizeGrantUpdateRequestV1Route',
+    messageType='rating.prize.grant.update.request',
+    messageVersion=1,
+    payloadType=RatingPrizeGrantUpdateRequestV1,
+    kind='rpc-request',
+    stream='xcore:rpc:req:{server}',
+    bindings={'server': 'payload.server'},
+    targetScope='server',
+    ttlMs=10000,
+    replayable=False,
+    idempotentConsumerRecommended=True,
+    owner='rating-prizes',
+    response=RouteResponseDescriptor(
+        messageType='rating.prize.grant.update.response',
+        messageVersion=1,
+        payloadType=RatingPrizeGrantUpdateResponseV1,
+        stream='xcore:rpc:resp:{requester}',
+        bindings={'requester': 'rpc.requester'},
+    ),
+)
+
 ROUTES_BY_MESSAGE: dict[tuple[str, int], RouteDescriptor] = {
     ('maps.list.request', 1): MAPS_LIST_REQUEST_V1,
     ('maps.remove.request', 1): MAPS_REMOVE_REQUEST_V1,
@@ -849,6 +899,8 @@ ROUTES_BY_MESSAGE: dict[tuple[str, int], RouteDescriptor] = {
     ('rating.season.rescheduled', 1): RATING_SEASON_RESCHEDULED_V1,
     ('rating.season.reschedule.request', 1): RATING_SEASON_RESCHEDULE_REQUEST_V1,
     ('rating.accounts.merge.request', 1): RATING_ACCOUNTS_MERGE_REQUEST_V1,
+    ('rating.season.prizes.set.request', 1): RATING_SEASON_PRIZES_SET_REQUEST_V1,
+    ('rating.prize.grant.update.request', 1): RATING_PRIZE_GRANT_UPDATE_REQUEST_V1,
 }
 
 MapsRouteResponseDescriptor = RouteResponseDescriptor
@@ -895,6 +947,8 @@ __all__ = [
     "RATING_SEASON_RESCHEDULED_V1",
     "RATING_SEASON_RESCHEDULE_REQUEST_V1",
     "RATING_ACCOUNTS_MERGE_REQUEST_V1",
+    "RATING_SEASON_PRIZES_SET_REQUEST_V1",
+    "RATING_PRIZE_GRANT_UPDATE_REQUEST_V1",
     "RouteDescriptor",
     "RouteResponseDescriptor",
     "ROUTES_BY_MESSAGE",

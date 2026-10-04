@@ -71,3 +71,37 @@ messages:
       stream: xcore:rpc:resp:{requester}
       bindings:
         requester: rpc.requester
+  - messageType: rating.season.prizes.set.request
+    messageVersion: 1
+    kind: rpc-request
+    stream: xcore:rpc:req:{server}
+    bindings:
+      server: payload.server
+    targetScope: server
+    ttlMs: 10000
+    replayable: false
+    idempotentConsumerRecommended: true
+    owner: rating-prizes
+    response:
+      messageType: rating.season.prizes.set.response
+      messageVersion: 1
+      stream: xcore:rpc:resp:{requester}
+      bindings:
+        requester: rpc.requester
+  - messageType: rating.prize.grant.update.request
+    messageVersion: 1
+    kind: rpc-request
+    stream: xcore:rpc:req:{server}
+    bindings:
+      server: payload.server
+    targetScope: server
+    ttlMs: 10000
+    replayable: false
+    idempotentConsumerRecommended: true
+    owner: rating-prizes
+    response:
+      messageType: rating.prize.grant.update.response
+      messageVersion: 1
+      stream: xcore:rpc:resp:{requester}
+      bindings:
+        requester: rpc.requester

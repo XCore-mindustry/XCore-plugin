@@ -561,6 +561,7 @@ class SeasonPodiumEntryV1:
     matches: int
     wins: int
     discord: DiscordIdentityRefV1 | None = None
+    prizes: tuple[SeasonPrizeV1, ...] | None = None
 
     def __post_init__(self) -> None:
         _expect_int(self.place, 'place')
@@ -571,6 +572,11 @@ class SeasonPodiumEntryV1:
         _expect_str(self.league, 'league')
         _expect_int(self.matches, 'matches')
         _expect_int(self.wins, 'wins')
+        if self.prizes is not None:
+            if not isinstance(self.prizes, tuple):
+                raise TypeError("prizes must be a tuple")
+            for item in self.prizes:
+                _expect_instance(item, 'prizes[]', SeasonPrizeV1)
 
     @classmethod
     def from_payload(cls, payload: Mapping[str, Any]) -> "SeasonPodiumEntryV1":
@@ -578,7 +584,7 @@ class SeasonPodiumEntryV1:
         _expect_exact_keys(
             mapping,
             required=frozenset(('place', 'player', 'rating', 'league', 'matches', 'wins')),
-            allowed=frozenset(('place', 'player', 'discord', 'rating', 'league', 'matches', 'wins')),
+            allowed=frozenset(('place', 'player', 'discord', 'rating', 'league', 'matches', 'wins', 'prizes')),
             model_name="SeasonPodiumEntryV1",
         )
         return cls(
@@ -589,6 +595,7 @@ class SeasonPodiumEntryV1:
             league=_expect_str(mapping['league'], 'league'),
             matches=_expect_int(mapping['matches'], 'matches'),
             wins=_expect_int(mapping['wins'], 'wins'),
+            prizes=(tuple(SeasonPrizeV1.from_payload(_expect_mapping(item, 'prizes[]')) for item in _expect_list(mapping['prizes'], 'prizes')) if 'prizes' in mapping else None),
         )
 
     def to_payload(self) -> dict[str, Any]:
@@ -601,6 +608,55 @@ class SeasonPodiumEntryV1:
         payload['league'] = self.league
         payload['matches'] = self.matches
         payload['wins'] = self.wins
+        if self.prizes is not None:
+            payload['prizes'] = [item.to_payload() for item in self.prizes]
+        return payload
+
+class SeasonPrizeV1Kind(StrEnum):
+    BADGE = 'badge'
+    CUSTOM = 'custom'
+
+@dataclass(frozen=True, slots=True)
+class SeasonPrizeV1:
+    placeFrom: int
+    placeTo: int
+    kind: SeasonPrizeV1Kind
+    value: str
+    description: str | None = None
+
+    def __post_init__(self) -> None:
+        _expect_int(self.placeFrom, 'placeFrom')
+        _expect_int(self.placeTo, 'placeTo')
+        _expect_instance(self.kind, 'kind', SeasonPrizeV1Kind)
+        _expect_str(self.value, 'value')
+        if self.description is not None:
+            _expect_str(self.description, 'description')
+
+    @classmethod
+    def from_payload(cls, payload: Mapping[str, Any]) -> "SeasonPrizeV1":
+        mapping = _expect_mapping(payload, "SeasonPrizeV1")
+        _expect_exact_keys(
+            mapping,
+            required=frozenset(('placeFrom', 'placeTo', 'kind', 'value')),
+            allowed=frozenset(('placeFrom', 'placeTo', 'kind', 'value', 'description')),
+            model_name="SeasonPrizeV1",
+        )
+        return cls(
+            placeFrom=_expect_int(mapping['placeFrom'], 'placeFrom'),
+            placeTo=_expect_int(mapping['placeTo'], 'placeTo'),
+            kind=_expect_enum(mapping['kind'], 'kind', SeasonPrizeV1Kind),
+            value=_expect_str(mapping['value'], 'value'),
+            description=(_expect_str(mapping['description'], 'description') if 'description' in mapping else None),
+        )
+
+    def to_payload(self) -> dict[str, Any]:
+        payload: dict[str, Any] = {}
+        payload['placeFrom'] = self.placeFrom
+        payload['placeTo'] = self.placeTo
+        payload['kind'] = str(self.kind)
+        payload['value'] = self.value
+        if self.description is not None:
+            payload['description'] = self.description
         return payload
 
 @dataclass(frozen=True, slots=True)
@@ -721,9 +777,11 @@ __all__ = [
     "PlayerCommandTargetV1",
     "PlayerRefV1",
     "SeasonPodiumEntryV1",
+    "SeasonPrizeV1",
     "SeasonRefV1",
     "SeasonSummaryV1",
     "VoteKickParticipantV1",
     "ActorRefV1ActorType",
     "MetricSampleV1Type",
+    "SeasonPrizeV1Kind",
 ]

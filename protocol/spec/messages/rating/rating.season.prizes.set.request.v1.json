@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:xcore:protocol:messages:rating:rating.season.prizes.set.request:v1",
+  "title": "RatingSeasonPrizesSetRequestV1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "messageType",
+    "messageVersion",
+    "server",
+    "ladder",
+    "operation",
+    "actor"
+  ],
+  "properties": {
+    "messageType": {
+      "const": "rating.season.prizes.set.request"
+    },
+    "messageVersion": {
+      "const": 1
+    },
+    "server": {
+      "type": "string",
+      "minLength": 1
+    },
+    "ladder": {
+      "type": "string",
+      "minLength": 1
+    },
+    "operation": {
+      "type": "string",
+      "enum": [
+        "add",
+        "remove"
+      ]
+    },
+    "prize": {
+      "$ref": "urn:xcore:protocol:shared:types:season-prize:v1"
+    },
+    "placeFrom": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "placeTo": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "actor": {
+      "$ref": "urn:xcore:protocol:shared:types:actor-ref:v1"
+    }
+  }
+}

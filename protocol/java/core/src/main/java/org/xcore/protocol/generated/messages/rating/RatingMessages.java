@@ -7,6 +7,7 @@ import java.util.Objects;
 import org.xcore.protocol.generated.runtime.ProtocolPayload;
 import org.xcore.protocol.generated.shared.ActorRefV1;
 import org.xcore.protocol.generated.shared.SeasonPodiumEntryV1;
+import org.xcore.protocol.generated.shared.SeasonPrizeV1;
 import org.xcore.protocol.generated.shared.SeasonRefV1;
 import org.xcore.protocol.generated.shared.SeasonSummaryV1;
 
@@ -78,6 +79,98 @@ public final class RatingMessages {
         }
     }
 
+    public record RatingPrizeGrantUpdateRequestV1(
+            String server,
+            String ladder,
+            int season,
+            int place,
+            RatingPrizeGrantUpdateRequestV1Status status,
+            ActorRefV1 actor,
+            String note
+    ) implements ProtocolPayload {
+    public static final String MESSAGE_TYPE = "rating.prize.grant.update.request";
+    public static final int MESSAGE_VERSION = 1;
+
+        public RatingPrizeGrantUpdateRequestV1 {
+            Objects.requireNonNull(server, "server must not be null");
+            if (server.length() < 1) {
+                throw new IllegalArgumentException("server must be at least 1 characters");
+            }
+            Objects.requireNonNull(ladder, "ladder must not be null");
+            if (ladder.length() < 1) {
+                throw new IllegalArgumentException("ladder must be at least 1 characters");
+            }
+            if (season < 1) {
+                throw new IllegalArgumentException("season must be >= 1");
+            }
+            if (place < 1) {
+                throw new IllegalArgumentException("place must be >= 1");
+            }
+            Objects.requireNonNull(status, "status must not be null");
+            Objects.requireNonNull(actor, "actor must not be null");
+            if (note != null) {
+                Objects.requireNonNull(note, "note must not be null");
+            }
+        }
+
+        @Override
+        public Map<String, Object> toPayload() {
+            Map<String, Object> payload = new LinkedHashMap<>();
+            payload.put("messageType", MESSAGE_TYPE);
+            payload.put("messageVersion", MESSAGE_VERSION);
+            payload.put("server", server);
+            payload.put("ladder", ladder);
+            payload.put("season", season);
+            payload.put("place", place);
+            if (status != null) {
+                payload.put("status", status.toString());
+            }
+            payload.put("actor", actor.toPayload());
+            if (note != null) {
+                payload.put("note", note);
+            }
+            return payload;
+        }
+    }
+
+    public record RatingPrizeGrantUpdateResponseV1(
+            String server,
+            int season,
+            int place,
+            int updated
+    ) implements ProtocolPayload {
+    public static final String MESSAGE_TYPE = "rating.prize.grant.update.response";
+    public static final int MESSAGE_VERSION = 1;
+
+        public RatingPrizeGrantUpdateResponseV1 {
+            Objects.requireNonNull(server, "server must not be null");
+            if (server.length() < 1) {
+                throw new IllegalArgumentException("server must be at least 1 characters");
+            }
+            if (season < 1) {
+                throw new IllegalArgumentException("season must be >= 1");
+            }
+            if (place < 1) {
+                throw new IllegalArgumentException("place must be >= 1");
+            }
+            if (updated < 0) {
+                throw new IllegalArgumentException("updated must be >= 0");
+            }
+        }
+
+        @Override
+        public Map<String, Object> toPayload() {
+            Map<String, Object> payload = new LinkedHashMap<>();
+            payload.put("messageType", MESSAGE_TYPE);
+            payload.put("messageVersion", MESSAGE_VERSION);
+            payload.put("server", server);
+            payload.put("season", season);
+            payload.put("place", place);
+            payload.put("updated", updated);
+            return payload;
+        }
+    }
+
     public record RatingSeasonEndedV1(
             SeasonRefV1 season,
             List<SeasonPodiumEntryV1> podium,
@@ -128,7 +221,8 @@ public final class RatingMessages {
             SeasonRefV1 season,
             String notice,
             String server,
-            String occurredAt
+            String occurredAt,
+            List<SeasonPrizeV1> prizes
     ) implements ProtocolPayload {
     public static final String MESSAGE_TYPE = "rating.season.ending-soon";
     public static final int MESSAGE_VERSION = 1;
@@ -144,6 +238,13 @@ public final class RatingMessages {
                 throw new IllegalArgumentException("server must be at least 1 characters");
             }
             Objects.requireNonNull(occurredAt, "occurredAt must not be null");
+            if (prizes != null) {
+                prizes = Objects.requireNonNull(prizes, "prizes must not be null");
+                prizes = List.copyOf(prizes);
+                for (SeasonPrizeV1 item : prizes) {
+                    Objects.requireNonNull(item, "prizes[] must not be null");
+                }
+            }
         }
 
         @Override
@@ -155,6 +256,116 @@ public final class RatingMessages {
             payload.put("notice", notice);
             payload.put("server", server);
             payload.put("occurredAt", occurredAt);
+            if (prizes != null) {
+                payload.put(
+        "prizes",
+        prizes.stream()
+            .map(item -> item.toPayload())
+            .toList()
+    );
+            }
+            return payload;
+        }
+    }
+
+    public record RatingSeasonPrizesSetRequestV1(
+            String server,
+            String ladder,
+            RatingSeasonPrizesSetRequestV1Operation operation,
+            SeasonPrizeV1 prize,
+            Integer placeFrom,
+            Integer placeTo,
+            ActorRefV1 actor
+    ) implements ProtocolPayload {
+    public static final String MESSAGE_TYPE = "rating.season.prizes.set.request";
+    public static final int MESSAGE_VERSION = 1;
+
+        public RatingSeasonPrizesSetRequestV1 {
+            Objects.requireNonNull(server, "server must not be null");
+            if (server.length() < 1) {
+                throw new IllegalArgumentException("server must be at least 1 characters");
+            }
+            Objects.requireNonNull(ladder, "ladder must not be null");
+            if (ladder.length() < 1) {
+                throw new IllegalArgumentException("ladder must be at least 1 characters");
+            }
+            Objects.requireNonNull(operation, "operation must not be null");
+            if (prize != null) {
+                Objects.requireNonNull(prize, "prize must not be null");
+            }
+            if (placeFrom != null) {
+                if (placeFrom < 1) {
+                    throw new IllegalArgumentException("placeFrom must be >= 1");
+                }
+            }
+            if (placeTo != null) {
+                if (placeTo < 1) {
+                    throw new IllegalArgumentException("placeTo must be >= 1");
+                }
+            }
+            Objects.requireNonNull(actor, "actor must not be null");
+        }
+
+        @Override
+        public Map<String, Object> toPayload() {
+            Map<String, Object> payload = new LinkedHashMap<>();
+            payload.put("messageType", MESSAGE_TYPE);
+            payload.put("messageVersion", MESSAGE_VERSION);
+            payload.put("server", server);
+            payload.put("ladder", ladder);
+            if (operation != null) {
+                payload.put("operation", operation.toString());
+            }
+            if (prize != null) {
+                payload.put("prize", prize.toPayload());
+            }
+            if (placeFrom != null) {
+                payload.put("placeFrom", placeFrom);
+            }
+            if (placeTo != null) {
+                payload.put("placeTo", placeTo);
+            }
+            payload.put("actor", actor.toPayload());
+            return payload;
+        }
+    }
+
+    public record RatingSeasonPrizesSetResponseV1(
+            String server,
+            SeasonRefV1 season,
+            List<SeasonPrizeV1> prizes
+    ) implements ProtocolPayload {
+    public static final String MESSAGE_TYPE = "rating.season.prizes.set.response";
+    public static final int MESSAGE_VERSION = 1;
+
+        public RatingSeasonPrizesSetResponseV1 {
+            Objects.requireNonNull(server, "server must not be null");
+            if (server.length() < 1) {
+                throw new IllegalArgumentException("server must be at least 1 characters");
+            }
+            Objects.requireNonNull(season, "season must not be null");
+            prizes = Objects.requireNonNull(prizes, "prizes must not be null");
+            prizes = List.copyOf(prizes);
+            for (SeasonPrizeV1 item : prizes) {
+                Objects.requireNonNull(item, "prizes[] must not be null");
+            }
+        }
+
+        @Override
+        public Map<String, Object> toPayload() {
+            Map<String, Object> payload = new LinkedHashMap<>();
+            payload.put("messageType", MESSAGE_TYPE);
+            payload.put("messageVersion", MESSAGE_VERSION);
+            payload.put("server", server);
+            payload.put("season", season.toPayload());
+            if (prizes != null) {
+                payload.put(
+        "prizes",
+        prizes.stream()
+            .map(item -> item.toPayload())
+            .toList()
+    );
+            }
             return payload;
         }
     }

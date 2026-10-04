@@ -1,0 +1,19 @@
+{
+  "messageType": "rating.season.prizes.set.request",
+  "messageVersion": 1,
+  "server": "mini-pvp",
+  "ladder": "mini-pvp",
+  "operation": "add",
+  "prize": {
+    "placeFrom": 1,
+    "placeTo": 3,
+    "kind": "custom",
+    "value": "Discord Nitro, 1 month",
+    "description": "Nitro for the top three"
+  },
+  "actor": {
+    "actorName": "Head",
+    "actorDiscordId": "111111111111111111",
+    "actorType": "discord"
+  }
+}

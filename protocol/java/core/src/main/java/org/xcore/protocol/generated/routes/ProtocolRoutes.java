@@ -751,6 +751,52 @@ public final class ProtocolRoutes {
             )
     );
 
+    public static final RouteDescriptor RATING_SEASON_PRIZES_SET_REQUEST_V1 = new RouteDescriptor(
+            "rating",
+            "ratingSeasonPrizesSetRequestV1Route",
+            "rating.season.prizes.set.request",
+            1,
+            RatingMessages.RatingSeasonPrizesSetRequestV1.class,
+            "rpc-request",
+            "xcore:rpc:req:{server}",
+            Map.of("server", "payload.server"),
+            "server",
+            10000,
+            false,
+            true,
+            "rating-prizes",
+            new RouteResponseDescriptor(
+                    "rating.season.prizes.set.response",
+                    1,
+                    RatingMessages.RatingSeasonPrizesSetResponseV1.class,
+                    "xcore:rpc:resp:{requester}",
+                    Map.of("requester", "rpc.requester")
+            )
+    );
+
+    public static final RouteDescriptor RATING_PRIZE_GRANT_UPDATE_REQUEST_V1 = new RouteDescriptor(
+            "rating",
+            "ratingPrizeGrantUpdateRequestV1Route",
+            "rating.prize.grant.update.request",
+            1,
+            RatingMessages.RatingPrizeGrantUpdateRequestV1.class,
+            "rpc-request",
+            "xcore:rpc:req:{server}",
+            Map.of("server", "payload.server"),
+            "server",
+            10000,
+            false,
+            true,
+            "rating-prizes",
+            new RouteResponseDescriptor(
+                    "rating.prize.grant.update.response",
+                    1,
+                    RatingMessages.RatingPrizeGrantUpdateResponseV1.class,
+                    "xcore:rpc:resp:{requester}",
+                    Map.of("requester", "rpc.requester")
+            )
+    );
+
     public static final Map<MessageKey, RouteDescriptor> ROUTES_BY_MESSAGE = Map.ofEntries(
             entry(key("maps.list.request", 1), MAPS_LIST_REQUEST_V1),
             entry(key("maps.remove.request", 1), MAPS_REMOVE_REQUEST_V1),
@@ -790,7 +836,9 @@ public final class ProtocolRoutes {
             entry(key("rating.season.ended", 1), RATING_SEASON_ENDED_V1),
             entry(key("rating.season.rescheduled", 1), RATING_SEASON_RESCHEDULED_V1),
             entry(key("rating.season.reschedule.request", 1), RATING_SEASON_RESCHEDULE_REQUEST_V1),
-            entry(key("rating.accounts.merge.request", 1), RATING_ACCOUNTS_MERGE_REQUEST_V1)
+            entry(key("rating.accounts.merge.request", 1), RATING_ACCOUNTS_MERGE_REQUEST_V1),
+            entry(key("rating.season.prizes.set.request", 1), RATING_SEASON_PRIZES_SET_REQUEST_V1),
+            entry(key("rating.prize.grant.update.request", 1), RATING_PRIZE_GRANT_UPDATE_REQUEST_V1)
     );
 
     @SuppressWarnings("unchecked")
@@ -833,7 +881,9 @@ public final class ProtocolRoutes {
             entry((Class<? extends ProtocolPayload>) RatingMessages.RatingSeasonEndedV1.class, RATING_SEASON_ENDED_V1),
             entry((Class<? extends ProtocolPayload>) RatingMessages.RatingSeasonRescheduledV1.class, RATING_SEASON_RESCHEDULED_V1),
             entry((Class<? extends ProtocolPayload>) RatingMessages.RatingSeasonRescheduleRequestV1.class, RATING_SEASON_RESCHEDULE_REQUEST_V1),
-            entry((Class<? extends ProtocolPayload>) RatingMessages.RatingAccountsMergeRequestV1.class, RATING_ACCOUNTS_MERGE_REQUEST_V1)
+            entry((Class<? extends ProtocolPayload>) RatingMessages.RatingAccountsMergeRequestV1.class, RATING_ACCOUNTS_MERGE_REQUEST_V1),
+            entry((Class<? extends ProtocolPayload>) RatingMessages.RatingSeasonPrizesSetRequestV1.class, RATING_SEASON_PRIZES_SET_REQUEST_V1),
+            entry((Class<? extends ProtocolPayload>) RatingMessages.RatingPrizeGrantUpdateRequestV1.class, RATING_PRIZE_GRANT_UPDATE_REQUEST_V1)
     );
 
     public static RouteDescriptor routeFor(String messageType, int messageVersion) {

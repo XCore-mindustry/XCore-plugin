@@ -151,13 +151,61 @@ public final class RatingRoutes {
             )
     );
 
+    public static final RouteDescriptor RATING_SEASON_PRIZES_SET_REQUEST_V1 = new RouteDescriptor(
+            "rating",
+            "ratingSeasonPrizesSetRequestV1Route",
+            "rating.season.prizes.set.request",
+            1,
+            RatingMessages.RatingSeasonPrizesSetRequestV1.class,
+            "rpc-request",
+            "xcore:rpc:req:{server}",
+            Map.of("server", "payload.server"),
+            "server",
+            10000,
+            false,
+            true,
+            "rating-prizes",
+            new RouteResponseDescriptor(
+                    "rating.season.prizes.set.response",
+                    1,
+                    RatingMessages.RatingSeasonPrizesSetResponseV1.class,
+                    "xcore:rpc:resp:{requester}",
+                    Map.of("requester", "rpc.requester")
+            )
+    );
+
+    public static final RouteDescriptor RATING_PRIZE_GRANT_UPDATE_REQUEST_V1 = new RouteDescriptor(
+            "rating",
+            "ratingPrizeGrantUpdateRequestV1Route",
+            "rating.prize.grant.update.request",
+            1,
+            RatingMessages.RatingPrizeGrantUpdateRequestV1.class,
+            "rpc-request",
+            "xcore:rpc:req:{server}",
+            Map.of("server", "payload.server"),
+            "server",
+            10000,
+            false,
+            true,
+            "rating-prizes",
+            new RouteResponseDescriptor(
+                    "rating.prize.grant.update.response",
+                    1,
+                    RatingMessages.RatingPrizeGrantUpdateResponseV1.class,
+                    "xcore:rpc:resp:{requester}",
+                    Map.of("requester", "rpc.requester")
+            )
+    );
+
     public static final Map<MessageKey, RouteDescriptor> ROUTES_BY_MESSAGE = Map.ofEntries(
             entry(key("rating.season.started", 1), RATING_SEASON_STARTED_V1),
             entry(key("rating.season.ending-soon", 1), RATING_SEASON_ENDING_SOON_V1),
             entry(key("rating.season.ended", 1), RATING_SEASON_ENDED_V1),
             entry(key("rating.season.rescheduled", 1), RATING_SEASON_RESCHEDULED_V1),
             entry(key("rating.season.reschedule.request", 1), RATING_SEASON_RESCHEDULE_REQUEST_V1),
-            entry(key("rating.accounts.merge.request", 1), RATING_ACCOUNTS_MERGE_REQUEST_V1)
+            entry(key("rating.accounts.merge.request", 1), RATING_ACCOUNTS_MERGE_REQUEST_V1),
+            entry(key("rating.season.prizes.set.request", 1), RATING_SEASON_PRIZES_SET_REQUEST_V1),
+            entry(key("rating.prize.grant.update.request", 1), RATING_PRIZE_GRANT_UPDATE_REQUEST_V1)
     );
 
     private static MessageKey key(String messageType, int messageVersion) {

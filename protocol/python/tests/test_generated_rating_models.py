@@ -3,6 +3,8 @@ from __future__ import annotations
 from xcore_protocol.generated import (
     ActorRefV1ActorType,
     RATING_ACCOUNTS_MERGE_REQUEST_V1,
+    RATING_PRIZE_GRANT_UPDATE_REQUEST_V1,
+    RATING_SEASON_PRIZES_SET_REQUEST_V1,
     RATING_SEASON_ENDED_V1,
     RATING_SEASON_ENDING_SOON_V1,
     RATING_SEASON_RESCHEDULE_REQUEST_V1,
@@ -10,6 +12,13 @@ from xcore_protocol.generated import (
     RATING_SEASON_STARTED_V1,
     RatingAccountsMergeRequestV1,
     RatingAccountsMergeResponseV1,
+    RatingPrizeGrantUpdateRequestV1,
+    RatingPrizeGrantUpdateRequestV1Status,
+    RatingPrizeGrantUpdateResponseV1,
+    RatingSeasonPrizesSetRequestV1,
+    RatingSeasonPrizesSetRequestV1Operation,
+    RatingSeasonPrizesSetResponseV1,
+    SeasonPrizeV1Kind,
     RatingSeasonEndedV1,
     RatingSeasonEndingSoonV1,
     RatingSeasonRescheduleRequestV1,
@@ -83,6 +92,35 @@ def test_generated_accounts_merge_rpc_roundtrip() -> None:
     assert response.standingsMerged == 3
 
 
+def test_generated_prizes_ride_on_ending_soon_and_podium_entries() -> None:
+    soon = _assert_roundtrip(RatingSeasonEndingSoonV1, "rating.season.ending-soon")
+    ended = _assert_roundtrip(RatingSeasonEndedV1, "rating.season.ended")
+
+    assert [prize.kind for prize in soon.prizes] == [SeasonPrizeV1Kind.BADGE, SeasonPrizeV1Kind.CUSTOM]
+    assert soon.prizes[1].placeTo == 3
+    assert len(ended.podium[0].prizes) == 2
+    assert len(ended.podium[1].prizes) == 1
+
+
+def test_generated_prizes_set_rpc_roundtrip() -> None:
+    request = _assert_roundtrip(RatingSeasonPrizesSetRequestV1, "rating.season.prizes.set.request")
+    response = _assert_roundtrip(RatingSeasonPrizesSetResponseV1, "rating.season.prizes.set.response")
+
+    assert request.operation is RatingSeasonPrizesSetRequestV1Operation.ADD
+    assert request.prize is not None and request.prize.value == "Discord Nitro, 1 month"
+    assert request.placeFrom is None
+    assert len(response.prizes) == 2
+
+
+def test_generated_prize_grant_update_rpc_roundtrip() -> None:
+    request = _assert_roundtrip(RatingPrizeGrantUpdateRequestV1, "rating.prize.grant.update.request")
+    response = _assert_roundtrip(RatingPrizeGrantUpdateResponseV1, "rating.prize.grant.update.response")
+
+    assert request.status is RatingPrizeGrantUpdateRequestV1Status.DELIVERED
+    assert (request.season, request.place) == (3, 2)
+    assert response.updated == 1
+
+
 def test_rating_routes_are_registered() -> None:
     events = [
         (RATING_SEASON_STARTED_V1, "rating.season.started", RatingSeasonStartedV1, "xcore:evt:rating:season-started"),
@@ -119,6 +157,18 @@ def test_rating_routes_are_registered() -> None:
             "rating.accounts.merge.request",
             RatingAccountsMergeRequestV1,
             RatingAccountsMergeResponseV1,
+        ),
+        (
+            RATING_SEASON_PRIZES_SET_REQUEST_V1,
+            "rating.season.prizes.set.request",
+            RatingSeasonPrizesSetRequestV1,
+            RatingSeasonPrizesSetResponseV1,
+        ),
+        (
+            RATING_PRIZE_GRANT_UPDATE_REQUEST_V1,
+            "rating.prize.grant.update.request",
+            RatingPrizeGrantUpdateRequestV1,
+            RatingPrizeGrantUpdateResponseV1,
         ),
     ]
     for route, message_type, request_type, response_type in rpc:

@@ -33,6 +33,12 @@
     "occurredAt": {
       "type": "string",
       "format": "date-time"
+    },
+    "prizes": {
+      "type": "array",
+      "items": {
+        "$ref": "urn:xcore:protocol:shared:types:season-prize:v1"
+      }
     }
   }
 }

@@ -12,6 +12,10 @@ VALID_MESSAGES = (
     "rating.season.reschedule.response",
     "rating.accounts.merge.request",
     "rating.accounts.merge.response",
+    "rating.season.prizes.set.request",
+    "rating.season.prizes.set.response",
+    "rating.prize.grant.update.request",
+    "rating.prize.grant.update.response",
 )
 
 VALID_CASES = [
@@ -30,6 +34,10 @@ INVALID_CASES = [
         ("rating.season.reschedule.request", "unknown-operation"),
         ("rating.season.ending-soon", "missing-notice"),
         ("rating.accounts.merge.request", "empty-source"),
+        ("rating.season.prizes.set.request", "unknown-operation"),
+        ("rating.season.prizes.set.request", "unknown-kind"),
+        ("rating.prize.grant.update.request", "unknown-status"),
+        ("rating.prize.grant.update.request", "zero-place"),
     )
 ]
 

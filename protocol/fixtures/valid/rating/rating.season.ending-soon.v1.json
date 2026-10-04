@@ -10,5 +10,21 @@
   },
   "notice": "7d",
   "server": "mini-pvp",
-  "occurredAt": "2026-09-24T00:00:02Z"
+  "occurredAt": "2026-09-24T00:00:02Z",
+  "prizes": [
+    {
+      "placeFrom": 1,
+      "placeTo": 1,
+      "kind": "badge",
+      "value": "season-champion",
+      "description": "Season champion badge"
+    },
+    {
+      "placeFrom": 1,
+      "placeTo": 3,
+      "kind": "custom",
+      "value": "Discord Nitro, 1 month",
+      "description": "Nitro for the top three"
+    }
+  ]
 }
