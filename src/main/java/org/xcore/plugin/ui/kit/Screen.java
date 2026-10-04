@@ -73,6 +73,23 @@ public record Screen(String id, int columns, float card) {
         });
     }
 
+    /**
+     * A menu of one column for every class of screens: a short text and a few buttons gain
+     * nothing from two columns, so a desktop is given the layout of a phone held upright.
+     */
+    public static VNode compact(Function<Screen, VNode> window) {
+        return Ui.table(root -> {
+            root.add(Ui.table(narrow -> {
+                narrow.layout(l -> l.condition("width >= " + NARROW_WIDTH));
+                narrow.add(window.apply(NARROW));
+            }));
+            root.add(Ui.table(small -> {
+                small.layout(l -> l.condition("width < " + NARROW_WIDTH));
+                small.add(window.apply(SMALL));
+            }));
+        });
+    }
+
     /** The slot {@code base} of this class's layout: every layout has its own, since a client builds one. */
     public <T> SlotKey<T> slot(SlotKey<T> base) {
         return SlotKey.of(base.path() + "_" + id);
