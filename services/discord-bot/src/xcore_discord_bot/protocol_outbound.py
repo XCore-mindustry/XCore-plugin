@@ -323,6 +323,7 @@ def build_season_reschedule_request(
     extend_seconds: int | None = None,
     ends_at: str | None = None,
     reason: str | None = None,
+    request_id: str | None = None,
 ) -> RatingSeasonRescheduleRequestV1:
     return RatingSeasonRescheduleRequestV1(
         server=server,
@@ -336,6 +337,7 @@ def build_season_reschedule_request(
         extendSeconds=extend_seconds,
         endsAt=ends_at,
         reason=reason or None,
+        requestId=request_id,
     )
 
 
@@ -367,6 +369,7 @@ def build_season_prize_add_request(
     prize: SeasonPrizeV1,
     discord_id: str,
     actor_name: str,
+    request_id: str | None = None,
 ) -> RatingSeasonPrizesSetRequestV1:
     return RatingSeasonPrizesSetRequestV1(
         server=server,
@@ -374,6 +377,7 @@ def build_season_prize_add_request(
         operation=RatingSeasonPrizesSetRequestV1Operation.ADD,
         prize=prize,
         actor=_discord_actor(discord_id, actor_name),
+        requestId=request_id,
     )
 
 
@@ -385,6 +389,7 @@ def build_season_prize_remove_request(
     place_to: int,
     discord_id: str,
     actor_name: str,
+    request_id: str | None = None,
 ) -> RatingSeasonPrizesSetRequestV1:
     return RatingSeasonPrizesSetRequestV1(
         server=server,
@@ -393,6 +398,7 @@ def build_season_prize_remove_request(
         placeFrom=place_from,
         placeTo=place_to,
         actor=_discord_actor(discord_id, actor_name),
+        requestId=request_id,
     )
 
 

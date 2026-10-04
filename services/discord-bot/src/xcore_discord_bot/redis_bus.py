@@ -103,14 +103,25 @@ RECLAIM_MIN_IDLE_MS = 15_000
 MAX_ATTEMPTS_EVT = 5
 
 
-class RpcRejected(RuntimeError):
-    """The server understood an RPC request and refused it; retrying elsewhere cannot help."""
+class RpcError(RuntimeError):
+    """A server answered an RPC request with an error."""
 
     def __init__(self, rpc_type: str, error_code: str, error_message: str) -> None:
         super().__init__(f"RPC {rpc_type} failed [{error_code}]: {error_message}")
         self.rpc_type = rpc_type
         self.error_code = error_code
         self.error_message = error_message
+
+
+class RpcRejected(RpcError):
+    """The server understood an RPC request and refused it; retrying elsewhere cannot help."""
+
+
+class RpcFailed(RpcError):
+    """The server could not carry an RPC request out; another server or a later try may."""
+
+
+REJECTED_ERROR_CODE = "REJECTED"
 
 
 class RedisBus:
@@ -954,6 +965,7 @@ class RedisBus:
         extend_seconds: int | None = None,
         ends_at: str | None = None,
         reason: str | None = None,
+        request_id: str | None = None,
     ) -> RatingSeasonRescheduleResponseV1:
         body = await self._rpc_request(
             server=server,
@@ -967,6 +979,7 @@ class RedisBus:
                 extend_seconds=extend_seconds,
                 ends_at=ends_at,
                 reason=reason,
+                request_id=request_id,
             ).to_payload(),
             timeout_ms=timeout_ms,
         )
@@ -1005,6 +1018,7 @@ class RedisBus:
         discord_id: str,
         actor_name: str,
         timeout_ms: int,
+        request_id: str | None = None,
     ) -> RatingSeasonPrizesSetResponseV1:
         body = await self._rpc_request(
             server=server,
@@ -1015,6 +1029,7 @@ class RedisBus:
                 prize=prize,
                 discord_id=discord_id,
                 actor_name=actor_name,
+                request_id=request_id,
             ).to_payload(),
             timeout_ms=timeout_ms,
         )
@@ -1032,6 +1047,7 @@ class RedisBus:
         discord_id: str,
         actor_name: str,
         timeout_ms: int,
+        request_id: str | None = None,
     ) -> RatingSeasonPrizesSetResponseV1:
         body = await self._rpc_request(
             server=server,
@@ -1043,6 +1059,7 @@ class RedisBus:
                 place_to=place_to,
                 discord_id=discord_id,
                 actor_name=actor_name,
+                request_id=request_id,
             ).to_payload(),
             timeout_ms=timeout_ms,
         )
@@ -1203,7 +1220,12 @@ class RedisBus:
                     if status != "ok":
                         error_code = body.get("error_code", "UNKNOWN")
                         error_message = body.get("error_message", "unknown rpc error")
-                        raise RpcRejected(rpc_type, error_code, error_message)
+                        # Only an explicit refusal is final; anything else, such as the
+                        # plugin's FAILED for a storage error, is worth another try.
+                        error_type = (
+                            RpcRejected if error_code == REJECTED_ERROR_CODE else RpcFailed
+                        )
+                        raise error_type(rpc_type, error_code, error_message)
                     return body
 
     async def _ensure_group(self, stream: str, group: str) -> None:

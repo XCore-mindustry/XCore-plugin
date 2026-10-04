@@ -10,7 +10,7 @@ from discord.ext import commands
 from xcore_protocol.generated.shared import SeasonPrizeV1Kind
 
 from ..badges import badge_choice_label, grantable_badges
-from ..redis_bus import RpcRejected
+from ..redis_bus import RpcFailed, RpcRejected
 from ..rpc.mindustry_rpc import NoLiveServerError
 from ..season_embeds import (
     LADDER_NAMES,
@@ -232,6 +232,11 @@ class SeasonsCog(commands.Cog):
             return "❌ No Mindustry server is online to carry this out."
         except TimeoutError:
             return "❌ The servers did not answer in time. Check `/season info` before retrying."
+        except RpcFailed:
+            return (
+                "❌ The servers could not carry this out. "
+                "Check `/season info` before retrying."
+            )
         except Exception:
             logger.exception("Season administration failed")
             return "❌ Something went wrong. Check the logs."

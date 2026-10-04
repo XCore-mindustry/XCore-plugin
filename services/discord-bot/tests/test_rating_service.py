@@ -10,7 +10,7 @@ from xcore_protocol.generated.rating import RatingSeasonRescheduleRequestV1Opera
 
 from xcore_discord_bot.daemons.rating_merge_daemon import RatingMergeDaemon
 from xcore_discord_bot.dto import AccountMergeResult, PlayerRecord
-from xcore_discord_bot.redis_bus import RedisBus, RpcRejected
+from xcore_discord_bot.redis_bus import RedisBus, RpcFailed, RpcRejected
 from xcore_discord_bot.registry import server_registry
 from xcore_discord_bot.rpc.mindustry_rpc import (
     MAX_SERVERS_TRIED,
@@ -96,6 +96,27 @@ async def test_refused_merge_is_reported_and_never_queued() -> None:
     assert (outcome.merged, outcome.queued) == (False, False)
     assert "nope" in (outcome.error or "")
     assert store.pending == set()
+
+
+@pytest.mark.asyncio
+async def test_a_merge_the_server_could_not_carry_out_is_queued_and_retried() -> None:
+    failure = RpcFailed("rating.accounts.merge.request", "FAILED", "see the server log")
+    service, store, rpc = _service(failure, failure, None)
+
+    outcome = await service.merge_standings("s", "t")
+
+    assert (outcome.merged, outcome.queued) == (False, True)
+    assert store.pending == {("s", "t")}
+
+    # Still failing: it stays in the queue instead of being written off as refused.
+    report = await service.retry_pending_merges()
+    assert (report.delivered, report.refused) == (0, ())
+    assert store.failed == {}
+
+    report = await service.retry_pending_merges()
+    assert report.delivered == 1
+    assert store.pending == set()
+    assert rpc.merged == [("s", "t")]
 
 
 @pytest.mark.asyncio
@@ -312,6 +333,115 @@ async def test_rpc_client_does_not_ask_another_server_after_a_refusal() -> None:
 
 
 @pytest.mark.asyncio
+async def test_rpc_client_tries_the_next_server_when_one_could_not_carry_it_out() -> None:
+    _live("a", "b")
+    tried: list[str] = []
+
+    async def call(server: str) -> str:
+        tried.append(server)
+        if server == "a":
+            raise RpcFailed("x", "FAILED", "see the server log")
+        return server
+
+    assert await MindustryRpcClient(SimpleNamespace()).on_any_live_server(call) == "b"
+    assert tried == ["a", "b"]
+
+
+@pytest.mark.asyncio
+async def test_rpc_client_names_a_season_change_once_for_every_server_it_tries() -> None:
+    _live("a", "b")
+    seen: list[tuple[str, str, str]] = []
+
+    class _Bus:
+        async def rpc_season_reschedule(self, *, server, request_id, **kwargs):
+            seen.append(("reschedule", server, request_id))
+            if server == "a":
+                raise TimeoutError()
+            return "moved"
+
+        async def rpc_season_prize_add(self, *, server, request_id, **kwargs):
+            seen.append(("add", server, request_id))
+            if server == "a":
+                raise RpcFailed("x", "FAILED", "see the server log")
+            return "added"
+
+        async def rpc_season_prize_remove(self, *, server, request_id, **kwargs):
+            seen.append(("remove", server, request_id))
+            return "removed"
+
+    client = MindustryRpcClient(_Bus())
+    actor = {"discord_id": "5", "actor_name": "Head", "timeout_ms": 100}
+    await client.reschedule_season(
+        ladder="minipvp",
+        operation=RatingSeasonRescheduleRequestV1Operation.END_NOW,
+        **actor,
+    )
+    await client.add_season_prize(ladder="minipvp", prize=None, **actor)
+    await client.remove_season_prizes(ladder="minipvp", place_from=1, place_to=3, **actor)
+
+    assert [(kind, server) for kind, server, _ in seen] == [
+        ("reschedule", "a"),
+        ("reschedule", "b"),
+        ("add", "a"),
+        ("add", "b"),
+        ("remove", "a"),
+    ]
+    ids = [request_id for _, _, request_id in seen]
+    assert all(ids)
+    # The server that did not confirm and the one asked after it see the same request, so
+    # only one of them applies it; every administrator action is a request of its own.
+    assert ids[0] == ids[1] and ids[2] == ids[3]
+    assert len({ids[0], ids[2], ids[4]}) == 3
+
+
+class _ReplyingRedis:
+    """Answers every RPC with an error carrying the given code."""
+
+    def __init__(self, error_code: str | None) -> None:
+        self.error_code = error_code
+        self.correlation_id = ""
+
+    async def xrevrange(self, stream, count):
+        return []
+
+    async def xadd(self, stream, fields, **kwargs):
+        self.correlation_id = fields["correlation_id"]
+
+    async def xread(self, streams, count, block):
+        body = {"correlation_id": self.correlation_id, "status": "error", "error_message": "why"}
+        if self.error_code is not None:
+            body["error_code"] = self.error_code
+        return [("reply", [("1-0", body)])]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("error_code", "expected"),
+    [("REJECTED", RpcRejected), ("FAILED", RpcFailed), (None, RpcFailed)],
+)
+async def test_bus_tells_a_refusal_from_a_failure(error_code, expected) -> None:
+    bus = RedisBus(
+        SimpleNamespace(
+            redis_url="redis://127.0.0.1:6379",
+            redis_group_prefix="xcore:cg",
+            redis_consumer_name="discord-bot",
+        )
+    )
+    bus._redis = _ReplyingRedis(error_code)
+
+    with pytest.raises(expected) as raised:
+        await bus._rpc_request(
+            server="mini-pvp",
+            rpc_type="rating.accounts.merge.request",
+            payload={},
+            timeout_ms=500,
+        )
+
+    assert type(raised.value) is expected
+    assert raised.value.error_message == "why"
+
+
+@pytest.mark.asyncio
 async def test_rpc_client_needs_a_live_server() -> None:
     _live()
 
@@ -384,6 +514,18 @@ async def test_bus_sends_the_canonical_season_and_merge_requests() -> None:
     assert seen[1].payload["operation"] == "extend"
     assert seen[1].payload["extendSeconds"] == 60
     assert seen[1].payload["actor"]["actorDiscordId"] == "5"
+    assert "requestId" not in seen[1].payload
+
+    await bus.rpc_season_reschedule(
+        server="mini-pvp",
+        ladder="minipvp",
+        operation=RatingSeasonRescheduleRequestV1Operation.END_NOW,
+        discord_id="5",
+        actor_name="Head",
+        timeout_ms=100,
+        request_id="req-1",
+    )
+    assert seen[2].payload["requestId"] == "req-1"
 
 
 def test_merge_embed_tells_the_admin_what_happened_to_the_ratings() -> None:

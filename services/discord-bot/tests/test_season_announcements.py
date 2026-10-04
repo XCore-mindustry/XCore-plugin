@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import asyncio
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from types import SimpleNamespace
 from typing import Any
 
@@ -230,6 +230,52 @@ async def test_cancelled_post_is_released_so_a_replay_can_retry() -> None:
 
     # The consumer was stopped mid-post; the claim must not outlive it.
     assert bot.container.ratings.claimed == set()
+
+
+@pytest.mark.asyncio
+async def test_a_notice_that_is_due_again_after_an_extension_is_posted_again() -> None:
+    channel = _Channel()
+    bot = _Bot(channel)
+
+    def notice(ends_at: str) -> RatingSeasonEndingSoonV1:
+        return RatingSeasonEndingSoonV1(
+            season=replace(SEASON, endsAt=ends_at),
+            notice="1d",
+            server="mini-pvp",
+            occurredAt="2026-03-31T00:00:00Z",
+        )
+
+    await on_season_ending_soon(bot, notice("2026-04-01T00:00:00Z"))
+    # A replay of the same notice.
+    await on_season_ending_soon(bot, notice("2026-04-01T00:00:00Z"))
+    # The season was extended by a week, so "one day left" comes round again.
+    await on_season_ending_soon(bot, notice("2026-04-08T00:00:00Z"))
+
+    assert len(channel.sent) == 2
+
+
+@pytest.mark.asyncio
+async def test_moving_the_end_back_to_where_it_was_is_announced_too() -> None:
+    channel = _Channel()
+    bot = _Bot(channel)
+
+    def moved(previous: str, ends_at: str, occurred_at: str) -> RatingSeasonRescheduledV1:
+        return RatingSeasonRescheduledV1(
+            season=replace(SEASON, endsAt=ends_at),
+            previousEndsAt=previous,
+            actor=ActorRefV1(actorName="Head"),
+            server="mini-pvp",
+            occurredAt=occurred_at,
+        )
+
+    first, second = "2026-04-01T00:00:00Z", "2026-04-08T00:00:00Z"
+    await on_season_rescheduled(bot, moved(first, second, "2026-03-20T00:00:00Z"))
+    await on_season_rescheduled(bot, moved(second, first, "2026-03-21T00:00:00Z"))
+    await on_season_rescheduled(bot, moved(first, second, "2026-03-22T00:00:00Z"))
+    # A replay of the last move.
+    await on_season_rescheduled(bot, moved(first, second, "2026-03-22T00:00:00Z"))
+
+    assert len(channel.sent) == 3
 
 
 @pytest.mark.asyncio

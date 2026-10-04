@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import uuid
 from collections.abc import Awaitable, Callable
 from typing import Any, TypeVar
 
@@ -12,7 +13,7 @@ from xcore_protocol.generated.rating import (
 )
 from xcore_protocol.generated.shared import SeasonPrizeV1
 
-from ..redis_bus import RedisBus
+from ..redis_bus import RedisBus, RpcFailed
 from ..registry import server_registry
 
 T = TypeVar("T")
@@ -31,11 +32,16 @@ class MindustryRpcClient:
         self._bus = bus
 
     async def on_any_live_server(self, call: Callable[[str], Awaitable[T]]) -> T:
-        """Runs ``call`` against a live server, trying the next one when a server stays silent.
+        """Runs ``call`` against a live server, trying the next one when a server stays
+        silent or says it could not carry the request out.
 
         For requests whose answer lives in shared storage and so does not depend on which
         server gives it. A server that answers with a refusal ends the attempt: another
         server would refuse for the same reason.
+
+        A silent server may still apply the request after the next one was asked, so a
+        change that must not happen twice has to carry a request id (see ``_request_id``),
+        which makes every server but the first refuse it.
         """
         names = sorted(
             (server.name for server in server_registry.get_all_servers()),
@@ -45,14 +51,19 @@ class MindustryRpcClient:
             raise NoLiveServerError(
                 "No Mindustry server is online to carry out this request."
             )
-        last_timeout: TimeoutError | None = None
+        last_error: TimeoutError | RpcFailed | None = None
         for name in names:
             try:
                 return await call(name)
-            except TimeoutError as error:
-                last_timeout = error
-        assert last_timeout is not None
-        raise last_timeout
+            except (TimeoutError, RpcFailed) as error:
+                last_error = error
+        assert last_error is not None
+        raise last_error
+
+    @staticmethod
+    def _request_id() -> str:
+        """One id per administrator action, repeated on every server that is tried."""
+        return str(uuid.uuid4())
 
     async def reschedule_season(
         self,
@@ -66,6 +77,7 @@ class MindustryRpcClient:
         ends_at: str | None = None,
         reason: str | None = None,
     ) -> RatingSeasonRescheduleResponseV1:
+        request_id = self._request_id()
         return await self.on_any_live_server(
             lambda server: self._bus.rpc_season_reschedule(
                 server=server,
@@ -77,6 +89,7 @@ class MindustryRpcClient:
                 extend_seconds=extend_seconds,
                 ends_at=ends_at,
                 reason=reason,
+                request_id=request_id,
             )
         )
 
@@ -89,6 +102,7 @@ class MindustryRpcClient:
         actor_name: str,
         timeout_ms: int,
     ) -> RatingSeasonPrizesSetResponseV1:
+        request_id = self._request_id()
         return await self.on_any_live_server(
             lambda server: self._bus.rpc_season_prize_add(
                 server=server,
@@ -97,6 +111,7 @@ class MindustryRpcClient:
                 discord_id=discord_id,
                 actor_name=actor_name,
                 timeout_ms=timeout_ms,
+                request_id=request_id,
             )
         )
 
@@ -110,6 +125,7 @@ class MindustryRpcClient:
         actor_name: str,
         timeout_ms: int,
     ) -> RatingSeasonPrizesSetResponseV1:
+        request_id = self._request_id()
         return await self.on_any_live_server(
             lambda server: self._bus.rpc_season_prize_remove(
                 server=server,
@@ -119,6 +135,7 @@ class MindustryRpcClient:
                 discord_id=discord_id,
                 actor_name=actor_name,
                 timeout_ms=timeout_ms,
+                request_id=request_id,
             )
         )
 

@@ -207,8 +207,8 @@ class RatingService:
         """Moves the closed account's standings to the surviving one.
 
         The account merge is already done, so a failure here must not undo it: when the
-        servers cannot be reached the merge is queued and retried; when they refuse, it
-        is only reported.
+        servers cannot be reached or fail to carry it out, the merge is queued and retried;
+        when they refuse, it is only reported.
         """
         source = result.source_before.uuid if result.source_before else None
         target_record = result.target_after or result.target_before

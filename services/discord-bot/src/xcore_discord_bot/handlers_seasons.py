@@ -35,6 +35,10 @@ def parse_instant(value: str) -> datetime:
     return parsed if parsed.tzinfo is not None else parsed.replace(tzinfo=UTC)
 
 
+def _millis(value: str) -> int:
+    return int(parse_instant(value).timestamp() * 1000)
+
+
 def prizes_from_event(prizes) -> tuple[Prize, ...]:
     """The prizes an event carries; an event without any has none."""
     return tuple(
@@ -127,15 +131,18 @@ async def on_season_ending_soon(
     bot: XCoreDiscordBot, event: RatingSeasonEndingSoonV1
 ) -> None:
     season = event.season
+    ends_at = parse_instant(season.endsAt)
     await _post_once(
         bot,
         season_id=f"{season.ladder}:{season.season}",
-        kind=f"ending-soon:{event.notice}",
+        # A notice is due again after the end is moved further away, so it is told apart by
+        # the end it counts down to; a replay of the same notice keeps the same key.
+        kind=f"ending-soon:{event.notice}:{int(ends_at.timestamp())}",
         embed=build_season_ending_soon_embed(
             ladder=season.ladder,
             name=season.name,
             number=season.season,
-            ends_at=parse_instant(season.endsAt),
+            ends_at=ends_at,
             prizes=prizes_from_event(event.prizes),
         ),
     )
@@ -168,8 +175,9 @@ async def on_season_rescheduled(
     await _post_once(
         bot,
         season_id=f"{season.ladder}:{season.season}",
-        # Every move is its own announcement, told apart by where the end went.
-        kind=f"rescheduled:{int(ends_at.timestamp())}",
+        # Every move is its own announcement. Where the end went is not enough to tell them
+        # apart, since it can be moved back to where it was; when it was moved is.
+        kind=f"rescheduled:{int(ends_at.timestamp())}:{_millis(event.occurredAt)}",
         embed=build_season_rescheduled_embed(
             ladder=season.ladder,
             name=season.name,
