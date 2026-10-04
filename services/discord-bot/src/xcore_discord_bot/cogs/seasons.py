@@ -474,7 +474,7 @@ class SeasonsCog(commands.Cog):
     @staticmethod
     def _describe_moved(ladder: str, response) -> str:
         ref = response.season
-        ends_at = datetime.fromisoformat(ref.endsAt.replace("Z", "+00:00"))
+        ends_at = datetime.fromisoformat(ref.endsAt)
         title = season_title(ladder, ref.name, ref.season)
         if response.ended:
             return f"**{title}** has ended."

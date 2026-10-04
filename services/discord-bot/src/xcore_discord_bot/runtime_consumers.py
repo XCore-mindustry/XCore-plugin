@@ -16,13 +16,13 @@ from .contracts import (
     RatingSeasonStartedV1,
     ServerHeartbeatV1,
 )
+from .handlers_moderation import post_ban_log, post_mute_log, post_vote_kick_log
 from .handlers_seasons import (
     on_season_ended,
     on_season_ending_soon,
     on_season_rescheduled,
     on_season_started,
 )
-from .handlers_moderation import post_ban_log, post_mute_log, post_vote_kick_log
 from .retry import retry_reconnect_bus
 from .service_protocols import ConsumerRecoveryService, PlayerLookupService
 
