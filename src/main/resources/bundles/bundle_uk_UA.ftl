@@ -667,8 +667,22 @@ pvp-you-spectator = [scarlet]Ви програли. Будь ласка, зач�
 # ==============================================================================
 # Events & Notifications
 # ==============================================================================
-player-joined = { $nickname } [grey]#[white]{ $pid }[grey] [accent]приєднався.
-player-left = { $nickname } [grey]#[white]{ $pid }[grey] [accent]вийшов.
+player-joined-pid = { $nickname } [grey]#[white]{ $pid }[grey] [accent]приєднався.
+player-joined-username = { $nickname } [grey]@[white]{ $username }[grey] [accent]приєднався.
+player-joined-both = { $nickname } [accent]@{ $username } [grey]#[white]{ $pid }[grey] [accent]приєднався.
+player-joined-none = { $nickname } [accent]приєднався.
+
+player-left-pid = { $nickname } [grey]#[white]{ $pid }[grey] [accent]вийшов.
+player-left-username = { $nickname } [grey]@[white]{ $username }[grey] [accent]вийшов.
+player-left-both = { $nickname } [accent]@{ $username } [grey]#[white]{ $pid }[grey] [accent]вийшов.
+player-left-none = { $nickname } [accent]вийшов.
+
+player-settings-identity-mode = [accent]Показ ідентифікатора у сповіщеннях:[]
+player-settings-identity-mode-pid = Тільки номер (#12)
+player-settings-identity-mode-username = Тільки ім'я (@Steve)
+player-settings-identity-mode-both = Ім'я та номер (@Steve #12)
+player-settings-identity-mode-none = Приховати все
+
 notification-votekick-playtime =
     [accent]Вітаємо! Ви відіграли [lightgray]{ $votekickPlayTime }[] { $votekickPlayTime ->
         [one] хвилину
@@ -1273,3 +1287,13 @@ announcement-help =
 
 
 error-only-players = [scarlet]⚠ Цю команду можуть використовувати лише гравці.
+
+player-settings-username-editable = [gold]★ Ім'я користувача (Нагорода за подію):[]
+player-settings-username-hint = Введіть унікальне ім'я (4-32 симв.)...
+player-settings-username-locked = [gray]Ім'я користувача:[] [accent]@{ $username }[] [darkgray](🔒 Заблоковано)[]
+player-settings-username-none = [gray]Ім'я користувача: [darkgray]Не встановлено (Виграйте у події)[]
+
+error-username-empty = Ім'я користувача не може бути порожнім!
+error-username-length = Довжина імені користувача має бути від 4 до 32 символів!
+error-username-invalid-chars = Ім'я користувача може містити лише латинські літери, цифри та символ підкреслення!
+error-username-taken = Це ім'я користувача вже зайнято іншим гравцем!

@@ -571,8 +571,9 @@ class PlayerProfileUiControllerTest {
         assertThat(statsDsl).doesNotContain("Season 3 ends in 12d");
 
         // 3. Players tab
+
         PlayerProfileUiController.OnlinePlayerRow row = new PlayerProfileUiController.OnlinePlayerRow(
-                "p-2", 100, "OnlineUser", null, Badge.DEVELOPER.id(), "default", false, "FFD37F"
+                "p-2", 100, "test_user", "OnlineUser", null, Badge.DEVELOPER.id(), "default", false, "FFD37F"
         );
         PlayerProfileUiController.ProfileModel playersModel = overviewModel
                 .withTab(PlayerProfileUiController.Tab.PLAYERS)

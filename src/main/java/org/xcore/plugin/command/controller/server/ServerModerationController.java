@@ -8,6 +8,7 @@ import org.incendo.cloud.annotation.specifier.Greedy;
 import org.incendo.cloud.annotations.Argument;
 import org.incendo.cloud.annotations.Command;
 import org.incendo.cloud.annotations.CommandDescription;
+import org.xcore.cloud.mindustry.selector.annotation.DenySelectors;
 import org.xcore.plugin.cloud.XCoreSender;
 import org.xcore.plugin.cloud.annotation.DefaultUnit;
 import org.xcore.plugin.command.controller.CloudServerController;
@@ -15,11 +16,11 @@ import org.xcore.plugin.database.repository.BanDataRepository;
 import org.xcore.plugin.model.BanData;
 import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.service.moderation.ModerationService;
+import org.xcore.plugin.session.SessionService;
 
 import java.time.Duration;
 import java.time.ZoneId;
 import java.util.concurrent.TimeUnit;
-import org.xcore.cloud.mindustry.selector.annotation.DenySelectors;
 
 import static mindustry.Vars.netServer;
 import static org.xcore.plugin.common.TextUtils.deepEquals;
@@ -30,33 +31,36 @@ public class ServerModerationController implements CloudServerController {
 
     private final ModerationService moderationService;
     private final BanDataRepository banDataRepository;
+    private final SessionService sessionService;
 
     @Inject
     public ServerModerationController(ModerationService moderationService,
-                                      BanDataRepository banDataRepository) {
+                                      BanDataRepository banDataRepository,
+                                      SessionService sessionService) {
         this.moderationService = moderationService;
         this.banDataRepository = banDataRepository;
+        this.sessionService = sessionService;
     }
 
     @DenySelectors
     @Command("tempban <target> <period> [reason]")
-    @CommandDescription("Temporarily bans a player by Name, UUID, IP, or #ID.")
+    @CommandDescription("Temporarily bans a player by Name, @Username, #PID, UUID, or IP.")
     public void tempBan(XCoreSender sender,
-                        @Argument(value = "target", description = "Player Name/#ID/UUID/IP") String arg,
+                        @Argument(value = "target", description = "Player Name/@Username/#ID/UUID/IP") String arg,
                         @Argument(value = "period", description = "Duration (e.g. 1d, 30m)") @DefaultUnit(TimeUnit.DAYS) Duration period,
                         @Argument(value = "reason", description = "Reason for the ban") @Greedy String reason) {
+
+        PlayerData targetData = sessionService.resolvePlayerData(arg);
 
         String uuid = null;
         String ip = null;
         String name = "Unknown";
 
-        if (arg.startsWith("#")) {
-            var target = requirePlayerData(arg);
-            if (target == null) return;
-            uuid = target.uuid;
-            name = target.nickname;
+        if (targetData != null) {
+            uuid = targetData.uuid;
+            name = targetData.nickname;
             var info = netServer.admins.getInfoOptional(uuid);
-            if (info != null) ip = info.lastIP;
+            ip = (info != null && info.lastIP != null) ? info.lastIP : targetData.ip;
         } else {
             var info = netServer.admins.getInfoOptional(arg);
             if (info != null) {
@@ -81,15 +85,23 @@ public class ServerModerationController implements CloudServerController {
     @Command("tempunban <type> <value>")
     @CommandDescription("Unbans a temporary ban.")
     public void tempUnban(XCoreSender sender,
-                          @Argument(value = "type", description = "Identifier type: uuid/uid, ip, id") String type,
+                          @Argument(value = "type", description = "Identifier type: uuid/uid, ip, id, username") String type,
                           @Argument(value = "value", description = "The identifier value") String value) {
 
         String uuid = null, ip = null;
         switch (type.toLowerCase()) {
             case "uuid", "uid" -> uuid = value;
             case "ip" -> ip = value;
-            case "id" -> {
-                var d = moderationService.findPlayerData("#" + value);
+            case "id", "pid" -> {
+                var d = sessionService.resolvePlayerData(value.startsWith("#") ? value : "#" + value);
+                if (d != null) uuid = d.uuid;
+            }
+            case "user", "username" -> {
+                var d = sessionService.resolvePlayerData(value.startsWith("@") ? value : "@" + value);
+                if (d != null) uuid = d.uuid;
+            }
+            default -> {
+                var d = sessionService.resolvePlayerData(value);
                 if (d != null) uuid = d.uuid;
             }
         }
@@ -117,14 +129,17 @@ public class ServerModerationController implements CloudServerController {
 
     @DenySelectors
     @Command("mute <target> <period> [reason]")
-    @CommandDescription("Mutes a player by #ID or UUID.")
+    @CommandDescription("Mutes a player by @Username, #ID, or UUID.")
     public void mute(XCoreSender sender,
-                     @Argument(value = "target", description = "Player #ID/UUID") String target,
+                     @Argument(value = "target", description = "Player @Username/#ID/UUID") String target,
                      @Argument(value = "period", description = "Duration (e.g. 1h, 30m)") @DefaultUnit(TimeUnit.HOURS) Duration period,
                      @Argument(value = "reason", description = "Reason for the mute") @Greedy String reason) {
 
-        PlayerData data = requirePlayerData(target);
-        if (data == null) return;
+        PlayerData data = sessionService.resolvePlayerData(target);
+        if (data == null) {
+            Log.err("Player not found");
+            return;
+        }
 
         var result = moderationService.muteById(data.pid, "console", null, reason, period);
 
@@ -137,12 +152,15 @@ public class ServerModerationController implements CloudServerController {
 
     @DenySelectors
     @Command("unmute <target>")
-    @CommandDescription("Unmutes a player by #ID or UUID.")
+    @CommandDescription("Unmutes a player by @Username, #ID, or UUID.")
     public void unmute(XCoreSender sender,
-                       @Argument(value = "target", description = "Player #ID/UUID") String target) {
+                       @Argument(value = "target", description = "Player @Username/#ID/UUID") String target) {
 
-        PlayerData data = requirePlayerData(target);
-        if (data == null) return;
+        PlayerData data = sessionService.resolvePlayerData(target);
+        if (data == null) {
+            Log.err("Player not found");
+            return;
+        }
 
         var result = moderationService.unmuteById(data.pid, "console", null);
         if (result.isSuccess()) {
@@ -150,13 +168,5 @@ public class ServerModerationController implements CloudServerController {
         } else {
             Log.err(result.getMessage().orElse("Unmute failed"));
         }
-    }
-
-    private PlayerData requirePlayerData(String target) {
-        PlayerData data = moderationService.findPlayerData(target);
-        if (data == null) {
-            Log.err("Player not found");
-        }
-        return data;
     }
 }

@@ -20,10 +20,10 @@ import org.xcore.plugin.model.MuteData;
 import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.service.FindService;
 import org.xcore.plugin.service.NetworkService;
-import org.xcore.plugin.service.network.ModerationProtocolMapper;
-import org.xcore.plugin.session.SessionService;
 import org.xcore.plugin.service.SecurityService;
 import org.xcore.plugin.service.TimeService;
+import org.xcore.plugin.service.network.ModerationProtocolMapper;
+import org.xcore.plugin.session.SessionService;
 import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationPardonCommandV1;
 
 import java.time.Duration;
@@ -158,6 +158,40 @@ public class ModerationService {
         return ModerationResult.failure(PLAYER_NOT_FOUND_MESSAGE);
     }
 
+    /**
+     * Знаходить PlayerData за будь-яким ідентифікатором:
+     * 1. @Steve -> по юзернейму
+     * 2. #123 або 123 -> по PID
+     * 3. Steve -> по юзернейму
+     * 4. UUID рядок -> по UUID
+     */
+    public PlayerData resolvePlayerData(String target) {
+        if (target == null || target.isBlank()) {
+            return null;
+        }
+        target = target.trim();
+
+        if (target.startsWith("@") && target.length() > 1) {
+            return playerDataRepository.findByUsername(target.substring(1));
+        }
+
+        String pidCandidate = target.startsWith("#") ? target.substring(1) : target;
+        if (pidCandidate.matches("\\d+")) {
+            try {
+                int pid = Integer.parseInt(pidCandidate);
+                PlayerData data = playerDataRepository.findByPid(pid);
+                if (data != null) return data;
+            } catch (NumberFormatException ignored) {}
+        }
+
+        PlayerData byUsername = playerDataRepository.findByUsername(target);
+        if (byUsername != null) {
+            return byUsername;
+        }
+
+        return playerDataRepository.findByUuid(target);
+    }
+
     private Integer resolveTargetPid(int targetId, String targetUuid) {
         if (targetId >= 0) {
             return targetId;
@@ -170,33 +204,30 @@ public class ModerationService {
         }
         return null;
     }
-
-    /**
-     * Ban a player by their ID.
-     *
-     * @param id          Player ID
-     * @param adminName   Name of the admin performing the ban
-     * @param reason      Ban reason
-     * @param duration    Ban duration period
-     * @param kickOnline  Whether to kick the player if online
-     * @return Result containing BanData if successful
-     */
-    public ModerationResult<BanData> banById(int id, String adminName, String adminDiscordId, String reason, Duration duration, boolean kickOnline) {
-        var target = playerDataRepository.findByPid(id);
+    
+    public ModerationResult<BanData> banPlayer(PlayerData target, String adminName, String adminDiscordId, String reason, Duration duration, boolean kickOnline) {
         if (target == null) {
             return ModerationResult.failure(PLAYER_NOT_FOUND_MESSAGE);
         }
 
         var info = netServer.admins.getInfoOptional(target.uuid);
-        String ip = (info != null) ? info.lastIP : null;
+        String ip = (info != null) ? info.lastIP : target.ip;
 
         return executeBan(target.uuid, ip, target.pid, target.nickname, duration, reason,
                 adminName, adminDiscordId, kickOnline, false);
     }
 
+    public ModerationResult<BanData> banByTarget(String target, String adminName, String adminDiscordId, String reason, Duration duration, boolean kickOnline) {
+        return banPlayer(resolvePlayerData(target), adminName, adminDiscordId, reason, duration, kickOnline);
+    }
+
+    public ModerationResult<BanData> banById(int id, String adminName, String adminDiscordId, String reason, Duration duration, boolean kickOnline) {
+        return banPlayer(playerDataRepository.findByPid(id), adminName, adminDiscordId, reason, duration, kickOnline);
+    }
+
     private ModerationResult<BanData> executeBan(String uuid, String ip, Integer pid, String name,
-                                                Duration duration, String reason, String adminName,
-                                                String adminDiscordId, boolean kickOnline, boolean isTempBan) {
+                                                 Duration duration, String reason, String adminName,
+                                                 String adminDiscordId, boolean kickOnline, boolean isTempBan) {
         Instant expire = toExpireDate(duration);
         String playerName = resolvePlayerName(name);
 
@@ -245,15 +276,8 @@ public class ModerationService {
                 : "Player '" + playerName + "' banned successfully";
         return ModerationResult.success(message, ban);
     }
-
-    /**
-     * Unban a player by their ID.
-     *
-     * @param id Player ID
-     * @return Result containing PlayerData if successful
-     */
-    public ModerationResult<PlayerData> unbanById(int id, String adminName, String adminDiscordId) {
-        var target = playerDataRepository.findByPid(id);
+    
+    public ModerationResult<PlayerData> unbanPlayer(PlayerData target, String adminName, String adminDiscordId) {
         if (target == null) {
             return ModerationResult.failure(PLAYER_NOT_FOUND_MESSAGE);
         }
@@ -267,8 +291,16 @@ public class ModerationService {
         return ModerationResult.success("Player '" + target.nickname + "' unbanned successfully", target);
     }
 
+    public ModerationResult<PlayerData> unbanByTarget(String target, String adminName, String adminDiscordId) {
+        return unbanPlayer(resolvePlayerData(target), adminName, adminDiscordId);
+    }
+
+    public ModerationResult<PlayerData> unbanById(int id, String adminName, String adminDiscordId) {
+        return unbanPlayer(playerDataRepository.findByPid(id), adminName, adminDiscordId);
+    }
+
     private void auditAndPublishPardon(AuditAction action, String uuid, Integer pid, String name, String ip,
-                                      String adminName, String adminDiscordId) {
+                                       String adminName, String adminDiscordId) {
         AuditRecord audit = appendAudit(
                 action,
                 auditTarget(uuid, pid, name, ip),
@@ -282,18 +314,8 @@ public class ModerationService {
         postAuditEvent(audit);
         network.post(toPardonCommand(uuid, pid, name, ip, audit));
     }
-
-    /**
-     * Mute a player by their ID.
-     *
-     * @param id        Player ID
-     * @param adminName Name of the admin performing the mute
-     * @param reason    Mute reason
-     * @param duration  Mute duration period
-     * @return Result containing MuteData if successful
-     */
-    public ModerationResult<MuteData> muteById(int id, String adminName, String adminDiscordId, String reason, Duration duration) {
-        var target = sessionService.getOrLoadFromDb(id);
+    
+    public ModerationResult<MuteData> mutePlayer(PlayerData target, String adminName, String adminDiscordId, String reason, Duration duration) {
         if (target == null) {
             return ModerationResult.failure(PLAYER_NOT_FOUND_MESSAGE);
         }
@@ -334,14 +356,15 @@ public class ModerationService {
         return ModerationResult.success("Player '" + target.nickname + "' muted successfully", mute);
     }
 
-    /**
-     * Unmute a player by their ID.
-     *
-     * @param id Player ID
-     * @return Result containing PlayerData if successful
-     */
-    public ModerationResult<PlayerData> unmuteById(int id, String adminName, String adminDiscordId) {
-        var target = sessionService.getOrLoadFromDb(id);
+    public ModerationResult<MuteData> muteByTarget(String target, String adminName, String adminDiscordId, String reason, Duration duration) {
+        return mutePlayer(resolvePlayerData(target), adminName, adminDiscordId, reason, duration);
+    }
+
+    public ModerationResult<MuteData> muteById(int id, String adminName, String adminDiscordId, String reason, Duration duration) {
+        return mutePlayer(sessionService.getOrLoadFromDb(id), adminName, adminDiscordId, reason, duration);
+    }
+    
+    public ModerationResult<PlayerData> unmutePlayer(PlayerData target, String adminName, String adminDiscordId) {
         if (target == null) {
             return ModerationResult.failure(PLAYER_NOT_FOUND_MESSAGE);
         }
@@ -360,21 +383,18 @@ public class ModerationService {
         return ModerationResult.success("Player '" + target.nickname + "' unmuted successfully", target);
     }
 
+    public ModerationResult<PlayerData> unmuteByTarget(String target, String adminName, String adminDiscordId) {
+        return unmutePlayer(resolvePlayerData(target), adminName, adminDiscordId);
+    }
+
+    public ModerationResult<PlayerData> unmuteById(int id, String adminName, String adminDiscordId) {
+        return unmutePlayer(sessionService.getOrLoadFromDb(id), adminName, adminDiscordId);
+    }
+
     private SecurityService security() {
         return securityService != null ? securityService.get() : null;
     }
 
-    /**
-     * Temporary ban a player by UUID or IP.
-     *
-     * @param uuid      Player UUID (can be null)
-     * @param ip        Player IP (can be null)
-     * @param name      Player name
-     * @param duration  Ban duration period
-     * @param reason    Ban reason
-     * @param adminName Name of the admin performing the ban
-     * @return Result containing BanData if successful
-     */
     public ModerationResult<BanData> tempBanByUuidOrIp(String uuid, String ip, String name, Duration duration, String reason, String adminName, String adminDiscordId) {
         if (hasNoIdentifier(uuid, ip)) {
             return ModerationResult.failure(MISSING_IDENTIFIER_MESSAGE);
@@ -384,13 +404,6 @@ public class ModerationService {
                 adminName, adminDiscordId, true, true);
     }
 
-    /**
-     * Temporary unban by UUID or IP.
-     *
-     * @param uuid Player UUID (can be null)
-     * @param ip   Player IP (can be null)
-     * @return Result indicating success or failure
-     */
     public ModerationResult<Void> tempUnban(String uuid, String ip, String adminName, String adminDiscordId) {
         if (hasNoIdentifier(uuid, ip)) {
             return ModerationResult.failure(MISSING_IDENTIFIER_MESSAGE);
@@ -405,13 +418,6 @@ public class ModerationService {
         return ModerationResult.success("Unbanned: UUID=" + uuid + " / IP=" + ip, null);
     }
 
-    /**
-     * Parse period string using TimeService.
-     *
-     * @param periodStr Period string (e.g., "1d", "2h")
-     * @param unit      Time unit
-     * @return Parsed Duration or null if invalid
-     */
     public Duration parsePeriod(String periodStr, TimeUnit unit) {
         Instant parsed = time.parsePeriod(periodStr, unit);
         if (parsed == null) {
@@ -420,12 +426,6 @@ public class ModerationService {
         return Duration.ofMillis(parsed.toEpochMilli());
     }
 
-    /**
-     * Find player data by UUID or PID.
-     *
-     * @param uuidOrPid UUID or PID string (PID starts with #)
-     * @return PlayerData or null if not found
-     */
     public PlayerData findPlayerData(String uuidOrPid) {
         return find.playerData(uuidOrPid);
     }

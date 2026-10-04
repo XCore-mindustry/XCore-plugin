@@ -54,6 +54,12 @@ public class PlayerDataRepository extends DataRepository<PlayerData> {
 
         collection.createIndex(new Document("uuid", 1), new IndexOptions().unique(true));
         collection.createIndex(new Document("pid", 1));
+        collection.createIndex(new Document("username", 1), new IndexOptions().unique(true)
+                        .partialFilterExpression(Filters.gt("username", ""))
+                        .collation(com.mongodb.client.model.Collation.builder()
+                                .locale("en")
+                                .collationStrength(com.mongodb.client.model.CollationStrength.SECONDARY).build())
+        );
         collection.createIndex(new Document("nickname", 1));
         collection.createIndex(new Document("discord_id", 1));
         collection.createIndex(new Document("total_play_time", -1).append("pid", 1));
@@ -184,6 +190,34 @@ public class PlayerDataRepository extends DataRepository<PlayerData> {
                     "Reactive MongoDB store is required for findByPidAsync"));
         }
         return MongoAsync.first(reactiveCollection.find(eq("pid", id)));
+    }
+
+    public PlayerData findByUsername(String username) {
+        if (username == null || username.isBlank()) return null;
+        return collection.find(Filters.eq("username", username))
+                .collation(com.mongodb.client.model.Collation.builder()
+                        .locale("en")
+                        .collationStrength(com.mongodb.client.model.CollationStrength.SECONDARY)
+                        .build())
+                .first();
+    }
+
+    public java.util.concurrent.CompletionStage<PlayerData> findByUsernameAsync(String username) {
+        if (username == null || username.isBlank()) {
+            return java.util.concurrent.CompletableFuture.completedFuture(null);
+        }
+        if (reactiveCollection == null) {
+            return java.util.concurrent.CompletableFuture.failedFuture(new IllegalStateException(
+                    "Reactive MongoDB store is required for findByUsernameAsync"));
+        }
+
+        return MongoAsync.first(
+                reactiveCollection.find(Filters.eq("username", username))
+                        .collation(com.mongodb.client.model.Collation.builder()
+                                .locale("en")
+                                .collationStrength(com.mongodb.client.model.CollationStrength.SECONDARY)
+                                .build())
+        );
     }
 
     /**
@@ -641,5 +675,23 @@ public class PlayerDataRepository extends DataRepository<PlayerData> {
 
     public List<PlayerData> findAllWithMapVotes() {
         return collection.find(Filters.exists("map_votes", true)).into(new ArrayList<>());
+    }
+
+    public boolean updateUsername(String uuid, String username, boolean canChangeUsername) {
+        return updateByUuid(uuid, Updates.combine(
+                Updates.set("username", username == null ? "" : username),
+                Updates.set("can_change_username", canChangeUsername)
+        ));
+    }
+
+    public java.util.concurrent.CompletionStage<Boolean> updateUsernameAsync(String uuid, String username, boolean canChangeUsername) {
+        return updateByUuidAsync(uuid, Updates.combine(
+                Updates.set("username", username == null ? "" : username),
+                Updates.set("can_change_username", canChangeUsername)
+        ));
+    }
+
+    public boolean updateIdentityDisplayMode(String uuid, org.xcore.plugin.model.enums.IdentityDisplayMode mode) {
+        return updateByUuid(uuid, com.mongodb.client.model.Updates.set("identity_display_mode", mode != null ? mode.name() : "PID"));
     }
 }

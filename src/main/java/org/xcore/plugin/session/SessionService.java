@@ -662,4 +662,90 @@ public class SessionService {
             topMenuCacheService.invalidateAllAsync();
         }
     }
+
+    /**
+     * Знаходить онлайн-сесію за юзернеймом у кеші пам'яті.
+     */
+    public Session findOnlineByUsername(String username) {
+        if (username == null || username.isBlank()) return null;
+        for (var session : getAllCachedSnapshot()) {
+            if (session.data != null && username.equalsIgnoreCase(session.data.username)) {
+                return session;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Універсальний пошук гравця за будь-яким ідентифікатором:
+     * #12 / 12 (PID), @username / username, UUID.
+     * Спочатку перевіряє швидкий кеш онлайну, потім звертається до MongoDB.
+     */
+    public PlayerData resolvePlayerData(String target) {
+        if (target == null || target.isBlank()) {
+            return null;
+        }
+        target = target.trim();
+
+        if (target.startsWith("@") && target.length() > 1) {
+            String name = target.substring(1);
+            Session online = findOnlineByUsername(name);
+            if (online != null && online.data != null) return online.data;
+            return playerDataRepository.findByUsername(name);
+        }
+
+        String pidCandidate = target.startsWith("#") ? target.substring(1) : target;
+        if (pidCandidate.matches("\\d+")) {
+            try {
+                int pid = Integer.parseInt(pidCandidate);
+                PlayerData data = getOrLoadFromDb(pid);
+                if (data != null) return data;
+            } catch (NumberFormatException ignored) {}
+        }
+
+        Session online = findOnlineByUsername(target);
+        if (online != null && online.data != null) return online.data;
+        PlayerData byUser = playerDataRepository.findByUsername(target);
+        if (byUser != null) return byUser;
+
+        return getOrLoadFromDb(target);
+    }
+    public CompletionStage<PlayerData> resolvePlayerDataAsync(String target) {
+        if (target == null || target.isBlank()) {
+            return CompletableFuture.completedFuture(null);
+        }
+        final String cleanTarget = target.trim();
+
+        if (cleanTarget.startsWith("@") && cleanTarget.length() > 1) {
+            String name = cleanTarget.substring(1);
+            Session online = findOnlineByUsername(name);
+            if (online != null && online.data != null) {
+                return CompletableFuture.completedFuture(online.data);
+            }
+            return playerDataRepository.findByUsernameAsync(name);
+        }
+
+        String pidCandidate = cleanTarget.startsWith("#") ? cleanTarget.substring(1) : cleanTarget;
+        if (pidCandidate.matches("\\d+")) {
+            try {
+                int pid = Integer.parseInt(pidCandidate);
+                return getOrLoadFromDbAsync(pid);
+            } catch (NumberFormatException ignored) {}
+        }
+
+        Session online = findOnlineByUsername(cleanTarget);
+        if (online != null && online.data != null) {
+            return CompletableFuture.completedFuture(online.data);
+        }
+        if (playerDataRepository != null) {
+            return playerDataRepository.findByUsernameAsync(cleanTarget).thenCompose(data -> {
+                if (data != null) {
+                    return CompletableFuture.completedFuture(data);
+                }
+                return getOrLoadFromDbAsync(cleanTarget);
+            });
+        }
+
+        return getOrLoadFromDbAsync(cleanTarget);
+    }
 }

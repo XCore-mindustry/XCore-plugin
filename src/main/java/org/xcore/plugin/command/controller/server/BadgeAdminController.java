@@ -21,12 +21,9 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
-import java.util.regex.Pattern;
 
 @Singleton
 public class BadgeAdminController implements CloudServerController {
-
-    private static final Pattern PID_PATTERN = Pattern.compile("#\\d+");
 
     private final SessionService sessionService;
     private final NetworkService network;
@@ -146,23 +143,21 @@ public class BadgeAdminController implements CloudServerController {
     private Set<String> copyBadges(Set<String> badges) {
         return badges == null ? Set.of() : Set.copyOf(badges);
     }
-
     private PlayerData resolveTarget(String playerRef) {
         if (playerRef == null || playerRef.isBlank()) return null;
-
-        if (PID_PATTERN.matcher(playerRef).matches()) {
-            return sessionService.getOrLoadFromDb(Integer.parseInt(playerRef.substring(1)));
-        }
+        String cleanRef = playerRef.trim();
 
         for (Session session : sessionService.getAllCachedSnapshot()) {
             if (session == null || session.data == null) continue;
-            if (playerRef.equalsIgnoreCase(session.data.uuid)
-                    || playerRef.equalsIgnoreCase(session.data.nickname)
-                    || playerRef.equalsIgnoreCase(session.data.customNickname)) {
+            if (cleanRef.equalsIgnoreCase(session.data.uuid)
+                    || cleanRef.equalsIgnoreCase(session.data.nickname)
+                    || cleanRef.equalsIgnoreCase(session.data.customNickname)
+                    || (session.data.username != null && !session.data.username.isBlank() &&
+                    (cleanRef.equalsIgnoreCase(session.data.username) || cleanRef.equalsIgnoreCase("@" + session.data.username)))) {
                 return session.data;
             }
         }
 
-        return sessionService.getOrLoadFromDb(playerRef);
+        return sessionService.resolvePlayerData(cleanRef);
     }
 }

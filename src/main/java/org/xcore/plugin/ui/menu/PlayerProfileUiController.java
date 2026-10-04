@@ -39,9 +39,6 @@ import static com.ospx.flubundle.Bundle.args;
 
 /**
  * Modern reactive Player Profile and Stats UI controller for Mindustry v160 using xcore-ui.
- *
- * <p>Consolidates player profile inspection, gamemode telemetry (MiniPvP, Survival, Legacy Hexed),
- * combat &amp; construction efficiency, and live server player roster into a unified Elm/MVI dialog.
  */
 public class PlayerProfileUiController implements UiController<PlayerProfileUiController.ProfileModel, PlayerProfileUiController.ProfileEvent> {
 
@@ -69,6 +66,7 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
     public record OnlinePlayerRow(
             String uuid,
             int pid,
+            String username,
             String nickname,
             String customNickname,
             String activeBadge,
@@ -78,12 +76,10 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
     ) {}
 
     public record ProfileModel(
-            // Viewer identity
             String viewerUuid,
-
-            // Target Player Identity
             String targetUuid,
             int pid,
+            String username,
             String nickname,
             String customNickname,
             String description,
@@ -95,22 +91,16 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
             String badgeSymbolColorMode,
             Set<String> unlockedBadges,
             String playerColorHex,
-
-            // Gamemode Progression & Stats
             List<ProfileSectionView> sections,
             int hexedPoints,
             HexedRank hexedRank,
             Integer hexedTopRank,
             PlayerStatsOverview stats,
             boolean isStatsLoading,
-
-            // Viewer & Context
             boolean isSelf,
             boolean isViewerAdmin,
             Tab tab,
             boolean viewingFromPlayersTab,
-
-            // Players Tab State
             AdminFilter adminFilter,
             int playersPage,
             int totalOnlineCount,
@@ -118,34 +108,33 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
             String feedbackMessage
     ) {
         public ProfileModel withTab(Tab newTab) {
-            return new ProfileModel(viewerUuid, targetUuid, pid, nickname, customNickname, description, isTargetAdmin,
+            return new ProfileModel(viewerUuid, targetUuid, pid, username, nickname, customNickname, description, isTargetAdmin,
                     isTargetOnline, createdModelTime, totalPlayTime, activeBadge, badgeSymbolColorMode,
                     unlockedBadges, playerColorHex, sections, hexedPoints, hexedRank, hexedTopRank,
                     stats, isStatsLoading, isSelf, isViewerAdmin, newTab,
                     viewingFromPlayersTab, adminFilter, playersPage, totalOnlineCount, onlinePlayers, "");
         }
 
-        /** What has been read about the target so far, {@code null} while it is still loading. */
         public ProfileDetails details() {
             return isStatsLoading ? null : new ProfileDetails(stats, hexedTopRank, sections);
         }
 
         public ProfileModel withDetails(ProfileDetails details) {
-            return new ProfileModel(viewerUuid, targetUuid, pid, nickname, customNickname, description, isTargetAdmin,
+            return new ProfileModel(viewerUuid, targetUuid, pid, username, nickname, customNickname, description, isTargetAdmin,
                     isTargetOnline, createdModelTime, totalPlayTime, activeBadge, badgeSymbolColorMode,
                     unlockedBadges, playerColorHex, details.sections(), hexedPoints, hexedRank, details.hexedTopRank(),
                     details.stats(), false, isSelf, isViewerAdmin, tab,
                     viewingFromPlayersTab, adminFilter, playersPage, totalOnlineCount, onlinePlayers, feedbackMessage);
         }
 
-        /** @param details what is already loaded about {@code target}, {@code null} while it is being read */
         public ProfileModel withTarget(PlayerData target, boolean isOnline, String colorHex,
-                                      ProfileDetails details, boolean fromPlayersTab) {
+                                       ProfileDetails details, boolean fromPlayersTab) {
             Objects.requireNonNull(target, "target");
             return new ProfileModel(
                     viewerUuid,
                     target.uuid,
                     target.pid,
+                    target.username != null ? target.username : "",
                     target.nickname != null ? target.nickname : "",
                     target.customNickname != null ? target.customNickname : "",
                     target.description != null ? target.description : "",
@@ -176,7 +165,7 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
         }
 
         public ProfileModel withPlayersPage(int newPage) {
-            return new ProfileModel(viewerUuid, targetUuid, pid, nickname, customNickname, description, isTargetAdmin,
+            return new ProfileModel(viewerUuid, targetUuid, pid, username, nickname, customNickname, description, isTargetAdmin,
                     isTargetOnline, createdModelTime, totalPlayTime, activeBadge, badgeSymbolColorMode,
                     unlockedBadges, playerColorHex, sections, hexedPoints, hexedRank, hexedTopRank,
                     stats, isStatsLoading, isSelf, isViewerAdmin, tab,
@@ -184,7 +173,7 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
         }
 
         public ProfileModel withAdminFilter(AdminFilter filter, List<OnlinePlayerRow> players) {
-            return new ProfileModel(viewerUuid, targetUuid, pid, nickname, customNickname, description, isTargetAdmin,
+            return new ProfileModel(viewerUuid, targetUuid, pid, username, nickname, customNickname, description, isTargetAdmin,
                     isTargetOnline, createdModelTime, totalPlayTime, activeBadge, badgeSymbolColorMode,
                     unlockedBadges, playerColorHex, sections, hexedPoints, hexedRank, hexedTopRank,
                     stats, isStatsLoading, isSelf, isViewerAdmin, tab,
@@ -192,7 +181,7 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
         }
 
         public ProfileModel withRefreshedPlayers(List<OnlinePlayerRow> players, int totalCount) {
-            return new ProfileModel(viewerUuid, targetUuid, pid, nickname, customNickname, description, isTargetAdmin,
+            return new ProfileModel(viewerUuid, targetUuid, pid, username, nickname, customNickname, description, isTargetAdmin,
                     isTargetOnline, createdModelTime, totalPlayTime, activeBadge, badgeSymbolColorMode,
                     unlockedBadges, playerColorHex, sections, hexedPoints, hexedRank, hexedTopRank,
                     stats, isStatsLoading, isSelf, isViewerAdmin, tab,
@@ -202,7 +191,7 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
         public ProfileModel withRefreshedPlayersPreservingPage(List<OnlinePlayerRow> players, int totalCount) {
             int maxPage = Math.max(1, (int) Math.ceil((double) players.size() / PLAYERS_PER_PAGE));
             int page = Math.clamp(playersPage, 1, maxPage);
-            return new ProfileModel(viewerUuid, targetUuid, pid, nickname, customNickname, description, isTargetAdmin,
+            return new ProfileModel(viewerUuid, targetUuid, pid, username, nickname, customNickname, description, isTargetAdmin,
                     isTargetOnline, createdModelTime, totalPlayTime, activeBadge, badgeSymbolColorMode,
                     unlockedBadges, playerColorHex, sections, hexedPoints, hexedRank, hexedTopRank,
                     stats, isStatsLoading, isSelf, isViewerAdmin, tab,
@@ -210,7 +199,7 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
         }
 
         public ProfileModel withFeedback(String msg) {
-            return new ProfileModel(viewerUuid, targetUuid, pid, nickname, customNickname, description, isTargetAdmin,
+            return new ProfileModel(viewerUuid, targetUuid, pid, username, nickname, customNickname, description, isTargetAdmin,
                     isTargetOnline, createdModelTime, totalPlayTime, activeBadge, badgeSymbolColorMode,
                     unlockedBadges, playerColorHex, sections, hexedPoints, hexedRank, hexedTopRank,
                     stats, isStatsLoading, isSelf, isViewerAdmin, tab,
@@ -256,7 +245,6 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
         this.initialTargetData = targetData;
     }
 
-    /** @param details what is already loaded about the target, {@code null} while it is being read */
     public ProfileModel createInitialModel(Tab tab, ProfileDetails details) {
         return createModel(session, initialTargetData, tab, details, sessionService, playerDisplayService);
     }
@@ -287,6 +275,7 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
                 viewerUuid,
                 targetData.uuid,
                 targetData.pid,
+                targetData.username != null ? targetData.username : "",
                 targetData.nickname != null ? targetData.nickname : "",
                 targetData.customNickname != null ? targetData.customNickname : "",
                 targetData.description != null ? targetData.description : "",
@@ -317,9 +306,9 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
     }
 
     public static List<OnlinePlayerRow> resolveOnlinePlayers(Session viewerSession,
-                                                            SessionService sessionService,
-                                                            PlayerDisplayService playerDisplayService,
-                                                            AdminFilter filter) {
+                                                             SessionService sessionService,
+                                                             PlayerDisplayService playerDisplayService,
+                                                             AdminFilter filter) {
         if (sessionService == null) return List.of();
         return sessionService.streamCached()
                 .filter(s -> s != null && s.data != null && s.player != null)
@@ -332,6 +321,7 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
                 .map(s -> new OnlinePlayerRow(
                         s.data.uuid,
                         s.data.pid,
+                        s.data.username != null ? s.data.username : "",
                         s.data.nickname != null ? s.data.nickname : "",
                         s.data.customNickname != null ? s.data.customNickname : "",
                         s.data.activeBadge != null ? s.data.activeBadge : "",
@@ -616,7 +606,6 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
         return new ProfileEvent.Close();
     }
 
-    /** Caps only; the client resolves the actual width and body height. */
     private DialogMetrics metrics() {
         return DialogMetrics.standard();
     }
@@ -631,11 +620,10 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
             t.margin(8f);
             t.layout(l -> l.growX().maxWidth(metrics.maxDialogWidth()).pad(4f));
 
-            // 1. Header: Row 1 = Title & Close; Row 2 = Online Status & Actions
+            // Header
             t.add(Ui.table(h -> {
                 h.layout(l -> l.growX().padBottom(4f));
 
-                // Row 1: Icon, Title, and Close Button
                 h.add(Ui.table(topRow -> {
                     topRow.layout(l -> l.growX());
                     topRow.label(Text.raw("[orange]" + Iconc.players + "[] [white]"), l -> l.align("left"));
@@ -648,7 +636,6 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
                             .layout(l -> l.size(32f)));
                 })).row();
 
-                // Row 2 (when viewing profile/stats): Status on left, Settings & Audit buttons on right
                 if (model.tab() != Tab.PLAYERS) {
                     h.add(Ui.table(subRow -> {
                         subRow.layout(l -> l.growX().padTop(2f));
@@ -672,10 +659,8 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
             })).row();
             t.image("whiteui", l -> l.growX().height(2f).padBottom(6f).color("ffd37f")).row();
 
-            // 2. Navigation Tabs Row (Overview / Stats / Online Players)
+            // Tabs
             t.add(Ui.table(tabs -> {
-                // A WrapTable picks the tab columns from the width the client actually gives it,
-                // so the same three tabs fit a phone and a desktop without a server-side guess.
                 tabs.wrap();
                 tabs.layout(l -> l.growX().padBottom(6f));
 
@@ -701,7 +686,7 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
             })).row();
             t.image("whiteui", l -> l.growX().height(2f).padBottom(6f).color("454545")).row();
 
-            // 3. Scrollable Body
+            // Body
             t.pane(p -> {
                 p.layout(l -> l.growX().growY().maxHeight(metrics.maxBodyHeight()));
                 p.table(body -> {
@@ -715,7 +700,7 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
                 });
             }).row();
 
-            // 4. Feedback Message
+            // Feedback
             if (model.feedbackMessage() != null && !model.feedbackMessage().isBlank()) {
                 t.image("whiteui", l -> l.growX().height(2f).padTop(4f).padBottom(4f).color("454545")).row();
                 t.add(Ui.table(fb -> {
@@ -724,7 +709,7 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
                 })).row();
             }
 
-            // 5. Bottom Action Bar
+            // Bottom Actions
             t.add(Ui.table(actions -> {
                 actions.layout(l -> l.growX().padTop(6f));
 
@@ -759,11 +744,6 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
         });
     }
 
-    // =========================================================================
-    // Tab 1: OVERVIEW
-    // =========================================================================
-
-    /** The mode sections in the viewer's language; a section that fails to render is left out. */
     private static List<ProfileSection> renderSections(ProfileModel model, Localization local) {
         List<ProfileSection> sections = new ArrayList<>();
         if (local == null) {
@@ -772,21 +752,17 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
         for (ProfileSectionView view : model.sections()) {
             try {
                 sections.add(view.render(local));
-            } catch (Exception ignored) {
-                // One mode's section must not take the whole profile down.
-            }
+            } catch (Exception ignored) {}
         }
         return sections;
     }
 
     private void renderOverviewTab(Ui.TableBuilder body, ProfileModel model, DialogMetrics metrics, Localization local) {
-        // --- Card 1: Identity & Bio Card ---
         body.add(Ui.table(c -> {
             c.background("button");
             c.margin(10f);
             c.layout(l -> l.growX().padBottom(6f));
 
-            // Name, badges and PID header
             c.add(Ui.table(top -> {
                 top.layout(l -> l.growX().padBottom(4f));
 
@@ -809,12 +785,17 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
                 } else {
                     identity.append("[accent]").append(rawNick);
                 }
+
+                // Виведення імені користувача, якщо воно є
+                if (model.username() != null && !model.username().isBlank()) {
+                    identity.append(" [gold]@[accent]").append(model.username()).append("[]");
+                }
+
                 identity.append(" [gray]#").append(model.pid()).append("[]");
 
                 top.label(Text.raw(identity.toString()), l -> l.align("left").growX());
             })).row();
 
-            // Bio / Description
             c.add(Ui.table(descTable -> {
                 descTable.layout(l -> l.growX().padBottom(6f));
                 String desc = model.description() != null && !model.description().isBlank()
@@ -823,7 +804,6 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
                 descTable.labelWrap(Text.raw(desc), l -> l.align("left").growX());
             })).row();
 
-            // Info row: Joined, Play time
             c.add(Ui.table(info -> {
                 info.layout(l -> l.growX());
                 String joinedLbl = local != null ? local.t("player-stats-account-created") : "[gray]Joined:[]";
@@ -833,7 +813,6 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
             })).row();
         })).row();
 
-        // --- Card 2: one card per section the server's modes contribute (rating ladders) ---
         for (ProfileSection section : renderSections(model, local)) {
             body.add(Ui.table(c -> {
                 c.background("button");
@@ -844,9 +823,6 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
                     top.layout(l -> l.growX().padBottom(4f));
                     String details = String.join(SEPARATOR, section.details());
 
-                    // A portrait phone has no room for the details beside the headline, so it stacks
-                    // them underneath; a landscape or desktop screen keeps one line. That is a genuine
-                    // structural split, so the client picks the variant instead of the server guessing.
                     Responsive.portrait(top, p -> {
                         p.label(Text.raw(section.headline()), l -> l.align("left").growX()).row();
                         if (!details.isEmpty()) {
@@ -867,7 +843,6 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
             })).row();
         }
 
-        // --- Card 3: Hexed Rank Progression Card ---
         body.add(Ui.table(c -> {
             c.background("button");
             c.margin(10f);
@@ -888,7 +863,6 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
                         + "   " + topLbl + " [accent]" + topRankStr + "[]"), l -> l.align("left").growX());
             })).row();
 
-            // Progress bar
             c.add(Ui.table(bar -> {
                 bar.layout(l -> l.growX().padBottom(2f));
                 String progressLine;
@@ -908,7 +882,6 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
             })).row();
         })).row();
 
-        // --- Card 3: Highlights Quick Preview ---
         body.add(Ui.table(c -> {
             c.background("button");
             c.margin(10f);
@@ -930,8 +903,6 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
                             + winsLbl + " [lime]" + nf.format(overall.gamesWon()) + "[] [gray](" + overall.winRatePercent() + "%)[]";
                     String blocksLine = blocksLbl + " [lime]" + nf.format(overall.blocksBuilt()) + "[]";
 
-                    // Same structural split as the PvP card: two stacked lines on a portrait
-                    // phone, one combined line anywhere wider.
                     Responsive.portrait(row, p -> {
                         p.label(Text.raw(summaryLine), l -> l.align("left").growX()).row();
                         p.label(Text.raw(blocksLine), l -> l.align("left").growX());
@@ -944,10 +915,6 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
             }
         })).row();
     }
-
-    // =========================================================================
-    // Tab 2: STATS
-    // =========================================================================
 
     private void renderStatsTab(Ui.TableBuilder body, ProfileModel model, DialogMetrics metrics, Localization local) {
         NumberFormat nf = NumberFormat.getIntegerInstance(local != null ? local.getLocale() : Locale.ROOT);
@@ -965,7 +932,6 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
         PlayerStatsOverview overview = model.stats() != null ? model.stats() : PlayerStatsOverview.EMPTY;
         AggregatedPlayerStats overall = overview.overall();
 
-        // --- Card 1: Overall Performance Banner ---
         body.add(Ui.table(c -> {
             c.background("button");
             c.margin(10f);
@@ -985,13 +951,11 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
             })).row();
         })).row();
 
-        // --- Card 2: Game Modes Breakdown ---
         body.add(Ui.table(c -> {
             c.background("button");
             c.margin(10f);
             c.layout(l -> l.growX().padBottom(6f));
 
-            // Rating ladders and whatever else the modes contribute
             for (ProfileSection section : renderSections(model, local)) {
                 c.add(Ui.table(row -> {
                     row.layout(l -> l.growX().padBottom(4f));
@@ -1003,7 +967,6 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
                 })).row();
             }
 
-            // Survival
             c.add(Ui.table(survRow -> {
                 survRow.layout(l -> l.growX().padBottom(4f));
                 ModeStatsSummary surv = overview.survival();
@@ -1014,7 +977,6 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
                 survRow.label(Text.raw("[green]" + Iconc.defense + " " + (local != null ? local.t("player-stats-survival-summary") : "Survival:") + "[] " + survSummary), l -> l.align("left").growX());
             })).row();
 
-            // Legacy Hexed
             c.add(Ui.table(hexRow -> {
                 hexRow.layout(l -> l.growX());
                 ModeStatsSummary hex = overview.hexed();
@@ -1026,7 +988,6 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
             })).row();
         })).row();
 
-        // --- Card 3: Combat & Construction Efficiency ---
         body.add(Ui.table(c -> {
             c.background("button");
             c.margin(10f);
@@ -1037,7 +998,6 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
                 titleRow.label(Text.raw("[accent]■ " + (local != null ? local.t("player-stats-combat-efficiency") : "Combat & Construction Efficiency") + "[]"), l -> l.align("left").growX());
             })).row();
 
-            // Blocks numbers
             c.add(Ui.table(blocksRow -> {
                 blocksRow.layout(l -> l.growX().padBottom(4f));
                 String builtLbl = local != null ? local.t("player-stats-blocks-built") : "Built:";
@@ -1049,7 +1009,6 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
                         + destLbl + " [scarlet]" + Iconc.warning + " " + nf.format(overall.blocksDestroyed()) + "[]"), l -> l.align("left").growX());
             })).row();
 
-            // 10-bar ratio visualization
             c.add(Ui.table(ratioRow -> {
                 ratioRow.layout(l -> l.growX().padBottom(4f));
                 String ratioBar = renderBlockRatioBar(overall.blocksBuilt(), overall.blocksDeconstructed(), overall.blocksDestroyed(), 10);
@@ -1057,7 +1016,6 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
                 ratioRow.label(Text.raw(ratioBar + "  " + ratioLegend), l -> l.align("left").growX());
             })).row();
 
-            // Units stats (if produced or destroyed)
             if (overall.unitsProduced() > 0 || overall.unitsDestroyed() > 0) {
                 c.add(Ui.table(unitsRow -> {
                     unitsRow.layout(l -> l.growX());
@@ -1067,10 +1025,6 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
             }
         })).row();
     }
-
-    // =========================================================================
-    // Tab 3: PLAYERS (Live Online Server Roster)
-    // =========================================================================
 
     private void renderPlayersTab(Ui.TableBuilder body, ProfileModel model, DialogMetrics metrics, Localization local) {
         List<OnlinePlayerRow> onlineList = model.onlinePlayers() != null ? model.onlinePlayers() : List.of();
@@ -1085,11 +1039,9 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
                 .limit(perPage)
                 .toList();
 
-        // 1. Controls Toolbar: Filter + Pagination + Refresh
         body.add(Ui.table(tb -> {
             tb.layout(l -> l.growX().padBottom(6f));
 
-            // Admin Filter Button
             String filterLabel = switch (model.adminFilter()) {
                 case ALL -> local != null ? local.t("player-stats-filter-all") : "Filter: All";
                 case ADMINS_ONLY -> local != null ? local.t("player-stats-filter-admins") : "Filter: Admins";
@@ -1099,7 +1051,6 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
                     .style("cleart")
                     .layout(l -> l.height(34f).padRight(4f)));
 
-            // Pagination Controls
             if (validPage > 1) {
                 tb.button(Text.raw("[accent]< Prev[]"), "action:page:" + (validPage - 1), b -> b
                         .style("cleart")
@@ -1112,16 +1063,14 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
                         .layout(l -> l.height(34f).padRight(4f)));
             }
 
-            tb.label(Text.raw(""), l -> l.growX()); // Spacer
+            tb.label(Text.raw(""), l -> l.growX());
 
-            // Refresh button
             tb.button(Text.raw("[sky]" + Iconc.refresh + " " + (local != null ? local.t("player-stats-refresh") : "Refresh") + "[]"),
                     "action:refresh_players", b -> b
                             .style("cleart")
                             .layout(l -> l.height(34f)));
         })).row();
 
-        // 2. Online Player Cards
         if (pagePlayers.isEmpty()) {
             body.add(Ui.table(c -> {
                 c.background("button");
@@ -1138,7 +1087,6 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
                 row.margin(8f);
                 row.layout(l -> l.growX().padBottom(4f));
 
-                // Left: Status dot + Badges + Nickname + PID
                 row.add(Ui.table(info -> {
                     info.layout(l -> l.growX().align("left"));
 
@@ -1161,12 +1109,16 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
                     } else {
                         sb.append("[white]").append(nick);
                     }
+
+                    if (p.username() != null && !p.username().isBlank()) {
+                        sb.append(" [gold]@[accent]").append(p.username()).append("[]");
+                    }
+
                     sb.append(" [gray]#").append(p.pid()).append("[]");
 
                     info.label(Text.raw(sb.toString()), l -> l.align("left").growX());
                 }));
 
-                // Right: Inspect button
                 row.button(Text.raw("[accent]" + (local != null ? local.t("player-stats-inspect") : "Inspect →") + "[]"),
                         "action:inspect:" + p.uuid(), b -> b
                                 .style("cleart")
