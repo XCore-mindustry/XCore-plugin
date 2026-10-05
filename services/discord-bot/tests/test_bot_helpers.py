@@ -24,7 +24,6 @@ from xcore_discord_bot.handlers_moderation import (
 )
 from xcore_discord_bot.presentation import (
     build_servers_embed,
-    build_stats_title,
     format_ban_expire_date,
 )
 from xcore_discord_bot.registry import ServerInfo, server_registry
@@ -53,21 +52,6 @@ def test_strip_mindustry_colors() -> None:
     assert strip_mindustry_colors("[accent]Hello[]") == "Hello"
     assert strip_mindustry_colors("[scarlet]A[white]B[]") == "AB"
     assert strip_mindustry_colors("[not-a-color]text") == "[not-a-color]text"
-
-
-def test_build_stats_title_truncates_to_discord_limit() -> None:
-    nickname = "n" * 240
-    custom_nickname = "c" * 240
-
-    title = build_stats_title(nickname, custom_nickname)
-
-    assert len(title) == 256
-    assert title.endswith("...")
-
-
-def test_build_stats_title_without_custom_nickname() -> None:
-    title = build_stats_title("PlayerOne", "")
-    assert title == "Player Stats • PlayerOne"
 
 
 def test_format_ban_expire_date_for_datetime() -> None:

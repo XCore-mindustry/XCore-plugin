@@ -73,4 +73,4 @@ async def test_cmd_search_renders_player_record_rows() -> None:
     assert embed.title == "Search: 'vor'"
     assert len(embed.fields) == 1
     assert embed.fields[0].name == "Vortex"
-    assert embed.fields[0].value == "ID: 123 | playtime: 10m"
+    assert embed.fields[0].value == "`#123` · played `10m`"

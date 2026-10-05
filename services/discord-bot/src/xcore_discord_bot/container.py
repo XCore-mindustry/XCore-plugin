@@ -7,6 +7,7 @@ from .daemons.admin_sync_daemon import AdminSyncDaemon
 from .daemons.presence_daemon import PresenceDaemon
 from .daemons.rating_merge_daemon import RatingMergeDaemon
 from .daemons.stream_supervisor import StreamSupervisor
+from .game_stats import GameStatsStore
 from .mongo_store import MongoStore
 from .rating_store import RatingStore
 from .redis_bus import RedisBus
@@ -31,6 +32,7 @@ class ServiceContainer:
     moderation: ModerationService
     maps: MapService
     ratings: RatingStore
+    game_stats: GameStatsStore
     rating_service: RatingService
     presence_daemon: PresenceDaemon
     admin_sync_daemon: AdminSyncDaemon
@@ -74,6 +76,7 @@ class ServiceContainer:
             moderation=moderation,
             maps=maps,
             ratings=ratings,
+            game_stats=GameStatsStore(store),
             rating_service=rating_service,
             presence_daemon=presence_daemon,
             admin_sync_daemon=admin_sync_daemon,

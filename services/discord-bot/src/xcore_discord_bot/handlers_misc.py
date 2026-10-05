@@ -3,34 +3,37 @@ from __future__ import annotations
 import logging
 import secrets
 import time
-from typing import TYPE_CHECKING
+from collections.abc import Awaitable
+from typing import TYPE_CHECKING, TypeVar
 
 import discord
 from discord import Interaction
 
 from .dto import PlayerRecord
+from .game_stats import GameStats
 from .modal_factories import create_stats_ban_modal, create_stats_mute_modal
 from .moderation_views import MapRemoveConfirmView, StatsActionsView
 from .permissions import admin_role_ids, has_any_role, settings_from_interaction
 from .player_pids import is_assigned
 from .presentation import (
     build_servers_embed,
-    build_stats_title,
     format_ban_expire_date,
     format_epoch_millis,
-    format_hexed_rank_block,
     format_minutes,
     format_size,
 )
+from .rating_store import Placing
 from .retry import retry_read_rpc
-from .season_embeds import build_ratings_field
 from .server_views import MapsListView, ServersView
+from .stats_embed import StaffNotes, StatsView, build_stats_embed, player_name
 
 if TYPE_CHECKING:
     from .bot import XCoreDiscordBot
 
 
 logger = logging.getLogger(__name__)
+
+T = TypeVar("T")
 
 
 def _format_admin_label(*, admin_name: str, admin_discord_id: str | None) -> str:
@@ -91,104 +94,110 @@ def _sort_maps(maps: list[dict[str, str]], mode: str) -> list[dict[str, str]]:
     )
 
 
-async def _season_ratings_text(bot: XCoreDiscordBot, player: PlayerRecord) -> str:
-    """The player's place on every ladder this season; stats still open without it."""
-    if not player.uuid:
-        return "No rated matches this season"
+async def _loaded(awaitable: Awaitable[T], what: str, player: PlayerRecord) -> T | None:
+    """A section of the stats, or ``None`` when it cannot be read: the rest still opens."""
     try:
-        placings = await bot.container.ratings.placings(player.uuid)
+        return await awaitable
     except Exception:
-        logger.exception("Cannot load season ratings for %s", player.uuid)
-        return "Unavailable right now"
-    return build_ratings_field(placings)
+        logger.exception("Cannot load %s for player #%s", what, player.pid)
+        return None
+
+
+async def _staff_notes(bot: XCoreDiscordBot, player: PlayerRecord) -> StaffNotes:
+    if not player.uuid:
+        return StaffNotes()
+    try:
+        return StaffNotes(
+            ban=await bot.find_ban(uuid=player.uuid, ip=player.ip),
+            mute=await bot.find_mute(uuid=player.uuid),
+        )
+    except Exception:
+        logger.exception("Cannot load punishments for player #%s", player.pid)
+        return StaffNotes(loaded=False)
+
+
+def _avatar_url(
+    interaction: Interaction, player: PlayerRecord, member: object | None
+) -> str | None:
+    """The avatar of the Discord account the player is linked to, when it is at hand."""
+    discord_id = str(player.discord_id or "").strip()
+    if not discord_id.isdigit():
+        return None
+    if member is None or getattr(member, "id", None) != int(discord_id):
+        guild = getattr(interaction, "guild", None)
+        member = guild.get_member(int(discord_id)) if guild is not None else None
+    avatar = getattr(member, "display_avatar", None)
+    return str(avatar.url) if avatar is not None else None
+
+
+async def _linked_accounts(
+    bot: XCoreDiscordBot, interaction: Interaction, member: object
+) -> list[PlayerRecord] | None:
+    """The game accounts of a Discord user, most played first; replies when there are none."""
+    players = await bot.find_players_by_discord_id(str(getattr(member, "id", "")))
+    if players:
+        return sorted(players, key=lambda row: row.total_play_time, reverse=True)
+    own = getattr(member, "id", None) == interaction.user.id
+    await interaction.response.send_message(
+        (
+            "You have no linked game account. Get a code in the game and use `/link`, "
+            "or pass a player ID."
+            if own
+            else "That user has no linked game account."
+        ),
+        ephemeral=True,
+    )
+    return None
 
 
 async def cmd_stats(
     bot: XCoreDiscordBot,
     interaction: Interaction,
-    player_id: int,
+    player_id: int | None = None,
+    user: discord.abc.User | None = None,
 ) -> None:
-    player = await bot._get_player_or_reply(interaction, player_id)
-    if player is None:
-        return
-
-    nickname = bot._player_name(player)
-    custom_nickname = str(player.custom_nickname or "").strip()
-    title = build_stats_title(nickname, custom_nickname)
-
-    rank_label, rank_progress = format_hexed_rank_block(
-        rank_value=player.hexed_rank,
-        points=player.hexed_points,
-    )
-
-    embed = discord.Embed(title=title, color=discord.Color.blurple())
-    embed.add_field(
-        name="Identity",
-        value=(f"PID: `{player.pid}`\nNickname: `{nickname}`"),
-        inline=False,
-    )
-    embed.add_field(
-        name="Progress",
-        value=(
-            f"Playtime: `{format_minutes(player.total_play_time)}`\n"
-            f"Hexed rank: `{rank_label}`\n"
-            f"Hexed progress: `{rank_progress}`"
-        ),
-        inline=False,
-    )
-
-    embed.add_field(
-        name="Season ratings",
-        value=await _season_ratings_text(bot, player),
-        inline=False,
-    )
-
-    admin_status = "✅" if player.is_admin else "❌"
-    admin_source = str(player.admin_source or "NONE").strip() or "NONE"
-    embed.add_field(
-        name="Permissions",
-        value=(f"Admin: {admin_status}\nAdmin source: `{admin_source}`"),
-        inline=False,
-    )
-
-    description = str(player.description or "").strip() or "none"
-    language = str(player.language or "").strip() or "auto"
-    translator_language = str(player.translator_language or "").strip() or "off"
-    leaderboard = "enabled" if player.leaderboard else "disabled"
-    embed.add_field(
-        name="Profile",
-        value=(
-            f"Description: `{description}`\n"
-            f"Language: `{language}`\n"
-            f"Translator language: `{translator_language}`\n"
-            f"Leaderboard: `{leaderboard}`"
-        ),
-        inline=False,
-    )
-
-    active_badge = str(player.active_badge or "").strip() or "none"
-    unlocked_badges = (
-        ", ".join(player.unlocked_badges) if player.unlocked_badges else "none"
-    )
-    system_badge = "admin" if player.is_admin else "none"
-    embed.add_field(
-        name="Badges",
-        value=(
-            f"Active: `{active_badge}`\n"
-            f"Unlocked: `{unlocked_badges}`\n"
-            f"System: `{system_badge}`"
-        ),
-        inline=False,
-    )
-
-    created_at = format_epoch_millis(player.created_at)
-    updated_at = format_epoch_millis(player.updated_at)
-    embed.set_footer(text=f"Created: {created_at} • Updated: {updated_at}")
-
     settings = settings_from_interaction(interaction)
     is_admin_viewer = settings is not None and has_any_role(
         interaction.user,
         admin_role_ids(settings),
+    )
+
+    member: discord.abc.User | None = None
+    other_accounts: list[PlayerRecord] = []
+    if player_id is not None:
+        player = await bot._get_player_or_reply(interaction, player_id)
+        if player is None:
+            return
+    else:
+        member = user or interaction.user
+        if member.id != interaction.user.id and not is_admin_viewer:
+            await interaction.response.send_message(
+                "Only admins can look a player up by their Discord account. "
+                "Pass a player ID instead.",
+                ephemeral=True,
+            )
+            return
+        accounts = await _linked_accounts(bot, interaction, member)
+        if accounts is None:
+            return
+        player, other_accounts = accounts[0], accounts[1:]
+
+    uuid = player.uuid or ""
+    embed = build_stats_embed(
+        StatsView(
+            player=player,
+            placings=(
+                await _loaded(_placings(bot, uuid), "season ratings", player)
+                if uuid
+                else []
+            ),
+            games=await _loaded(_game_stats(bot, uuid), "game stats", player),
+            staff=await _staff_notes(bot, player) if is_admin_viewer else None,
+            show_discord=is_admin_viewer
+            or str(player.discord_id or "") == str(interaction.user.id),
+            avatar_url=_avatar_url(interaction, player, member),
+            other_accounts=other_accounts,
+        )
     )
 
     if not is_admin_viewer:
@@ -197,7 +206,7 @@ async def cmd_stats(
 
     view = StatsActionsView(
         settings=bot.settings,
-        player_id=player_id,
+        player_id=player.pid,
         player=_player_record_as_mapping(player),
         create_ban_modal=lambda **kwargs: create_stats_ban_modal(bot, **kwargs),
         create_mute_modal=lambda **kwargs: create_stats_mute_modal(bot, **kwargs),
@@ -210,6 +219,15 @@ async def cmd_stats(
     )
     await interaction.response.send_message(embed=embed, view=view)
     view.message = await interaction.original_response()
+
+
+# The container is reached inside the coroutine, so a bot without one is a failed load too.
+async def _placings(bot: XCoreDiscordBot, uuid: str) -> list[Placing]:
+    return await bot.container.ratings.placings(uuid)
+
+
+async def _game_stats(bot: XCoreDiscordBot, uuid: str) -> GameStats:
+    return await bot.container.game_stats.overview(uuid)
 
 
 def _summarize_audit_reason(reason: str | None) -> str:
@@ -329,9 +347,15 @@ async def cmd_search(
         )
         if rows:
             for row in rows:
+                facts = [f"`#{row.pid}`"]
+                if row.username:
+                    facts.append(f"`@{row.username}`")
+                facts.append(f"played `{format_minutes(row.total_play_time)}`")
+                if row.online:
+                    facts.append("🟢 online")
                 embed.add_field(
-                    name=row.nickname,
-                    value=f"ID: {row.pid} | playtime: {row.total_play_time}m",
+                    name=player_name(row),
+                    value=" · ".join(facts),
                     inline=False,
                 )
         else:

@@ -29,9 +29,10 @@ async def _autocomplete_player_id(
 
         nickname = strip_mindustry_colors(row.nickname).replace("`", "").strip()
         nickname = nickname or "Unknown"
-        choices.append(
-            app_commands.Choice(name=f"{nickname} (pid={row.pid})", value=row.pid)
-        )
+        username = f" @{row.username}" if row.username else ""
+        # Discord refuses a choice whose name is longer than 100 characters.
+        label = f"{nickname[:60]}{username} (#{row.pid})"
+        choices.append(app_commands.Choice(name=label[:100], value=row.pid))
         if len(choices) >= 25:
             break
 

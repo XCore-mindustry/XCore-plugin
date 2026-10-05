@@ -11,13 +11,14 @@ from .utils.mindustry_colors import strip_mindustry_colors
 
 DISCORD_EMBED_TITLE_MAX = 256
 
-HEXED_RANKS: list[dict[str, str | int]] = [
-    {"name": "Newbie", "tag": "", "required": 0},
-    {"name": "Regular", "tag": "\uf7e7", "required": 3},
-    {"name": "Advanced", "tag": "\uf7ed", "required": 10},
-    {"name": "Veteran", "tag": "\uf7ec", "required": 20},
-    {"name": "Devastator", "tag": "\uf7c4", "required": 25},
-    {"name": "The Legend", "tag": "\uf7c6", "required": 30},
+# The rank tags are glyphs of the game font, which Discord cannot draw: names only.
+HEXED_RANKS: list[tuple[str, int]] = [
+    ("Newbie", 0),
+    ("Regular", 3),
+    ("Advanced", 10),
+    ("Veteran", 20),
+    ("Devastator", 25),
+    ("The Legend", 30),
 ]
 
 
@@ -73,31 +74,15 @@ def as_int(value: object, default: int = 0) -> int:
 
 def format_hexed_rank_block(rank_value: int, points: int) -> tuple[str, str]:
     safe_rank = max(0, min(rank_value, len(HEXED_RANKS) - 1))
-    current = HEXED_RANKS[safe_rank]
-
-    rank_name = str(current["name"])
-    rank_tag = str(current["tag"])
-    rank_label = f"{rank_tag} {rank_name}" if rank_tag else rank_name
+    rank_label, _ = HEXED_RANKS[safe_rank]
 
     if safe_rank + 1 < len(HEXED_RANKS):
-        try:
-            next_required = int(HEXED_RANKS[safe_rank + 1]["required"])
-        except (ValueError, TypeError, KeyError):
-            next_required = 0
-        rank_progress = f"{points}/{next_required} wins"
+        next_name, next_required = HEXED_RANKS[safe_rank + 1]
+        rank_progress = f"{points}/{next_required} wins to {next_name}"
     else:
         rank_progress = f"{points} wins (max rank)"
 
     return rank_label, rank_progress
-
-
-def build_stats_title(nickname: str, custom_nickname: str) -> str:
-    base = f"Player Stats • {nickname}"
-    if custom_nickname:
-        base = f"{base} ({custom_nickname})"
-    if len(base) <= DISCORD_EMBED_TITLE_MAX:
-        return base
-    return f"{base[: DISCORD_EMBED_TITLE_MAX - 3]}..."
 
 
 def format_ban_expire_date(expire_value: object) -> str:

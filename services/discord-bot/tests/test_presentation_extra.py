@@ -38,10 +38,11 @@ def test_as_int_handles_bool_float_and_numeric_string() -> None:
 
 
 def test_format_hexed_rank_block_clamps_rank_bounds() -> None:
-    assert format_hexed_rank_block(-5, 2) == ("Newbie", "2/3 wins")
+    assert format_hexed_rank_block(-5, 2) == ("Newbie", "2/3 wins to Regular")
+    assert format_hexed_rank_block(3, 22) == ("Veteran", "22/25 wins to Devastator")
 
     label, progress = format_hexed_rank_block(999, 33)
-    assert label.endswith("The Legend")
+    assert label == "The Legend"
     assert progress == "33 wins (max rank)"
 
 

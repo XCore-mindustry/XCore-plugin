@@ -151,6 +151,7 @@ class Placing:
     wins: int
     rank: int
     participants: int
+    peak_rating: int = 0
 
 
 def season_from_doc(doc: dict[str, Any]) -> Season:
@@ -325,6 +326,7 @@ class RatingStore:
                     wins=_int(doc.get("wins")),
                     rank=_int(ahead) + 1,
                     participants=await self.count(ladder, season.number),
+                    peak_rating=max(_int(doc.get("peak_rating")), rating),
                 )
             )
         return placings

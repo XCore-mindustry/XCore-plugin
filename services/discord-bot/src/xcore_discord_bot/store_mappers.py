@@ -66,6 +66,7 @@ def player_record_from_doc(doc: Mapping[str, object]) -> PlayerRecord:
         pid=_int_or_default(doc.get("pid"), default=NO_PID),
         nickname=nickname,
         uuid=_normalized_optional_str(doc.get("uuid")),
+        username=_normalized_optional_str(doc.get("username")),
         ip=_normalized_optional_str(doc.get("ip")),
         last_ip=_normalized_optional_str(doc.get("last_ip")),
         custom_nickname=_normalized_optional_str(doc.get("custom_nickname")),

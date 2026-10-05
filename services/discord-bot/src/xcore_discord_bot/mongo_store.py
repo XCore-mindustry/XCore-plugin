@@ -63,6 +63,7 @@ class PlayerDoc(_MongoDoc):
     uuid: str | None = None
     ip: str | None = None
     nickname: str | None = None
+    username: str | None = None
     custom_nickname: str | None = None
     description: str | None = None
     local_language: str | None = None
@@ -248,14 +249,24 @@ class MongoStore:
                     },
                     {"$sort": {"pid": -1}},
                     {"$limit": limit},
-                    {"$project": {"_id": 0, "pid": 1, "nickname": 1}},
+                    {"$project": {"_id": 0, "pid": 1, "nickname": 1, "username": 1}},
                 ]
             ).to_list(length=limit)
         else:
+            # A name as it is typed in the game: part of a nickname, or a @username.
+            typed_username = re.escape(normalized.removeprefix("@"))
+            by_username = {
+                "username": {"$regex": f"^{typed_username}", "$options": "i"}
+            }
+            by_nickname = {
+                "nickname": {"$regex": re.escape(normalized), "$options": "i"}
+            }
             cursor = (
                 players.find(
-                    {"nickname": {"$regex": re.escape(normalized), "$options": "i"}},
-                    {"_id": 0, "pid": 1, "nickname": 1},
+                    by_username
+                    if normalized.startswith("@")
+                    else {"$or": [by_nickname, by_username]},
+                    {"_id": 0, "pid": 1, "nickname": 1, "username": 1},
                 )
                 .sort("pid", DESCENDING)
                 .limit(limit)

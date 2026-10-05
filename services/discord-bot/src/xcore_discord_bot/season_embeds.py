@@ -8,6 +8,7 @@ from datetime import datetime
 import discord
 
 from .badges import get_badge
+from .leagues import league_for, next_league
 from .rating_store import (
     Placing,
     PodiumEntry,
@@ -282,12 +283,39 @@ def build_season_top_embed(
     return embed
 
 
+def league_progress(rating: int, cells: int = 8) -> str:
+    """The way from the rating's league to the next one, as a bar and what is left."""
+    league = league_for(rating)
+    following = next_league(league)
+    if following is None:
+        return "top league"
+    span = max(following.minimum_rating - league.minimum_rating, 1)
+    done = min(max(rating - league.minimum_rating, 0), span)
+    filled = done * cells // span
+    bar = "▰" * filled + "▱" * (cells - filled)
+    return f"{bar} `{following.minimum_rating - rating}` to {following.name}"
+
+
+def _ratings_block(placing: Placing) -> str:
+    season = placing.season
+    head = f"**{ladder_name(season.ladder)}** · {_escape(season.title)}"
+    if season.running:
+        head += f" · ends {timestamp(season.ends_at, 'R')}"
+    games = f"{placing.wins}/{placing.matches} wins"
+    if placing.matches > 0:
+        games += f" ({round(placing.wins * 100 / placing.matches)}%)"
+    standing = (
+        f"{league_for(placing.rating).name} `{placing.rating}` "
+        f"· #{placing.rank} of {placing.participants} · {games}"
+    )
+    progress = league_progress(placing.rating)
+    if placing.peak_rating > placing.rating:
+        progress += f" · peak `{placing.peak_rating}`"
+    return f"{head}\n{standing}\n{progress}"
+
+
 def build_ratings_field(placings: Sequence[Placing]) -> str:
-    """The `/stats` lines: one per ladder the player has taken part in."""
+    """The `/stats` lines: a block per ladder the player has taken part in."""
     if not placings:
         return "No rated matches this season"
-    return "\n".join(
-        f"{ladder_name(placing.season.ladder)}: `{placing.rating}` "
-        f"(#{placing.rank} of {placing.participants})"
-        for placing in placings
-    )
+    return "\n\n".join(_ratings_block(placing) for placing in placings)

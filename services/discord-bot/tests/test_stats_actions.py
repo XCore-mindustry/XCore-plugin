@@ -99,6 +99,20 @@ class _Store:
             updated_at=0,
         )
 
+    async def find_players_by_discord_id(self, discord_id: str) -> list[PlayerRecord]:
+        if discord_id != "77":
+            return []
+        return [
+            PlayerRecord(pid=-4, nickname="Alt", total_play_time=5, discord_id="77"),
+            PlayerRecord(pid=9, nickname="Main", total_play_time=900, discord_id="77"),
+        ]
+
+    async def find_ban(self, *, uuid: str, ip: str | None) -> None:
+        assert uuid == "uuid-123"
+
+    async def find_mute(self, *, uuid: str) -> None:
+        assert uuid == "uuid-123"
+
     async def count_audit_for_player(self, *, uuid: str) -> int:
         assert uuid == "uuid-123"
         return 1
@@ -192,19 +206,21 @@ async def test_cmd_stats_attaches_actions_view() -> None:
     assert isinstance(sent["view"], _StatsActionsView)
     assert sent["view"].message is interaction._message
     assert len(sent["view"].children) == 4
-    fields = {field.name: field.value for field in sent["embed"].fields}
-    assert "Permissions" in fields
-    assert "Admin: ❌" in fields["Permissions"]
-    assert "Admin source: `NONE`" in fields["Permissions"]
-    assert "Profile" in fields
-    assert "Description: `Profile text`" in fields["Profile"]
-    assert "Language: `ru`" in fields["Profile"]
-    assert "Translator language: `uk`" in fields["Profile"]
-    assert "Leaderboard: `disabled`" in fields["Profile"]
-    assert "Badges" in fields
-    assert "Active: `translator`" in fields["Badges"]
-    assert "Unlocked: `developer, translator`" in fields["Badges"]
-    assert "System: `none`" in fields["Badges"]
+    embed = sent["embed"]
+    assert embed.title == "Vortex"
+    assert "`#123`" in embed.description
+    assert "🎖️ Translator" in embed.description
+    assert "> Profile text" in embed.description
+    fields = {field.name: field.value for field in embed.fields}
+    assert fields["🎖️ Badges"] == "Developer · **Translator** (shown)"
+    # what only the admins are shown
+    assert "🔨 Ban: none" in fields["🔒 Staff notes"]
+    assert "🔇 Mute: none" in fields["🔒 Staff notes"]
+    assert "🌐 Language: `ru` · translator: `uk`" in fields["🔒 Staff notes"]
+    assert "🙈 Hidden from the leaderboards" in fields["🔒 Staff notes"]
+    # a bot that cannot reach the ladders or the games still opens the profile
+    assert fields["🏆 Season ratings"] == "Unavailable right now"
+    assert fields["🎮 Games"] == "Unavailable right now"
 
 
 @pytest.mark.asyncio
@@ -245,6 +261,69 @@ async def test_cmd_stats_hides_actions_for_non_admin() -> None:
     sent = interaction.response.sent[0]
     assert sent["embed"] is not None
     assert sent["view"] is None
+    assert "🔒 Staff notes" not in {field.name for field in sent["embed"].fields}
+
+
+@pytest.mark.asyncio
+async def test_cmd_stats_without_a_player_opens_the_linked_account() -> None:
+    bot = object.__new__(XCoreDiscordBot)
+    bot.__dict__["_store"] = _Store()
+    bot.__dict__["_settings"] = SimpleNamespace(discord_admin_role_id=5)
+
+    interaction = _Interaction(
+        id=6,
+        user=_User(id=77, display_name="guest", roles=[_Role(2)]),
+        client=bot,
+    )
+    await cmd_stats(bot, cast(Any, interaction))
+
+    embed = interaction.response.sent[0]["embed"]
+    # the most played of the linked accounts, the other one named below it
+    assert embed.title == "Main"
+    assert embed.footer.text == "Also linked: #-4 Alt"
+
+
+@pytest.mark.asyncio
+async def test_cmd_stats_without_a_linked_account_says_how_to_link() -> None:
+    bot = object.__new__(XCoreDiscordBot)
+    bot.__dict__["_store"] = _Store()
+    bot.__dict__["_settings"] = SimpleNamespace(discord_admin_role_id=5)
+
+    interaction = _Interaction(
+        id=7,
+        user=_User(id=10, display_name="guest", roles=[_Role(2)]),
+        client=bot,
+    )
+    await cmd_stats(bot, cast(Any, interaction))
+
+    sent = interaction.response.sent[0]
+    assert sent["embed"] is None
+    assert sent["ephemeral"] is True
+    assert "/link" in sent["content"]
+
+
+@pytest.mark.asyncio
+async def test_cmd_stats_by_discord_user_is_for_admins() -> None:
+    bot = object.__new__(XCoreDiscordBot)
+    bot.__dict__["_store"] = _Store()
+    bot.__dict__["_settings"] = SimpleNamespace(discord_admin_role_id=5)
+    linked = _User(id=77, display_name="linked", roles=[])
+
+    guest = _Interaction(
+        id=8, user=_User(id=10, display_name="guest", roles=[_Role(2)]), client=bot
+    )
+    await cmd_stats(bot, cast(Any, guest), None, cast(Any, linked))
+
+    assert guest.response.sent[0]["embed"] is None
+    assert guest.response.sent[0]["ephemeral"] is True
+    assert "Only admins" in guest.response.sent[0]["content"]
+
+    admin = _Interaction(
+        id=9, user=_User(id=9, display_name="admin", roles=[_Role(5)]), client=bot
+    )
+    await cmd_stats(bot, cast(Any, admin), None, cast(Any, linked))
+
+    assert admin.response.sent[0]["embed"].title == "Main"
 
 
 @pytest.mark.asyncio

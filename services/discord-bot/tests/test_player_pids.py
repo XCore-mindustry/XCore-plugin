@@ -53,7 +53,7 @@ async def test_autocomplete_offers_zero_and_negative_pids(
         client=_Store(
             [
                 PlayerRecord(pid=-12, nickname="Event"),
-                PlayerRecord(pid=0, nickname="Zero"),
+                PlayerRecord(pid=0, nickname="Zero", username="zero"),
                 PlayerRecord(pid=NO_PID, nickname="Nobody"),
             ]
         )
@@ -62,6 +62,6 @@ async def test_autocomplete_offers_zero_and_negative_pids(
     choices = await _autocomplete_player_id(interaction, "-")
 
     assert [(choice.name, choice.value) for choice in choices] == [
-        ("Event (pid=-12)", -12),
-        ("Zero (pid=0)", 0),
+        ("Event (#-12)", -12),
+        ("Zero @zero (#0)", 0),
     ]

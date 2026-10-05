@@ -13,6 +13,7 @@ class PlayerRecord:
     pid: int
     nickname: str
     uuid: str | None = None
+    username: str | None = None
     ip: str | None = None
     last_ip: str | None = None
     custom_nickname: str | None = None

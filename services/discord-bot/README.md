@@ -28,7 +28,10 @@ Standalone Discord bot for XCore transport migration.
     the season ends; a `custom` prize (e.g. Nitro) waits for an admin to hand it over and record it with `delivered`.
     `set`/`clear`/`delivered` go over `rating.season.prizes.set.request` and `rating.prize.grant.update.request`;
     `list` reads `rating_seasons` and `rating_prize_grants`; `delivered` takes an optional `player` (PID) to settle one winner. Prizes are listed in the ending-soon and results posts
-  - `/stats` shows the player's rating and place on every ladder for the current season
+  - `/stats [player_id] [user]` is the player's profile: league, rating, place and the way to the next
+    league on every ladder of the current season (`rating_standings`), the games played mode by mode
+    (`games_v2`), playtime, badges and presence. Without arguments it opens the caller's linked account.
+    The Discord link, the lookup by `user` and the ban/mute notes are shown to the player and the admins only
   - account merges move rating standings through `rating.accounts.merge.request`; if no server
     answers, the merge is queued in `rating_merge_pending` and retried every minute
 - Moderation/admin slash commands (Mongo-backed):

@@ -222,6 +222,8 @@ async def test_placings_rank_the_player_on_each_ladder_current_season() -> None:
     # one above by rating, one tied but ahead by uuid
     assert placings[0].rank == 3
     assert placings[0].participants == 3
+    # a standing written before peaks were kept has peaked at least where it stands
+    assert placings[0].peak_rating == 1100
 
 
 @pytest.mark.asyncio
