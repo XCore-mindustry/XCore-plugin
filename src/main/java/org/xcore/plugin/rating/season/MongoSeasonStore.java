@@ -12,6 +12,7 @@ import org.bson.Document;
 import org.bson.conversions.Bson;
 import org.jspecify.annotations.Nullable;
 import org.xcore.plugin.config.TomlSecretsConfig;
+import org.xcore.plugin.model.PlayerPids;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -196,7 +197,7 @@ public class MongoSeasonStore implements SeasonStore {
         return new SeasonPodiumEntry(
                 number(document, "place", 0),
                 text(document, "uuid"),
-                number(document, "pid", -1),
+                number(document, "pid", PlayerPids.NONE),
                 text(document, "nickname"),
                 number(document, "rating", 0),
                 text(document, "league"),

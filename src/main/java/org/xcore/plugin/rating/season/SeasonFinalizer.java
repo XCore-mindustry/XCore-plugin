@@ -4,6 +4,7 @@ import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
 import org.xcore.plugin.model.PlayerData;
+import org.xcore.plugin.model.PlayerPids;
 import org.xcore.plugin.rating.ladder.LadderStanding;
 import org.xcore.plugin.rating.ladder.LadderStore;
 
@@ -47,7 +48,7 @@ public class SeasonFinalizer {
             podium.add(new SeasonPodiumEntry(
                     podium.size() + 1,
                     leader.uuid(),
-                    profile != null ? profile.pid : -1,
+                    PlayerPids.of(profile),
                     profile != null && profile.nickname != null ? profile.nickname : "Unknown",
                     leader.rating(),
                     leader.league().name(),

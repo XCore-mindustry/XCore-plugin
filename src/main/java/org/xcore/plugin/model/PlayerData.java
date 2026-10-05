@@ -26,7 +26,7 @@ import java.util.Set;
 public class PlayerData extends ModelData {
     @Builder.Default public String uuid = "";
     
-    @Builder.Default public int pid = -1;
+    @Builder.Default public int pid = PlayerPids.NONE;
     @Builder.Default public String username = "";
     @BsonProperty("can_change_username")
     @Builder.Default public boolean canChangeUsername = false;
@@ -114,7 +114,7 @@ public class PlayerData extends ModelData {
         super();
         this.uuid = uuid;
         this.exists = exists;
-        this.pid = -1;
+        this.pid = PlayerPids.NONE;
     }
 
     private static final HexedRanks.HexedRank DEFAULT_HEXED_RANK = HexedRanks.HexedRank.values()[0];

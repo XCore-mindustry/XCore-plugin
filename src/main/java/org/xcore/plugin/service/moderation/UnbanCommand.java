@@ -1,5 +1,7 @@
 package org.xcore.plugin.service.moderation;
 
+import org.xcore.plugin.model.PlayerPids;
+
 public record UnbanCommand(
         int targetId,
         String targetUuid,
@@ -12,6 +14,6 @@ public record UnbanCommand(
     }
 
     public static UnbanCommand byTarget(String uuid, String ip, String name, ModerationActor actor) {
-        return new UnbanCommand(-1, uuid, ip, name, actor != null ? actor : ModerationActor.CONSOLE);
+        return new UnbanCommand(PlayerPids.NONE, uuid, ip, name, actor != null ? actor : ModerationActor.CONSOLE);
     }
 }

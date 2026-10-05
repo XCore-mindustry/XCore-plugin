@@ -4,7 +4,11 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-No changelog entries were recorded in the Unreleased section.
+### Changed
+- Updated `xcore-protocol` to 0.11.0, which accepts negative player PIDs.
+
+### Fixed
+- Supported negative and zero player PIDs that technical admins assign to special players (for example event participants): such players keep their PID instead of being given a new one on save, can be found by `#-12` or `-12` in commands and menus, and are sent with their PID in moderation, Discord, private message and rating events.
 
 ## [4.2.0] - 2026-06-06
 

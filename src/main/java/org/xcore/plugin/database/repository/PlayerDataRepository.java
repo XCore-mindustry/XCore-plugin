@@ -22,6 +22,7 @@ import org.xcore.plugin.database.PagedDataResult;
 import org.xcore.plugin.model.LeaderboardCursor;
 import org.xcore.plugin.model.LeaderboardSlice;
 import org.xcore.plugin.model.PlayerData;
+import org.xcore.plugin.model.PlayerPids;
 import org.xcore.plugin.model.enums.TopCategory;
 
 import java.util.ArrayList;
@@ -77,7 +78,7 @@ public class PlayerDataRepository extends DataRepository<PlayerData> {
 
     @Override
     public boolean save(com.mongodb.client.ClientSession session, PlayerData data) {
-        if (data.pid == -1 && !isReadOnly()) {
+        if (!PlayerPids.isAssigned(data.pid) && !isReadOnly()) {
             data.pid = generatePid(session);
         }
 
@@ -96,7 +97,7 @@ public class PlayerDataRepository extends DataRepository<PlayerData> {
         if (data == null) return java.util.concurrent.CompletableFuture.completedFuture(false);
         if (isReadOnly()) return java.util.concurrent.CompletableFuture.completedFuture(false);
 
-        java.util.concurrent.CompletionStage<PlayerData> pidStage = (data.pid == -1)
+        java.util.concurrent.CompletionStage<PlayerData> pidStage = !PlayerPids.isAssigned(data.pid)
                 ? generatePidAsync().thenApply(pid -> {
                     data.pid = pid;
                     return data;
