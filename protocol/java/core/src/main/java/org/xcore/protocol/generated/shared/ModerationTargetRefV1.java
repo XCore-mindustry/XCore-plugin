@@ -18,11 +18,6 @@ public record ModerationTargetRefV1(
                 throw new IllegalArgumentException("playerUuid must be at least 1 characters");
             }
         }
-        if (playerPid != null) {
-            if (playerPid < 0) {
-                throw new IllegalArgumentException("playerPid must be >= 0");
-            }
-        }
         if (playerName != null) {
             Objects.requireNonNull(playerName, "playerName must not be null");
             if (playerName.length() < 1) {

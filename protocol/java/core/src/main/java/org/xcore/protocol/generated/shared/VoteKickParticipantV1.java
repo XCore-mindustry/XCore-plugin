@@ -15,11 +15,6 @@ public record VoteKickParticipantV1(
         if (playerName.length() < 1) {
             throw new IllegalArgumentException("playerName must be at least 1 characters");
         }
-        if (playerPid != null) {
-            if (playerPid < 0) {
-                throw new IllegalArgumentException("playerPid must be >= 0");
-            }
-        }
         if (discordId != null) {
             Objects.requireNonNull(discordId, "discordId must not be null");
             if (discordId.length() < 1) {

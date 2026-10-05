@@ -27,8 +27,7 @@
       "minLength": 1
     },
     "fromPid": {
-      "type": "integer",
-      "minimum": 0
+      "type": "integer"
     },
     "fromName": {
       "type": "string",
@@ -39,8 +38,7 @@
       "minLength": 1
     },
     "toPid": {
-      "type": "integer",
-      "minimum": 0
+      "type": "integer"
     },
     "message": {
       "type": "string",

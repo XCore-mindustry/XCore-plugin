@@ -47,6 +47,19 @@ class ProtocolPayloadTest {
     }
 
     @Test
+    void playerPidsAcceptNegativeValues() {
+        // Technical admins hand out negative PIDs to special players (e.g. event participants).
+        assertEquals(-12, new VoteKickParticipantV1("foo", -12, null).toPayload().get("playerPid"));
+        assertEquals(-1, new PlayerRefV1("uuid-1", -1, "tester", null).toPayload().get("playerPid"));
+        assertEquals(-7, new ModerationTargetRefV1("uuid-1", -7, null, null).toPayload().get("playerPid"));
+        assertEquals(-7, new PlayerCommandTargetV1("uuid-1", -7, null, null).toPayload().get("playerPid"));
+
+        var message = new ChatPrivateV1("uuid-from", -3, "from", "uuid-to", -4, "hi", "mini-pvp").toPayload();
+        assertEquals(-3, message.get("fromPid"));
+        assertEquals(-4, message.get("toPid"));
+    }
+
+    @Test
     void actorRefCanonicalFieldNames() {
         var actor = new ActorRefV1("admin", "123", ActorRefV1ActorType.DISCORD);
         var payload = actor.toPayload();

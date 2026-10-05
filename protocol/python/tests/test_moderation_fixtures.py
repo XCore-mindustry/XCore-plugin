@@ -43,6 +43,18 @@ VALID_CASES = [
         spec_root() / "messages" / "moderation" / "moderation.audit.appended.v1.json",
         fixtures_root() / "valid" / "moderation" / "moderation.audit.appended.v1.ip-only-target.json",
     ),
+    (
+        spec_root() / "messages" / "moderation" / "moderation.ban.created.v1.json",
+        fixtures_root() / "valid" / "moderation" / "moderation.ban.created.v1.negative-pid.json",
+    ),
+    (
+        spec_root() / "messages" / "moderation" / "moderation.vote-kick.created.v1.json",
+        fixtures_root() / "valid" / "moderation" / "moderation.vote-kick.created.v1.negative-pid.json",
+    ),
+    (
+        spec_root() / "messages" / "moderation" / "moderation.audit.appended.v1.json",
+        fixtures_root() / "valid" / "moderation" / "moderation.audit.appended.v1.negative-pid.json",
+    ),
 ]
 
 

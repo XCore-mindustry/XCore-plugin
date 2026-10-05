@@ -21,6 +21,10 @@ VALID_CASES = [
         spec_root() / "messages" / "chat" / "chat.private.v1.json",
         fixtures_root() / "valid" / "chat" / "chat.private.v1.json",
     ),
+    (
+        spec_root() / "messages" / "chat" / "chat.private.v1.json",
+        fixtures_root() / "valid" / "chat" / "chat.private.v1.negative-pid.json",
+    ),
 ]
 
 
