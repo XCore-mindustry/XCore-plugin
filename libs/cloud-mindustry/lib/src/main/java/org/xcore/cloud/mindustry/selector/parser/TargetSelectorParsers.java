@@ -85,8 +85,9 @@ public final class TargetSelectorParsers {
             try {
                 TargetSelectorSpec spec = SelectorSyntaxParser.parse(token);
                 restrictions.enforce(spec);
+                T value = create(context, token, spec);
                 SelectorGuard.checkGuard(context, spec);
-                return ArgumentParseResult.success(create(context, token, spec));
+                return ArgumentParseResult.success(value);
             } catch (SelectorException ex) {
                 return ArgumentParseResult.failure(new SelectorParseException(getClass(), context, ex));
             } catch (Exception ex) {
@@ -113,7 +114,7 @@ public final class TargetSelectorParsers {
         @Override
         protected SinglePlayerSelector create(CommandContext<C> context, String token, TargetSelectorSpec spec) {
             if (spec.kind() == SelectorKind.ALL_ENTITIES) {
-                throw new SelectorDeniedException("Entity selector '@e' not allowed for player parameter");
+                throw new SelectorDeniedException(spec.kind());
             }
             if (spec.kind().defaultMultiple() && spec.limit() > 1) {
                 throw new TooManyTargetsException(token, "Selector '" + token + "' targets multiple players where single target expected");
@@ -135,7 +136,7 @@ public final class TargetSelectorParsers {
         @Override
         protected MultiplePlayerSelector create(CommandContext<C> context, String token, TargetSelectorSpec spec) {
             if (spec.kind() == SelectorKind.ALL_ENTITIES) {
-                throw new SelectorDeniedException("Entity selector '@e' not allowed for player parameter");
+                throw new SelectorDeniedException(spec.kind());
             }
             return new MultiplePlayerSelectorImpl(token, spec.kind(), spec, engine);
         }
@@ -154,7 +155,7 @@ public final class TargetSelectorParsers {
         @Override
         protected SingleUnitSelector create(CommandContext<C> context, String token, TargetSelectorSpec spec) {
             if (spec.isPlayerOnly() && spec.kind() != SelectorKind.SELF) {
-                throw new SelectorDeniedException("Player selector not allowed for unit parameter");
+                throw new SelectorDeniedException(spec.kind());
             }
             if (spec.limit() > 1 && spec.kind().defaultMultiple()) {
                 throw new TooManyTargetsException(token, "Selector '" + token + "' targets multiple units where single unit expected");

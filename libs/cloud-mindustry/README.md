@@ -149,6 +149,10 @@ public void give(MindustrySender sender,
                  @Argument("to") @AllowedSelectors(SelectorKind.SELF) SinglePlayerSelector to) { ... }
 ```
 
+A `Player` argument resolves its selector while parsing, before the command is known, so
+command-level restrictions are only checked after that resolution has succeeded. Put the annotation
+on the `Player` parameter itself to refuse selectors before anything is resolved.
+
 With the builder API pass `SelectorRestrictions` to `TargetSelectorParsers`, e.g.
 `TargetSelectorParsers.singlePlayerSelector(mgr.selectorEngine(), SelectorRestrictions.allow(SelectorKind.SELF))`.
 
@@ -161,4 +165,4 @@ With the builder API pass `SelectorRestrictions` to `TargetSelectorParsers`, e.g
 - `SelectorCaptionProvider` no longer answers captions it doesn't know, which used to blank out
   Cloud's standard messages.
 - `ConsoleSender` strips Mindustry color tags before logging.
-- `SelectorGuard.LAST_SELECTOR_SPEC_KEY` is deprecated in favour of `SELECTOR_SPECS_KEY`.
+- `SelectorGuard.LAST_SELECTOR_SPEC_KEY` is deprecated in favour of `SelectorGuard.selectorSpecs(command, context)`.

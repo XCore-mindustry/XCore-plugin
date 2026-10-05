@@ -220,7 +220,7 @@ class TargetSelectorCommandIntegrationTest {
             manager.commandExecutor().executeCommand(sender, "inspect @r").join();
         } catch (Exception ignored) {}
         assertTrue(cmd.executed.isEmpty());
-        assertTrue(lastMessages.stream().anyMatch(m -> m.contains("not allowed for this command")));
+        assertTrue(lastMessages.stream().anyMatch(m -> m.contains("'[white]@r[]' is not allowed here")));
     }
 
     @Test

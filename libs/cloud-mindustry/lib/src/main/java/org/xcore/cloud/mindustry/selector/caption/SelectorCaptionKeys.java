@@ -14,6 +14,9 @@ public final class SelectorCaptionKeys {
             Caption.of("argument.parse.failure.selector.too_many_targets");
     public static final Caption ARGUMENT_PARSE_FAILURE_SELECTOR_DENIED =
             Caption.of("argument.parse.failure.selector.denied");
+    /** Variables: {@code kind} (the selector token, e.g. {@code @a}). */
+    public static final Caption ARGUMENT_PARSE_FAILURE_SELECTOR_KIND_NOT_ALLOWED =
+            Caption.of("argument.parse.failure.selector.kind_not_allowed");
     public static final Caption ARGUMENT_PARSE_FAILURE_SELECTOR_SENDER_REQUIRED =
             Caption.of("argument.parse.failure.selector.sender_required");
     public static final Caption ARGUMENT_PARSE_FAILURE_SELECTOR_LIMIT_EXCEEDED =

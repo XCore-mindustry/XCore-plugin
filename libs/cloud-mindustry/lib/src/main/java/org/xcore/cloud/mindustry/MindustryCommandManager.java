@@ -222,7 +222,8 @@ public class MindustryCommandManager<C> extends CommandManager<C> {
      *     <li>{@link PipelineException} and {@link CommandExecutionException} are unwrapped, so a
      *     handler registered for the cause type also sees exceptions thrown from pre/postprocessors
      *     and command handlers;</li>
-     *     <li>argument failures caused by a {@link ParserException} show the parser's own caption;</li>
+     *     <li>argument failures caused by a {@link ParserException} or a {@link SelectorException}
+     *     show that exception's caption;</li>
      *     <li>{@link SelectorException}s show their caption.</li>
      * </ul>
      * Handlers registered later for the same type take precedence over these.
@@ -248,11 +249,21 @@ public class MindustryCommandManager<C> extends CommandManager<C> {
         );
 
         exceptionController().registerHandler(ArgumentParseException.class, ctx -> {
-            if (!(ctx.exception().getCause() instanceof ParserException parserException)) {
-                // Fall through to Cloud's generic "invalid argument" handler.
-                throw ctx.exception();
+            for (Throwable cause = ctx.exception().getCause(); cause != null; cause = cause.getCause()) {
+                if (cause instanceof ParserException parserException) {
+                    sendCaption(ctx.context(), parserException.errorCaption(), parserException.captionVariables());
+                    return;
+                }
+                if (cause instanceof SelectorException selectorException) {
+                    sendCaption(ctx.context(), selectorException.caption(), selectorException.captionVariables());
+                    return;
+                }
+                if (cause.getCause() == cause) {
+                    break;
+                }
             }
-            sendCaption(ctx.context(), parserException.errorCaption(), parserException.captionVariables());
+            // Fall through to Cloud's generic "invalid argument" handler.
+            throw ctx.exception();
         });
 
         exceptionController().registerHandler(SelectorException.class, ctx ->

@@ -54,9 +54,12 @@ public final class TeamParser<C> implements ArgumentParser<C, Team>, BlockingSug
 
     @Override
     public @NonNull Iterable<@NonNull String> stringSuggestions(@NonNull CommandContext<C> context, @NonNull CommandInput input) {
-        List<String> names = new ArrayList<>(Team.baseTeams.length);
-        for (Team team : Team.baseTeams) {
-            names.add(team.name);
+        Team[] available = allTeams ? Team.all : Team.baseTeams;
+        List<String> names = new ArrayList<>(available.length);
+        for (Team team : available) {
+            if (team != null) {
+                names.add(team.name);
+            }
         }
         return names;
     }

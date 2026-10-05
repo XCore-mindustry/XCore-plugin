@@ -22,6 +22,8 @@ public final class SelectorCaptionProvider<C> implements CaptionProvider<C> {
             "Multiple targets matched '[white]<input>[]', but only one target was expected.",
             SelectorCaptionKeys.ARGUMENT_PARSE_FAILURE_SELECTOR_DENIED,
             "Target selectors are not permitted: [lightgray]<reason>",
+            SelectorCaptionKeys.ARGUMENT_PARSE_FAILURE_SELECTOR_KIND_NOT_ALLOWED,
+            "Selector '[white]<kind>[]' is not allowed here.",
             SelectorCaptionKeys.ARGUMENT_PARSE_FAILURE_SELECTOR_SENDER_REQUIRED,
             "Selector '[white]<kind>[]' requires an in-game player sender.",
             SelectorCaptionKeys.ARGUMENT_PARSE_FAILURE_SELECTOR_LIMIT_EXCEEDED,

@@ -15,6 +15,7 @@ import org.incendo.cloud.suggestion.BlockingSuggestionProvider;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 /**
  * Parses named game content ({@code UnitType}, {@code Block}, {@code Item}, ...) by its internal
@@ -51,17 +52,9 @@ public final class ContentParser<C, T extends MappableContent>
         if (Vars.content == null) {
             return null;
         }
-        MappableContent exact = Vars.content.getByName(type, name);
-        if (valueType.isInstance(exact)) {
-            return valueType.cast(exact);
-        }
-        Seq<? extends MappableContent> all = Vars.content.getBy(type);
-        for (MappableContent content : all) {
-            if (content.name.equalsIgnoreCase(name) && valueType.isInstance(content)) {
-                return valueType.cast(content);
-            }
-        }
-        return null;
+        // Internal content names are lower case, so one lookup covers any casing.
+        MappableContent found = Vars.content.getByName(type, name.toLowerCase(Locale.ROOT));
+        return valueType.isInstance(found) ? valueType.cast(found) : null;
     }
 
     @Override

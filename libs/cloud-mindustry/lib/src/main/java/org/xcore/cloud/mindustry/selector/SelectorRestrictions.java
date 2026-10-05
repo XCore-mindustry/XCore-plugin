@@ -9,7 +9,7 @@ import org.incendo.cloud.parser.ParserParameters;
 import org.xcore.cloud.mindustry.selector.engine.SelectorGuard;
 import org.xcore.cloud.mindustry.selector.exception.SelectorDeniedException;
 
-import java.util.EnumSet;
+import java.util.Arrays;
 import java.util.Set;
 
 /**
@@ -39,9 +39,7 @@ public record SelectorRestrictions(@Nullable Set<SelectorKind> allowed, @Nullabl
     }
 
     public static @NonNull SelectorRestrictions allow(@NonNull SelectorKind... kinds) {
-        Set<SelectorKind> set = EnumSet.noneOf(SelectorKind.class);
-        set.addAll(java.util.Arrays.asList(kinds));
-        return new SelectorRestrictions(set, null);
+        return new SelectorRestrictions(Set.copyOf(Arrays.asList(kinds)), null);
     }
 
     public static @NonNull SelectorRestrictions from(@NonNull ParserParameters parameters) {
@@ -72,7 +70,7 @@ public record SelectorRestrictions(@Nullable Set<SelectorKind> allowed, @Nullabl
             throw new SelectorDeniedException(denyReason);
         }
         if (allowed != null && !allowed.contains(spec.kind())) {
-            throw new SelectorDeniedException("Selector '" + spec.kind().token() + "' is not allowed for this command.");
+            throw new SelectorDeniedException(spec.kind());
         }
     }
 }

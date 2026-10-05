@@ -12,6 +12,10 @@ import mindustry.type.UnitType;
 import org.incendo.cloud.annotations.AnnotationParser;
 import org.incendo.cloud.annotations.Argument;
 import org.incendo.cloud.annotations.Command;
+import org.incendo.cloud.context.CommandContext;
+import org.incendo.cloud.context.CommandInput;
+import org.incendo.cloud.parser.ArgumentParseResult;
+import org.incendo.cloud.parser.ParserDescriptor;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -21,6 +25,8 @@ import org.xcore.cloud.mindustry.selector.SelectorKind;
 import org.xcore.cloud.mindustry.selector.TargetSelector.SinglePlayerSelector;
 import org.xcore.cloud.mindustry.selector.annotation.AllowedSelectors;
 import org.xcore.cloud.mindustry.selector.annotation.DenySelectors;
+import org.xcore.cloud.mindustry.selector.exception.NoSuchTargetException;
+import org.xcore.cloud.mindustry.parser.TeamParser;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -311,5 +317,52 @@ class MindustryCommandManagerTest {
         assertEquals(1, logged.size());
         assertFalse(logged.get(0).contains("[scarlet]"), logged.get(0));
         assertTrue(logged.get(0).contains("Error: something"), logged.get(0));
+    }
+
+    @Test
+    @DisplayName("A selector exception returned directly by a custom parser still shows its caption")
+    void customParserSelectorFailure_usesCaption() {
+        ParserDescriptor<MindustrySender, String> failing = ParserDescriptor.of(
+                (ctx, input) -> {
+                    input.readString();
+                    return ArgumentParseResult.failure(new NoSuchTargetException("ghost"));
+                },
+                String.class
+        );
+        manager.command(manager.commandBuilder("custom").required("who", failing).handler(ctx -> executed.add("custom")));
+
+        run(sender(null), "custom ghost");
+
+        assertTrue(executed.isEmpty());
+        assertEquals(List.of("[scarlet]No targets matched selector '[white]ghost[]'."), messages);
+    }
+
+    @Test
+    @DisplayName("Team suggestions follow the accepted teams")
+    void teamSuggestions_matchAcceptedTeams() {
+        CommandContext<MindustrySender> ctx = new CommandContext<>(sender(null), manager);
+        int base = 0;
+        for (String ignored : new TeamParser<MindustrySender>(false).stringSuggestions(ctx, CommandInput.of(""))) base++;
+        int all = 0;
+        for (String ignored : new TeamParser<MindustrySender>(true).stringSuggestions(ctx, CommandInput.of(""))) all++;
+
+        assertEquals(Team.baseTeams.length, base);
+        assertEquals(Team.all.length, all);
+    }
+
+    @Test
+    @DisplayName("A refused selector kind is reported with its own caption")
+    void refusedKind_usesKindCaption() {
+        Player alice = player(1, "Alice", 10, 10);
+        annotationParser.parse(new Object() {
+            @Command("only-self <target>")
+            public void onlySelf(MindustrySender sender,
+                                 @Argument("target") @AllowedSelectors(SelectorKind.SELF) SinglePlayerSelector target) {
+            }
+        });
+
+        run(sender(alice), "only-self @r");
+
+        assertEquals(List.of("[scarlet]Selector '[white]@r[]' is not allowed here."), messages);
     }
 }
