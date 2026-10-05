@@ -34,6 +34,11 @@ public class MongoSeasonStore implements SeasonStore {
     public static final String COLLECTION = "rating_seasons";
     private static final int DUPLICATE_KEY = 11000;
     private static final Bson NEWEST_FIRST = orderBy(ascending("ladder"), descending("number"));
+    /**
+     * Podium entries written before PIDs could be negative stored {@code -1} for "no profile";
+     * entries carrying this marker store a real PID, or none at all.
+     */
+    static final String SIGNED_PID = "signed_pid";
 
     private final MongoCollection<Document> collection;
     private final TomlSecretsConfig config;
@@ -141,10 +146,13 @@ public class MongoSeasonStore implements SeasonStore {
         return fields;
     }
 
-    private static Document document(SeasonPodiumEntry entry) {
-        return new Document("place", entry.place())
-                .append("uuid", entry.uuid())
-                .append("pid", entry.pid())
+    static Document document(SeasonPodiumEntry entry) {
+        Document document = new Document("place", entry.place())
+                .append("uuid", entry.uuid());
+        if (PlayerPids.isAssigned(entry.pid())) {
+            document.append("pid", entry.pid());
+        }
+        return document.append(SIGNED_PID, true)
                 .append("nickname", entry.nickname())
                 .append("rating", entry.rating())
                 .append("league", entry.league())
@@ -193,11 +201,11 @@ public class MongoSeasonStore implements SeasonStore {
                 document.get("revision") instanceof Number value ? value.longValue() : 0L);
     }
 
-    private static SeasonPodiumEntry podiumEntry(Document document) {
+    static SeasonPodiumEntry podiumEntry(Document document) {
         return new SeasonPodiumEntry(
                 number(document, "place", 0),
                 text(document, "uuid"),
-                number(document, "pid", PlayerPids.NONE),
+                podiumPid(document),
                 text(document, "nickname"),
                 number(document, "rating", 0),
                 text(document, "league"),
@@ -205,6 +213,12 @@ public class MongoSeasonStore implements SeasonStore {
                 number(document, "wins", 0),
                 text(document, "discord_id"),
                 text(document, "discord_username"));
+    }
+
+    private static int podiumPid(Document document) {
+        int pid = number(document, "pid", PlayerPids.NONE);
+        boolean legacyPlaceholder = pid == -1 && !Boolean.TRUE.equals(document.getBoolean(SIGNED_PID));
+        return legacyPlaceholder ? PlayerPids.NONE : pid;
     }
 
     private static SeasonPrize prize(Document document) {
