@@ -1,5 +1,7 @@
 package org.xcore.plugin.service.moderation;
 
+import org.xcore.plugin.model.PlayerPids;
+
 import java.time.Duration;
 
 public record MuteCommand(
@@ -20,7 +22,7 @@ public record MuteCommand(
     }
 
     public static class Builder {
-        private int targetId = -1;
+        private int targetId = PlayerPids.NONE;
         private String targetUuid;
         private String targetIp;
         private String targetName;

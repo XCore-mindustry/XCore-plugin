@@ -13,6 +13,7 @@ import org.xcore.plugin.concurrent.Async;
 import org.xcore.plugin.concurrent.GameThread;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
 import org.xcore.plugin.model.PlayerData;
+import org.xcore.plugin.model.PlayerPids;
 import org.xcore.plugin.service.TopMenuCacheService;
 
 import java.util.ArrayList;
@@ -127,7 +128,7 @@ public class SessionService {
      * @return active Session, or null if not online
      */
     public Session findOnlineByPid(int pid) {
-        if (pid < 0) return null;
+        if (!PlayerPids.isAssigned(pid)) return null;
         for (var session : getAllCachedSnapshot()) {
             if (session.data != null && session.data.pid == pid) {
                 return session;
@@ -146,7 +147,7 @@ public class SessionService {
      * @return PlayerData from cache or database, or null if not found
      */
     public PlayerData getOrLoadFromDb(int pid) {
-        if (pid < 0) return null;
+        if (!PlayerPids.isAssigned(pid)) return null;
         Session online = findOnlineByPid(pid);
         if (online != null && online.data != null) {
             return online.data;
@@ -159,7 +160,7 @@ public class SessionService {
      * Asynchronously gets player data by internal player ID with in-memory cache check.
      */
     public CompletionStage<PlayerData> getOrLoadFromDbAsync(int pid) {
-        if (pid < 0) {
+        if (!PlayerPids.isAssigned(pid)) {
             return CompletableFuture.completedFuture(null);
         }
         Session online = findOnlineByPid(pid);
@@ -694,13 +695,10 @@ public class SessionService {
             return playerDataRepository.findByUsername(name);
         }
 
-        String pidCandidate = target.startsWith("#") ? target.substring(1) : target;
-        if (pidCandidate.matches("\\d+")) {
-            try {
-                int pid = Integer.parseInt(pidCandidate);
-                PlayerData data = getOrLoadFromDb(pid);
-                if (data != null) return data;
-            } catch (NumberFormatException ignored) {}
+        Integer pid = PlayerPids.parse(target);
+        if (pid != null) {
+            PlayerData data = getOrLoadFromDb(pid);
+            if (data != null) return data;
         }
 
         Session online = findOnlineByUsername(target);
@@ -725,12 +723,9 @@ public class SessionService {
             return playerDataRepository.findByUsernameAsync(name);
         }
 
-        String pidCandidate = cleanTarget.startsWith("#") ? cleanTarget.substring(1) : cleanTarget;
-        if (pidCandidate.matches("\\d+")) {
-            try {
-                int pid = Integer.parseInt(pidCandidate);
-                return getOrLoadFromDbAsync(pid);
-            } catch (NumberFormatException ignored) {}
+        Integer pid = PlayerPids.parse(cleanTarget);
+        if (pid != null) {
+            return getOrLoadFromDbAsync(pid);
         }
 
         Session online = findOnlineByUsername(cleanTarget);

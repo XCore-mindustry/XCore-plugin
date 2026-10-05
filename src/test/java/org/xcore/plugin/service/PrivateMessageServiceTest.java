@@ -250,10 +250,11 @@ class PrivateMessageServiceTest {
     }
 
     @Test
-    @DisplayName("parseMenuPid accepts plain ids and hash ids")
+    @DisplayName("parseMenuPid accepts plain ids, hash ids and negative ids")
     void parseMenuPid_acceptsPlainIdsAndHashIds() {
         assertThat(privateMessageService.parseMenuPid("15")).isEqualTo(15);
         assertThat(privateMessageService.parseMenuPid("#16")).isEqualTo(16);
+        assertThat(privateMessageService.parseMenuPid("#-17")).isEqualTo(-17);
         assertThat(privateMessageService.parseMenuPid("bad")).isNull();
     }
 

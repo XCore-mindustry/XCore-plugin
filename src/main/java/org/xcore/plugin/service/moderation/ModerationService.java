@@ -18,6 +18,7 @@ import org.xcore.plugin.model.AuditTarget;
 import org.xcore.plugin.model.BanData;
 import org.xcore.plugin.model.MuteData;
 import org.xcore.plugin.model.PlayerData;
+import org.xcore.plugin.model.PlayerPids;
 import org.xcore.plugin.service.FindService;
 import org.xcore.plugin.service.NetworkService;
 import org.xcore.plugin.service.SecurityService;
@@ -102,7 +103,7 @@ public class ModerationService {
             return ModerationResult.failure("Invalid ban command");
         }
         ModerationActor actor = command.actor() != null ? command.actor() : ModerationActor.CONSOLE;
-        if (command.targetId() >= 0) {
+        if (PlayerPids.isAssigned(command.targetId())) {
             return banById(command.targetId(), actor.name(), actor.discordId(),
                     command.reason(), command.duration(), command.kickOnline());
         }
@@ -118,7 +119,7 @@ public class ModerationService {
             return ModerationResult.failure("Invalid unban command");
         }
         ModerationActor actor = command.actor() != null ? command.actor() : ModerationActor.CONSOLE;
-        if (command.targetId() >= 0) {
+        if (PlayerPids.isAssigned(command.targetId())) {
             return unbanById(command.targetId(), actor.name(), actor.discordId());
         }
         var res = tempUnban(command.targetUuid(), command.targetIp(), actor.name(), actor.discordId());
@@ -175,13 +176,10 @@ public class ModerationService {
             return playerDataRepository.findByUsername(target.substring(1));
         }
 
-        String pidCandidate = target.startsWith("#") ? target.substring(1) : target;
-        if (pidCandidate.matches("\\d+")) {
-            try {
-                int pid = Integer.parseInt(pidCandidate);
-                PlayerData data = playerDataRepository.findByPid(pid);
-                if (data != null) return data;
-            } catch (NumberFormatException ignored) {}
+        Integer pid = PlayerPids.parse(target);
+        if (pid != null) {
+            PlayerData data = playerDataRepository.findByPid(pid);
+            if (data != null) return data;
         }
 
         PlayerData byUsername = playerDataRepository.findByUsername(target);
@@ -193,7 +191,7 @@ public class ModerationService {
     }
 
     private Integer resolveTargetPid(int targetId, String targetUuid) {
-        if (targetId >= 0) {
+        if (PlayerPids.isAssigned(targetId)) {
             return targetId;
         }
         if (targetUuid != null && !targetUuid.isBlank()) {

@@ -14,6 +14,7 @@ import org.xcore.plugin.model.AuditActor;
 import org.xcore.plugin.model.AuditActorType;
 import org.xcore.plugin.model.AuditAppendCommand;
 import org.xcore.plugin.model.PlayerData;
+import org.xcore.plugin.model.PlayerPids;
 import org.xcore.plugin.rating.RatingLeague;
 import org.xcore.plugin.rating.RatingPolicy;
 import org.xcore.plugin.rating.ladder.InMemoryLadderStore;
@@ -407,7 +408,7 @@ class SeasonLifecycleServiceTest {
         // "casual" outranks "regular" but has not played enough to stand on the podium.
         assertThat(archived.podium()).containsExactly(
                 new SeasonPodiumEntry(1, "ace", 7, "Ace", 1500, RatingLeague.fromRating(1500).name(), 12, 6, "1234", "ace"),
-                new SeasonPodiumEntry(2, "regular", -1, "Unknown", 1300, RatingLeague.fromRating(1300).name(), 11, 5, "", ""));
+                new SeasonPodiumEntry(2, "regular", PlayerPids.NONE, "Unknown", 1300, RatingLeague.fromRating(1300).name(), 11, 5, "", ""));
         assertThat(standings.finalRankOf("duel", 1, "ace")).hasValue(1);
         assertThat(standings.finalRankOf("duel", 1, "casual")).hasValue(2);
         assertThat(standings.finalRankOf("duel", 1, "regular")).hasValue(3);

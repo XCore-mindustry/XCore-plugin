@@ -3,6 +3,7 @@ package org.xcore.plugin.service.network;
 import org.jspecify.annotations.Nullable;
 import org.xcore.plugin.model.AuditActor;
 import org.xcore.plugin.model.AuditActorType;
+import org.xcore.plugin.model.PlayerPids;
 import org.xcore.plugin.rating.season.PrizeKind;
 import org.xcore.plugin.rating.season.Season;
 import org.xcore.plugin.rating.season.SeasonNotice;
@@ -120,7 +121,7 @@ public final class RatingProtocolMapper {
                 : null;
         return new SeasonPodiumEntryV1(
                 entry.place(),
-                new PlayerRefV1(entry.uuid(), entry.pid() > 0 ? entry.pid() : null,
+                new PlayerRefV1(entry.uuid(), PlayerPids.orNull(entry.pid()),
                         entry.nickname().isBlank() ? "Unknown" : entry.nickname(), null),
                 discord,
                 entry.rating(),
