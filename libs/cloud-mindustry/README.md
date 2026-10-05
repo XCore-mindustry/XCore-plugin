@@ -11,6 +11,9 @@ The project is based on the integration found in [Xpdustry's Distributor](https:
 - Hooks into Mindustry `CommandHandler` using Cloud v2 (supports both annotations and builders).
 - Compatible with `Vars.netServer.clientCommands` (players) and `ServerControl` (console).
 - Customizable permission logic and command conflict resolution.
+- Target selectors (`@a`, `@p`, `@s`, `@r`, `@e[...]`) for players and units.
+- Parsers for `Player`, `Team`, `UnitType`, `Block`, `Item`, `Liquid` and `StatusEffect` out of the box.
+- Every error message is a Cloud caption, so it can be localized.
 - No mandatory dependencies on translation engines or external permission systems.
 
 ## Setup
@@ -29,7 +32,7 @@ repositories {
 2. Add the library:
 ```kotlin
 dependencies {
-    implementation("org.xcore:cloud-mindustry:0.2.0")
+    implementation("org.xcore:cloud-mindustry:0.3.0")
 }
 ```
 
@@ -64,12 +67,8 @@ import org.xcore.cloud.mindustry.ConflictStrategy;
 mgr.setConflictStrategy(ConflictStrategy.PREFIX); 
 mgr.setCommandPrefix("myplugin"); // usage: /myplugin:command
 
-mgr.setPermissionChecker((sender, permission) -> {
-    if (sender.isPlayer() && sender.player() != null) {
-        return sender.player().admin; 
-    }
-    return true; // console gets everything
-});
+// console and Mindustry admins get everything
+mgr.setPermissionChecker((sender, permission) -> sender.isAdmin());
 ```
 
 ### 3. Adding commands
@@ -89,20 +88,77 @@ mgr.command(mgr.commandBuilder("broadcast", "bc")
 ```
 
 ### 4. Customizing messages (Localization)
-The library doesn't include a translation system by default. You can hook your own via the Caption Registry.
+The library doesn't include a translation system. Every message it sends — Cloud's standard errors,
+selector errors and the Mindustry parser errors — is a caption, so hook your own translations into the
+caption registry. Return `null` for captions you don't translate so the English defaults still apply.
 
 ```java
 mgr.captionRegistry().registerProvider((caption, sender) -> {
-    if (sender.isPlayer()) {
-        return MyBundle.get(caption.key(), sender.player().locale);
-    }
-    return MyBundle.getDefault(caption.key());
+    String locale = sender.isPlayer() ? sender.player().locale : "en";
+    return MyBundle.getOrNull(caption.key(), locale);
 });
 ```
 
-### 5. Adding Mindustry Parsers
-Mindustry-specific parsers (like `Player` or `Team`) aren't included in the core to keep it small. You can add them yourself using the Cloud API:
+Library caption keys live in `SelectorCaptionKeys` and `MindustryCaptionKeys`; Cloud's own keys are in
+`StandardCaptionKeys`.
+
+### 5. Errors
+The manager installs Cloud's default exception handlers, so:
+
+- failures of the command handler are logged and the sender sees the generic `exception.unexpected`
+  caption — internal exception messages are never shown to players;
+- an exception thrown from a command handler, preprocessor or postprocessor is unwrapped, so a handler
+  you register for its type receives it:
 
 ```java
-mgr.parserRegistry().registerParser(Player.class, ParserDescriptor.of(new MyPlayerParser(), Player.class));
+mgr.exceptionController().registerHandler(MyCommandException.class,
+        ctx -> ctx.context().sender().sendMessage(ctx.exception().getMessage()));
 ```
+
+Override `sendErrorMessage(sender, message)` in a subclass to change how error messages are styled.
+
+### 6. Mindustry types
+`Player`, `Team`, `UnitType`, `Block`, `Item`, `Liquid` and `StatusEffect` arguments work out of the box,
+with annotations and with the builder API:
+
+```java
+import org.xcore.cloud.mindustry.parser.MindustryParsers;
+
+mgr.command(mgr.commandBuilder("spawn")
+    .required("type", MindustryParsers.unitType())
+    .required("team", MindustryParsers.team())   // base teams; anyTeam() for all 256
+    .handler(ctx -> { /* ... */ }));
+```
+
+With annotations, the `MindustryCommandManager.ALL_TEAMS` parser parameter opens a `Team` argument up to
+every team id.
+
+### 7. Target selectors
+`Player`, `SinglePlayerSelector`, `MultiplePlayerSelector`, `SingleUnitSelector` and `MultipleUnitSelector`
+arguments accept selectors such as `@s`, `@p`, `@a[team=crux,distance=..20]` or `@e[type=dagger,limit=5]`,
+as well as player names and `#id`s.
+
+Restrict them with `@DenySelectors` / `@AllowedSelectors` after calling
+`mgr.registerSelectorAnnotations(annotationParser)`. On a method they apply to every selector argument of
+the command; on a parameter only to that argument:
+
+```java
+@Command("give <from> <to>")
+public void give(MindustrySender sender,
+                 @Argument("from") @DenySelectors(reason = "name the giver") Player from,
+                 @Argument("to") @AllowedSelectors(SelectorKind.SELF) SinglePlayerSelector to) { ... }
+```
+
+With the builder API pass `SelectorRestrictions` to `TargetSelectorParsers`, e.g.
+`TargetSelectorParsers.singlePlayerSelector(mgr.selectorEngine(), SelectorRestrictions.allow(SelectorKind.SELF))`.
+
+## Migrating from 0.2
+
+- Selector exceptions now extend `SelectorException` (with `caption()` / `captionVariables()`);
+  `SelectorSyntaxException` is no longer an `IllegalArgumentException`. Parse-time selector failures reach
+  exception handlers as `ArgumentParseException` caused by `SelectorParseException` (a Cloud `ParserException`).
+- The default error handlers no longer print `"[scarlet]Error: " + exception.getMessage()`; see *Errors* above.
+- `SelectorCaptionProvider` no longer answers captions it doesn't know, which used to blank out
+  Cloud's standard messages.
+- `ConsoleSender` strips Mindustry color tags before logging.
+- `SelectorGuard.LAST_SELECTOR_SPEC_KEY` is deprecated in favour of `SELECTOR_SPECS_KEY`.

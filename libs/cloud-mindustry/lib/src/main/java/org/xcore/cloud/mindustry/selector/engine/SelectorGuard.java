@@ -1,12 +1,22 @@
 package org.xcore.cloud.mindustry.selector.engine;
 
+import io.leangen.geantyref.TypeToken;
 import org.incendo.cloud.Command;
 import org.incendo.cloud.context.CommandContext;
 import org.incendo.cloud.key.CloudKey;
 import org.xcore.cloud.mindustry.selector.SelectorKind;
+import org.xcore.cloud.mindustry.selector.SelectorRestrictions;
 import org.xcore.cloud.mindustry.selector.TargetSelectorSpec;
-import org.xcore.cloud.mindustry.selector.exception.SelectorDeniedException;
 
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * Enforces the command-level {@code @DenySelectors} / {@code @AllowedSelectors} restrictions.
+ * <p>
+ * The command is only known once parsing has finished, so parsers record every selector they
+ * accept with {@link #checkGuard} and the manager's postprocessor checks them all.
+ */
 public final class SelectorGuard {
 
     public static final CloudKey<Boolean> DENY_SELECTORS_KEY =
@@ -15,53 +25,50 @@ public final class SelectorGuard {
             CloudKey.of("mindustry:deny_selectors_reason", String.class);
     public static final CloudKey<SelectorKind[]> ALLOWED_SELECTORS_KEY =
             CloudKey.of("mindustry:allowed_selectors", SelectorKind[].class);
+    /** Every non-literal selector parsed for the current command, in input order. */
+    public static final CloudKey<List<TargetSelectorSpec>> SELECTOR_SPECS_KEY =
+            CloudKey.of("mindustry:selector_specs", new TypeToken<List<TargetSelectorSpec>>() {});
+    /**
+     * @deprecated only holds the last parsed selector; use {@link #SELECTOR_SPECS_KEY}
+     */
+    @Deprecated
     public static final CloudKey<TargetSelectorSpec> LAST_SELECTOR_SPEC_KEY =
             CloudKey.of("mindustry:last_selector_spec", TargetSelectorSpec.class);
 
     private SelectorGuard() {}
 
+    /**
+     * Records {@code spec} for the command-level check that runs after parsing.
+     */
     public static void checkGuard(CommandContext<?> context, TargetSelectorSpec spec) {
         if (spec == null || spec.kind() == SelectorKind.LITERAL_PLAYER) {
             return;
         }
 
-        context.store(LAST_SELECTOR_SPEC_KEY, spec);
-
-        Command<?> cmd = null;
-        try {
-            cmd = context.command();
-        } catch (IllegalStateException ignored) {
-            // Command is not yet bound during early parse phase; preprocessor will enforce guard.
+        List<TargetSelectorSpec> specs = context.getOrDefault(SELECTOR_SPECS_KEY, null);
+        if (specs == null) {
+            specs = new ArrayList<>(2);
+            context.store(SELECTOR_SPECS_KEY, specs);
         }
+        specs.add(spec);
+        context.store(LAST_SELECTOR_SPEC_KEY, spec);
+    }
 
-        if (cmd != null) {
-            enforce(cmd, spec);
+    /**
+     * Checks every selector recorded in {@code context} against the restrictions of {@code cmd}.
+     */
+    public static void enforceAll(Command<?> cmd, CommandContext<?> context) {
+        List<TargetSelectorSpec> specs = context.getOrDefault(SELECTOR_SPECS_KEY, null);
+        if (specs == null || specs.isEmpty()) {
+            return;
+        }
+        SelectorRestrictions restrictions = SelectorRestrictions.from(cmd.commandMeta());
+        for (TargetSelectorSpec spec : specs) {
+            restrictions.enforce(spec);
         }
     }
 
     public static void enforce(Command<?> cmd, TargetSelectorSpec spec) {
-        if (spec == null || spec.kind() == SelectorKind.LITERAL_PLAYER) {
-            return;
-        }
-
-        boolean deny = cmd.commandMeta().getOrDefault(DENY_SELECTORS_KEY, false);
-        if (deny) {
-            String reason = cmd.commandMeta().getOrDefault(DENY_REASON_KEY, "Target selectors are forbidden for this command.");
-            throw new SelectorDeniedException(reason);
-        }
-
-        SelectorKind[] allowed = cmd.commandMeta().getOrDefault(ALLOWED_SELECTORS_KEY, null);
-        if (allowed != null) {
-            boolean permitted = false;
-            for (SelectorKind k : allowed) {
-                if (k == spec.kind()) {
-                    permitted = true;
-                    break;
-                }
-            }
-            if (!permitted) {
-                throw new SelectorDeniedException("Selector '" + spec.kind().token() + "' is not allowed for this command.");
-            }
-        }
+        SelectorRestrictions.from(cmd.commandMeta()).enforce(spec);
     }
 }

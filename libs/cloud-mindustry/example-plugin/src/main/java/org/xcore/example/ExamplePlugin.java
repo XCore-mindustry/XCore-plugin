@@ -4,6 +4,7 @@ import mindustry.Vars;
 import mindustry.mod.Plugin;
 import org.incendo.cloud.component.CommandComponent;
 import org.incendo.cloud.parser.standard.IntegerParser;
+import org.xcore.cloud.mindustry.parser.MindustryParsers;
 import org.xcore.cloud.mindustry.ConflictStrategy;
 import org.xcore.cloud.mindustry.MindustryCommandManager;
 import org.xcore.cloud.mindustry.MindustrySender;
@@ -17,12 +18,8 @@ public class ExamplePlugin extends Plugin {
         var mgr = MindustryCommandManager.create(Vars.netServer.clientCommands);
 
         mgr.setConflictStrategy(ConflictStrategy.OVERRIDE);
-        mgr.setPermissionChecker((sender, perm) -> {
-            if (sender.isPlayer() && sender.player() != null) {
-                return sender.player().admin;
-            }
-            return true; // server has all perms
-        });
+        // console and Mindustry admins get every permission
+        mgr.setPermissionChecker((sender, perm) -> sender.isAdmin());
 
         // == common integer components ==
         var a = CommandComponent.<MindustrySender, Integer>builder("a", IntegerParser.integerParser()).build();
@@ -75,6 +72,23 @@ public class ExamplePlugin extends Plugin {
                         targetPlayer.unit().heal();
                     }
                     ctx.sender().sendMessage("Healed " + targetPlayer.plainName());
+                })
+        );
+
+        // /spawn <type> <team> - Team and content types parse out of the box
+        mgr.command(mgr.commandBuilder("spawn")
+                .permission("example.spawn")
+                .required("type", MindustryParsers.unitType())
+                .required("team", MindustryParsers.team())
+                .handler(ctx -> {
+                    var player = ctx.sender().player();
+                    if (player == null) {
+                        ctx.sender().sendMessage("Only players can spawn units.");
+                        return;
+                    }
+                    mindustry.type.UnitType type = ctx.get("type");
+                    mindustry.game.Team team = ctx.get("team");
+                    type.spawn(team, player.x, player.y);
                 })
         );
     }

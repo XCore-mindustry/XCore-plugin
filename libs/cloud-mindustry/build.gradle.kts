@@ -1,6 +1,6 @@
 allprojects {
     group = "org.xcore"
-    val baseVersion = "0.2.0"
+    val baseVersion = "0.3.0"
     version = providers.gradleProperty("xcorePublishVersion").orElse(baseVersion).get()
 
     repositories {

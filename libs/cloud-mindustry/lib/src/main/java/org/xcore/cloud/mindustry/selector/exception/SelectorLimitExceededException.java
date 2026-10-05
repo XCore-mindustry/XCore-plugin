@@ -1,6 +1,11 @@
 package org.xcore.cloud.mindustry.selector.exception;
 
-public class SelectorLimitExceededException extends RuntimeException {
+import org.checkerframework.checker.nullness.qual.NonNull;
+import org.incendo.cloud.caption.Caption;
+import org.incendo.cloud.caption.CaptionVariable;
+import org.xcore.cloud.mindustry.selector.caption.SelectorCaptionKeys;
+
+public class SelectorLimitExceededException extends SelectorException {
     private final int count;
     private final int limit;
 
@@ -16,5 +21,18 @@ public class SelectorLimitExceededException extends RuntimeException {
 
     public int limit() {
         return limit;
+    }
+
+    @Override
+    public @NonNull Caption caption() {
+        return SelectorCaptionKeys.ARGUMENT_PARSE_FAILURE_SELECTOR_LIMIT_EXCEEDED;
+    }
+
+    @Override
+    public @NonNull CaptionVariable @NonNull [] captionVariables() {
+        return new CaptionVariable[]{
+                CaptionVariable.of("count", String.valueOf(count)),
+                CaptionVariable.of("limit", String.valueOf(limit))
+        };
     }
 }
