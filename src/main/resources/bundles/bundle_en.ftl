@@ -1153,7 +1153,6 @@ error-admin-password-too-short = [scarlet]⚠ Admin password must be at least 8 
 error-wrong-admin-password = [scarlet]⚠ Incorrect admin password.
 error-internal = [scarlet]Internal error.
 error-processing-request = [scarlet]An error occurred while processing the request.
-error-team-not-found = [scarlet]⚠ Team not found.
 error-no-access = [scarlet]⚠ No Access.
 error-nickname-too-long = [scarlet]⚠ Nickname is too long. Max { $max } visible characters.
 error-private-message-invalid-pid = [scarlet]⚠ Invalid private-message pid. Use format [lightgray]#123[].
@@ -1204,6 +1203,15 @@ argument-parse-failure-flag-duplicate-flag = [scarlet]⚠ Duplicate flag: '{ $fl
 argument-parse-failure-flag-no-flag-started = [scarlet]⚠ No flag started. Don't know what to do with '{ $input }'.
 argument-parse-failure-flag-missing-argument = [scarlet]⚠ Missing argument for flag: '{ $flag }'.
 argument-parse-failure-flag-no-permission = [scarlet]⚠ You don't have permission to use flag '{ $flag }'.
+argument-parse-failure-selector-syntax = [scarlet]⚠ Invalid selector '{ $input }': [lightgray]{ $reason }
+argument-parse-failure-selector-no-such-target = [scarlet]⚠ Nothing matched '{ $input }'.
+argument-parse-failure-selector-too-many-targets = [scarlet]⚠ '{ $input }' matched several targets, but this command needs one.
+argument-parse-failure-selector-denied = [scarlet]⚠ Selectors are not allowed here: [lightgray]{ $reason }
+argument-parse-failure-selector-kind-not-allowed = [scarlet]⚠ Selector '{ $kind }' is not allowed here.
+argument-parse-failure-selector-sender-required = [scarlet]⚠ Selector '{ $kind }' can only be used in game.
+argument-parse-failure-selector-limit-exceeded = [scarlet]⚠ Selector matched { $count } targets, the limit is { $limit }.
+argument-parse-failure-team = [scarlet]⚠ Team '{ $input }' not found.
+argument-parse-failure-content = [scarlet]⚠ '{ $input }' is not a valid { $type }.
 # ==============================================================================
 # Button Status
 # ==============================================================================

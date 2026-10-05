@@ -4,6 +4,7 @@ import com.ospx.flubundle.Bundle;
 import jakarta.inject.Inject;
 import jakarta.inject.Provider;
 import jakarta.inject.Singleton;
+import org.incendo.cloud.caption.Caption;
 import org.xcore.plugin.XcorePlugin;
 import org.xcore.cloud.mindustry.MindustryCommandManager;
 import org.xcore.plugin.cloud.XCoreSender;
@@ -29,7 +30,7 @@ public class CloudCaptionConfigurer {
 
     public void configure(MindustryCommandManager<XCoreSender> manager) {
         manager.captionRegistry().registerProvider((caption, recipient) -> {
-            String key = caption.key().replace(".", "-");
+            String key = bundleKey(caption);
             if (!placeholderRegistry.containsKey(key)) {
                 return null;
             }
@@ -43,5 +44,13 @@ public class CloudCaptionConfigurer {
             }
             return bundle.format(recipient.locale(), key, args);
         });
+    }
+
+    /**
+     * Maps a Cloud caption key to its bundle key: {@code exception.invalid_argument} becomes
+     * {@code exception-invalid-argument}.
+     */
+    public static String bundleKey(Caption caption) {
+        return caption.key().replace('.', '-').replace('_', '-');
     }
 }

@@ -1096,7 +1096,6 @@ error-admin-password-too-short = [scarlet]⚠ Пароль должен быть
 error-wrong-admin-password = [scarlet]⚠ Неправильный пароль
 error-internal = [scarlet]Внутренняя ошибка сервера
 error-processing-request = [scarlet]Произошла ошибка при обработке запроса.
-error-team-not-found = [scarlet]⚠ Команда не найдена.
 error-no-access = [scarlet]⚠ Нет доступа.
 error-nickname-too-long = [scarlet]⚠ Никнейм слишком длинный. Максимум { $max } видимых символов.
 error-private-message-invalid-pid = [scarlet]⚠ Неверный ID игрока. Используйте формат [lightgray]#123[].
@@ -1147,6 +1146,15 @@ argument-parse-failure-flag-duplicate-flag = [scarlet]⚠ Повторяющий
 argument-parse-failure-flag-no-flag-started = [scarlet]⚠ Флаг не был начат. Непонятно, что делать с '{ $input }'.
 argument-parse-failure-flag-missing-argument = [scarlet]⚠ Отсутствует аргумент для флага: '{ $flag }'.
 argument-parse-failure-flag-no-permission = [scarlet]⚠ У вас нет прав на использование флага '{ $flag }'.
+argument-parse-failure-selector-syntax = [scarlet]⚠ Неверный селектор '{ $input }': [lightgray]{ $reason }
+argument-parse-failure-selector-no-such-target = [scarlet]⚠ Под '{ $input }' ничего не подходит.
+argument-parse-failure-selector-too-many-targets = [scarlet]⚠ Под '{ $input }' подходит несколько целей, а команде нужна одна.
+argument-parse-failure-selector-denied = [scarlet]⚠ Селекторы здесь запрещены: [lightgray]{ $reason }
+argument-parse-failure-selector-kind-not-allowed = [scarlet]⚠ Селектор '{ $kind }' здесь запрещён.
+argument-parse-failure-selector-sender-required = [scarlet]⚠ Селектор '{ $kind }' можно использовать только в игре.
+argument-parse-failure-selector-limit-exceeded = [scarlet]⚠ Селектор нашёл { $count } целей, лимит — { $limit }.
+argument-parse-failure-team = [scarlet]⚠ Команда '{ $input }' не найдена.
+argument-parse-failure-content = [scarlet]⚠ '{ $input }' не является допустимым { $type }.
 # ==============================================================================
 # Button Status
 # ==============================================================================
