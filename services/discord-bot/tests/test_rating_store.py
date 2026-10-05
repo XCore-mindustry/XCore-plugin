@@ -140,6 +140,11 @@ def test_season_from_doc_reads_podium_and_summary() -> None:
                     "discord_id": "42",
                 },
                 {"place": 2, "uuid": "u2", "pid": 0, "rating": 1400},
+                {"place": 3, "uuid": "u3", "pid": -12, "rating": 1300},
+                # Written before PIDs could be negative: -1 stood for "no profile".
+                {"place": 4, "uuid": "u4", "pid": -1, "rating": 1200},
+                {"place": 5, "uuid": "u5", "pid": -1, "signed_pid": True},
+                {"place": 6, "uuid": "u6", "signed_pid": True},
             ],
         )
     )
@@ -148,7 +153,7 @@ def test_season_from_doc_reads_podium_and_summary() -> None:
     assert season.participants == 12
     assert season.podium[0].discord_id == "42"
     assert season.podium[0].pid == 7
-    assert season.podium[1].pid is None
+    assert [entry.pid for entry in season.podium[1:]] == [0, -12, None, -1, None]
     assert season.podium[1].nickname == "Unknown"
     assert season.podium[1].discord_id is None
 

@@ -274,7 +274,7 @@ def build_season_top_embed(
         return embed
     embed.description = "\n".join(
         f"{_place(row.rank)} **{_escape(row.nickname)}**"
-        f"{f' (#{row.pid})' if row.pid else ''} · `{row.rating}` · "
+        f"{f' (#{row.pid})' if row.pid is not None else ''} · `{row.rating}` · "
         f"{row.wins}/{row.matches} wins"
         for row in standings
     )

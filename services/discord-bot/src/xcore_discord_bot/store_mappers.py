@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 
 from .dto import BanRecord, MuteRecord, PlayerRecord
+from .player_pids import NO_PID, or_none
 
 
 def _normalized_optional_str(value: object) -> str | None:
@@ -62,7 +63,7 @@ def _normalized_str_tuple(value: object) -> tuple[str, ...]:
 def player_record_from_doc(doc: Mapping[str, object]) -> PlayerRecord:
     nickname = _normalized_optional_str(doc.get("nickname")) or "Unknown"
     return PlayerRecord(
-        pid=_int_or_default(doc.get("pid"), default=-1),
+        pid=_int_or_default(doc.get("pid"), default=NO_PID),
         nickname=nickname,
         uuid=_normalized_optional_str(doc.get("uuid")),
         ip=_normalized_optional_str(doc.get("ip")),
@@ -103,11 +104,7 @@ def ban_record_from_doc(doc: Mapping[str, object]) -> BanRecord:
     return BanRecord(
         uuid=_normalized_optional_str(doc.get("uuid")),
         ip=_normalized_optional_str(doc.get("ip")),
-        pid=(
-            _int_or_default(doc.get("pid"), default=-1)
-            if doc.get("pid") is not None
-            else None
-        ),
+        pid=or_none(_int_or_default(doc.get("pid"), default=NO_PID)),
         name=_normalized_optional_str(doc.get("name")) or "Unknown",
         admin_name=_normalized_optional_str(doc.get("admin_name")) or "Unknown",
         admin_discord_id=_normalized_optional_str(doc.get("admin_discord_id")),
@@ -119,11 +116,7 @@ def ban_record_from_doc(doc: Mapping[str, object]) -> BanRecord:
 def mute_record_from_doc(doc: Mapping[str, object]) -> MuteRecord:
     return MuteRecord(
         uuid=_normalized_optional_str(doc.get("uuid")),
-        pid=(
-            _int_or_default(doc.get("pid"), default=-1)
-            if doc.get("pid") is not None
-            else None
-        ),
+        pid=or_none(_int_or_default(doc.get("pid"), default=NO_PID)),
         name=_normalized_optional_str(doc.get("name")) or "Unknown",
         admin_name=_normalized_optional_str(doc.get("admin_name")) or "Unknown",
         admin_discord_id=_normalized_optional_str(doc.get("admin_discord_id")),

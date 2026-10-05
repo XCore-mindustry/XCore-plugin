@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from xcore_discord_bot.player_pids import NO_PID
 from xcore_discord_bot.store_mappers import (
     ban_record_from_doc,
     mute_record_from_doc,
@@ -54,7 +55,7 @@ def test_player_record_from_doc_normalizes_dirty_values() -> None:
 def test_player_record_from_doc_uses_safe_defaults() -> None:
     record = player_record_from_doc({})
 
-    assert record.pid == -1
+    assert record.pid == NO_PID
     assert record.nickname == "Unknown"
     assert record.uuid is None
     assert record.total_play_time == 0
@@ -136,3 +137,12 @@ def test_mute_record_from_doc_uses_safe_defaults() -> None:
     assert record.admin_discord_id is None
     assert record.reason == "Not Specified"
     assert record.expire_date is None
+
+
+def test_records_keep_zero_and_negative_pids() -> None:
+    assert player_record_from_doc({"pid": -12}).pid == -12
+    assert player_record_from_doc({"pid": "-12"}).pid == -12
+    assert player_record_from_doc({"pid": 0}).pid == 0
+    assert ban_record_from_doc({"pid": -1}).pid == -1
+    assert mute_record_from_doc({"pid": 0}).pid == 0
+    assert ban_record_from_doc({"pid": NO_PID}).pid is None

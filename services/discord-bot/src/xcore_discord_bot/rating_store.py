@@ -16,6 +16,7 @@ from pymongo import ASCENDING, DESCENDING
 from pymongo.errors import DuplicateKeyError
 
 from .mongo_store import MongoStore
+from .player_pids import NO_PID, or_none
 
 logger = logging.getLogger(__name__)
 
@@ -194,12 +195,20 @@ def grant_from_doc(doc: dict[str, Any]) -> PrizeGrantRecord:
     )
 
 
+def _podium_pid(doc: dict[str, Any]) -> int | None:
+    """Entries written before PIDs could be negative stored -1 for "no profile"; the ones the
+    game servers write since carry ``signed_pid`` and a real PID, or none at all."""
+    pid = _int(doc.get("pid"), NO_PID)
+    if pid == -1 and doc.get("signed_pid") is not True:
+        return None
+    return or_none(pid)
+
+
 def _podium_entry(doc: dict[str, Any]) -> PodiumEntry:
-    pid = _int(doc.get("pid"), -1)
     return PodiumEntry(
         place=_int(doc.get("place")),
         uuid=str(doc.get("uuid") or ""),
-        pid=pid if pid > 0 else None,
+        pid=_podium_pid(doc),
         nickname=str(doc.get("nickname") or "Unknown"),
         rating=_int(doc.get("rating")),
         league=str(doc.get("league") or ""),
@@ -329,10 +338,9 @@ class RatingStore:
         cursor = self._collection(PLAYERS).find({"uuid": {"$in": uuids}})
         names: dict[str, tuple[str, int | None]] = {}
         async for doc in cursor:
-            pid = _int(doc.get("pid"), -1)
             names[str(doc.get("uuid"))] = (
                 str(doc.get("nickname") or "Unknown"),
-                pid if pid > 0 else None,
+                or_none(_int(doc.get("pid"), NO_PID)),
             )
         return names
 

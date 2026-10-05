@@ -22,6 +22,7 @@ from .dto import (
     MuteRecord,
     PlayerRecord,
 )
+from .player_pids import is_assigned
 from .settings import Settings
 from .store_mappers import (
     ban_record_from_doc,
@@ -230,7 +231,9 @@ class MongoStore:
             return []
 
         players = self._db_required()["players"]
-        if normalized.isdigit():
+        # A PID as it is typed in the game: 12, -12, #12 or #-12.
+        typed_pid = normalized.removeprefix("#")
+        if re.fullmatch(r"-?\d+|-", typed_pid):
             rows = await players.aggregate(
                 [
                     {
@@ -238,7 +241,7 @@ class MongoStore:
                             "$expr": {
                                 "$regexMatch": {
                                     "input": {"$toString": {"$ifNull": ["$pid", ""]}},
-                                    "regex": f"^{re.escape(normalized)}",
+                                    "regex": f"^{re.escape(typed_pid)}",
                                 }
                             }
                         }
@@ -260,7 +263,7 @@ class MongoStore:
             rows = await cursor.to_list(length=limit)
 
         records = [player_record_from_doc(row) for row in rows]
-        return [record for record in records if record.pid >= 0]
+        return [record for record in records if is_assigned(record.pid)]
 
     async def count_players_by_name(self, query: str) -> int:
         try:

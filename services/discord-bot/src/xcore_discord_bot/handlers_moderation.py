@@ -9,6 +9,7 @@ from xcore_protocol.generated.shared import ActorRefV1ActorType, VoteKickPartici
 
 from .dto import MERGE_KEEP_PID_TARGET, PlayerRecord
 from .moderation_views import AccountMergeConfirmView, BanConfirmView, MuteUndoView
+from .player_pids import is_assigned, or_none
 from .presentation import build_merge_preview_embed, format_ban_expire_date
 
 if TYPE_CHECKING:
@@ -58,7 +59,7 @@ def _add_embed_section(
 
 def _format_vote_kick_party_value(*, name: str, pid: int | None) -> str:
     safe_name = str(name).strip() or "Unknown"
-    return f"{safe_name} (pid={pid})" if pid is not None and pid > 0 else safe_name
+    return f"{safe_name} (pid={pid})" if is_assigned(pid) else safe_name
 
 
 def _format_vote_kick_participant(item: VoteKickParticipantV1) -> str:
@@ -789,7 +790,7 @@ async def post_ban_log(
     if not safe_reason:
         safe_reason = "No reason provided"
 
-    safe_pid = pid if pid > 0 else None
+    safe_pid = or_none(pid)
     violator_value = (
         f"{safe_name} (pid={safe_pid})" if safe_pid is not None else safe_name
     )
@@ -841,7 +842,7 @@ async def post_mute_log(
     if not safe_reason:
         safe_reason = "No reason provided"
 
-    safe_pid = pid if pid > 0 else None
+    safe_pid = or_none(pid)
     violator_value = (
         f"{safe_name} (pid={safe_pid})" if safe_pid is not None else safe_name
     )

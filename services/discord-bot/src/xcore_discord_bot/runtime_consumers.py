@@ -23,6 +23,7 @@ from .handlers_seasons import (
     on_season_rescheduled,
     on_season_started,
 )
+from .player_pids import NO_PID
 from .retry import retry_reconnect_bus
 from .service_protocols import ConsumerRecoveryService, PlayerLookupService
 
@@ -64,13 +65,13 @@ def _resolve_vote_kick_starter_pid(event: ModerationVoteKickCreatedV1) -> int | 
 
 async def _player_pid_for_uuid(store: PlayerLookupService, uuid: str | None) -> int:
     if not uuid:
-        return -1
+        return NO_PID
     if uuid.startswith("legacy:"):
-        return -1
+        return NO_PID
 
     player = await store.find_player_by_uuid(uuid)
     if player is None:
-        return -1
+        return NO_PID
 
     return player.pid
 

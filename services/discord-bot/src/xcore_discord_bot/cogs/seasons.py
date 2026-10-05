@@ -456,7 +456,7 @@ class SeasonsCog(commands.Cog):
         season: app_commands.Range[int, 1],
         place: app_commands.Range[int, 1],
         note: app_commands.Range[str, 1, MAX_NOTE] | None = None,
-        player: app_commands.Range[int, 1] | None = None,
+        player: int | None = None,
     ) -> None:
         await self._admin_reply(
             interaction,
@@ -471,7 +471,7 @@ class SeasonsCog(commands.Cog):
             ),
             describe=lambda response: (
                 f"Marked {response.updated} prize(s) of place {place}"
-                f"{f' for player #{player}' if player else ''} in "
+                f"{f' for player #{player}' if player is not None else ''} in "
                 f"**{ladder_name(ladder)}** season {season} as delivered."
             ),
         )

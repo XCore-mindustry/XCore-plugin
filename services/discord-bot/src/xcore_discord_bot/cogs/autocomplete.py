@@ -3,6 +3,7 @@ from __future__ import annotations
 from discord import Interaction, app_commands
 
 from ..badges import badge_choice_label, grantable_badges
+from ..player_pids import is_assigned
 from ..service_protocols import BusService, StoreService
 
 
@@ -23,7 +24,7 @@ async def _autocomplete_player_id(
     rows = await store.autocomplete_players(current_norm, limit=25)
     choices: list[app_commands.Choice[int]] = []
     for row in rows:
-        if row.pid < 0:
+        if not is_assigned(row.pid):
             continue
 
         nickname = strip_mindustry_colors(row.nickname).replace("`", "").strip()

@@ -12,6 +12,7 @@ from .dto import PlayerRecord
 from .modal_factories import create_stats_ban_modal, create_stats_mute_modal
 from .moderation_views import MapRemoveConfirmView, StatsActionsView
 from .permissions import admin_role_ids, has_any_role, settings_from_interaction
+from .player_pids import is_assigned
 from .presentation import (
     build_servers_embed,
     build_stats_title,
@@ -392,11 +393,7 @@ async def cmd_bans(
             for ban in bans:
                 unban_date = format_ban_expire_date(ban.expire_date)
                 ban_value = (
-                    (
-                        f"PID: `{ban.pid}`\n"
-                        if ban.pid is not None and ban.pid > 0
-                        else ""
-                    )
+                    (f"PID: `{ban.pid}`\n" if is_assigned(ban.pid) else "")
                     + f"Admin: {_format_admin_label(admin_name=ban.admin_name, admin_discord_id=ban.admin_discord_id)}\n"
                     + f"Reason: {ban.reason}\n"
                     + f"Unban: {unban_date}"

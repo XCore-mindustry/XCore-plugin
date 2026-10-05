@@ -228,7 +228,7 @@ def build_merge_result_embed(result: AccountMergeResult) -> discord.Embed:
         embed.add_field(
             name="Source account (closed)",
             value=(
-                f"PID: `#{result.tombstone_pid or source.pid}`\n"
+                f"PID: `#{source.pid if result.tombstone_pid is None else result.tombstone_pid}`\n"
                 f"Nickname: `{source.nickname}`\n"
                 f"UUID: `{source.uuid}`"
             ),
@@ -237,7 +237,9 @@ def build_merge_result_embed(result: AccountMergeResult) -> discord.Embed:
 
     if target_after is not None:
         pid_note = ""
-        surviving_pid = result.surviving_pid or target_after.pid
+        surviving_pid = (
+            target_after.pid if result.surviving_pid is None else result.surviving_pid
+        )
         if target_before is not None and target_before.pid != surviving_pid:
             pid_note = f" (was #{target_before.pid})"
         embed.add_field(
