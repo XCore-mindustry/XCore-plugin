@@ -13,6 +13,8 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.xcore.cloud.mindustry.MindustryCommandManager;
 import org.xcore.cloud.mindustry.MindustrySender;
+import org.xcore.cloud.mindustry.selector.SelectorKind;
+import org.xcore.cloud.mindustry.selector.annotation.AllowedSelectors;
 import org.xcore.cloud.mindustry.selector.annotation.DenySelectors;
 import org.xcore.plugin.cloud.config.CloudCaptionConfigurer;
 import org.xcore.plugin.cloud.config.CloudExceptionConfigurer;
@@ -145,6 +147,18 @@ class CloudExceptionHandlingIntegrationTest {
 
         assertThat(run("kick @a")).containsExactly("msg:argument-parse-failure-selector-denied");
         assertThat(handled).isFalse();
+    }
+
+    @Test
+    @DisplayName("a selector kind outside @AllowedSelectors gets its own localized message")
+    void playerParameter_honoursAllowedSelectors() {
+        parser.parse(new Object() {
+            @Command("look <target>")
+            public void look(XCoreSender sender, @Argument("target") @AllowedSelectors(SelectorKind.SELF) Player target) {
+            }
+        });
+
+        assertThat(run("look @r")).containsExactly("msg:argument-parse-failure-selector-kind-not-allowed");
     }
 
     @Test
