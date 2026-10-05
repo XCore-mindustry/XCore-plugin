@@ -5,7 +5,7 @@
   "ladder": "mini-pvp",
   "season": 3,
   "place": 2,
-  "playerPid": 0,
+  "playerPid": -14,
   "status": "delivered",
   "actor": {
     "actorName": "Head",

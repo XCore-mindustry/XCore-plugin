@@ -24,6 +24,11 @@ VALID_CASES = [
         fixtures_root() / "valid" / "rating" / f"{name}.v1.json",
     )
     for name in VALID_MESSAGES
+] + [
+    (
+        spec_root() / "messages" / "rating" / "rating.prize.grant.update.request.v1.json",
+        fixtures_root() / "valid" / "rating" / "rating.prize.grant.update.request.v1.negative-pid.json",
+    ),
 ]
 
 INVALID_CASES = [
@@ -38,7 +43,6 @@ INVALID_CASES = [
         ("rating.season.prizes.set.request", "unknown-kind"),
         ("rating.prize.grant.update.request", "unknown-status"),
         ("rating.prize.grant.update.request", "zero-place"),
-        ("rating.prize.grant.update.request", "zero-pid"),
         ("rating.season.reschedule.request", "extend-without-seconds"),
         ("rating.season.reschedule.request", "set-end-without-ends-at"),
         ("rating.season.prizes.set.request", "add-without-prize"),

@@ -132,9 +132,6 @@ public final class ChatMessages {
             if (fromUuid.length() < 1) {
                 throw new IllegalArgumentException("fromUuid must be at least 1 characters");
             }
-            if (fromPid < 0) {
-                throw new IllegalArgumentException("fromPid must be >= 0");
-            }
             Objects.requireNonNull(fromName, "fromName must not be null");
             if (fromName.length() < 1) {
                 throw new IllegalArgumentException("fromName must be at least 1 characters");
@@ -142,9 +139,6 @@ public final class ChatMessages {
             Objects.requireNonNull(toUuid, "toUuid must not be null");
             if (toUuid.length() < 1) {
                 throw new IllegalArgumentException("toUuid must be at least 1 characters");
-            }
-            if (toPid < 0) {
-                throw new IllegalArgumentException("toPid must be >= 0");
             }
             Objects.requireNonNull(message, "message must not be null");
             if (message.length() < 1) {

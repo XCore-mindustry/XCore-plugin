@@ -107,11 +107,6 @@ public final class RatingMessages {
             if (place < 1) {
                 throw new IllegalArgumentException("place must be >= 1");
             }
-            if (playerPid != null) {
-                if (playerPid < 1) {
-                    throw new IllegalArgumentException("playerPid must be >= 1");
-                }
-            }
             Objects.requireNonNull(status, "status must not be null");
             Objects.requireNonNull(actor, "actor must not be null");
             if (note != null) {
