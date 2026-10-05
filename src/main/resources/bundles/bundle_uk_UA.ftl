@@ -923,6 +923,14 @@ argument-parse-failure-flag-duplicate-flag = [scarlet]⚠ Прапорець, щ
 argument-parse-failure-flag-no-flag-started = [scarlet]⚠ Прапорець не було розпочато. Незрозуміло, що робити з '{ $input }'.
 argument-parse-failure-flag-missing-argument = [scarlet]⚠ Відсутній аргумент для прапорця: '{ $flag }'.
 argument-parse-failure-flag-no-permission = [scarlet]⚠ У вас немає прав на використання прапорця '{ $flag }'.
+argument-parse-failure-selector-syntax = [scarlet]⚠ Невірний селектор '{ $input }': [lightgray]{ $reason }
+argument-parse-failure-selector-no-such-target = [scarlet]⚠ Жоден гравець не відповідає '{ $input }'.
+argument-parse-failure-selector-too-many-targets = [scarlet]⚠ Під '{ $input }' підходить кілька цілей, а команді потрібна одна.
+argument-parse-failure-selector-denied = [scarlet]⚠ Селектори тут заборонені: [lightgray]{ $reason }
+argument-parse-failure-selector-sender-required = [scarlet]⚠ Селектор '{ $kind }' можна використовувати лише в грі.
+argument-parse-failure-selector-limit-exceeded = [scarlet]⚠ Селектор знайшов { $count } цілей, ліміт — { $limit }.
+argument-parse-failure-team = [scarlet]⚠ Команду '{ $input }' не знайдено.
+argument-parse-failure-content = [scarlet]⚠ '{ $input }' не є допустимим { $type }.
 # ==============================================================================
 # Miscellaneous
 # ==============================================================================

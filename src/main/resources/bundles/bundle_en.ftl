@@ -1204,6 +1204,14 @@ argument-parse-failure-flag-duplicate-flag = [scarlet]⚠ Duplicate flag: '{ $fl
 argument-parse-failure-flag-no-flag-started = [scarlet]⚠ No flag started. Don't know what to do with '{ $input }'.
 argument-parse-failure-flag-missing-argument = [scarlet]⚠ Missing argument for flag: '{ $flag }'.
 argument-parse-failure-flag-no-permission = [scarlet]⚠ You don't have permission to use flag '{ $flag }'.
+argument-parse-failure-selector-syntax = [scarlet]⚠ Invalid selector '{ $input }': [lightgray]{ $reason }
+argument-parse-failure-selector-no-such-target = [scarlet]⚠ No player matched '{ $input }'.
+argument-parse-failure-selector-too-many-targets = [scarlet]⚠ '{ $input }' matched several targets, but this command needs one.
+argument-parse-failure-selector-denied = [scarlet]⚠ Selectors are not allowed here: [lightgray]{ $reason }
+argument-parse-failure-selector-sender-required = [scarlet]⚠ Selector '{ $kind }' can only be used in game.
+argument-parse-failure-selector-limit-exceeded = [scarlet]⚠ Selector matched { $count } targets, the limit is { $limit }.
+argument-parse-failure-team = [scarlet]⚠ Team '{ $input }' not found.
+argument-parse-failure-content = [scarlet]⚠ '{ $input }' is not a valid { $type }.
 # ==============================================================================
 # Button Status
 # ==============================================================================
