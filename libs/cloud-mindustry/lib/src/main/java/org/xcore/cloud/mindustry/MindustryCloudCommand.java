@@ -6,9 +6,7 @@ import mindustry.gen.Player;
 public final class MindustryCloudCommand<C> extends CommandHandler.Command {
     MindustryCloudCommand(String registeredName, String inputName, String description, MindustryCommandManager<C> manager) {
         super(registeredName, "[args...]", description, (args, player) -> {
-            MindustrySender rawSender = (player == null)
-                    ? new MindustrySender.ConsoleSender()
-                    : new MindustrySender.PlayerSender((Player) player);
+            MindustrySender rawSender = MindustrySender.of((Player) player);
 
             C sender = manager.senderMapper().map(rawSender);
 

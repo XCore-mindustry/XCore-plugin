@@ -1,30 +1,57 @@
 package org.xcore.cloud.mindustry;
 
 import arc.util.CommandHandler;
+import arc.util.Log;
+import io.leangen.geantyref.TypeToken;
+import mindustry.game.Team;
+import mindustry.gen.Player;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.incendo.cloud.CloudCapability;
 import org.incendo.cloud.CommandManager;
 import org.incendo.cloud.SenderMapper;
 import org.incendo.cloud.annotations.AnnotationParser;
+import org.incendo.cloud.caption.Caption;
 import org.incendo.cloud.caption.CaptionProvider;
 import org.incendo.cloud.caption.CaptionVariable;
+import org.incendo.cloud.context.CommandContext;
+import org.incendo.cloud.exception.ArgumentParseException;
+import org.incendo.cloud.exception.CommandExecutionException;
+import org.incendo.cloud.exception.handling.ExceptionHandler;
+import org.incendo.cloud.exception.parsing.ParserException;
 import org.incendo.cloud.execution.ExecutionCoordinator;
 import org.incendo.cloud.internal.CommandRegistrationHandler;
+import org.incendo.cloud.parser.ParserDescriptor;
+import org.incendo.cloud.parser.ParserParameter;
+import org.incendo.cloud.parser.ParserParameters;
+import org.incendo.cloud.services.PipelineException;
+import org.xcore.cloud.mindustry.parser.MindustryCaptionProvider;
+import org.xcore.cloud.mindustry.parser.MindustryParsers;
+import org.xcore.cloud.mindustry.parser.TeamParser;
+import org.xcore.cloud.mindustry.selector.SelectorRestrictions;
+import org.xcore.cloud.mindustry.selector.TargetSelector.MultiplePlayerSelector;
+import org.xcore.cloud.mindustry.selector.TargetSelector.MultipleUnitSelector;
+import org.xcore.cloud.mindustry.selector.TargetSelector.SinglePlayerSelector;
+import org.xcore.cloud.mindustry.selector.TargetSelector.SingleUnitSelector;
 import org.xcore.cloud.mindustry.selector.annotation.AllowedSelectors;
 import org.xcore.cloud.mindustry.selector.annotation.DenySelectors;
-import org.xcore.cloud.mindustry.selector.caption.SelectorCaptionKeys;
 import org.xcore.cloud.mindustry.selector.caption.SelectorCaptionProvider;
 import org.xcore.cloud.mindustry.selector.engine.SelectorGuard;
+import org.xcore.cloud.mindustry.selector.engine.SelectorResolutionBridge;
 import org.xcore.cloud.mindustry.selector.engine.SpatialSelectorEngine;
-import org.xcore.cloud.mindustry.selector.exception.*;
+import org.xcore.cloud.mindustry.selector.exception.SelectorException;
 import org.xcore.cloud.mindustry.selector.parser.PlayerSelectorAdapter;
 import org.xcore.cloud.mindustry.selector.parser.TargetSelectorParsers;
 
 import java.util.Objects;
 import java.util.function.BiPredicate;
+import java.util.function.Function;
 import java.util.function.Supplier;
 
 public class MindustryCommandManager<C> extends CommandManager<C> {
+
+    /** Parser parameter that makes a {@link Team} argument accept every team id, not only the base teams. */
+    public static final ParserParameter<Boolean> ALL_TEAMS =
+            new ParserParameter<>("mindustry:all_teams", TypeToken.get(Boolean.class));
 
     private final SenderMapper<MindustrySender, C> senderMapper;
     private final SpatialSelectorEngine selectorEngine = new SpatialSelectorEngine();
@@ -43,12 +70,14 @@ public class MindustryCommandManager<C> extends CommandManager<C> {
 
         registerCapability(CloudCapability.StandardCapabilities.ROOT_COMMAND_DELETION);
 
-        org.xcore.cloud.mindustry.selector.engine.SelectorResolutionBridge.setSimulationThread(Thread.currentThread());
+        SelectorResolutionBridge.setSimulationThread(Thread.currentThread());
 
         ArcCommandRegistrationHandler<C> regHandler = new ArcCommandRegistrationHandler<>(this, handler);
         this.commandRegistrationHandler(regHandler);
 
+        registerDefaultCaptions();
         registerDefaultParsers();
+        registerSelectorGuard();
         registerDefaultExceptionHandlers();
     }
 
@@ -106,6 +135,11 @@ public class MindustryCommandManager<C> extends CommandManager<C> {
         this.captionRegistry().registerProvider(provider);
     }
 
+    /**
+     * Wires {@link DenySelectors} and {@link AllowedSelectors} into {@code annotationParser}.
+     * On a method they restrict every selector argument of the command; on a parameter they
+     * restrict that argument only.
+     */
     public void registerSelectorAnnotations(AnnotationParser<C> annotationParser) {
         annotationParser.registerBuilderModifier(
                 DenySelectors.class,
@@ -119,161 +153,125 @@ public class MindustryCommandManager<C> extends CommandManager<C> {
                 (annotation, builder) -> builder
                         .meta(SelectorGuard.ALLOWED_SELECTORS_KEY, annotation.value())
         );
+
+        parserRegistry().registerAnnotationMapper(
+                DenySelectors.class,
+                (annotation, type) -> ParserParameters.single(SelectorRestrictions.DENY_PARAMETER, annotation.reason())
+        );
+
+        parserRegistry().registerAnnotationMapper(
+                AllowedSelectors.class,
+                (annotation, type) -> ParserParameters.single(SelectorRestrictions.ALLOWED_PARAMETER, annotation.value())
+        );
+    }
+
+    /**
+     * Sends an error message produced by one of the default exception handlers. The message is
+     * the formatted caption; Mindustry color tags are allowed.
+     */
+    protected void sendErrorMessage(@NonNull C sender, @NonNull String message) {
+        senderMapper.reverse(sender).sendMessage("[scarlet]" + message);
+    }
+
+    private void registerDefaultCaptions() {
+        captionRegistry().registerProvider(new SelectorCaptionProvider<>());
+        captionRegistry().registerProvider(new MindustryCaptionProvider<>());
     }
 
     private void registerDefaultParsers() {
-        captionRegistry().registerProvider(new SelectorCaptionProvider<>());
+        registerSelectorParser(SinglePlayerSelector.class,
+                restrictions -> TargetSelectorParsers.singlePlayerSelector(selectorEngine, restrictions));
+        registerSelectorParser(MultiplePlayerSelector.class,
+                restrictions -> TargetSelectorParsers.multiplePlayerSelector(selectorEngine, restrictions));
+        registerSelectorParser(SingleUnitSelector.class,
+                restrictions -> TargetSelectorParsers.singleUnitSelector(selectorEngine, restrictions));
+        registerSelectorParser(MultipleUnitSelector.class,
+                restrictions -> TargetSelectorParsers.multipleUnitSelector(selectorEngine, restrictions));
+        registerSelectorParser(Player.class,
+                restrictions -> ParserDescriptor.of(new PlayerSelectorAdapter<>(this, selectorEngine, restrictions), Player.class));
 
-        registerCommandPostProcessor(ctx -> {
-            var spec = ctx.commandContext().getOrDefault(SelectorGuard.LAST_SELECTOR_SPEC_KEY, null);
-            if (spec != null) {
-                SelectorGuard.enforce(ctx.command(), spec);
-            }
-        });
-
-        parserRegistry().registerParser(TargetSelectorParsers.singlePlayerSelector(selectorEngine));
-        parserRegistry().registerParser(TargetSelectorParsers.multiplePlayerSelector(selectorEngine));
-        parserRegistry().registerParser(TargetSelectorParsers.singleUnitSelector(selectorEngine));
-        parserRegistry().registerParser(TargetSelectorParsers.multipleUnitSelector(selectorEngine));
-        parserRegistry().registerParser(PlayerSelectorAdapter.playerParser(this, selectorEngine));
+        parserRegistry().registerParserSupplier(
+                TypeToken.get(Team.class),
+                params -> new TeamParser<>(params.get(ALL_TEAMS, false))
+        );
+        parserRegistry().registerParser(MindustryParsers.unitType());
+        parserRegistry().registerParser(MindustryParsers.block());
+        parserRegistry().registerParser(MindustryParsers.item());
+        parserRegistry().registerParser(MindustryParsers.liquid());
+        parserRegistry().registerParser(MindustryParsers.statusEffect());
     }
 
+    private <T> void registerSelectorParser(
+            Class<T> type,
+            Function<SelectorRestrictions, ParserDescriptor<C, T>> factory
+    ) {
+        parserRegistry().registerParserSupplier(
+                TypeToken.get(type),
+                params -> factory.apply(SelectorRestrictions.from(params)).parser()
+        );
+    }
+
+    private void registerSelectorGuard() {
+        registerCommandPostProcessor(ctx -> SelectorGuard.enforceAll(ctx.command(), ctx.commandContext()));
+    }
+
+    /**
+     * Cloud's default handlers (captioned messages, unexpected failures logged and never shown
+     * verbatim), plus:
+     * <ul>
+     *     <li>{@link PipelineException} and {@link CommandExecutionException} are unwrapped, so a
+     *     handler registered for the cause type also sees exceptions thrown from pre/postprocessors
+     *     and command handlers;</li>
+     *     <li>argument failures caused by a {@link ParserException} or a {@link SelectorException}
+     *     show that exception's caption;</li>
+     *     <li>{@link SelectorException}s show their caption.</li>
+     * </ul>
+     * Handlers registered later for the same type take precedence over these.
+     */
     private void registerDefaultExceptionHandlers() {
         registerDefaultExceptionHandlers(
                 triplet -> {
-                    var ctx = triplet.first();
+                    CommandContext<C> ctx = triplet.first();
                     String message = ctx.formatCaption(triplet.second(), triplet.third());
-
-                    MindustrySender original = senderMapper.reverse(ctx.sender());
-                    original.sendMessage("[scarlet]Error: " + message);
+                    sendErrorMessage(ctx.sender(), message);
                 },
-                pair -> arc.util.Log.err("Command Error: " + pair.first(), pair.second())
+                pair -> Log.err("[cloud] " + pair.first(), pair.second())
         );
 
         exceptionController().registerHandler(
-                org.incendo.cloud.exception.ArgumentParseException.class,
-                context -> {
-                    MindustrySender sender = senderMapper.reverse(context.context().sender());
-                    if (!handleSelectorException(context.exception(), context.context(), sender)) {
-                        Throwable cause = context.exception().getCause();
-                        String msg = cause != null && cause.getMessage() != null
-                                ? cause.getMessage()
-                                : context.exception().getMessage();
-                        sender.sendMessage("[scarlet]Error: " + msg);
-                    }
+                PipelineException.class,
+                ExceptionHandler.unwrappingHandler(cause -> true)
+        );
+
+        exceptionController().registerHandler(
+                CommandExecutionException.class,
+                ExceptionHandler.unwrappingHandler(cause -> true)
+        );
+
+        exceptionController().registerHandler(ArgumentParseException.class, ctx -> {
+            for (Throwable cause = ctx.exception().getCause(); cause != null; cause = cause.getCause()) {
+                if (cause instanceof ParserException parserException) {
+                    sendCaption(ctx.context(), parserException.errorCaption(), parserException.captionVariables());
+                    return;
                 }
-        );
-
-        exceptionController().registerHandler(
-                org.incendo.cloud.services.PipelineException.class,
-                context -> {
-                    MindustrySender sender = senderMapper.reverse(context.context().sender());
-                    if (!handleSelectorException(context.exception(), context.context(), sender)) {
-                        Throwable cause = context.exception().getCause();
-                        String msg = cause != null && cause.getMessage() != null
-                                ? cause.getMessage()
-                                : context.exception().getMessage();
-                        sender.sendMessage("[scarlet]Error: " + msg);
-                    }
+                if (cause instanceof SelectorException selectorException) {
+                    sendCaption(ctx.context(), selectorException.caption(), selectorException.captionVariables());
+                    return;
                 }
-        );
-
-        exceptionController().registerHandler(
-                org.incendo.cloud.exception.CommandExecutionException.class,
-                context -> {
-                    MindustrySender sender = senderMapper.reverse(context.context().sender());
-                    if (!handleSelectorException(context.exception(), context.context(), sender)) {
-                        Throwable cause = context.exception().getCause();
-                        String msg = cause != null && cause.getMessage() != null
-                                ? cause.getMessage()
-                                : context.exception().getMessage();
-                        sender.sendMessage("[scarlet]Error: " + msg);
-                    }
+                if (cause.getCause() == cause) {
+                    break;
                 }
-        );
+            }
+            // Fall through to Cloud's generic "invalid argument" handler.
+            throw ctx.exception();
+        });
 
-        exceptionController().registerHandler(
-                SelectorSyntaxException.class,
-                context -> handleSelectorException(context.exception(), context.context(), senderMapper.reverse(context.context().sender()))
-        );
-
-        exceptionController().registerHandler(
-                NoSuchTargetException.class,
-                context -> handleSelectorException(context.exception(), context.context(), senderMapper.reverse(context.context().sender()))
-        );
-
-        exceptionController().registerHandler(
-                TooManyTargetsException.class,
-                context -> handleSelectorException(context.exception(), context.context(), senderMapper.reverse(context.context().sender()))
-        );
-
-        exceptionController().registerHandler(
-                SelectorDeniedException.class,
-                context -> handleSelectorException(context.exception(), context.context(), senderMapper.reverse(context.context().sender()))
-        );
-
-        exceptionController().registerHandler(
-                SelectorSenderRequirementException.class,
-                context -> handleSelectorException(context.exception(), context.context(), senderMapper.reverse(context.context().sender()))
-        );
-
-        exceptionController().registerHandler(
-                SelectorLimitExceededException.class,
-                context -> handleSelectorException(context.exception(), context.context(), senderMapper.reverse(context.context().sender()))
+        exceptionController().registerHandler(SelectorException.class, ctx ->
+                sendCaption(ctx.context(), ctx.exception().caption(), ctx.exception().captionVariables())
         );
     }
 
-    private boolean handleSelectorException(Throwable ex, org.incendo.cloud.context.CommandContext<C> context, MindustrySender sender) {
-        if (ex == null) return false;
-        Throwable target = ex;
-        while (target.getCause() != null && !(target instanceof SelectorSyntaxException
-                || target instanceof NoSuchTargetException
-                || target instanceof TooManyTargetsException
-                || target instanceof SelectorDeniedException
-                || target instanceof SelectorSenderRequirementException
-                || target instanceof SelectorLimitExceededException)) {
-            target = target.getCause();
-        }
-
-        if (target instanceof SelectorSyntaxException syntaxEx) {
-            sender.sendMessage(context.formatCaption(
-                    SelectorCaptionKeys.ARGUMENT_PARSE_FAILURE_SELECTOR_SYNTAX,
-                    CaptionVariable.of("input", syntaxEx.input()),
-                    CaptionVariable.of("reason", syntaxEx.reason())
-            ));
-            return true;
-        } else if (target instanceof NoSuchTargetException noTargetEx) {
-            sender.sendMessage(context.formatCaption(
-                    SelectorCaptionKeys.ARGUMENT_PARSE_FAILURE_SELECTOR_NO_SUCH_TARGET,
-                    CaptionVariable.of("input", noTargetEx.selectorInput())
-            ));
-            return true;
-        } else if (target instanceof TooManyTargetsException tooManyEx) {
-            sender.sendMessage(context.formatCaption(
-                    SelectorCaptionKeys.ARGUMENT_PARSE_FAILURE_SELECTOR_TOO_MANY_TARGETS,
-                    CaptionVariable.of("input", tooManyEx.selectorInput())
-            ));
-            return true;
-        } else if (target instanceof SelectorDeniedException deniedEx) {
-            sender.sendMessage(context.formatCaption(
-                    SelectorCaptionKeys.ARGUMENT_PARSE_FAILURE_SELECTOR_DENIED,
-                    CaptionVariable.of("reason", deniedEx.getMessage())
-            ));
-            return true;
-        } else if (target instanceof SelectorSenderRequirementException reqEx) {
-            sender.sendMessage(context.formatCaption(
-                    SelectorCaptionKeys.ARGUMENT_PARSE_FAILURE_SELECTOR_SENDER_REQUIRED,
-                    CaptionVariable.of("kind", reqEx.kind().token())
-            ));
-            return true;
-        } else if (target instanceof SelectorLimitExceededException limitEx) {
-            sender.sendMessage(context.formatCaption(
-                    SelectorCaptionKeys.ARGUMENT_PARSE_FAILURE_SELECTOR_LIMIT_EXCEEDED,
-                    CaptionVariable.of("count", String.valueOf(limitEx.count())),
-                    CaptionVariable.of("limit", String.valueOf(limitEx.limit()))
-            ));
-            return true;
-        }
-        return false;
+    private void sendCaption(CommandContext<C> context, Caption caption, CaptionVariable... variables) {
+        sendErrorMessage(context.sender(), context.formatCaption(caption, variables));
     }
 }

@@ -9,13 +9,19 @@ import org.incendo.cloud.parser.ArgumentParser;
 import org.incendo.cloud.parser.ParserDescriptor;
 import org.xcore.cloud.mindustry.MindustryCommandManager;
 import org.xcore.cloud.mindustry.MindustrySender;
+import org.xcore.cloud.mindustry.selector.SelectorRestrictions;
 import org.xcore.cloud.mindustry.selector.TargetSelector.SinglePlayerSelector;
 import org.xcore.cloud.mindustry.selector.engine.SpatialSelectorEngine;
+import org.xcore.cloud.mindustry.selector.exception.SelectorException;
+import org.xcore.cloud.mindustry.selector.exception.SelectorParseException;
 
 /**
  * Adapter that allows commands declaring a standard {@link Player} parameter
  * to transparently accept single target selectors (@p, @s, @r, @a[limit=1])
  * as well as player names and #IDs.
+ * <p>
+ * Plugins with their own {@link Player} parser can delegate {@code @}-prefixed input here to
+ * keep selector support without reimplementing it.
  */
 public final class PlayerSelectorAdapter<C> implements ArgumentParser<C, Player>, TargetSelectorSuggestionProvider<C> {
 
@@ -23,8 +29,12 @@ public final class PlayerSelectorAdapter<C> implements ArgumentParser<C, Player>
     private final MindustryCommandManager<C> manager;
 
     public PlayerSelectorAdapter(MindustryCommandManager<C> manager, SpatialSelectorEngine engine) {
+        this(manager, engine, SelectorRestrictions.NONE);
+    }
+
+    public PlayerSelectorAdapter(MindustryCommandManager<C> manager, SpatialSelectorEngine engine, SelectorRestrictions restrictions) {
         this.manager = manager;
-        this.delegate = new TargetSelectorParsers.SinglePlayerSelectorParser<>(engine);
+        this.delegate = new TargetSelectorParsers.SinglePlayerSelectorParser<>(engine, restrictions);
     }
 
     public static <C> ParserDescriptor<C, Player> playerParser(MindustryCommandManager<C> manager, SpatialSelectorEngine engine) {
@@ -44,8 +54,9 @@ public final class PlayerSelectorAdapter<C> implements ArgumentParser<C, Player>
         try {
             SinglePlayerSelector selector = result.parsedValue().orElseThrow();
             MindustrySender sender = manager.senderMapper().reverse(context.sender());
-            Player player = selector.resolve(sender);
-            return ArgumentParseResult.success(player);
+            return ArgumentParseResult.success(selector.resolve(sender));
+        } catch (SelectorException ex) {
+            return ArgumentParseResult.failure(new SelectorParseException(getClass(), context, ex));
         } catch (Exception ex) {
             return ArgumentParseResult.failure(ex);
         }
