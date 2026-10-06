@@ -567,6 +567,17 @@ public final class RedisNetworkBackend {
         } catch (NumberFormatException ignored) {
         }
 
+        // Every request type of a server reads the same stream, so this has to come before the
+        // idempotency claim: a subscriber the request is not for would otherwise take the key
+        // and the one it is for would drop the request as a duplicate.
+        if (router.isRpcRequestType(type)) {
+            String expectedRpcType = router.rpcTypeForRequestClass(type);
+            String foundRpcType = message.getBody().getOrDefault("rpc_type", "");
+            if (expectedRpcType != null && !expectedRpcType.equals(foundRpcType)) {
+                return true;
+            }
+        }
+
         String idempotencyRedisKey = null;
         boolean idempotencyClaimed = false;
         if (router.shouldClaimIdempotency(type)) {
@@ -589,14 +600,6 @@ public final class RedisNetworkBackend {
         String payloadJson = message.getBody().get("payload_json");
         if (payloadJson == null || payloadJson.isBlank()) {
             return true;
-        }
-
-        if (router.isRpcRequestType(type)) {
-            String expectedRpcType = router.rpcTypeForRequestClass(type);
-            String foundRpcType = message.getBody().getOrDefault("rpc_type", "");
-            if (expectedRpcType != null && !expectedRpcType.equals(foundRpcType)) {
-                return true;
-            }
         }
 
         try {
