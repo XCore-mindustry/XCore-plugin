@@ -4,6 +4,11 @@ import arc.util.CommandHandler;
 import mindustry.gen.Player;
 
 public final class MindustryCloudCommand<C> extends CommandHandler.Command {
+
+    /** The Cloud root name or alias this Arc command forwards to; {@link #text} may carry a prefix. */
+    final String inputName;
+    final MindustryCommandManager<C> manager;
+
     MindustryCloudCommand(String registeredName, String inputName, String description, MindustryCommandManager<C> manager) {
         super(registeredName, "[args...]", description, (args, player) -> {
             MindustrySender rawSender = MindustrySender.of((Player) player);
@@ -17,5 +22,7 @@ public final class MindustryCloudCommand<C> extends CommandHandler.Command {
 
             manager.commandExecutor().executeCommand(sender, inputBuilder.toString());
         });
+        this.inputName = inputName;
+        this.manager = manager;
     }
 }

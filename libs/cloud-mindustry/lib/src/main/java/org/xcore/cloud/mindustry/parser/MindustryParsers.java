@@ -2,6 +2,7 @@ package org.xcore.cloud.mindustry.parser;
 
 import mindustry.ctype.ContentType;
 import mindustry.game.Team;
+import mindustry.net.Administration;
 import mindustry.type.Item;
 import mindustry.type.Liquid;
 import mindustry.type.StatusEffect;
@@ -23,6 +24,14 @@ public final class MindustryParsers {
 
     public static <C> ParserDescriptor<C, Team> anyTeam() {
         return ParserDescriptor.of(new TeamParser<>(true), Team.class);
+    }
+
+    /**
+     * A player the server has a record of, online or not: UUID, name or {@code #id} of an online
+     * player, and from the console an IP.
+     */
+    public static <C> ParserDescriptor<C, Administration.PlayerInfo> playerInfo() {
+        return ParserDescriptor.of(new PlayerInfoParser<>(), Administration.PlayerInfo.class);
     }
 
     public static <C> ParserDescriptor<C, UnitType> unitType() {
