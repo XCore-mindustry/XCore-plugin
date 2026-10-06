@@ -63,6 +63,22 @@ class PermissionMigrationTest {
     }
 
     @Test
+    @DisplayName("What an account merge left behind gets nothing and is reported")
+    void mergedAccount() {
+        PlayerDataRepository players = mock(PlayerDataRepository.class);
+        when(players.findDiscordRoleAdmins()).thenReturn(List.of(admin("uuid-1"), admin("merged:uuid-3")));
+        migration = new PermissionMigration(players, world.grants, world.roles);
+
+        PermissionMigration.Report report = migration.run(false);
+
+        assertThat(report.candidates()).isEqualTo(1);
+        assertThat(report.granted()).isEqualTo(1);
+        assertThat(report.lines()).hasSize(2).anySatisfy(line -> assertThat(line).contains("merged:uuid-3").contains("skipped"));
+        assertThat(world.store.find("uuid-1").grants()).hasSize(1);
+        assertThat(world.store.find("merged:uuid-3").revision()).isZero();
+    }
+
+    @Test
     @DisplayName("A second run gives nothing twice")
     void repeat() {
         migration.run(false);

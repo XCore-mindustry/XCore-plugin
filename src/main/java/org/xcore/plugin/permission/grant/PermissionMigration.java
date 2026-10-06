@@ -34,6 +34,9 @@ public class PermissionMigration {
     public record Report(boolean dryRun, int candidates, int granted, int alreadyGranted, List<String> lines) {
     }
 
+    /** How an account merge marks the record it emptied. */
+    private static final String MERGED_PREFIX = "merged:";
+
     private final PlayerDataRepository players;
     private final PermissionGrants grants;
     private final PermissionRoles roles;
@@ -55,7 +58,16 @@ public class PermissionMigration {
         List<String> lines = new ArrayList<>();
         int granted = 0;
         int alreadyGranted = 0;
-        List<PlayerData> candidates = players.findDiscordRoleAdmins();
+        List<PlayerData> candidates = new ArrayList<>();
+        for (PlayerData player : players.findDiscordRoleAdmins()) {
+            // What an account merge leaves behind: nobody can connect as it, and the account it
+            // was merged into is a candidate in its own right.
+            if (player.uuid == null || player.uuid.startsWith(MERGED_PREFIX)) {
+                lines.add("#" + player.pid + " " + player.nickname + " (" + player.uuid + "): merged into another account, skipped");
+                continue;
+            }
+            candidates.add(player);
+        }
         for (PlayerData player : candidates) {
             String who = "#" + player.pid + " " + player.nickname + " (" + player.uuid + ")";
             boolean has = grants.load(player.uuid).active(now).stream()
