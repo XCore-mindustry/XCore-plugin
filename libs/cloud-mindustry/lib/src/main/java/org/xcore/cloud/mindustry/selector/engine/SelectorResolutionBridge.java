@@ -8,7 +8,11 @@ import java.util.function.Supplier;
 
 /**
  * Ensures thread affinity for selector resolution against Mindustry's non-thread-safe collections.
+ *
+ * @deprecated no longer used by the library and removed in the next release. It guessed the game
+ * thread and blocked the caller; use the manager's {@link org.xcore.cloud.mindustry.SimulationExecutor}.
  */
+@Deprecated(forRemoval = true)
 public final class SelectorResolutionBridge {
 
     private static volatile Thread simulationThread;

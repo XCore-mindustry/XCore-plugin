@@ -49,9 +49,7 @@ public final class SinglePlayerSelectorImpl implements SinglePlayerSelector {
 
     @Override
     public @NonNull Player resolve(@NonNull MindustrySender sender) {
-        Seq<Player> list = org.xcore.cloud.mindustry.selector.engine.SelectorResolutionBridge.resolveSync(
-                () -> engine.resolvePlayers(sender, spec)
-        );
+        Seq<Player> list = engine.resolvePlayers(sender, spec);
         if (list.isEmpty()) {
             throw new NoSuchTargetException(rawInput);
         }

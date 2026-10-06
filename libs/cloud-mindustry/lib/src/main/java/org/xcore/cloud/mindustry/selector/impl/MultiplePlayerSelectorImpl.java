@@ -45,8 +45,6 @@ public final class MultiplePlayerSelectorImpl implements MultiplePlayerSelector 
 
     @Override
     public @NonNull Seq<Player> resolve(@NonNull MindustrySender sender) {
-        return org.xcore.cloud.mindustry.selector.engine.SelectorResolutionBridge.resolveSync(
-                () -> engine.resolvePlayers(sender, spec)
-        );
+        return engine.resolvePlayers(sender, spec);
     }
 }

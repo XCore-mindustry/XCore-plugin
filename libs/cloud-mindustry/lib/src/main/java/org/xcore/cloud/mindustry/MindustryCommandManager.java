@@ -40,7 +40,6 @@ import org.xcore.cloud.mindustry.selector.annotation.AllowedSelectors;
 import org.xcore.cloud.mindustry.selector.annotation.DenySelectors;
 import org.xcore.cloud.mindustry.selector.caption.SelectorCaptionProvider;
 import org.xcore.cloud.mindustry.selector.engine.SelectorGuard;
-import org.xcore.cloud.mindustry.selector.engine.SelectorResolutionBridge;
 import org.xcore.cloud.mindustry.selector.engine.SpatialSelectorEngine;
 import org.xcore.cloud.mindustry.selector.exception.SelectorException;
 import org.xcore.cloud.mindustry.selector.parser.PlayerSelectorAdapter;
@@ -72,32 +71,57 @@ public class MindustryCommandManager<C> extends CommandManager<C> {
     public static final CloudKey<MindustrySender> MINDUSTRY_SENDER =
             CloudKey.of("mindustry:sender", MindustrySender.class);
 
+    /** The manager's {@link SimulationExecutor}, stored in every command context. */
+    public static final CloudKey<SimulationExecutor> SIMULATION_EXECUTOR =
+            CloudKey.of("mindustry:simulation_executor", SimulationExecutor.class);
+
     private final CommandHandler handler;
     private final SenderMapper<MindustrySender, C> senderMapper;
-    private final SpatialSelectorEngine selectorEngine = new SpatialSelectorEngine();
+    private final SimulationExecutor simulationExecutor;
+    private final SpatialSelectorEngine selectorEngine;
     private ConflictStrategy conflictStrategy = ConflictStrategy.SKIP;
     private BiPredicate<C, String> permissionChecker = (sender, perm) -> true;
 
     private Supplier<String> prefixProvider = () -> "cloud";
 
+    /**
+     * A manager for the running application; see {@link SimulationExecutor#forCurrentApplication()}.
+     */
     public MindustryCommandManager(
             CommandHandler handler,
             ExecutionCoordinator<C> coordinator,
             SenderMapper<MindustrySender, C> senderMapper
     ) {
+        this(handler, coordinator, senderMapper, SimulationExecutor.forCurrentApplication());
+    }
+
+    /**
+     * @param coordinator        has to run parsing, suggestions and handlers that touch game state
+     *                           on the simulation thread; {@code ExecutionCoordinator.coordinatorFor(simulationExecutor)}
+     *                           does so for the whole pipeline
+     * @param simulationExecutor the thread selectors and game-state parsers are confined to
+     */
+    public MindustryCommandManager(
+            CommandHandler handler,
+            ExecutionCoordinator<C> coordinator,
+            SenderMapper<MindustrySender, C> senderMapper,
+            SimulationExecutor simulationExecutor
+    ) {
         super(coordinator, CommandRegistrationHandler.nullCommandRegistrationHandler());
         this.handler = handler;
         this.senderMapper = senderMapper;
+        this.simulationExecutor = Objects.requireNonNull(simulationExecutor);
+        this.selectorEngine = new SpatialSelectorEngine(simulationExecutor);
 
         registerCapability(CloudCapability.StandardCapabilities.ROOT_COMMAND_DELETION);
-
-        SelectorResolutionBridge.setSimulationThread(Thread.currentThread());
 
         ArcCommandRegistrationHandler<C> regHandler = new ArcCommandRegistrationHandler<>(this, handler);
         this.commandRegistrationHandler(regHandler);
 
-        registerCommandPreProcessor(ctx -> ctx.commandContext()
-                .store(MINDUSTRY_SENDER, senderMapper.reverse(ctx.commandContext().sender())));
+        registerCommandPreProcessor(ctx -> {
+            ctx.commandContext().store(MINDUSTRY_SENDER, senderMapper.reverse(ctx.commandContext().sender()));
+            ctx.commandContext().store(SIMULATION_EXECUTOR, simulationExecutor);
+        });
 
         registerDefaultCaptions();
         registerDefaultParsers();
@@ -107,10 +131,12 @@ public class MindustryCommandManager<C> extends CommandManager<C> {
     }
 
     public static MindustryCommandManager<MindustrySender> create(CommandHandler handler) {
+        SimulationExecutor simulation = SimulationExecutor.forCurrentApplication();
         return new MindustryCommandManager<>(
                 handler,
-                ExecutionCoordinator.simpleCoordinator(),
-                SenderMapper.identity()
+                ExecutionCoordinator.coordinatorFor(simulation),
+                SenderMapper.identity(),
+                simulation
         );
     }
 
@@ -172,6 +198,13 @@ public class MindustryCommandManager<C> extends CommandManager<C> {
 
     public String getCommandPrefix() {
         return prefixProvider.get();
+    }
+
+    /**
+     * @return the executor for the thread game state may be touched from
+     */
+    public SimulationExecutor simulationExecutor() {
+        return simulationExecutor;
     }
 
     public SpatialSelectorEngine selectorEngine() {

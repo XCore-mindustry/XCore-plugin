@@ -15,6 +15,7 @@ import mindustry.gen.Player;
 import mindustry.gen.Unit;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.xcore.cloud.mindustry.MindustrySender;
+import org.xcore.cloud.mindustry.SimulationExecutor;
 import org.xcore.cloud.mindustry.selector.SelectorKind;
 import org.xcore.cloud.mindustry.selector.SortOrder;
 import org.xcore.cloud.mindustry.selector.TargetSelectorSpec;
@@ -22,14 +23,28 @@ import org.xcore.cloud.mindustry.selector.exception.NoSuchTargetException;
 import org.xcore.cloud.mindustry.selector.exception.SelectorSenderRequirementException;
 import org.xcore.cloud.mindustry.selector.exception.TooManyTargetsException;
 
+/**
+ * Resolves selectors against the live game state. Every resolution has to happen on the
+ * engine's simulation thread; nothing here waits for it or hops to it.
+ */
 public final class SpatialSelectorEngine {
 
-    private final Rect queryRect = new Rect();
-    private final IntSet deduplicationSet = new IntSet();
+    private final SimulationExecutor simulation;
 
-    public SpatialSelectorEngine() {}
+    /**
+     * An engine for the running application; see {@link SimulationExecutor#forCurrentApplication()}.
+     */
+    public SpatialSelectorEngine() {
+        this(SimulationExecutor.forCurrentApplication());
+    }
+
+    public SpatialSelectorEngine(@NonNull SimulationExecutor simulation) {
+        this.simulation = simulation;
+    }
 
     public @NonNull Seq<Player> resolvePlayers(@NonNull MindustrySender sender, @NonNull TargetSelectorSpec spec) {
+        simulation.requireOnThread();
+
         // 1. Literal Resolution
         if (spec.kind() == SelectorKind.LITERAL_PLAYER) {
             Player literal = resolveLiteralPlayer(spec.literalName(), sender);
@@ -106,12 +121,15 @@ public final class SpatialSelectorEngine {
     }
 
     public @NonNull Seq<Unit> resolveUnits(@NonNull MindustrySender sender, @NonNull TargetSelectorSpec spec) {
+        simulation.requireOnThread();
+
         Vec2 origin = resolveOrigin(sender, spec);
         float ox = origin.x;
         float oy = origin.y;
 
         Seq<Unit> matches = new Seq<>(false, 32);
-        deduplicationSet.clear();
+        // Scratch state belongs to this call: a resolution may start another one.
+        IntSet seen = new IntSet();
 
         Player senderPlayer = sender.player();
         boolean checkFog = senderPlayer != null && Vars.state != null && Vars.state.rules.fog;
@@ -126,22 +144,22 @@ public final class SpatialSelectorEngine {
         if (spec.hasDistance() && r < Float.MAX_VALUE) {
             // Spatial QuadTree Accelerated Branch
             float size = r * 2f;
-            queryRect.set(ox - r, oy - r, size, size);
+            Rect queryRect = new Rect(ox - r, oy - r, size, size);
 
             if (spec.team() != null && !spec.invertTeam()) {
                 TeamData data = spec.team().data();
                 if (data != null && data.unitTree != null) {
                     data.unitTree.intersect(queryRect, u -> {
-                        filterAndAddUnit(u, spec, ox, oy, minDist2, maxDist2, checkFog, senderTeam, matches, limit);
+                        filterAndAddUnit(u, spec, ox, oy, minDist2, maxDist2, checkFog, senderTeam, matches, seen, limit);
                     });
                 }
             } else if (senderPlayer != null && spec.team() != null && spec.invertTeam() && spec.team() == senderTeam) {
                 Units.nearbyEnemies(senderTeam, queryRect.x, queryRect.y, queryRect.width, queryRect.height, u -> {
-                    filterAndAddUnit(u, spec, ox, oy, minDist2, maxDist2, checkFog, senderTeam, matches, limit);
+                    filterAndAddUnit(u, spec, ox, oy, minDist2, maxDist2, checkFog, senderTeam, matches, seen, limit);
                 });
             } else {
                 Groups.unit.intersect(queryRect.x, queryRect.y, queryRect.width, queryRect.height, u -> {
-                    filterAndAddUnit(u, spec, ox, oy, minDist2, maxDist2, checkFog, senderTeam, matches, limit);
+                    filterAndAddUnit(u, spec, ox, oy, minDist2, maxDist2, checkFog, senderTeam, matches, seen, limit);
                 });
             }
         } else if (spec.team() != null && !spec.invertTeam() && spec.unitType() != null && !spec.invertType()) {
@@ -151,7 +169,7 @@ public final class SpatialSelectorEngine {
                 Seq<Unit> seq = data.unitsByType[spec.unitType().id];
                 if (seq != null) {
                     for (int i = 0; i < seq.size && matches.size < limit; i++) {
-                        filterAndAddUnit(seq.items[i], spec, ox, oy, minDist2, maxDist2, checkFog, senderTeam, matches, limit);
+                        filterAndAddUnit(seq.items[i], spec, ox, oy, minDist2, maxDist2, checkFog, senderTeam, matches, seen, limit);
                     }
                 }
             }
@@ -160,7 +178,7 @@ public final class SpatialSelectorEngine {
             int maxScan = 500;
             int scanned = 0;
             for (Unit u : Groups.unit) {
-                filterAndAddUnit(u, spec, ox, oy, minDist2, maxDist2, checkFog, senderTeam, matches, limit);
+                filterAndAddUnit(u, spec, ox, oy, minDist2, maxDist2, checkFog, senderTeam, matches, seen, limit);
                 if (++scanned >= maxScan || matches.size >= limit) break;
             }
         }
@@ -185,13 +203,14 @@ public final class SpatialSelectorEngine {
             boolean checkFog,
             Team senderTeam,
             Seq<Unit> out,
+            IntSet seen,
             int limit
     ) {
         if (out.size >= limit) return;
         if (u == null || !u.isAdded() || u.dead || u.health <= 0f) return;
 
         // Deduplication for QuadTree boundary overlaps
-        if (!deduplicationSet.add(u.id)) return;
+        if (!seen.add(u.id)) return;
 
         // Unit type check
         if (spec.unitType() != null) {

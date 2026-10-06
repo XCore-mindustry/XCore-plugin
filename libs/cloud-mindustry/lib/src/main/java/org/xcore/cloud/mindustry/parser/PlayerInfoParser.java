@@ -16,6 +16,7 @@ import org.incendo.cloud.parser.ArgumentParser;
 import org.incendo.cloud.suggestion.BlockingSuggestionProvider;
 import org.xcore.cloud.mindustry.MindustryCommandManager;
 import org.xcore.cloud.mindustry.MindustrySender;
+import org.xcore.cloud.mindustry.SimulationExecutor;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -53,6 +54,12 @@ public final class PlayerInfoParser<C> implements ArgumentParser<C, PlayerInfo>,
 
     @Override
     public @NonNull ArgumentParseResult<PlayerInfo> parse(@NonNull CommandContext<C> context, @NonNull CommandInput input) {
+        // Administration and the player group are game state.
+        SimulationExecutor simulation = context.getOrDefault(MindustryCommandManager.SIMULATION_EXECUTOR, null);
+        if (simulation != null) {
+            simulation.requireOnThread();
+        }
+
         String token = input.readString();
         Administration admins = administration.get();
         if (admins == null) {
