@@ -32,7 +32,7 @@ repositories {
 2. Add the library:
 ```kotlin
 dependencies {
-    implementation("org.xcore:cloud-mindustry:0.3.0")
+    implementation("org.xcore:cloud-mindustry:0.4.0")
 }
 ```
 
@@ -155,6 +155,30 @@ on the `Player` parameter itself to refuse selectors before anything is resolved
 
 With the builder API pass `SelectorRestrictions` to `TargetSelectorParsers`, e.g.
 `TargetSelectorParsers.singlePlayerSelector(mgr.selectorEngine(), SelectorRestrictions.allow(SelectorKind.SELF))`.
+
+### 8. Player-only commands
+`@PlayerOnly` on a command method, or on a class to cover all of its commands, refuses anyone who is not
+an in-game player with the `mindustry.sender.player_required` caption. It works with a custom sender type
+too, because the check goes through the manager's sender mapper.
+
+```java
+mgr.registerMindustryAnnotations(annotationParser); // selector annotations + @PlayerOnly
+
+@PlayerOnly
+@Command("home")
+public void home(MindustrySender sender) { /* sender.player() is not null here */ }
+```
+
+With the builder API: `.meta(MindustryCommandManager.PLAYER_ONLY, true)`.
+
+The check runs once the command is known, so input that does not parse reports its parse error first.
+It is not a permission: combine it with `.permission(...)` as usual.
+
+## Migrating from 0.3
+
+- `registerMindustryAnnotations(annotationParser)` registers every annotation of the library.
+  `registerSelectorAnnotations` still registers the selector annotations only, so `@PlayerOnly` has no
+  effect until you switch to the new method.
 
 ## Migrating from 0.2
 

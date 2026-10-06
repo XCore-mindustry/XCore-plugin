@@ -16,7 +16,9 @@ public final class MindustryCaptionProvider<C> implements CaptionProvider<C> {
             MindustryCaptionKeys.ARGUMENT_PARSE_FAILURE_TEAM,
             "'[white]<input>[]' is not a valid team.",
             MindustryCaptionKeys.ARGUMENT_PARSE_FAILURE_CONTENT,
-            "'[white]<input>[]' is not a valid <type>."
+            "'[white]<input>[]' is not a valid <type>.",
+            MindustryCaptionKeys.SENDER_PLAYER_REQUIRED,
+            "This command can only be used by an in-game player."
     );
 
     @Override
