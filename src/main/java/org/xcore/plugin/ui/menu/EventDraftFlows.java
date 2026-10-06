@@ -8,6 +8,7 @@ import org.xcore.plugin.common.SeqStream;
 import org.xcore.plugin.model.EventData;
 import org.xcore.plugin.model.MapData;
 import org.xcore.plugin.model.PlayerData;
+import org.xcore.plugin.permission.PermissionNodes;
 import org.xcore.plugin.service.EventEditorService;
 import org.xcore.plugin.service.MapService;
 import org.xcore.plugin.session.Session;
@@ -142,6 +143,9 @@ final class EventDraftFlows {
                 menu.main(menu.getUuid(ctx.session()));
             });
             action("toggle-major", ctx -> {
+                if (!ctx.session().allowed(PermissionNodes.EVENTS_CREATE_MAJOR)) {
+                    return;
+                }
                 eventEditorService.toggleMajor(ctx.session().getDraft(EventData.class));
                 ctx.render();
             });
@@ -200,7 +204,7 @@ final class EventDraftFlows {
             );
             List<MenuButton> flagsRow = new ArrayList<>();
             flagsRow.add(MenuButton.of(session.locale().t(draft.isTemporary ? "event-menu-edit-temporary-active" : "event-menu-edit-temporary-inactive"), "toggle-temporary"));
-            if (session.player.admin) {
+            if (session.has(PermissionNodes.EVENTS_CREATE_MAJOR)) {
                 flagsRow.add(MenuButton.of(
                         session.locale().t(draft.isMajor ? "event-menu-edit-major-active" : "event-menu-edit-major-inactive"),
                         "toggle-major"

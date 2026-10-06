@@ -10,6 +10,7 @@ import org.incendo.cloud.annotations.Command;
 import org.incendo.cloud.annotations.Default;
 import org.incendo.cloud.annotations.Permission;
 import org.xcore.plugin.cloud.XCoreSender;
+import org.xcore.plugin.permission.PermissionNodes;
 import org.xcore.plugin.command.controller.CloudClientController;
 import org.xcore.plugin.concurrent.Async;
 import org.xcore.plugin.database.repository.MapDataRepository;
@@ -94,7 +95,7 @@ public class MapController implements CloudClientController {
         mapService.startRtvSession(sender.player(), target, map != null, false);
     }
 
-    @Permission("admin")
+    @Permission(PermissionNodes.MAPS_FORCE_RTV)
     @Command("artv [map]")
     public void artv(XCoreSender sender, @Argument("map") Map map) {
         Map target = map != null ? map : mapService.resolveNextMap(Vars.state.rules.mode(), Vars.state.map);
@@ -106,7 +107,7 @@ public class MapController implements CloudClientController {
         mapService.startNewWaveSession(sender.player(), false);
     }
 
-    @Permission("admin")
+    @Permission(PermissionNodes.MAPS_FORCE_VNW)
     @Command("avnw")
     public void avnw(XCoreSender sender) {
         mapService.startNewWaveSession(sender.player(), true);

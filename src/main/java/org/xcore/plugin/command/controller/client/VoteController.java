@@ -13,6 +13,8 @@ import org.xcore.plugin.cloud.annotation.RequiresPlayTime;
 import org.xcore.plugin.command.controller.CloudClientController;
 import org.xcore.plugin.localization.Localization;
 import org.xcore.plugin.model.PlayerData;
+import org.xcore.plugin.permission.PermissionNodes;
+import org.xcore.plugin.permission.PermissionService;
 import org.xcore.plugin.session.Session;
 import org.xcore.plugin.session.SessionService;
 import org.xcore.plugin.vote.*;
@@ -26,13 +28,15 @@ public class VoteController implements CloudClientController {
     private final SessionService sessionService;
     private final VoteService voteService;
     private final VoteKickFactory voteKickFactory;
+    private final PermissionService permissions;
 
     @Inject
     public VoteController(SessionService sessionService, VoteService voteService,
-                          VoteKickFactory voteKickFactory) {
+                          VoteKickFactory voteKickFactory, PermissionService permissions) {
         this.sessionService = sessionService;
         this.voteService = voteService;
         this.voteKickFactory = voteKickFactory;
+        this.permissions = permissions;
     }
 
     @RequiresPlayTime(PlayTimeLimit.VOTE_KICK)
@@ -48,7 +52,7 @@ public class VoteController implements CloudClientController {
             return;
         }
 
-        if (target.admin) {
+        if (permissions.has(target, PermissionNodes.MODERATION_VOTEKICK_IMMUNE)) {
             session.player.kick(local.format("error-player-admin", args()), 300000);
             return;
         }
@@ -78,8 +82,7 @@ public class VoteController implements CloudClientController {
         String c = TextUtils.stripFooCharacters(choice.toLowerCase());
 
         if (c.equals("c")) {
-            if (!session.player.admin) {
-                local.send("error-access-denied", args());
+            if (!session.allowed(PermissionNodes.VOTES_CANCEL)) {
                 return;
             }
             currentSession.cancelByAdmin(session.player);

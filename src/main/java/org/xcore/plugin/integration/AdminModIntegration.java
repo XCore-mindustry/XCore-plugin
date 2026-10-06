@@ -21,6 +21,11 @@ import org.xcore.plugin.session.SessionService;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
 import org.xcore.plugin.common.VersionComparator;
 import org.xcore.plugin.model.BanRequestData;
+import org.xcore.plugin.model.PlayerData;
+import org.xcore.plugin.concurrent.Async;
+import org.xcore.plugin.permission.PermissionNodes;
+import org.xcore.plugin.permission.PermissionService;
+import mindustry.gen.Player;
 
 import java.util.concurrent.TimeUnit;
 
@@ -37,6 +42,8 @@ public class AdminModIntegration {
     private final DiscordLinkService discordLinkService;
     private final DiscordMenu discordMenu;
     private final Gson rawGson;
+    private final Async async;
+    private final PermissionService permissions;
     private final ObjectSet<String> pendingVanillaBanUuids = new ObjectSet<>();
 
     @Inject
@@ -46,7 +53,9 @@ public class AdminModIntegration {
                                AdminAuthService adminAuthService,
                                DiscordLinkService discordLinkService,
                                DiscordMenu discordMenu,
-                               @Named("raw") Gson rawGson) {
+                               @Named("raw") Gson rawGson,
+                               Async async,
+                               PermissionService permissions) {
         this.playerDataRepository = playerDataRepository;
         this.sessionService = sessionService;
         this.moderationService = moderationService;
@@ -54,12 +63,14 @@ public class AdminModIntegration {
         this.discordLinkService = discordLinkService;
         this.discordMenu = discordMenu;
         this.rawGson = rawGson;
+        this.async = async;
+        this.permissions = permissions;
     }
 
     @PostConstruct
     public void init() {
         netServer.addPacketHandler("take_ban_data", (player, content) -> {
-            if (!player.admin) return;
+            if (!permissions.has(player, PermissionNodes.MODERATION_BAN)) return;
             var session = sessionService.get(player);
             if (session == null) return;
 
@@ -111,7 +122,7 @@ public class AdminModIntegration {
         });
 
         netServer.addPacketHandler("cancel_ban_data", (player, content) -> {
-            if (!player.admin) return;
+            if (!permissions.has(player, PermissionNodes.MODERATION_BAN)) return;
             var session = sessionService.get(player);
             BanRequestData req;
             try {
@@ -206,20 +217,36 @@ public class AdminModIntegration {
                 return;
             }
 
+            int requestId = req.requestId;
+            String password = req.password;
+            boolean rememberDevice = req.rememberDevice;
             try {
-                var result = adminAuthService.authenticate(player, req.password, req.rememberDevice);
-                if (player.con != null) {
-                    var resp = new AuthResultPacket(req.requestId, result.status().name(), result.messageKey(), result.token());
-                    Call.clientPacketReliable(player.con, "adm_auth_result", rawGson.toJson(resp));
+                var rejected = adminAuthService.rejectLogin(player, password);
+                if (rejected != null) {
+                    replyToLogin(player, requestId, rejected);
+                    return;
+                }
 
-                    adminAuthService.pushStatus(player);
-                }
+                // BCrypt takes long enough to stall the tick, so it runs on a storage thread
+                // against a copy holding only what it needs, and the outcome is applied to
+                // the live session back here.
+                var live = sessionService.get(player.uuid()).data;
+                var credentials = PlayerData.builder()
+                        .uuid(live.uuid)
+                        .password(live.password)
+                        .build();
+                async.forPlayer(player,
+                        () -> adminAuthService.checkPassword(credentials, password),
+                        (online, verification) -> {
+                            var result = adminAuthService.applyLogin(online, credentials, verification, rememberDevice);
+                            if (result.isSuccess() && (verification.created() || result.token() != null)) {
+                                persist(online);
+                            }
+                            replyToLogin(online, requestId, result);
+                        },
+                        (online, error) -> replyToFailedLogin(online, requestId, error));
             } catch (Exception e) {
-                PLog.err("Error during authentication for '@': @", player.name, e.getMessage());
-                if (player.con != null) {
-                    var resp = new AuthResultPacket(req.requestId, "SESSION_NOT_FOUND", "error-processing-request");
-                    Call.clientPacketReliable(player.con, "adm_auth_result", rawGson.toJson(resp));
-                }
+                replyToFailedLogin(player, requestId, e);
             }
         });
 
@@ -246,7 +273,10 @@ public class AdminModIntegration {
             }
 
             try {
-                var result = adminAuthService.authenticateToken(player, req.token);
+                var result = adminAuthService.resumeWithToken(player, req.token);
+                if (result.isSuccess()) {
+                    persist(player);
+                }
                 if (player.con != null) {
                     var resp = new AuthResultPacket(req.requestId, result.status().name(), result.messageKey(), result.token());
                     Call.clientPacketReliable(player.con, "adm_auth_result", rawGson.toJson(resp));
@@ -272,6 +302,33 @@ public class AdminModIntegration {
             }
             adminAuthService.logout(player, req != null ? req.token : null);
         });
+    }
+
+    private void replyToLogin(Player player, int requestId, AdminAuthService.AuthResult result) {
+        if (player.con == null) {
+            return;
+        }
+        var resp = new AuthResultPacket(requestId, result.status().name(), result.messageKey(), result.token());
+        Call.clientPacketReliable(player.con, "adm_auth_result", rawGson.toJson(resp));
+
+        adminAuthService.pushStatus(player);
+    }
+
+    private void replyToFailedLogin(Player player, int requestId, Throwable error) {
+        PLog.err("Error during authentication for '@': @", player.name, error.getMessage());
+        if (player.con != null) {
+            var resp = new AuthResultPacket(requestId, "SESSION_NOT_FOUND", "error-processing-request");
+            Call.clientPacketReliable(player.con, "adm_auth_result", rawGson.toJson(resp));
+        }
+    }
+
+    /** Stores the player's data off the game thread after a login changed their credentials. */
+    private void persist(Player player) {
+        var session = sessionService.get(player.uuid());
+        if (session != null && session.data != null) {
+            var data = session.data;
+            async.run(() -> sessionService.persistData(data));
+        }
     }
 
     public void holdVanillaBan(String uuid) {

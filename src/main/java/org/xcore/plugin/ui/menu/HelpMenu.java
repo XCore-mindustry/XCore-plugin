@@ -12,7 +12,9 @@ import org.xcore.cloud.mindustry.MindustryCloudCommand;
 import org.xcore.cloud.mindustry.MindustrySender;
 import org.xcore.plugin.cloud.CloudService;
 import org.xcore.plugin.cloud.XCoreSender;
+import org.xcore.plugin.cloud.config.CommandPermissions;
 import org.xcore.plugin.config.TomlSecretsConfig;
+import org.xcore.plugin.permission.PermissionNodes;
 import org.xcore.plugin.session.Session;
 import org.xcore.plugin.session.SessionService;
 import org.xcore.plugin.ui.MenuService;
@@ -95,9 +97,7 @@ public class HelpMenu extends Menu {
     public static HelpCategory resolveCategory(UnifiedCommand cmd) {
         String name = cmd.name().toLowerCase(Locale.ROOT);
         if (cmd.isCloudCommand() && cmd.primaryCloudEntry() != null) {
-            var entry = cmd.primaryCloudEntry();
-            var perm = entry.command().commandPermission();
-            if (perm != null && perm.toString().toLowerCase(Locale.ROOT).contains("admin")) {
+            if (CommandPermissions.isRestricted(cmd.primaryCloudEntry().command())) {
                 return HelpCategory.ADMIN;
             }
         }
@@ -152,8 +152,8 @@ public class HelpMenu extends Menu {
     }
 
     public List<HelpCommandItem> buildHelpCommandItems(Session session, XCoreSender sender) {
-        boolean isAdmin = (session != null && session.player != null && session.player.admin)
-                || (sender != null && (!sender.isPlayer() || (sender.player() != null && sender.player().admin)));
+        boolean isAdmin = (session != null && session.has(PermissionNodes.MINDUSTRY_ADMIN))
+                || (sender != null && !sender.isPlayer());
 
         List<UnifiedCommand> unified = collectAllCommands(sender);
         unified.sort(java.util.Comparator.comparing(UnifiedCommand::name));
@@ -161,8 +161,10 @@ public class HelpMenu extends Menu {
         for (UnifiedCommand cmd : unified) {
             HelpCategory category = resolveCategory(cmd);
             boolean isAdminOnly = category == HelpCategory.ADMIN;
-            if (isAdminOnly && !isAdmin) {
-                continue; // Do not expose admin commands to regular players!
+            // Cloud has already dropped the commands this sender has no permission for. The
+            // commands registered outside of it carry no permission, so they go by their name.
+            if (isAdminOnly && !cmd.isCloudCommand() && !isAdmin) {
+                continue;
             }
             String rawDesc = resolveDescription(session, cmd);
             List<String> aliases = extractVisibleAliases(cmd);

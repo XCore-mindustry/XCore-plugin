@@ -12,6 +12,7 @@ import org.xcore.plugin.config.TomlSecretsConfig;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
 import org.xcore.plugin.localization.Localization;
 import org.xcore.plugin.model.PlayerData;
+import org.xcore.plugin.permission.PermissionService;
 import org.xcore.plugin.ui.MenuBuilder;
 import org.xcore.plugin.ui.MenuService;
 import org.xcore.plugin.ui.flow.ActiveMenuPrompt;
@@ -34,6 +35,8 @@ public class Session {
     public PlayerData data;
     public Localization localization;
     public XCoreSender sender;
+    /** Replaced by the shared service when the session is registered. */
+    public PermissionService permissions = new PermissionService();
 
     public final List<Runnable> actions = new ArrayList<>();
     public final Map<String, StatusEnum> sortStatus = new HashMap<>();
@@ -82,6 +85,24 @@ public class Session {
         actions.clear();
         this.sender = sender;
         return this;
+    }
+
+    public boolean has(String node) {
+        return permissions.has(this, node);
+    }
+
+    /**
+     * {@link #has} for an action the player has just asked for: a refusal is told to them.
+     * What a menu drew is not proof of anything, so its handlers ask again through this.
+     */
+    public boolean allowed(String node) {
+        if (has(node)) {
+            return true;
+        }
+        if (player != null) {
+            localization.send(PermissionService.ACCESS_DENIED_KEY);
+        }
+        return false;
     }
 
     public Session clear() {

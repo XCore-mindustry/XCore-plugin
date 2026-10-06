@@ -12,6 +12,7 @@ import org.xcore.plugin.integration.profile.ProfileSectionRegistry;
 import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.model.PlayerStatsOverview;
 import org.xcore.plugin.model.enums.TopCategory;
+import org.xcore.plugin.permission.PermissionNodes;
 import org.xcore.plugin.service.PlayerDisplayService;
 import org.xcore.plugin.service.PlayerProfileSettingsService;
 import org.xcore.plugin.session.Session;
@@ -218,7 +219,7 @@ public class PlayerMenu extends Menu {
             session.locale().send("error-player-not-found");
             return false;
         }
-        if (!session.data.uuid.equals(targetData.uuid) && (session.player == null || !session.player.admin)) {
+        if (!session.data.uuid.equals(targetData.uuid) && !session.has(PermissionNodes.PLAYERS_SETTINGS_OTHERS)) {
             session.locale().send("error-no-access");
             return false;
         }

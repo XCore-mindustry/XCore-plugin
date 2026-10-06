@@ -12,6 +12,7 @@ import org.incendo.cloud.help.HelpHandler;
 import org.incendo.cloud.key.CloudKey;
 import org.xcore.cloud.mindustry.MindustryCommandManager;
 import org.xcore.plugin.cloud.config.CloudExceptionConfigurer;
+import org.xcore.plugin.cloud.config.CommandPermissions;
 import org.xcore.plugin.cloud.config.CloudGuardConfigurer;
 import org.xcore.plugin.cloud.config.CloudManagerFactory;
 import org.xcore.plugin.cloud.config.CloudParserConfigurer;
@@ -62,8 +63,8 @@ public class CloudService {
         this.clientAnnotationParser = new AnnotationParser<>(clientManager, XCoreSender.class);
         this.serverAnnotationParser = new AnnotationParser<>(serverManager, XCoreSender.class);
 
-        clientManager.registerSelectorAnnotations(clientAnnotationParser);
-        serverManager.registerSelectorAnnotations(serverAnnotationParser);
+        clientManager.registerMindustryAnnotations(clientAnnotationParser);
+        serverManager.registerMindustryAnnotations(serverAnnotationParser);
 
         configureAnnotationGuards(clientAnnotationParser);
         configureAnnotationGuards(serverAnnotationParser);
@@ -110,6 +111,15 @@ public class CloudService {
             throw new IllegalStateException("CloudService not initialized");
         }
         return serverManager.createHelpHandler();
+    }
+
+    /**
+     * Run once every controller is registered: a command that asks for a permission node the
+     * catalog does not know stops the server from starting.
+     */
+    public void verifyPermissions() {
+        CommandPermissions.verifyDeclared(clientManager.commands());
+        CommandPermissions.verifyDeclared(serverManager.commands());
     }
 
     public void register(Object controller) {

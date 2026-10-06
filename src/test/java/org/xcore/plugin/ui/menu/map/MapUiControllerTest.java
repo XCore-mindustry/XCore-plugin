@@ -480,6 +480,8 @@ class MapUiControllerTest {
     void update_adminForceRtv_twoClickConfirmation() {
         MapUiController controller = new MapUiController(mapService, mapDataRepository, previewService, observerService, session);
         MapUiModel model = createTestDetailsModel("map-1");
+        session.player = mindustry.gen.Player.create();
+        session.player.admin = true;
 
         // 1st click: switches to confirming
         UpdateResult<MapUiModel> firstClick = controller.update(
@@ -497,6 +499,23 @@ class MapUiControllerTest {
 
         assertThat(secondClick.close()).isTrue();
         verify(ctx).close();
+    }
+
+    @Test
+    @DisplayName("AdminForceRtvClick is refused once the viewer is no longer an admin, whatever the menu shows")
+    void update_adminForceRtv_recheckedOnPress() {
+        MapUiController controller = new MapUiController(mapService, mapDataRepository, previewService, observerService, session);
+        MapUiModel drawnForAdmin = createTestDetailsModel("map-1");
+        session.player = mindustry.gen.Player.create();
+        session.player.admin = false;
+        session.localization = mock(org.xcore.plugin.localization.Localization.class);
+
+        UpdateResult<MapUiModel> click = controller.update(drawnForAdmin, new MapUiEvent.AdminForceRtvClick(), null);
+
+        assertThat(drawnForAdmin.isAdmin()).isTrue();
+        assertThat(click.model().adminForceConfirming()).isFalse();
+        verify(session.localization).send("error-access-denied");
+        verify(mapService, never()).startRtvSession(any(), any(), anyBoolean(), anyBoolean());
     }
 
     @Test

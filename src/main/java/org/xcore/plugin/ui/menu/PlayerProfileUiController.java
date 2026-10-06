@@ -10,6 +10,7 @@ import org.xcore.plugin.model.AggregatedPlayerStats;
 import org.xcore.plugin.model.ModeStatsSummary;
 import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.model.PlayerStatsOverview;
+import org.xcore.plugin.permission.PermissionNodes;
 import org.xcore.plugin.player.Badge;
 import org.xcore.plugin.rating.RatingLeague;
 import org.xcore.plugin.service.PlayerDisplayService;
@@ -274,7 +275,9 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
         Objects.requireNonNull(targetData, "targetData");
         String viewerUuid = session != null && session.data != null ? session.data.uuid : "";
         boolean isSelf = session != null && session.data != null && Objects.equals(session.data.uuid, targetData.uuid);
-        boolean isViewerAdmin = session != null && session.player != null && session.player.admin;
+        // What the profile offers is drawn from this; each action asks again when it is pressed.
+        boolean isViewerAdmin = session != null && (session.has(PermissionNodes.PLAYERS_SETTINGS_OTHERS)
+                || session.has(PermissionNodes.MODERATION_AUDIT_OTHERS));
 
         boolean isOnline = false;
         if (sessionService != null) {
@@ -525,7 +528,7 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
             }
 
             case ProfileEvent.OpenSettings() -> {
-                if (!model.isSelf() && !model.isViewerAdmin()) {
+                if (!model.isSelf() && !may(PermissionNodes.PLAYERS_SETTINGS_OTHERS)) {
                     yield UpdateResult.of(model);
                 }
                 PlayerData target = resolveCurrentTarget(model);
@@ -536,7 +539,7 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
             }
 
             case ProfileEvent.OpenAuditHistory() -> {
-                if (!model.isViewerAdmin()) {
+                if (!may(PermissionNodes.MODERATION_AUDIT_OTHERS)) {
                     yield UpdateResult.of(model);
                 }
                 PlayerData target = resolveCurrentTarget(model);
@@ -553,7 +556,7 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
             }
 
             case ProfileEvent.OpenAuditActions() -> {
-                if (!model.isViewerAdmin()) {
+                if (!may(PermissionNodes.MODERATION_AUDIT_OTHERS)) {
                     yield UpdateResult.of(model);
                 }
                 PlayerData target = resolveCurrentTarget(model);
@@ -692,6 +695,10 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
             case STATS -> Accent.BLUE;
             case PLAYERS -> Accent.GREEN;
         };
+    }
+
+    private boolean may(String node) {
+        return session != null && session.has(node);
     }
 
     /** The way back, and what the viewer may do with the profile on screen. The client's own button closes the dialog. */

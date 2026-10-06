@@ -105,8 +105,9 @@ class AuthControllerTest {
     @DisplayName("successful login sends immediate ack, executes off-thread, and grants admin on tick thread")
     void login_successfulAuthentication() throws Exception {
         var ctx = createContext("uuid-1", true);
+        ctx.data().password = "stored-hash";
         when(adminAuthService.hasDiscordAdminAccess(ctx.data())).thenReturn(true);
-        when(adminAuthService.verifyOrSetPassword(argThat(sameIdentityAs(ctx.data())), eq("secret123")))
+        when(adminAuthService.checkPassword(argThat(sameIdentityAs(ctx.data())), eq("secret123")))
                 .thenReturn(new PasswordVerificationResult(true, false, "commands-login-success"));
 
         controller.login(ctx.sender(), "secret123");
@@ -124,11 +125,34 @@ class AuthControllerTest {
     }
 
     @Test
+    @DisplayName("a password reset while the login was being checked leaves the player without admin")
+    void login_passwordResetMeanwhile() {
+        var ctx = createContext("uuid-reset", true);
+        ctx.data().password = "stored-hash";
+        when(adminAuthService.hasDiscordAdminAccess(ctx.data())).thenReturn(true);
+        when(adminAuthService.checkPassword(argThat(sameIdentityAs(ctx.data())), eq("secret123")))
+                .thenAnswer(_ -> {
+                    ctx.data().password = null;
+                    return new PasswordVerificationResult(true, false, "commands-login-success");
+                });
+
+        controller.login(ctx.sender(), "secret123");
+
+        org.testcontainers.shaded.org.awaitility.Awaitility.await()
+                .atMost(2, TimeUnit.SECONDS)
+                .untilAsserted(() -> {
+                    verify(ctx.local()).send(eq("error-processing-request"), any());
+                    assertThat(controller.isInFlight("uuid-reset")).isFalse();
+                });
+        verify(adminAuthService, never()).grantAdmin(any(), any());
+    }
+
+    @Test
     @DisplayName("first-time login creates password and sends password-created key")
     void login_firstTimePasswordCreated() {
         var ctx = createContext("uuid-create", true);
         when(adminAuthService.hasDiscordAdminAccess(ctx.data())).thenReturn(true);
-        when(adminAuthService.verifyOrSetPassword(argThat(sameIdentityAs(ctx.data())), eq("newPassword123")))
+        when(adminAuthService.checkPassword(argThat(sameIdentityAs(ctx.data())), eq("newPassword123")))
                 .thenReturn(new PasswordVerificationResult(true, true, "commands-login-admin-password-created"));
 
         controller.login(ctx.sender(), "newPassword123");
@@ -148,7 +172,7 @@ class AuthControllerTest {
     void login_wrongPassword() {
         var ctx = createContext("uuid-wrong", true);
         when(adminAuthService.hasDiscordAdminAccess(ctx.data())).thenReturn(true);
-        when(adminAuthService.verifyOrSetPassword(argThat(sameIdentityAs(ctx.data())), eq("wrongPassword123")))
+        when(adminAuthService.checkPassword(argThat(sameIdentityAs(ctx.data())), eq("wrongPassword123")))
                 .thenReturn(new PasswordVerificationResult(false, false, "error-wrong-admin-password"));
 
         controller.login(ctx.sender(), "wrongPassword123");
@@ -173,7 +197,7 @@ class AuthControllerTest {
         CountDownLatch holdBackground = new CountDownLatch(1);
         CountDownLatch backgroundStarted = new CountDownLatch(1);
 
-        when(adminAuthService.verifyOrSetPassword(argThat(sameIdentityAs(ctx.data())), eq("password123"))).thenAnswer(inv -> {
+        when(adminAuthService.checkPassword(argThat(sameIdentityAs(ctx.data())), eq("password123"))).thenAnswer(inv -> {
             backgroundStarted.countDown();
             holdBackground.await(3, TimeUnit.SECONDS);
             return new PasswordVerificationResult(true, false, "commands-login-success");
@@ -202,7 +226,7 @@ class AuthControllerTest {
     void login_bruteForceLockout() {
         var ctx = createContext("uuid-brute", true);
         when(adminAuthService.hasDiscordAdminAccess(ctx.data())).thenReturn(true);
-        when(adminAuthService.verifyOrSetPassword(argThat(sameIdentityAs(ctx.data())), eq("badPassword1")))
+        when(adminAuthService.checkPassword(argThat(sameIdentityAs(ctx.data())), eq("badPassword1")))
                 .thenReturn(new PasswordVerificationResult(false, false, "error-wrong-admin-password"));
 
         // Fail 5 times sequentially
@@ -222,7 +246,7 @@ class AuthControllerTest {
         controller.login(ctx.sender(), "badPassword1");
 
         verify(ctx.local()).send(eq("commands-login-rate-limited"), any());
-        verify(adminAuthService, never()).verifyOrSetPassword(any(), any());
+        verify(adminAuthService, never()).checkPassword(any(), any());
         assertThat(controller.isInFlight("uuid-brute")).isFalse();
     }
 
@@ -235,7 +259,7 @@ class AuthControllerTest {
         CountDownLatch holdBackground = new CountDownLatch(1);
         CountDownLatch started = new CountDownLatch(1);
 
-        when(adminAuthService.verifyOrSetPassword(argThat(sameIdentityAs(ctx.data())), eq("password123"))).thenAnswer(inv -> {
+        when(adminAuthService.checkPassword(argThat(sameIdentityAs(ctx.data())), eq("password123"))).thenAnswer(inv -> {
             started.countDown();
             holdBackground.await(3, TimeUnit.SECONDS);
             return new PasswordVerificationResult(true, false, "commands-login-success");
@@ -267,7 +291,7 @@ class AuthControllerTest {
         controller.login(ctx.sender(), "short");
 
         verify(ctx.local()).send(eq("error-admin-password-too-short"), any());
-        verify(adminAuthService, never()).verifyOrSetPassword(any(), any());
+        verify(adminAuthService, never()).checkPassword(any(), any());
         assertThat(controller.isInFlight("uuid-short")).isFalse();
     }
 
@@ -280,14 +304,14 @@ class AuthControllerTest {
         controller.login(ctx.sender(), "validPassword123");
 
         verify(ctx.local()).send(eq("commands-login-request-approval-discord"), any());
-        verify(adminAuthService, never()).verifyOrSetPassword(any(), any());
+        verify(adminAuthService, never()).checkPassword(any(), any());
         assertThat(controller.isInFlight("uuid-nodiscord")).isFalse();
     }
 
     @Test
     @DisplayName("the storage stage never receives the live session data object")
     void login_doesNotHandLiveSessionDataToStorage() throws InterruptedException {
-        // verifyOrSetPassword mutates and saves whatever PlayerData it is given, and
+        // checkPassword hashes into whatever PlayerData it is given, and
         // session.data is live state the tick loop and every command read. Handing it over
         // makes BCrypt a cross-thread write to shared state, and if the session's data is
         // swapped while the hash is being computed the new password is written to an object
@@ -297,7 +321,7 @@ class AuthControllerTest {
 
         AtomicReference<PlayerData> passedToStorage = new AtomicReference<>();
         CountDownLatch reachedStorage = new CountDownLatch(1);
-        when(adminAuthService.verifyOrSetPassword(any(), anyString())).thenAnswer(invocation -> {
+        when(adminAuthService.checkPassword(any(), anyString())).thenAnswer(invocation -> {
             passedToStorage.set(invocation.getArgument(0));
             reachedStorage.countDown();
             return new PasswordVerificationResult(true, false, "commands-login-success");
@@ -324,7 +348,7 @@ class AuthControllerTest {
             applied.countDown();
             return true;
         });
-        when(adminAuthService.verifyOrSetPassword(any(), anyString())).thenAnswer(invocation -> {
+        when(adminAuthService.checkPassword(any(), anyString())).thenAnswer(invocation -> {
             // The storage stage is only allowed to write the copy it was handed, so the new
             // hash has to be applied to the live session afterwards or the grant would
             // outlive a password that was never recorded against this session.

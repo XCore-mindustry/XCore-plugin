@@ -11,6 +11,7 @@ import org.incendo.cloud.annotations.Permission;
 import org.xcore.cloud.mindustry.selector.TargetSelector.MultiplePlayerSelector;
 import org.xcore.cloud.mindustry.selector.TargetSelector.SinglePlayerSelector;
 import org.xcore.plugin.cloud.XCoreSender;
+import org.xcore.plugin.permission.PermissionNodes;
 import org.xcore.plugin.command.controller.CloudClientController;
 
 @Singleton
@@ -21,7 +22,7 @@ public class TeleportController implements CloudClientController {
 
     @Command("tp|teleport|goto <destination>")
     @CommandDescription("Teleports yourself to a destination player.")
-    @Permission("xcore.admin.tp")
+    @Permission(PermissionNodes.ADMIN_TP)
     public void teleportSelf(
             XCoreSender sender,
             @Argument("destination") SinglePlayerSelector destination
@@ -45,7 +46,7 @@ public class TeleportController implements CloudClientController {
 
     @Command("bring <targets>")
     @CommandDescription("Teleports target players to your position.")
-    @Permission("xcore.admin.tp")
+    @Permission(PermissionNodes.ADMIN_TP)
     public void bring(
             XCoreSender sender,
             @Argument("targets") MultiplePlayerSelector targets
@@ -74,7 +75,7 @@ public class TeleportController implements CloudClientController {
 
     @Command("tpto <targets> <destination>")
     @CommandDescription("Teleports target players to a destination player.")
-    @Permission("xcore.admin.tp")
+    @Permission(PermissionNodes.ADMIN_TP)
     public void teleportTargetsToDestination(
             XCoreSender sender,
             @Argument("targets") MultiplePlayerSelector targets,
@@ -104,7 +105,7 @@ public class TeleportController implements CloudClientController {
 
     @Command("tppos <targets> <x> <y>")
     @CommandDescription("Teleports target players to tile coordinates.")
-    @Permission("xcore.admin.tp")
+    @Permission(PermissionNodes.ADMIN_TP)
     public void teleportTargetsToCoords(
             XCoreSender sender,
             @Argument("targets") MultiplePlayerSelector targets,

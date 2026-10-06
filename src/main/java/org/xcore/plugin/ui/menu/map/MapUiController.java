@@ -7,6 +7,7 @@ import mindustry.maps.Map;
 import mindustry.ui.builder.MenuResult;
 import org.xcore.plugin.database.repository.MapDataRepository;
 import org.xcore.plugin.model.MapData;
+import org.xcore.plugin.permission.PermissionNodes;
 import org.xcore.plugin.service.MapService;
 import org.xcore.plugin.service.map.MapPreviewService;
 import org.xcore.plugin.service.map.MapVoteObserverService;
@@ -234,7 +235,9 @@ public class MapUiController implements UiController<MapUiModel, MapUiEvent> {
 
             // --- Admin Force RTV (2-Click Confirmed) ---
             case MapUiEvent.AdminForceRtvClick() -> {
-                if (!model.isAdmin()) yield UpdateResult.of(model);
+                if (!model.isAdmin() || session == null || !session.allowed(PermissionNodes.MAPS_FORCE_RTV)) {
+                    yield UpdateResult.of(model);
+                }
                 long now = System.currentTimeMillis();
                 if (model.adminForceConfirming() && now < model.adminConfirmExpireMillis()) {
                     Map mindustryMap = findMindustryMap(model.selectedMapId(), model.resolvedDetails());
@@ -573,7 +576,7 @@ public class MapUiController implements UiController<MapUiModel, MapUiEvent> {
 
     public MapUiModel createInitialBrowserModel(Session session, int initialPage) {
         String uuid = session != null && session.player != null ? session.player.uuid() : "";
-        boolean admin = session != null && session.player != null && session.player.admin;
+        boolean admin = session != null && session.has(PermissionNodes.MAPS_FORCE_RTV);
 
         MapUiModel base = new MapUiModel(
                 MapUiModel.ViewMode.BROWSER,
@@ -597,7 +600,7 @@ public class MapUiController implements UiController<MapUiModel, MapUiEvent> {
 
     public MapUiModel createInitialDetailsModel(Session session, MapData mapData) {
         String uuid = session != null && session.player != null ? session.player.uuid() : "";
-        boolean admin = session != null && session.player != null && session.player.admin;
+        boolean admin = session != null && session.has(PermissionNodes.MAPS_FORCE_RTV);
 
         Map mindustryMap = mapData != null && mapService != null ? mapService.findPersistedMap(mapData) : null;
         String mapId = mindustryMap != null

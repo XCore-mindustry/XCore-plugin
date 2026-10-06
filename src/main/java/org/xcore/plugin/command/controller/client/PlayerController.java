@@ -15,6 +15,7 @@ import org.xcore.plugin.concurrent.Async;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
 import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.model.PlayerPids;
+import org.xcore.plugin.permission.PermissionNodes;
 import org.xcore.plugin.session.ObserverService;
 import org.xcore.plugin.session.Session;
 import org.xcore.plugin.session.SessionService;
@@ -154,7 +155,7 @@ public class PlayerController implements CloudClientController {
         }
     }
 
-    @Permission("admin")
+    @Permission(PermissionNodes.ADMIN_SET_TEAM)
     @Command("set-team [id] [pid]")
     public void setTeam(XCoreSender sender, @Argument("id") @Default("-1") int id, @Nullable @Argument("pid") Integer pid) {
         Team team = id == -1 ? sender.player().team() : Team.get(id);

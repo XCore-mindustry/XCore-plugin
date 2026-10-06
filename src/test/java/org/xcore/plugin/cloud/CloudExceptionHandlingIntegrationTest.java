@@ -20,7 +20,8 @@ import org.xcore.plugin.cloud.config.CloudCaptionConfigurer;
 import org.xcore.plugin.cloud.config.CloudExceptionConfigurer;
 import org.xcore.plugin.cloud.config.CloudManagerFactory;
 import org.xcore.plugin.cloud.config.CloudParserConfigurer;
-import org.xcore.plugin.cloud.config.CloudPermissionPolicy;
+import org.xcore.plugin.permission.PermissionService;
+import org.xcore.plugin.permission.RemoteConsoleScope;
 import org.xcore.plugin.cloud.exception.XCoreCommandException;
 import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.localization.TranslatorLanguagesProvider;
@@ -67,7 +68,7 @@ class CloudExceptionHandlingIntegrationTest {
 
         var metrics = new DefaultMetricsService(new LocalMetricRegistry(), new TomlXcoreConfig());
         var factory = new CloudManagerFactory(bundle, () -> sessionService, metrics,
-                new CloudPermissionPolicy(), mock(CloudCaptionConfigurer.class));
+                new PermissionService(), new RemoteConsoleScope(), mock(CloudCaptionConfigurer.class));
         manager = factory.createManager(new CommandHandler(""));
         new CloudParserConfigurer(mock(TimeService.class), mock(TranslatorLanguagesProvider.class)).configure(manager);
         new CloudExceptionConfigurer(bundle, () -> sessionService).configure(manager);
@@ -79,7 +80,7 @@ class CloudExceptionHandlingIntegrationTest {
         });
 
         parser = new AnnotationParser<>(manager, XCoreSender.class);
-        manager.registerSelectorAnnotations(parser);
+        manager.registerMindustryAnnotations(parser);
     }
 
     private List<String> run(String input) {

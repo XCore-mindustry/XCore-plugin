@@ -16,6 +16,8 @@ import mindustry.net.NetConnection;
 import mindustry.net.Packets;
 import org.xcore.plugin.integration.AdminModIntegration;
 import org.xcore.plugin.model.BanRequestData;
+import org.xcore.plugin.permission.PermissionNodes;
+import org.xcore.plugin.permission.PermissionService;
 import org.xcore.plugin.session.SessionService;
 import org.xcore.plugin.ui.menu.BanMenu;
 
@@ -28,16 +30,29 @@ public class AdminRequestHandler {
     private final BanMenu banMenu;
     private final AdminModIntegration adminModIntegration;
     private final Gson rawGson;
+    private final PermissionService permissions;
 
     @Inject
     public AdminRequestHandler(SessionService sessionService,
                                BanMenu banMenu,
                                AdminModIntegration adminModIntegration,
-                               @Named("raw") Gson rawGson) {
+                               @Named("raw") Gson rawGson,
+                               PermissionService permissions) {
         this.sessionService = sessionService;
         this.banMenu = banMenu;
         this.adminModIntegration = adminModIntegration;
         this.rawGson = rawGson;
+        this.permissions = permissions;
+    }
+
+    /** The admin menu of the client needs {@link PermissionNodes#MINDUSTRY_ADMIN}; each of its actions also has a node of its own. */
+    private static String nodeFor(Packets.AdminAction action) {
+        return switch (action) {
+            case kick -> PermissionNodes.MODERATION_KICK;
+            case ban -> PermissionNodes.MODERATION_BAN;
+            case trace -> PermissionNodes.PLAYERS_PRIVATE_INFO;
+            case wave, switchTeam -> PermissionNodes.MINDUSTRY_ADMIN;
+        };
     }
 
     public void handle(NetConnection con, AdminRequestCallPacket packet) {
@@ -45,7 +60,9 @@ public class AdminRequestHandler {
         Player target = packet.other;
         var action = packet.action;
 
-        if (!admin.admin || target == null || (target.admin && target != admin)) {
+        if (!permissions.has(admin, PermissionNodes.MINDUSTRY_ADMIN)
+                || !permissions.canTarget(admin, target)
+                || !permissions.has(admin, nodeFor(action))) {
             return;
         }
 

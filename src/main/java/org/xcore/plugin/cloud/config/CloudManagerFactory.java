@@ -12,6 +12,8 @@ import org.xcore.cloud.mindustry.MindustryCommandManager;
 import org.xcore.cloud.mindustry.MindustrySender;
 import org.xcore.plugin.cloud.XCoreSender;
 import org.xcore.plugin.metrics.MetricsService;
+import org.xcore.plugin.permission.PermissionService;
+import org.xcore.plugin.permission.RemoteConsoleScope;
 import org.xcore.plugin.session.SessionService;
 
 @Singleton
@@ -20,25 +22,28 @@ public class CloudManagerFactory {
     private final Bundle bundle;
     private final Provider<SessionService> sessionService;
     private final MetricsService metricsService;
-    private final CloudPermissionPolicy cloudPermissionPolicy;
+    private final PermissionService permissions;
+    private final RemoteConsoleScope remoteConsole;
     private final CloudCaptionConfigurer cloudCaptionConfigurer;
 
     @Inject
     public CloudManagerFactory(Bundle bundle,
                                Provider<SessionService> sessionService,
                                MetricsService metricsService,
-                               CloudPermissionPolicy cloudPermissionPolicy,
+                               PermissionService permissions,
+                               RemoteConsoleScope remoteConsole,
                                CloudCaptionConfigurer cloudCaptionConfigurer) {
         this.bundle = bundle;
         this.sessionService = sessionService;
         this.metricsService = metricsService;
-        this.cloudPermissionPolicy = cloudPermissionPolicy;
+        this.permissions = permissions;
+        this.remoteConsole = remoteConsole;
         this.cloudCaptionConfigurer = cloudCaptionConfigurer;
     }
 
     public MindustryCommandManager<XCoreSender> createManager(CommandHandler handler) {
         SenderMapper<MindustrySender, XCoreSender> mapper = SenderMapper.create(
-                base -> new XCoreSender(base, bundle, sessionService),
+                base -> new XCoreSender(base, bundle, sessionService, remoteConsole.consoleActor()),
                 XCoreSender::getHandle
         );
 
@@ -49,7 +54,7 @@ public class CloudManagerFactory {
         );
 
         manager.setConflictStrategy(ConflictStrategy.OVERRIDE);
-        manager.setPermissionChecker(cloudPermissionPolicy::hasPermission);
+        manager.setPermissionChecker(permissions::has);
         cloudCaptionConfigurer.configure(manager);
 
         return manager;

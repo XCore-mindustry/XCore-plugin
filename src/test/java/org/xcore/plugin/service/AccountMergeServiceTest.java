@@ -174,6 +174,40 @@ class AccountMergeServiceTest {
     }
 
     @Test
+    @DisplayName("Merge leaves the target's credentials and admin status alone and revokes the source's")
+    void merge_doesNotCarryCredentials() {
+        PlayerData source = createPlayer(10, "uuid-source", "OldAdmin", 120, 1400, 15);
+        source.admin = true;
+        source.adminSource = "DISCORD_ROLE";
+        source.password = "source-hash";
+        source.addDeviceToken("source-token", System.currentTimeMillis() + 60_000L);
+
+        PlayerData target = createPlayer(20, "uuid-target", "NewPlayer", 30, 1600, 10);
+        target.admin = false;
+        target.adminSource = "NONE";
+        target.password = "target-hash";
+        target.addDeviceToken("target-token", System.currentTimeMillis() + 60_000L);
+
+        when(findService.playerData("10")).thenReturn(source);
+        when(findService.playerData("20")).thenReturn(target);
+
+        var result = service.merge(new AccountMergeService.MergeRequest("10", "20", "Lost old phone", null));
+
+        assertThat(result.success()).isTrue();
+        assertThat(target.admin).isFalse();
+        assertThat(target.adminSource).isEqualTo("NONE");
+        assertThat(target.password).isEqualTo("target-hash");
+        assertThat(target.hasDeviceToken("target-token")).isTrue();
+        assertThat(target.hasDeviceToken("source-token")).isFalse();
+
+        assertThat(source.uuid).isEqualTo("merged:uuid-source");
+        assertThat(source.admin).isFalse();
+        assertThat(source.adminSource).isEqualTo("NONE");
+        assertThat(source.password).isNull();
+        assertThat(source.hasDeviceToken("source-token")).isFalse();
+    }
+
+    @Test
     @DisplayName("Merging an account into itself returns failure")
     void merge_sameAccount_fails() {
         PlayerData player = createPlayer(10, "uuid-same", "PlayerOne", 100, 1500, 5);
