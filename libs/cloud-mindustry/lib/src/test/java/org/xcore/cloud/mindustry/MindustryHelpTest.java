@@ -224,7 +224,7 @@ class MindustryHelpTest {
 
         messages.clear();
         help.sendQuery(sender(null, "perm.reload"), "perm", 1);
-        assertEquals(List.of("/perm admin", "/perm check"), syntaxes());
+        assertEquals(List.of("/perm admin reload", "/perm check"), syntaxes());
     }
 
     @Test
