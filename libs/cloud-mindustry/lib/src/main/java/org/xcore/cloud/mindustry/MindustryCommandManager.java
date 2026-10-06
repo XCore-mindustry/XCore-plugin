@@ -46,6 +46,8 @@ import org.xcore.cloud.mindustry.selector.exception.SelectorException;
 import org.xcore.cloud.mindustry.selector.parser.PlayerSelectorAdapter;
 import org.xcore.cloud.mindustry.selector.parser.TargetSelectorParsers;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Objects;
 import java.util.function.BiPredicate;
 import java.util.function.Function;
@@ -63,6 +65,14 @@ public class MindustryCommandManager<C> extends CommandManager<C> {
      */
     public static final CloudKey<Boolean> PLAYER_ONLY = CloudKey.of("mindustry:player_only", Boolean.class);
 
+    /**
+     * The {@link MindustrySender} behind the command sender, stored in every command context so
+     * parsers can use it whatever the manager's sender type is.
+     */
+    public static final CloudKey<MindustrySender> MINDUSTRY_SENDER =
+            CloudKey.of("mindustry:sender", MindustrySender.class);
+
+    private final CommandHandler handler;
     private final SenderMapper<MindustrySender, C> senderMapper;
     private final SpatialSelectorEngine selectorEngine = new SpatialSelectorEngine();
     private ConflictStrategy conflictStrategy = ConflictStrategy.SKIP;
@@ -76,6 +86,7 @@ public class MindustryCommandManager<C> extends CommandManager<C> {
             SenderMapper<MindustrySender, C> senderMapper
     ) {
         super(coordinator, CommandRegistrationHandler.nullCommandRegistrationHandler());
+        this.handler = handler;
         this.senderMapper = senderMapper;
 
         registerCapability(CloudCapability.StandardCapabilities.ROOT_COMMAND_DELETION);
@@ -84,6 +95,9 @@ public class MindustryCommandManager<C> extends CommandManager<C> {
 
         ArcCommandRegistrationHandler<C> regHandler = new ArcCommandRegistrationHandler<>(this, handler);
         this.commandRegistrationHandler(regHandler);
+
+        registerCommandPreProcessor(ctx -> ctx.commandContext()
+                .store(MINDUSTRY_SENDER, senderMapper.reverse(ctx.commandContext().sender())));
 
         registerDefaultCaptions();
         registerDefaultParsers();
@@ -108,6 +122,28 @@ public class MindustryCommandManager<C> extends CommandManager<C> {
 
     public SenderMapper<MindustrySender, C> senderMapper() {
         return this.senderMapper;
+    }
+
+    /**
+     * @return the Arc handler this manager publishes its commands in
+     */
+    public CommandHandler commandHandler() {
+        return handler;
+    }
+
+    /**
+     * The names this manager's commands can currently be run by, keyed by the Cloud root name or
+     * alias. The value differs from the key after a {@link ConflictStrategy#PREFIX} collision;
+     * names that were skipped or have since been replaced by someone else are absent.
+     */
+    public Map<String, String> publishedNames() {
+        Map<String, String> names = new HashMap<>();
+        for (CommandHandler.Command command : handler.getCommandList()) {
+            if (command instanceof MindustryCloudCommand<?> wrapper && wrapper.manager == this) {
+                names.put(wrapper.inputName, wrapper.text);
+            }
+        }
+        return names;
     }
 
     public void setConflictStrategy(ConflictStrategy conflictStrategy) {
@@ -230,6 +266,7 @@ public class MindustryCommandManager<C> extends CommandManager<C> {
         parserRegistry().registerParser(MindustryParsers.item());
         parserRegistry().registerParser(MindustryParsers.liquid());
         parserRegistry().registerParser(MindustryParsers.statusEffect());
+        parserRegistry().registerParser(MindustryParsers.playerInfo());
     }
 
     private <T> void registerSelectorParser(

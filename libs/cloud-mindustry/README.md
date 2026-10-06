@@ -12,7 +12,9 @@ The project is based on the integration found in [Xpdustry's Distributor](https:
 - Compatible with `Vars.netServer.clientCommands` (players) and `ServerControl` (console).
 - Customizable permission logic and command conflict resolution.
 - Target selectors (`@a`, `@p`, `@s`, `@r`, `@e[...]`) for players and units.
-- Parsers for `Player`, `Team`, `UnitType`, `Block`, `Item`, `Liquid` and `StatusEffect` out of the box.
+- Parsers for `Player`, `Team`, `UnitType`, `Block`, `Item`, `Liquid`, `StatusEffect` and offline
+  `Administration.PlayerInfo` out of the box.
+- An opt-in help renderer with permission filtering and pagination.
 - Every error message is a Cloud caption, so it can be localized.
 - No mandatory dependencies on translation engines or external permission systems.
 
@@ -173,6 +175,37 @@ With the builder API: `.meta(MindustryCommandManager.PLAYER_ONLY, true)`.
 
 The check runs once the command is known, so input that does not parse reports its parse error first.
 It is not a permission: combine it with `.permission(...)` as usual.
+
+### 9. Help
+Every Cloud command is registered in Arc with the parameters `[args...]`, so the vanilla `/help` cannot show
+real usage. `MindustryHelp` renders Cloud's own help instead. It registers nothing: add a help command
+yourself and call it.
+
+```java
+var help = new MindustryHelp<>(mgr, 8); // 8 entries per page
+
+mgr.command(mgr.commandBuilder("help")
+    .optional("query", greedyStringParser())
+    .handler(ctx -> help.sendQuery(ctx.sender(), ctx.getOrDefault("query", ""), 1)));
+```
+
+- A sender sees only commands they have permission for; `@PlayerOnly` commands are hidden from the console.
+- `sendQuery` shows the usage of the command the query names, the variants below it, or the commands
+  starting with it. `sendIndex(sender, page)` lists everything.
+- After a `PREFIX` collision the published name (`/myplugin:command`) is shown; skipped commands are not.
+- A third constructor argument adds your own visibility filter on top of these.
+- `includeLegacyCommands(predicate)` also lists the Arc commands that were not registered through Cloud.
+  They have no Cloud permission, so your predicate alone decides who sees them.
+- Every line is a caption (`mindustry.help.*` in `MindustryCaptionKeys`).
+
+### 10. Offline players
+An `Administration.PlayerInfo` argument (`MindustryParsers.playerInfo()`) finds a player the server has a
+record of, online or not: by UUID, by any name they have used, by `#id` if they are online, and from the
+console by IP.
+
+- A name or IP that matches several records is an error; the parser never picks one.
+- The argument is one token, so a name with spaces has to be given as a UUID or `#id`.
+- Suggestions list online players only.
 
 ## Migrating from 0.3
 
