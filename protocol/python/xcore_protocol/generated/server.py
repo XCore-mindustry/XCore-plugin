@@ -145,6 +145,7 @@ class ServerCommandExecuteCommandV1:
     command: str
     targetServers: tuple[str, ...]
     exclusion: bool
+    sourceServer: str | None = None
 
     MESSAGE_TYPE: ClassVar[str] = 'server-command.execute.command'
     MESSAGE_VERSION: ClassVar[int] = 1
@@ -155,6 +156,8 @@ class ServerCommandExecuteCommandV1:
         for item in self.targetServers:
             _expect_str(item, 'targetServers[]')
         _expect_bool(self.exclusion, 'exclusion')
+        if self.sourceServer is not None:
+            _expect_str(self.sourceServer, 'sourceServer')
 
     @classmethod
     def from_payload(cls, payload: Mapping[str, Any]) -> "ServerCommandExecuteCommandV1":
@@ -162,7 +165,7 @@ class ServerCommandExecuteCommandV1:
         _expect_exact_keys(
             mapping,
             required=frozenset(('messageType', 'messageVersion', 'command', 'targetServers', 'exclusion')),
-            allowed=frozenset(('messageType', 'messageVersion', 'command', 'targetServers', 'exclusion')),
+            allowed=frozenset(('messageType', 'messageVersion', 'command', 'targetServers', 'exclusion', 'sourceServer')),
             model_name="ServerCommandExecuteCommandV1",
         )
         if mapping['messageType'] != cls.MESSAGE_TYPE:
@@ -173,6 +176,7 @@ class ServerCommandExecuteCommandV1:
             command=_expect_str(mapping['command'], 'command'),
             targetServers=tuple(_expect_str(item, 'targetServers[]') for item in _expect_list(mapping['targetServers'], 'targetServers')),
             exclusion=_expect_bool(mapping['exclusion'], 'exclusion'),
+            sourceServer=(_expect_str(mapping['sourceServer'], 'sourceServer') if 'sourceServer' in mapping else None),
         )
 
     def to_payload(self) -> dict[str, Any]:
@@ -183,6 +187,8 @@ class ServerCommandExecuteCommandV1:
         payload['command'] = self.command
         payload['targetServers'] = [item for item in self.targetServers]
         payload['exclusion'] = self.exclusion
+        if self.sourceServer is not None:
+            payload['sourceServer'] = self.sourceServer
         return payload
 
 @dataclass(frozen=True, slots=True)

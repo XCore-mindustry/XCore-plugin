@@ -37,7 +37,8 @@ public final class ServerMessages {
     public record ServerCommandExecuteCommandV1(
             String command,
             List<String> targetServers,
-            boolean exclusion
+            boolean exclusion,
+            String sourceServer
     ) implements ProtocolPayload {
     public static final String MESSAGE_TYPE = "server-command.execute.command";
     public static final int MESSAGE_VERSION = 1;
@@ -52,6 +53,12 @@ public final class ServerMessages {
             for (String item : targetServers) {
                 Objects.requireNonNull(item, "targetServers[] must not be null");
             }
+            if (sourceServer != null) {
+                Objects.requireNonNull(sourceServer, "sourceServer must not be null");
+                if (sourceServer.length() < 1) {
+                    throw new IllegalArgumentException("sourceServer must be at least 1 characters");
+                }
+            }
         }
 
         @Override
@@ -62,6 +69,9 @@ public final class ServerMessages {
             payload.put("command", command);
             payload.put("targetServers", List.copyOf(targetServers));
             payload.put("exclusion", exclusion);
+            if (sourceServer != null) {
+                payload.put("sourceServer", sourceServer);
+            }
             return payload;
         }
     }

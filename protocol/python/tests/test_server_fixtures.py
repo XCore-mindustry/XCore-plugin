@@ -13,6 +13,14 @@ VALID_CASES = [
         spec_root() / "messages" / "server" / "server.heartbeat.v1.json",
         fixtures_root() / "valid" / "server" / "server.heartbeat.v1.json",
     ),
+    (
+        spec_root() / "messages" / "server" / "server-command.execute.command.v1.json",
+        fixtures_root() / "valid" / "server" / "server-command.execute.command.v1.json",
+    ),
+    (
+        spec_root() / "messages" / "server" / "server-command.execute.command.v1.json",
+        fixtures_root() / "valid" / "server" / "server-command.execute.command.v1.no-source.json",
+    ),
 ]
 
 
@@ -30,6 +38,13 @@ INVALID_CASES = [
         / "invalid"
         / "server"
         / "server.heartbeat.v1.missing-channel.json",
+    ),
+    (
+        spec_root() / "messages" / "server" / "server-command.execute.command.v1.json",
+        fixtures_root()
+        / "invalid"
+        / "server"
+        / "server-command.execute.command.v1.empty-source.json",
     ),
 ]
 

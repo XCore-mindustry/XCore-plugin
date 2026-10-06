@@ -347,6 +347,69 @@ public final class ProtocolRoutes {
             null
     );
 
+    public static final RouteDescriptor SECURITY_PERMISSIONS_CHANGED_V1 = new RouteDescriptor(
+            "security",
+            "securityPermissionsChangedV1Route",
+            "security.permissions.changed",
+            1,
+            SecurityMessages.SecurityPermissionsChangedV1.class,
+            "event",
+            "xcore:evt:security:permissions-changed",
+            Map.of(),
+            "broadcast",
+            300000,
+            true,
+            true,
+            "permissions",
+            null
+    );
+
+    public static final RouteDescriptor SECURITY_STAFF_SYNC_REQUEST_V1 = new RouteDescriptor(
+            "security",
+            "securityStaffSyncRequestV1Route",
+            "security.staff.sync.request",
+            1,
+            SecurityMessages.SecurityStaffSyncRequestV1.class,
+            "rpc-request",
+            "xcore:rpc:req:{server}",
+            Map.of("server", "payload.server"),
+            "server",
+            10000,
+            false,
+            true,
+            "permissions",
+            new RouteResponseDescriptor(
+                    "security.staff.sync.response",
+                    1,
+                    SecurityMessages.SecurityStaffSyncResponseV1.class,
+                    "xcore:rpc:resp:{requester}",
+                    Map.of("requester", "rpc.requester")
+            )
+    );
+
+    public static final RouteDescriptor SECURITY_STAFF_RESET_PASSWORD_REQUEST_V1 = new RouteDescriptor(
+            "security",
+            "securityStaffResetPasswordRequestV1Route",
+            "security.staff.reset-password.request",
+            1,
+            SecurityMessages.SecurityStaffResetPasswordRequestV1.class,
+            "rpc-request",
+            "xcore:rpc:req:{server}",
+            Map.of("server", "payload.server"),
+            "server",
+            10000,
+            false,
+            true,
+            "permissions",
+            new RouteResponseDescriptor(
+                    "security.staff.reset-password.response",
+                    1,
+                    SecurityMessages.SecurityStaffResetPasswordResponseV1.class,
+                    "xcore:rpc:resp:{requester}",
+                    Map.of("requester", "rpc.requester")
+            )
+    );
+
     public static final RouteDescriptor DISCORD_LINK_CODE_CREATED_V1 = new RouteDescriptor(
             "discord",
             "discordLinkCodeCreatedV1Route",
@@ -815,6 +878,9 @@ public final class ProtocolRoutes {
             entry(key("player-data-cache.reload.command", 1), PLAYER_DATA_CACHE_RELOAD_COMMAND_V1),
             entry(key("server.heartbeat", 1), SERVER_HEARTBEAT_V1),
             entry(key("player.password-reset.command", 1), PLAYER_PASSWORD_RESET_COMMAND_V1),
+            entry(key("security.permissions.changed", 1), SECURITY_PERMISSIONS_CHANGED_V1),
+            entry(key("security.staff.sync.request", 1), SECURITY_STAFF_SYNC_REQUEST_V1),
+            entry(key("security.staff.reset-password.request", 1), SECURITY_STAFF_RESET_PASSWORD_REQUEST_V1),
             entry(key("discord.link-code-created", 1), DISCORD_LINK_CODE_CREATED_V1),
             entry(key("discord.link.confirm.command", 1), DISCORD_LINK_CONFIRM_COMMAND_V1),
             entry(key("discord.unlink.command", 1), DISCORD_UNLINK_COMMAND_V1),
@@ -860,6 +926,9 @@ public final class ProtocolRoutes {
             entry((Class<? extends ProtocolPayload>) ServerMessages.PlayerDataCacheReloadCommandV1.class, PLAYER_DATA_CACHE_RELOAD_COMMAND_V1),
             entry((Class<? extends ProtocolPayload>) ServerMessages.ServerHeartbeatV1.class, SERVER_HEARTBEAT_V1),
             entry((Class<? extends ProtocolPayload>) SecurityMessages.PlayerPasswordResetCommandV1.class, PLAYER_PASSWORD_RESET_COMMAND_V1),
+            entry((Class<? extends ProtocolPayload>) SecurityMessages.SecurityPermissionsChangedV1.class, SECURITY_PERMISSIONS_CHANGED_V1),
+            entry((Class<? extends ProtocolPayload>) SecurityMessages.SecurityStaffSyncRequestV1.class, SECURITY_STAFF_SYNC_REQUEST_V1),
+            entry((Class<? extends ProtocolPayload>) SecurityMessages.SecurityStaffResetPasswordRequestV1.class, SECURITY_STAFF_RESET_PASSWORD_REQUEST_V1),
             entry((Class<? extends ProtocolPayload>) DiscordMessages.DiscordLinkCodeCreatedV1.class, DISCORD_LINK_CODE_CREATED_V1),
             entry((Class<? extends ProtocolPayload>) DiscordMessages.DiscordLinkConfirmCommandV1.class, DISCORD_LINK_CONFIRM_COMMAND_V1),
             entry((Class<? extends ProtocolPayload>) DiscordMessages.DiscordUnlinkCommandV1.class, DISCORD_UNLINK_COMMAND_V1),

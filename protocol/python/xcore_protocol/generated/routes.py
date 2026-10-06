@@ -37,6 +37,11 @@ from .server import (
 
 from .security import (
     PlayerPasswordResetCommandV1,
+    SecurityPermissionsChangedV1,
+    SecurityStaffSyncRequestV1,
+    SecurityStaffSyncResponseV1,
+    SecurityStaffResetPasswordRequestV1,
+    SecurityStaffResetPasswordResponseV1,
 )
 
 from .discord import (
@@ -407,6 +412,69 @@ PLAYER_PASSWORD_RESET_COMMAND_V1 = RouteDescriptor(
     idempotentConsumerRecommended=True,
     owner='player-session',
     response=None,
+)
+
+SECURITY_PERMISSIONS_CHANGED_V1 = RouteDescriptor(
+    family='security',
+    methodName='securityPermissionsChangedV1Route',
+    messageType='security.permissions.changed',
+    messageVersion=1,
+    payloadType=SecurityPermissionsChangedV1,
+    kind='event',
+    stream='xcore:evt:security:permissions-changed',
+    bindings={},
+    targetScope='broadcast',
+    ttlMs=300000,
+    replayable=True,
+    idempotentConsumerRecommended=True,
+    owner='permissions',
+    response=None,
+)
+
+SECURITY_STAFF_SYNC_REQUEST_V1 = RouteDescriptor(
+    family='security',
+    methodName='securityStaffSyncRequestV1Route',
+    messageType='security.staff.sync.request',
+    messageVersion=1,
+    payloadType=SecurityStaffSyncRequestV1,
+    kind='rpc-request',
+    stream='xcore:rpc:req:{server}',
+    bindings={'server': 'payload.server'},
+    targetScope='server',
+    ttlMs=10000,
+    replayable=False,
+    idempotentConsumerRecommended=True,
+    owner='permissions',
+    response=RouteResponseDescriptor(
+        messageType='security.staff.sync.response',
+        messageVersion=1,
+        payloadType=SecurityStaffSyncResponseV1,
+        stream='xcore:rpc:resp:{requester}',
+        bindings={'requester': 'rpc.requester'},
+    ),
+)
+
+SECURITY_STAFF_RESET_PASSWORD_REQUEST_V1 = RouteDescriptor(
+    family='security',
+    methodName='securityStaffResetPasswordRequestV1Route',
+    messageType='security.staff.reset-password.request',
+    messageVersion=1,
+    payloadType=SecurityStaffResetPasswordRequestV1,
+    kind='rpc-request',
+    stream='xcore:rpc:req:{server}',
+    bindings={'server': 'payload.server'},
+    targetScope='server',
+    ttlMs=10000,
+    replayable=False,
+    idempotentConsumerRecommended=True,
+    owner='permissions',
+    response=RouteResponseDescriptor(
+        messageType='security.staff.reset-password.response',
+        messageVersion=1,
+        payloadType=SecurityStaffResetPasswordResponseV1,
+        stream='xcore:rpc:resp:{requester}',
+        bindings={'requester': 'rpc.requester'},
+    ),
 )
 
 DISCORD_LINK_CODE_CREATED_V1 = RouteDescriptor(
@@ -877,6 +945,9 @@ ROUTES_BY_MESSAGE: dict[tuple[str, int], RouteDescriptor] = {
     ('player-data-cache.reload.command', 1): PLAYER_DATA_CACHE_RELOAD_COMMAND_V1,
     ('server.heartbeat', 1): SERVER_HEARTBEAT_V1,
     ('player.password-reset.command', 1): PLAYER_PASSWORD_RESET_COMMAND_V1,
+    ('security.permissions.changed', 1): SECURITY_PERMISSIONS_CHANGED_V1,
+    ('security.staff.sync.request', 1): SECURITY_STAFF_SYNC_REQUEST_V1,
+    ('security.staff.reset-password.request', 1): SECURITY_STAFF_RESET_PASSWORD_REQUEST_V1,
     ('discord.link-code-created', 1): DISCORD_LINK_CODE_CREATED_V1,
     ('discord.link.confirm.command', 1): DISCORD_LINK_CONFIRM_COMMAND_V1,
     ('discord.unlink.command', 1): DISCORD_UNLINK_COMMAND_V1,
@@ -925,6 +996,9 @@ __all__ = [
     "PLAYER_DATA_CACHE_RELOAD_COMMAND_V1",
     "SERVER_HEARTBEAT_V1",
     "PLAYER_PASSWORD_RESET_COMMAND_V1",
+    "SECURITY_PERMISSIONS_CHANGED_V1",
+    "SECURITY_STAFF_SYNC_REQUEST_V1",
+    "SECURITY_STAFF_RESET_PASSWORD_REQUEST_V1",
     "DISCORD_LINK_CODE_CREATED_V1",
     "DISCORD_LINK_CONFIRM_COMMAND_V1",
     "DISCORD_UNLINK_COMMAND_V1",

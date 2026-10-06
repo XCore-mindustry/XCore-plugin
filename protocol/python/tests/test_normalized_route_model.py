@@ -20,6 +20,13 @@ def test_load_shared_schema_normalizes_map_entry_fields() -> None:
     assert required_names == {"name", "fileName", "author"}
 
 
+def test_load_message_schema_normalizes_unique_items() -> None:
+    schema = load_message_schema(Path("spec/messages/security/security.staff.sync.request.v1.json"))
+
+    fields = {field.name: field for field in schema.fields}
+    assert fields["roleIds"].unique_items is True
+
+
 def test_load_message_schema_normalizes_identity_constants() -> None:
     schema = load_message_schema(Path("spec/messages/maps/maps.list.request.v1.json"))
 

@@ -12,3 +12,46 @@ messages:
     replayable: false
     idempotentConsumerRecommended: true
     owner: player-session
+  - messageType: security.permissions.changed
+    messageVersion: 1
+    kind: event
+    stream: xcore:evt:security:permissions-changed
+    targetScope: broadcast
+    ttlMs: 300000
+    replayable: true
+    idempotentConsumerRecommended: true
+    owner: permissions
+  - messageType: security.staff.sync.request
+    messageVersion: 1
+    kind: rpc-request
+    stream: xcore:rpc:req:{server}
+    bindings:
+      server: payload.server
+    targetScope: server
+    ttlMs: 10000
+    replayable: false
+    idempotentConsumerRecommended: true
+    owner: permissions
+    response:
+      messageType: security.staff.sync.response
+      messageVersion: 1
+      stream: xcore:rpc:resp:{requester}
+      bindings:
+        requester: rpc.requester
+  - messageType: security.staff.reset-password.request
+    messageVersion: 1
+    kind: rpc-request
+    stream: xcore:rpc:req:{server}
+    bindings:
+      server: payload.server
+    targetScope: server
+    ttlMs: 10000
+    replayable: false
+    idempotentConsumerRecommended: true
+    owner: permissions
+    response:
+      messageType: security.staff.reset-password.response
+      messageVersion: 1
+      stream: xcore:rpc:resp:{requester}
+      bindings:
+        requester: rpc.requester

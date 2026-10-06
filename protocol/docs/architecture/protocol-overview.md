@@ -18,6 +18,7 @@ Define the official communication model used between XCore components.
 - chat and heartbeat
 - telemetry snapshots
 - rating seasons (season events, season administration, prize administration and account-merge RPC)
+- security (password reset, permission changes, staff role sync and staff password reset RPC)
 
 ## Boundary
 Application repositories consume this protocol. They do not independently redefine canonical wire contracts.

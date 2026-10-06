@@ -28,6 +28,11 @@ from .server import (
 )
 from .security import (
     PlayerPasswordResetCommandV1,
+    SecurityPermissionsChangedV1,
+    SecurityStaffResetPasswordRequestV1,
+    SecurityStaffResetPasswordResponseV1,
+    SecurityStaffSyncRequestV1,
+    SecurityStaffSyncResponseV1,
 )
 from .discord import (
     DiscordAdminAccessChangedCommandV1,
@@ -105,6 +110,9 @@ from .routes import (
     PLAYER_DATA_CACHE_RELOAD_COMMAND_V1,
     SERVER_HEARTBEAT_V1,
     PLAYER_PASSWORD_RESET_COMMAND_V1,
+    SECURITY_PERMISSIONS_CHANGED_V1,
+    SECURITY_STAFF_SYNC_REQUEST_V1,
+    SECURITY_STAFF_RESET_PASSWORD_REQUEST_V1,
     DISCORD_LINK_CODE_CREATED_V1,
     DISCORD_LINK_CONFIRM_COMMAND_V1,
     DISCORD_UNLINK_COMMAND_V1,
@@ -201,6 +209,11 @@ __all__ = [
     "ServerActionV1",
     "ServerHeartbeatV1",
     "PlayerPasswordResetCommandV1",
+    "SecurityPermissionsChangedV1",
+    "SecurityStaffResetPasswordRequestV1",
+    "SecurityStaffResetPasswordResponseV1",
+    "SecurityStaffSyncRequestV1",
+    "SecurityStaffSyncResponseV1",
     "DiscordAdminAccessChangedCommandV1",
     "DiscordLinkCodeCreatedV1",
     "DiscordLinkConfirmCommandV1",
@@ -256,6 +269,9 @@ __all__ = [
     "PLAYER_DATA_CACHE_RELOAD_COMMAND_V1",
     "SERVER_HEARTBEAT_V1",
     "PLAYER_PASSWORD_RESET_COMMAND_V1",
+    "SECURITY_PERMISSIONS_CHANGED_V1",
+    "SECURITY_STAFF_SYNC_REQUEST_V1",
+    "SECURITY_STAFF_RESET_PASSWORD_REQUEST_V1",
     "DISCORD_LINK_CODE_CREATED_V1",
     "DISCORD_LINK_CONFIRM_COMMAND_V1",
     "DISCORD_UNLINK_COMMAND_V1",

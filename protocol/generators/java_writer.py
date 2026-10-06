@@ -625,6 +625,14 @@ def _field_validation_lines(field: NormalizedField, *, indent: str) -> list[str]
         if item_checks:
             lines.extend(item_checks)
         lines.append(f"{indent}}}")
+        if field.unique_items:
+            lines.extend(
+                [
+                    f"{indent}if ({field_name}.stream().distinct().count() != {field_name}.size()) {{",
+                    f'{indent}    throw new IllegalArgumentException("{field_name} must not contain duplicate items");',
+                    f"{indent}}}",
+                ]
+            )
         if field.required:
             return lines
         return [

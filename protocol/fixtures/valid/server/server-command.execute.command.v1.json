@@ -1,0 +1,10 @@
+{
+  "messageType": "server-command.execute.command",
+  "messageVersion": 1,
+  "command": "say hello",
+  "targetServers": [
+    "mini-pvp"
+  ],
+  "exclusion": false,
+  "sourceServer": "hub"
+}

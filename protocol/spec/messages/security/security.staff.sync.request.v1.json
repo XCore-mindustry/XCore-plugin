@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:xcore:protocol:messages:security:security.staff.sync.request:v1",
+  "title": "SecurityStaffSyncRequestV1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "messageType",
+    "messageVersion",
+    "server",
+    "operationId",
+    "playerUuid",
+    "discordId",
+    "roleIds",
+    "complete"
+  ],
+  "properties": {
+    "messageType": {
+      "const": "security.staff.sync.request"
+    },
+    "messageVersion": {
+      "const": 1
+    },
+    "server": {
+      "type": "string",
+      "minLength": 1
+    },
+    "operationId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "playerUuid": {
+      "type": "string",
+      "minLength": 1
+    },
+    "discordId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "roleIds": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "uniqueItems": true
+    },
+    "complete": {
+      "type": "boolean"
+    }
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "messageType": "security.staff.sync.request",
+  "messageVersion": 1,
+  "server": "mini-pvp",
+  "operationId": "5b1f0c9e-6f0a-4c1e-9a53-0d6a3c1f7e21",
+  "playerUuid": "uuid-1",
+  "discordId": "123456789012345678",
+  "roleIds": [
+    "111111111111111111",
+    "222222222222222222"
+  ],
+  "complete": true
+}

@@ -728,15 +728,16 @@ def _post_init_checks(field: NormalizedField) -> list[str]:
             f"        for item in {field_ref}:",
             f"            {item_validator}",
         ]
+        if field.unique_items:
+            body.extend(
+                [
+                    f"        if len(set({field_ref})) != len({field_ref}):",
+                    f"            raise ValueError(\"{field.name} must not contain duplicate items\")",
+                ]
+            )
         if field.required:
             return body
-        return [
-            f"        if {field_ref} is not None:",
-            f"            if not isinstance({field_ref}, tuple):",
-            f"                raise TypeError(\"{field.name} must be a tuple\")",
-            f"            for item in {field_ref}:",
-            f"                {item_validator}",
-        ]
+        return [f"        if {field_ref} is not None:", *(f"    {line}" for line in body)]
 
     if field.required:
         return [f"        {validator}"]
