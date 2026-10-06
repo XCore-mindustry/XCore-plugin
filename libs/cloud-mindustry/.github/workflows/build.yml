@@ -36,19 +36,20 @@ jobs:
         if: runner.os != 'Windows'
         run: chmod +x gradlew
 
+      - name: Build and test
+        run: ./gradlew build
+
+      # Consumers of main resolve <version>-SNAPSHOT, so only a push to main may replace it.
+      # Other branches, pull requests and manual runs build and upload artifacts only.
       - name: Resolve snapshot version
-        if: github.event_name != 'pull_request'
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && env.XCORE_USERNAME != '' && env.XCORE_PASSWORD != ''
         run: |
           VERSION=$(./gradlew :lib:getProjectVersion -q | tail -n 1)
           echo "XCORE_PUBLISH_VERSION=${VERSION}-SNAPSHOT" >> "$GITHUB_ENV"
 
-      - name: Build and test
-        if: github.event_name == 'pull_request' || env.XCORE_USERNAME == '' || env.XCORE_PASSWORD == ''
-        run: ./gradlew build
-
-      - name: Build, test and publish snapshot
-        if: github.event_name != 'pull_request' && env.XCORE_USERNAME != '' && env.XCORE_PASSWORD != ''
-        run: ./gradlew build :lib:publishMavenPublicationToXcoreRepositorySnapshotsRepository -PxcorePublishVersion="$XCORE_PUBLISH_VERSION"
+      - name: Publish snapshot
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && env.XCORE_USERNAME != '' && env.XCORE_PASSWORD != ''
+        run: ./gradlew :lib:publishMavenPublicationToXcoreRepositorySnapshotsRepository -PxcorePublishVersion="$XCORE_PUBLISH_VERSION"
         env:
           ORG_GRADLE_PROJECT_xcoreRepositorySnapshotsUsername: ${{ secrets.XCORE_USERNAME }}
           ORG_GRADLE_PROJECT_xcoreRepositorySnapshotsPassword: ${{ secrets.XCORE_PASSWORD }}
