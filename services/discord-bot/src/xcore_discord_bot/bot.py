@@ -128,6 +128,33 @@ class XCoreDiscordBot(commands.Bot):
         return self.container
 
     @property
+    def roles_mode(self) -> bool:
+        settings = getattr(self, "_settings", None)
+        return (
+            settings is not None
+            and getattr(settings, "permissions_mode", "legacy") == "roles"
+        )
+
+    async def on_member_update(
+        self, before: discord.Member, after: discord.Member
+    ) -> None:
+        if (
+            self.roles_mode
+            and after.guild.id == self._settings.discord_guild_id
+            and {role.id for role in before.roles} != {role.id for role in after.roles}
+        ):
+            daemon = self._ensure_container().staff_sync_daemon
+            assert daemon is not None
+            await daemon.sync_member(str(after.id))
+
+    async def on_raw_member_remove(self, payload: discord.RawMemberRemoveEvent) -> None:
+        # Raw events include removals for members absent from the member cache.
+        if self.roles_mode and payload.guild_id == self._settings.discord_guild_id:
+            daemon = self._ensure_container().staff_sync_daemon
+            assert daemon is not None
+            await daemon.sync_member(str(payload.user.id), removed=True)
+
+    @property
     def settings(self) -> Settings:
         return self._settings
 
@@ -316,6 +343,8 @@ class XCoreDiscordBot(commands.Bot):
     async def set_admin_access(
         self, *, uuid: str, is_admin: bool, admin_source: str
     ) -> tuple[bool, bool]:
+        if self.roles_mode:
+            raise RuntimeError("Direct admin writes are disabled in roles mode")
         return await self._store.set_admin_access(
             uuid=uuid, is_admin=is_admin, admin_source=admin_source
         )
@@ -352,6 +381,8 @@ class XCoreDiscordBot(commands.Bot):
         )
 
     async def reset_password(self, *, uuid: str) -> bool:
+        if self.roles_mode:
+            return await self._ensure_container().players.reset_password(uuid=uuid)
         return await self._store.reset_password(uuid=uuid)
 
     async def merge_player_accounts(
@@ -401,6 +432,8 @@ class XCoreDiscordBot(commands.Bot):
         )
 
     async def publish_player_password_reset(self, *, uuid_value: str) -> None:
+        if self.roles_mode:
+            return
         await self._bus.publish_player_password_reset(uuid_value=uuid_value)
 
     async def find_player_by_pid(self, pid: int) -> PlayerRecord | None:
@@ -564,6 +597,16 @@ class XCoreDiscordBot(commands.Bot):
         }
 
     async def reconcile_discord_admin_access(self) -> dict[str, object]:
+        if self.roles_mode:
+            daemon = self._ensure_container().staff_sync_daemon
+            assert daemon is not None
+            result = await daemon.reconcile()
+            return {
+                "applied": result["synced"],
+                "revoked": 0,
+                "discord_admins": 0,
+                **result,
+            }
         discord_admin_ids = await self.get_discord_admin_member_ids()
         linked_admin_players = await self.find_discord_admin_players()
 
@@ -880,7 +923,11 @@ class XCoreDiscordBot(commands.Bot):
 
         self._ensure_container().stream_supervisor.start()
         self._ensure_container().presence_daemon.start()
-        self._ensure_container().admin_sync_daemon.start()
+        container = self._ensure_container()
+        if container.staff_sync_daemon is not None:
+            container.staff_sync_daemon.start()
+        else:
+            container.admin_sync_daemon.start()
         self._ensure_container().rating_merge_daemon.start()
 
         await self._sync_application_commands()
@@ -979,6 +1026,8 @@ class XCoreDiscordBot(commands.Bot):
         if hasattr(self, "container"):
             self.container.presence_daemon.stop()
             self.container.admin_sync_daemon.stop()
+            if self.container.staff_sync_daemon is not None:
+                await self.container.staff_sync_daemon.stop()
             self.container.rating_merge_daemon.stop()
             await self.container.stream_supervisor.stop()
 

@@ -11,6 +11,8 @@ from .dto import MERGE_KEEP_PID_TARGET, PlayerRecord
 from .moderation_views import AccountMergeConfirmView, BanConfirmView, MuteUndoView
 from .player_pids import is_assigned, or_none
 from .presentation import build_merge_preview_embed, format_ban_expire_date
+from .redis_bus import RpcFailed
+from .retry import TRANSIENT_EXCEPTIONS
 
 if TYPE_CHECKING:
     from .bot import XCoreDiscordBot
@@ -19,6 +21,69 @@ if TYPE_CHECKING:
 MSG_NO_ACTIVE_BAN = "No active ban found"
 MSG_NO_ACTIVE_MUTE = "No active mute found"
 _EMBED_FIELD_VALUE_LIMIT = 1024
+
+
+def _staff_error_message(error: Exception) -> str:
+    if isinstance(error, RpcFailed):
+        if error.error_code == "NOT_FOUND":
+            return "The game account was not found or is no longer linked (NOT_FOUND)."
+        if error.error_code == "UNAVAILABLE":
+            return "The game server is unavailable or has roles switched off (UNAVAILABLE). Try again later."
+        return f"The game server rejected the request ({error.error_code})."
+    if isinstance(error, TimeoutError):
+        return "The game server timed out. The outcome is unknown; try again later."
+    if isinstance(error, discord.HTTPException):
+        return "Discord could not update or fetch the member's roles. Try again later."
+    return "Could not connect to the game server. Try again later."
+
+
+def _staff_sync_message(result: dict[str, object]) -> str:
+    text = f"Game role sync: {result['synced']} synced, {result['skipped_count']} skipped or failed."
+    if result.get("reason"):
+        text += f" {result['reason']}"
+    for code in result.get("errors", []):
+        if code == "NOT_FOUND":
+            text += " Some game accounts were not found or are no longer linked (NOT_FOUND)."
+        elif code == "UNAVAILABLE":
+            text += " The game server is unavailable or has roles switched off (UNAVAILABLE)."
+        elif code == "TIMEOUT_OR_CONNECTION":
+            text += " A game request timed out or could not connect; its outcome may be unknown."
+        else:
+            text += f" Game server error: {code}."
+    if (
+        result["skipped_count"]
+        and not result.get("errors")
+        and not result.get("reason")
+    ):
+        text += (
+            " A complete Discord snapshot or a valid linked account was unavailable."
+        )
+    return text
+
+
+async def _set_role_and_sync(
+    bot: XCoreDiscordBot,
+    interaction: Interaction,
+    discord_id: str,
+    *,
+    should_have_role: bool,
+) -> None:
+    await interaction.response.defer(thinking=True)
+    try:
+        await bot.set_discord_admin_role(
+            discord_id=discord_id,
+            should_have_role=should_have_role,
+            reason=f"/admin by {interaction.user.display_name}",
+        )
+        daemon = bot._ensure_container().staff_sync_daemon
+        assert daemon is not None
+        result = await daemon.sync_member(discord_id)
+    except (RpcFailed, discord.HTTPException, *TRANSIENT_EXCEPTIONS) as error:
+        await interaction.followup.send(
+            "Game role sync failed: " + _staff_error_message(error)
+        )
+        return
+    await interaction.followup.send(_staff_sync_message(result))
 
 
 def _split_embed_field_chunks(
@@ -502,6 +567,17 @@ async def cmd_remove_admin(
         )
         return
 
+    if getattr(bot, "roles_mode", False):
+        if not player.discord_id:
+            await interaction.response.send_message(
+                "Discord account is not linked.", ephemeral=True
+            )
+            return
+        await _set_role_and_sync(
+            bot, interaction, player.discord_id, should_have_role=False
+        )
+        return
+
     role_changed = False
     if player.discord_id:
         role_changed = await bot.set_discord_admin_role(
@@ -577,6 +653,17 @@ async def cmd_add_admin(
         await interaction.response.send_message(
             "Cannot grant admin: no linked Mindustry account has a UUID.",
             ephemeral=True,
+        )
+        return
+
+    if getattr(bot, "roles_mode", False):
+        if not player.discord_id:
+            await interaction.response.send_message(
+                "Discord account is not linked.", ephemeral=True
+            )
+            return
+        await _set_role_and_sync(
+            bot, interaction, player.discord_id, should_have_role=True
         )
         return
 
@@ -679,6 +766,19 @@ async def cmd_list_admins(bot: XCoreDiscordBot, interaction: Interaction) -> Non
 
 
 async def cmd_sync_admins(bot: XCoreDiscordBot, interaction: Interaction) -> None:
+    if getattr(bot, "roles_mode", False):
+        await interaction.response.defer(thinking=True)
+        daemon = bot._ensure_container().staff_sync_daemon
+        assert daemon is not None
+        try:
+            result = await daemon.reconcile()
+        except (RpcFailed, discord.HTTPException, *TRANSIENT_EXCEPTIONS) as error:
+            await interaction.followup.send(
+                "Game role sync failed: " + _staff_error_message(error)
+            )
+            return
+        await interaction.followup.send(_staff_sync_message(result))
+        return
     result = await bot.reconcile_discord_admin_access()
     try:
         applied_count = int(cast(int, result["applied"]))
@@ -746,10 +846,20 @@ async def cmd_reset_password(
     if uuid_value is None:
         return
 
-    changed = await bot.reset_password(uuid=uuid_value)
+    send_message = interaction.response.send_message
+    if getattr(bot, "roles_mode", False):
+        await interaction.response.defer(thinking=True)
+        send_message = interaction.followup.send
+    try:
+        changed = await bot.reset_password(uuid=uuid_value)
+    except (RpcFailed, *TRANSIENT_EXCEPTIONS) as error:
+        if not getattr(bot, "roles_mode", False):
+            raise
+        await send_message("Password reset failed: " + _staff_error_message(error))
+        return
     if changed:
         await bot.publish_player_password_reset(uuid_value=uuid_value)
-    await interaction.response.send_message(
+    await send_message(
         f"Password reset for `{bot._player_name(player)}`"
         if changed
         else "Password reset did not update any row"

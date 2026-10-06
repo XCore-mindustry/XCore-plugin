@@ -62,8 +62,52 @@ Optional:
 - `REDIS_GROUP_PREFIX` (default: `xcore:cg`)
 - `REDIS_CONSUMER_NAME` (default: `discord-bot`)
 - `RPC_TIMEOUT_MS` (default: `5000`)
+- `PERMISSIONS_MODE` (`legacy` by default, or `roles`)
+- `PERMISSIONS_CONFIG_PATH` (required in `roles`; path to the shared `permissions.toml`)
+- `PERMISSIONS_RPC_SERVER` (required in `roles`; exact name of the server answering security RPCs)
 - `MONGO_URI` (default: `mongodb://127.0.0.1:27017`)
 - `MONGO_DB_NAME` (default: `xcore`)
+
+## Permission roles rollout
+
+Leave `PERMISSIONS_MODE=legacy` until the plugin and shared role configuration are deployed.
+Legacy mode keeps the existing admin reconciliation and Mongo password reset behavior; the
+permissions file and RPC target are not required.
+
+To switch the bot, set `PERMISSIONS_MODE=roles`, `PERMISSIONS_CONFIG_PATH=/path/to/permissions.toml`,
+and `PERMISSIONS_RPC_SERVER=mini-pvp` (use your server's exact name). Set `DISCORD_GUILD_ID` to the
+file's `discord.guildId`; a mismatch or invalid/missing configuration fails startup. The target
+server must have roles enabled: a legacy server answers sync with `UNAVAILABLE`. Both security
+RPCs target this server; it writes shared grants and notifies the other servers.
+
+In roles mode, the bot sends only IDs listed in `discord.bindings`, with duplicates removed.
+It syncs role changes, confirmed account links (including DM links), confirmed unlinks for the
+old UUID, explicit guild departures, and all linked accounts every 10 minutes. Requests are
+serialized and limited to four attempts per second; RPC retries reuse the same `operationId`,
+while new sync attempts receive new IDs. Timeout/connection errors and `UNAVAILABLE` get one
+retry; other RPC errors are logged or reported to the command caller.
+
+Event syncs fetch the member and guild roles. Unknown Member (Discord code 10007) confirms
+absence and sends an empty role list; other API failures or missing configured roles send nothing.
+Each scheduled pass fetches guild roles once and exhausts the full member list before syncing.
+If any member-list page fails, the entire pass is skipped. Accounts absent from the complete
+snapshot receive an empty role list. Passes do not overlap, and event syncs can run between
+scheduled requests. A newer event takes precedence over an older scheduled snapshot.
+Expected RPC failures are summarized without per-account tracebacks; a target server with
+roles switched off stops the pass early. Explicit departure/unlink events need no member fetch.
+Enable the **Server Members Intent** for the bot in the Discord Developer Portal so role-change
+and departure events arrive.
+
+`/reset-password` uses `security.staff.reset-password.request`. The plugin clears staff credentials
+and remembered devices. The bot does not write `is_admin`, `admin_source`, `password_hash`, or
+`permission_grants` in roles mode, including during account merges. `/admin add|remove` continues
+to update the configured Discord admin role and then syncs the member's game roles; include that
+Discord role in the shared bindings if it should grant game access. `/admin sync` fetches all linked
+accounts. `/admin list` still displays legacy stored admin flags during rollout.
+
+Slash-command access remains controlled by the existing `DISCORD_*_ROLE_ID` settings. Game roles
+never grant bot command access or log a player into the game. Roll back by setting
+`PERMISSIONS_MODE=legacy`; the plugin's grants are left alone.
 
 ## Local setup
 

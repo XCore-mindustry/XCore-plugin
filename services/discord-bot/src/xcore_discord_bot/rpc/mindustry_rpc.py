@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import uuid
 from collections.abc import Awaitable, Callable
 from typing import Any, TypeVar
@@ -11,10 +12,17 @@ from xcore_protocol.generated.rating import (
     RatingSeasonRescheduleRequestV1Operation,
     RatingSeasonRescheduleResponseV1,
 )
+from xcore_protocol.generated.security import (
+    SecurityStaffResetPasswordRequestV1,
+    SecurityStaffResetPasswordResponseV1,
+    SecurityStaffSyncRequestV1,
+    SecurityStaffSyncResponseV1,
+)
 from xcore_protocol.generated.shared import SeasonPrizeV1
 
 from ..redis_bus import RedisBus, RpcFailed
 from ..registry import server_registry
+from ..retry import TRANSIENT_EXCEPTIONS
 
 T = TypeVar("T")
 
@@ -30,6 +38,56 @@ class NoLiveServerError(RuntimeError):
 class MindustryRpcClient:
     def __init__(self, bus: RedisBus) -> None:
         self._bus = bus
+
+    async def _retry_staff(self, call: Callable[[], Awaitable[T]]) -> T:
+        for attempt in range(2):
+            try:
+                return await call()
+            except RpcFailed as error:
+                if error.error_code != "UNAVAILABLE" or attempt == 1:
+                    raise
+            except TRANSIENT_EXCEPTIONS:
+                if attempt == 1:
+                    raise
+            await asyncio.sleep(0.5)
+        raise AssertionError("Staff RPC retry exhausted")
+
+    async def sync_staff(
+        self,
+        *,
+        server: str,
+        player_uuid: str,
+        discord_id: str,
+        role_ids: tuple[str, ...],
+        timeout_ms: int,
+    ) -> SecurityStaffSyncResponseV1:
+        request = SecurityStaffSyncRequestV1(
+            server=server,
+            operationId=self._request_id(),
+            playerUuid=player_uuid,
+            discordId=discord_id,
+            roleIds=tuple(sorted(set(role_ids))),
+            complete=True,
+        )
+        return await self._retry_staff(
+            lambda: self._bus.rpc_staff_sync(request, timeout_ms=timeout_ms)
+        )
+
+    async def reset_staff_password(
+        self,
+        *,
+        server: str,
+        player_uuid: str,
+        timeout_ms: int,
+    ) -> SecurityStaffResetPasswordResponseV1:
+        request = SecurityStaffResetPasswordRequestV1(
+            server=server,
+            operationId=self._request_id(),
+            playerUuid=player_uuid,
+        )
+        return await self._retry_staff(
+            lambda: self._bus.rpc_staff_reset_password(request, timeout_ms=timeout_ms)
+        )
 
     async def on_any_live_server(self, call: Callable[[str], Awaitable[T]]) -> T:
         """Runs ``call`` against a live server, trying the next one when a server stays

@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 5
 requires-python = ">=3.11"
 resolution-markers = [
     "python_full_version >= '3.13'",
@@ -1339,7 +1339,7 @@ requires-dist = [
     { name = "python-dotenv", specifier = ">=1.1.0" },
     { name = "redis", specifier = ">=5.2.1" },
     { name = "tenacity", specifier = ">=9.1.2" },
-    { name = "xcore-protocol", git = "https://github.com/XCore-mindustry/xcore-protocol.git?tag=v0.11.0" },
+    { name = "xcore-protocol", git = "https://github.com/XCore-mindustry/xcore-protocol.git?tag=v0.12.0" },
 ]
 
 [package.metadata.requires-dev]
@@ -1353,8 +1353,8 @@ dev = [
 
 [[package]]
 name = "xcore-protocol"
-version = "0.11.0"
-source = { git = "https://github.com/XCore-mindustry/xcore-protocol.git?tag=v0.11.0#2814251e63fd94739b4b13d6f7543cf41b8e2f2f" }
+version = "0.12.0"
+source = { git = "https://github.com/XCore-mindustry/xcore-protocol.git?tag=v0.12.0#2f82ee8fe7763afcbe0460df414b7efc8d2b4800" }
 dependencies = [
     { name = "jsonschema" },
     { name = "pyyaml" },

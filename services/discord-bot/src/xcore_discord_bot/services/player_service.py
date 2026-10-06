@@ -6,6 +6,8 @@ from typing import Any
 from ..dto import MERGE_KEEP_PID_TARGET, AccountMergeResult, PlayerRecord
 from ..mongo_store import MongoStore
 from ..redis_bus import RedisBus
+from ..rpc.mindustry_rpc import MindustryRpcClient
+from ..settings import Settings
 from .rating_service import RatingService
 
 
@@ -15,10 +17,14 @@ class PlayerService:
         store: MongoStore,
         bus: RedisBus,
         ratings: RatingService | None = None,
+        settings: Settings | None = None,
+        rpc: MindustryRpcClient | None = None,
     ) -> None:
         self._store = store
         self._bus = bus
         self._ratings = ratings
+        self._settings = settings
+        self._rpc = rpc
 
     async def autocomplete_players(self, current: str) -> list[PlayerRecord]:
         return await self._store.autocomplete_players(current)
@@ -92,6 +98,14 @@ class PlayerService:
         return await self._bus.get_discord_link_code(code)
 
     async def reset_password(self, *, uuid: str) -> bool:
+        if self._settings is not None and self._settings.permissions_mode == "roles":
+            assert self._rpc is not None
+            response = await self._rpc.reset_staff_password(
+                server=self._settings.permissions_rpc_server,
+                player_uuid=uuid,
+                timeout_ms=self._settings.rpc_timeout_ms,
+            )
+            return response.changed
         updated = await self._store.reset_password(uuid=uuid)
         if updated:
             await self.publish_player_password_reset(uuid_value=uuid)
@@ -128,6 +142,8 @@ class PlayerService:
         )
 
     async def publish_player_password_reset(self, *, uuid_value: str) -> None:
+        if self._settings is not None and self._settings.permissions_mode == "roles":
+            return
         await self._bus.publish_player_password_reset(uuid_value=uuid_value)
 
     async def publish_discord_link_confirm(

@@ -84,7 +84,9 @@ async def cmd_link(bot: XCoreDiscordBot, interaction: Interaction, code: str) ->
 
     is_admin = False
     try:
-        if hasattr(bot, "get_discord_admin_member_ids"):
+        if not getattr(bot, "roles_mode", False) and hasattr(
+            bot, "get_discord_admin_member_ids"
+        ):
             discord_admin_ids = await bot.get_discord_admin_member_ids()
             if discord_id in discord_admin_ids:
                 is_admin = True

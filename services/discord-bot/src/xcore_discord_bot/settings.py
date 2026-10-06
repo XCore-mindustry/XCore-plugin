@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Literal
+
 from pydantic import Field, ValidationError, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -9,6 +11,16 @@ class Settings(BaseSettings):
         extra="ignore",
         populate_by_name=True,
         frozen=True,
+    )
+
+    permissions_mode: Literal["legacy", "roles"] = Field(
+        default="legacy", validation_alias="PERMISSIONS_MODE"
+    )
+    permissions_config_path: str = Field(
+        default="", validation_alias="PERMISSIONS_CONFIG_PATH"
+    )
+    permissions_rpc_server: str = Field(
+        default="", validation_alias="PERMISSIONS_RPC_SERVER"
     )
 
     discord_token: str = Field(validation_alias="DISCORD_BOT_TOKEN")
@@ -190,6 +202,15 @@ class Settings(BaseSettings):
 
         if self.admin_reconcile_interval_seconds <= 0:
             raise ValueError("ADMIN_RECONCILE_INTERVAL_SECONDS must be > 0")
+
+        if self.permissions_mode == "roles":
+            if not self.permissions_rpc_server.strip():
+                raise ValueError("PERMISSIONS_RPC_SERVER is required in roles mode")
+            from .permissions_config import load_discord_permissions
+
+            load_discord_permissions(
+                self.permissions_config_path, self.discord_guild_id
+            )
 
         return self
 

@@ -176,6 +176,17 @@ class MongoStore:
             PlayerDoc.model_validate(raw).model_dump(mode="python")
         )
 
+    async def find_linked_players(self) -> list[PlayerRecord]:
+        cursor = self._db_required()["players"].find(
+            {"discord_id": {"$type": "string", "$nin": ["", None]}}
+        )
+        return [
+            player_record_from_doc(
+                PlayerDoc.model_validate(row).model_dump(mode="python")
+            )
+            for row in await cursor.to_list(length=None)
+        ]
+
     async def find_players_by_discord_id(self, discord_id: str) -> list[PlayerRecord]:
         cursor = (
             self._db_required()["players"]
@@ -652,6 +663,8 @@ class MongoStore:
     async def set_admin_access(
         self, *, uuid: str, is_admin: bool, admin_source: str
     ) -> tuple[bool, bool]:
+        if self._settings.permissions_mode == "roles":
+            raise RuntimeError("Direct admin writes are disabled in roles mode")
         result = await self._db_required()["players"].update_one(
             {"uuid": uuid},
             {"$set": {"is_admin": is_admin, "admin_source": admin_source}},
@@ -659,6 +672,8 @@ class MongoStore:
         return result.matched_count > 0, result.modified_count > 0
 
     async def reset_password(self, *, uuid: str) -> bool:
+        if self._settings.permissions_mode == "roles":
+            raise RuntimeError("Direct password writes are disabled in roles mode")
         result = await self._db_required()["players"].update_one(
             {"uuid": uuid},
             {"$set": {"password_hash": ""}},
@@ -905,6 +920,10 @@ class MongoStore:
             "is_admin": is_admin,
             "admin_source": admin_source,
         }
+
+        if self._settings.permissions_mode == "roles":
+            target_updates.pop("is_admin", None)
+            target_updates.pop("admin_source", None)
 
         # Update target
         await db["players"].update_one(

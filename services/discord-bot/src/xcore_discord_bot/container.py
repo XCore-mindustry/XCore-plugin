@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 from .daemons.admin_sync_daemon import AdminSyncDaemon
 from .daemons.presence_daemon import PresenceDaemon
 from .daemons.rating_merge_daemon import RatingMergeDaemon
+from .daemons.staff_sync_daemon import StaffSyncDaemon
 from .daemons.stream_supervisor import StreamSupervisor
 from .game_stats import GameStatsStore
 from .mongo_store import MongoStore
@@ -38,6 +39,7 @@ class ServiceContainer:
     admin_sync_daemon: AdminSyncDaemon
     rating_merge_daemon: RatingMergeDaemon
     stream_supervisor: StreamSupervisor
+    staff_sync_daemon: StaffSyncDaemon | None = None
 
     @classmethod
     def create(
@@ -56,7 +58,9 @@ class ServiceContainer:
         rating_service = RatingService(
             store=ratings, rpc=rpc, timeout_ms=settings.rpc_timeout_ms
         )
-        players = PlayerService(store=store, bus=bus, ratings=rating_service)
+        players = PlayerService(
+            store=store, bus=bus, ratings=rating_service, settings=settings, rpc=rpc
+        )
         moderation = ModerationService(store=store, bus=bus)
         maps = MapService(rpc=rpc)
 
@@ -82,4 +86,9 @@ class ServiceContainer:
             admin_sync_daemon=admin_sync_daemon,
             rating_merge_daemon=rating_merge_daemon,
             stream_supervisor=stream_supervisor,
+            staff_sync_daemon=(
+                StaffSyncDaemon(bot, store, rpc, settings)
+                if settings.permissions_mode == "roles"
+                else None
+            ),
         )
