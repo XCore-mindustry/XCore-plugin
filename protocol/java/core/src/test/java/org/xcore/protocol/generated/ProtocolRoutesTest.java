@@ -18,7 +18,7 @@ class ProtocolRoutesTest {
 
     @Test
     void aggregateCatalogIncludesAllRoutes() {
-        assertEquals(41, ProtocolRoutes.ROUTES_BY_MESSAGE.size(), "expected 41 total routes");
+        assertEquals(44, ProtocolRoutes.ROUTES_BY_MESSAGE.size(), "expected 44 total routes");
         assertNotNull(ProtocolRoutes.ROUTES_BY_MESSAGE.get(new ProtocolRoutes.MessageKey("chat.message", 1)));
         assertNotNull(ProtocolRoutes.ROUTES_BY_MESSAGE.get(new ProtocolRoutes.MessageKey("maps.list.request", 1)));
         assertNotNull(ProtocolRoutes.ROUTES_BY_MESSAGE.get(new ProtocolRoutes.MessageKey("discord.link.status-changed", 1)));
@@ -26,6 +26,9 @@ class ProtocolRoutesTest {
         assertNotNull(ProtocolRoutes.ROUTES_BY_MESSAGE.get(new ProtocolRoutes.MessageKey("sentinel.subnet-rules.invalidated", 1)));
         assertNotNull(ProtocolRoutes.ROUTES_BY_MESSAGE.get(new ProtocolRoutes.MessageKey("sentinel.subnet-sweep.command", 1)));
         assertNotNull(ProtocolRoutes.ROUTES_BY_MESSAGE.get(new ProtocolRoutes.MessageKey("rating.season.ended", 1)));
+        assertNotNull(ProtocolRoutes.ROUTES_BY_MESSAGE.get(new ProtocolRoutes.MessageKey("security.permissions.changed", 1)));
+        assertNotNull(ProtocolRoutes.ROUTES_BY_MESSAGE.get(new ProtocolRoutes.MessageKey("security.staff.sync.request", 1)));
+        assertNotNull(ProtocolRoutes.ROUTES_BY_MESSAGE.get(new ProtocolRoutes.MessageKey("security.staff.reset-password.request", 1)));
     }
 
     @Test

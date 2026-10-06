@@ -64,3 +64,17 @@ def test_generated_route_registry_includes_server_messages() -> None:
     assert ROUTES_BY_MESSAGE[("server.heartbeat", 1)].stream == "xcore:evt:server:heartbeat"
     assert ROUTES_BY_MESSAGE[("server-command.execute.command", 1)].stream == "xcore:cmd:execute-command:broadcast"
     assert ROUTES_BY_MESSAGE[("player-data-cache.reload.command", 1)].stream == "xcore:cmd:reload-cache:{server}"
+
+
+def test_server_command_carries_its_source_server_when_known() -> None:
+    with_source = load_json(fixtures_root() / "valid" / "server" / "server-command.execute.command.v1.json")
+    without_source = load_json(
+        fixtures_root() / "valid" / "server" / "server-command.execute.command.v1.no-source.json"
+    )
+
+    assert ServerCommandExecuteCommandV1.from_payload(with_source).sourceServer == "hub"
+    assert ServerCommandExecuteCommandV1.from_payload(with_source).to_payload() == with_source
+
+    legacy = ServerCommandExecuteCommandV1.from_payload(without_source)
+    assert legacy.sourceServer is None
+    assert legacy.to_payload() == without_source

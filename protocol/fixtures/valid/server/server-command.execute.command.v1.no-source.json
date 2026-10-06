@@ -1,0 +1,7 @@
+{
+  "messageType": "server-command.execute.command",
+  "messageVersion": 1,
+  "command": "say hello",
+  "targetServers": [],
+  "exclusion": false
+}

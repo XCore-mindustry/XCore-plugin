@@ -4,22 +4,36 @@ from xcore_protocol.paths import fixtures_root, spec_root
 from xcore_protocol.schema_validation import assert_invalid, assert_valid
 
 
+def _schema(message: str):
+    return spec_root() / "messages" / "security" / f"{message}.v1.json"
+
+
 VALID_CASES = [
-    (
-        spec_root() / "messages" / "security" / "player.password-reset.command.v1.json",
-        fixtures_root() / "valid" / "security" / "player.password-reset.command.v1.json",
-    ),
+    (_schema(message), fixtures_root() / "valid" / "security" / f"{fixture}.json")
+    for message, fixture in (
+        ("player.password-reset.command", "player.password-reset.command.v1"),
+        ("security.permissions.changed", "security.permissions.changed.v1"),
+        ("security.permissions.changed", "security.permissions.changed.v1.minimal"),
+        ("security.staff.sync.request", "security.staff.sync.request.v1"),
+        ("security.staff.sync.request", "security.staff.sync.request.v1.left-guild"),
+        ("security.staff.sync.response", "security.staff.sync.response.v1"),
+        ("security.staff.reset-password.request", "security.staff.reset-password.request.v1"),
+        ("security.staff.reset-password.response", "security.staff.reset-password.response.v1"),
+    )
 ]
 
 
 INVALID_CASES = [
-    (
-        spec_root() / "messages" / "security" / "player.password-reset.command.v1.json",
-        fixtures_root()
-        / "invalid"
-        / "security"
-        / "player.password-reset.command.v1.legacy-uuid.json",
-    ),
+    (_schema(message), fixtures_root() / "invalid" / "security" / f"{message}.v1.{case}.json")
+    for message, case in (
+        ("player.password-reset.command", "legacy-uuid"),
+        ("security.permissions.changed", "negative-revision"),
+        ("security.permissions.changed", "legacy-uuid"),
+        ("security.staff.sync.request", "missing-complete"),
+        ("security.staff.sync.request", "duplicate-role"),
+        ("security.staff.sync.response", "missing-revision"),
+        ("security.staff.reset-password.request", "missing-operation-id"),
+    )
 ]
 
 
@@ -34,11 +48,9 @@ def test_invalid_security_fixtures_fail() -> None:
         assert error is not None
 
 
-def test_security_fixture_inventory_exists() -> None:
+def test_every_security_fixture_is_covered() -> None:
     valid_dir = fixtures_root() / "valid" / "security"
     invalid_dir = fixtures_root() / "invalid" / "security"
 
-    assert valid_dir.exists()
-    assert invalid_dir.exists()
-    assert any(valid_dir.iterdir())
-    assert any(invalid_dir.iterdir())
+    assert {path for _, path in VALID_CASES} == set(valid_dir.iterdir())
+    assert {path for _, path in INVALID_CASES} == set(invalid_dir.iterdir())

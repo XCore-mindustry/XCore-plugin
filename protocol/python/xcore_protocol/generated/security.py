@@ -144,6 +144,248 @@ class PlayerPasswordResetCommandV1:
         payload['server'] = self.server
         return payload
 
+@dataclass(frozen=True, slots=True)
+class SecurityPermissionsChangedV1:
+    playerUuid: str
+    revision: int
+    sourceServer: str | None = None
+    occurredAt: str | None = None
+
+    MESSAGE_TYPE: ClassVar[str] = 'security.permissions.changed'
+    MESSAGE_VERSION: ClassVar[int] = 1
+    def __post_init__(self) -> None:
+        _expect_str(self.playerUuid, 'playerUuid')
+        _expect_int(self.revision, 'revision')
+        if self.sourceServer is not None:
+            _expect_str(self.sourceServer, 'sourceServer')
+        if self.occurredAt is not None:
+            _expect_str(self.occurredAt, 'occurredAt')
+
+    @classmethod
+    def from_payload(cls, payload: Mapping[str, Any]) -> "SecurityPermissionsChangedV1":
+        mapping = _expect_mapping(payload, "SecurityPermissionsChangedV1")
+        _expect_exact_keys(
+            mapping,
+            required=frozenset(('messageType', 'messageVersion', 'playerUuid', 'revision')),
+            allowed=frozenset(('messageType', 'messageVersion', 'playerUuid', 'revision', 'sourceServer', 'occurredAt')),
+            model_name="SecurityPermissionsChangedV1",
+        )
+        if mapping['messageType'] != cls.MESSAGE_TYPE:
+            raise ValueError('messageType' + " must equal " + repr(cls.MESSAGE_TYPE))
+        if mapping['messageVersion'] != cls.MESSAGE_VERSION:
+            raise ValueError('messageVersion' + " must equal " + repr(cls.MESSAGE_VERSION))
+        return cls(
+            playerUuid=_expect_str(mapping['playerUuid'], 'playerUuid'),
+            revision=_expect_int(mapping['revision'], 'revision'),
+            sourceServer=(_expect_str(mapping['sourceServer'], 'sourceServer') if 'sourceServer' in mapping else None),
+            occurredAt=(_expect_str(mapping['occurredAt'], 'occurredAt') if 'occurredAt' in mapping else None),
+        )
+
+    def to_payload(self) -> dict[str, Any]:
+        payload: dict[str, Any] = {
+            'messageType': self.MESSAGE_TYPE,
+            'messageVersion': self.MESSAGE_VERSION,
+        }
+        payload['playerUuid'] = self.playerUuid
+        payload['revision'] = self.revision
+        if self.sourceServer is not None:
+            payload['sourceServer'] = self.sourceServer
+        if self.occurredAt is not None:
+            payload['occurredAt'] = self.occurredAt
+        return payload
+
+@dataclass(frozen=True, slots=True)
+class SecurityStaffResetPasswordRequestV1:
+    server: str
+    operationId: str
+    playerUuid: str
+
+    MESSAGE_TYPE: ClassVar[str] = 'security.staff.reset-password.request'
+    MESSAGE_VERSION: ClassVar[int] = 1
+    def __post_init__(self) -> None:
+        _expect_str(self.server, 'server')
+        _expect_str(self.operationId, 'operationId')
+        _expect_str(self.playerUuid, 'playerUuid')
+
+    @classmethod
+    def from_payload(cls, payload: Mapping[str, Any]) -> "SecurityStaffResetPasswordRequestV1":
+        mapping = _expect_mapping(payload, "SecurityStaffResetPasswordRequestV1")
+        _expect_exact_keys(
+            mapping,
+            required=frozenset(('messageType', 'messageVersion', 'server', 'operationId', 'playerUuid')),
+            allowed=frozenset(('messageType', 'messageVersion', 'server', 'operationId', 'playerUuid')),
+            model_name="SecurityStaffResetPasswordRequestV1",
+        )
+        if mapping['messageType'] != cls.MESSAGE_TYPE:
+            raise ValueError('messageType' + " must equal " + repr(cls.MESSAGE_TYPE))
+        if mapping['messageVersion'] != cls.MESSAGE_VERSION:
+            raise ValueError('messageVersion' + " must equal " + repr(cls.MESSAGE_VERSION))
+        return cls(
+            server=_expect_str(mapping['server'], 'server'),
+            operationId=_expect_str(mapping['operationId'], 'operationId'),
+            playerUuid=_expect_str(mapping['playerUuid'], 'playerUuid'),
+        )
+
+    def to_payload(self) -> dict[str, Any]:
+        payload: dict[str, Any] = {
+            'messageType': self.MESSAGE_TYPE,
+            'messageVersion': self.MESSAGE_VERSION,
+        }
+        payload['server'] = self.server
+        payload['operationId'] = self.operationId
+        payload['playerUuid'] = self.playerUuid
+        return payload
+
+@dataclass(frozen=True, slots=True)
+class SecurityStaffResetPasswordResponseV1:
+    server: str
+    operationId: str
+    changed: bool
+
+    MESSAGE_TYPE: ClassVar[str] = 'security.staff.reset-password.response'
+    MESSAGE_VERSION: ClassVar[int] = 1
+    def __post_init__(self) -> None:
+        _expect_str(self.server, 'server')
+        _expect_str(self.operationId, 'operationId')
+        _expect_bool(self.changed, 'changed')
+
+    @classmethod
+    def from_payload(cls, payload: Mapping[str, Any]) -> "SecurityStaffResetPasswordResponseV1":
+        mapping = _expect_mapping(payload, "SecurityStaffResetPasswordResponseV1")
+        _expect_exact_keys(
+            mapping,
+            required=frozenset(('messageType', 'messageVersion', 'server', 'operationId', 'changed')),
+            allowed=frozenset(('messageType', 'messageVersion', 'server', 'operationId', 'changed')),
+            model_name="SecurityStaffResetPasswordResponseV1",
+        )
+        if mapping['messageType'] != cls.MESSAGE_TYPE:
+            raise ValueError('messageType' + " must equal " + repr(cls.MESSAGE_TYPE))
+        if mapping['messageVersion'] != cls.MESSAGE_VERSION:
+            raise ValueError('messageVersion' + " must equal " + repr(cls.MESSAGE_VERSION))
+        return cls(
+            server=_expect_str(mapping['server'], 'server'),
+            operationId=_expect_str(mapping['operationId'], 'operationId'),
+            changed=_expect_bool(mapping['changed'], 'changed'),
+        )
+
+    def to_payload(self) -> dict[str, Any]:
+        payload: dict[str, Any] = {
+            'messageType': self.MESSAGE_TYPE,
+            'messageVersion': self.MESSAGE_VERSION,
+        }
+        payload['server'] = self.server
+        payload['operationId'] = self.operationId
+        payload['changed'] = self.changed
+        return payload
+
+@dataclass(frozen=True, slots=True)
+class SecurityStaffSyncRequestV1:
+    server: str
+    operationId: str
+    playerUuid: str
+    discordId: str
+    roleIds: tuple[str, ...]
+    complete: bool
+
+    MESSAGE_TYPE: ClassVar[str] = 'security.staff.sync.request'
+    MESSAGE_VERSION: ClassVar[int] = 1
+    def __post_init__(self) -> None:
+        _expect_str(self.server, 'server')
+        _expect_str(self.operationId, 'operationId')
+        _expect_str(self.playerUuid, 'playerUuid')
+        _expect_str(self.discordId, 'discordId')
+        if not isinstance(self.roleIds, tuple):
+            raise TypeError("roleIds must be a tuple")
+        for item in self.roleIds:
+            _expect_str(item, 'roleIds[]')
+        _expect_bool(self.complete, 'complete')
+
+    @classmethod
+    def from_payload(cls, payload: Mapping[str, Any]) -> "SecurityStaffSyncRequestV1":
+        mapping = _expect_mapping(payload, "SecurityStaffSyncRequestV1")
+        _expect_exact_keys(
+            mapping,
+            required=frozenset(('messageType', 'messageVersion', 'server', 'operationId', 'playerUuid', 'discordId', 'roleIds', 'complete')),
+            allowed=frozenset(('messageType', 'messageVersion', 'server', 'operationId', 'playerUuid', 'discordId', 'roleIds', 'complete')),
+            model_name="SecurityStaffSyncRequestV1",
+        )
+        if mapping['messageType'] != cls.MESSAGE_TYPE:
+            raise ValueError('messageType' + " must equal " + repr(cls.MESSAGE_TYPE))
+        if mapping['messageVersion'] != cls.MESSAGE_VERSION:
+            raise ValueError('messageVersion' + " must equal " + repr(cls.MESSAGE_VERSION))
+        return cls(
+            server=_expect_str(mapping['server'], 'server'),
+            operationId=_expect_str(mapping['operationId'], 'operationId'),
+            playerUuid=_expect_str(mapping['playerUuid'], 'playerUuid'),
+            discordId=_expect_str(mapping['discordId'], 'discordId'),
+            roleIds=tuple(_expect_str(item, 'roleIds[]') for item in _expect_list(mapping['roleIds'], 'roleIds')),
+            complete=_expect_bool(mapping['complete'], 'complete'),
+        )
+
+    def to_payload(self) -> dict[str, Any]:
+        payload: dict[str, Any] = {
+            'messageType': self.MESSAGE_TYPE,
+            'messageVersion': self.MESSAGE_VERSION,
+        }
+        payload['server'] = self.server
+        payload['operationId'] = self.operationId
+        payload['playerUuid'] = self.playerUuid
+        payload['discordId'] = self.discordId
+        payload['roleIds'] = [item for item in self.roleIds]
+        payload['complete'] = self.complete
+        return payload
+
+@dataclass(frozen=True, slots=True)
+class SecurityStaffSyncResponseV1:
+    server: str
+    operationId: str
+    revision: int
+    changed: bool
+
+    MESSAGE_TYPE: ClassVar[str] = 'security.staff.sync.response'
+    MESSAGE_VERSION: ClassVar[int] = 1
+    def __post_init__(self) -> None:
+        _expect_str(self.server, 'server')
+        _expect_str(self.operationId, 'operationId')
+        _expect_int(self.revision, 'revision')
+        _expect_bool(self.changed, 'changed')
+
+    @classmethod
+    def from_payload(cls, payload: Mapping[str, Any]) -> "SecurityStaffSyncResponseV1":
+        mapping = _expect_mapping(payload, "SecurityStaffSyncResponseV1")
+        _expect_exact_keys(
+            mapping,
+            required=frozenset(('messageType', 'messageVersion', 'server', 'operationId', 'revision', 'changed')),
+            allowed=frozenset(('messageType', 'messageVersion', 'server', 'operationId', 'revision', 'changed')),
+            model_name="SecurityStaffSyncResponseV1",
+        )
+        if mapping['messageType'] != cls.MESSAGE_TYPE:
+            raise ValueError('messageType' + " must equal " + repr(cls.MESSAGE_TYPE))
+        if mapping['messageVersion'] != cls.MESSAGE_VERSION:
+            raise ValueError('messageVersion' + " must equal " + repr(cls.MESSAGE_VERSION))
+        return cls(
+            server=_expect_str(mapping['server'], 'server'),
+            operationId=_expect_str(mapping['operationId'], 'operationId'),
+            revision=_expect_int(mapping['revision'], 'revision'),
+            changed=_expect_bool(mapping['changed'], 'changed'),
+        )
+
+    def to_payload(self) -> dict[str, Any]:
+        payload: dict[str, Any] = {
+            'messageType': self.MESSAGE_TYPE,
+            'messageVersion': self.MESSAGE_VERSION,
+        }
+        payload['server'] = self.server
+        payload['operationId'] = self.operationId
+        payload['revision'] = self.revision
+        payload['changed'] = self.changed
+        return payload
+
 __all__ = [
     "PlayerPasswordResetCommandV1",
+    "SecurityPermissionsChangedV1",
+    "SecurityStaffResetPasswordRequestV1",
+    "SecurityStaffResetPasswordResponseV1",
+    "SecurityStaffSyncRequestV1",
+    "SecurityStaffSyncResponseV1",
 ]

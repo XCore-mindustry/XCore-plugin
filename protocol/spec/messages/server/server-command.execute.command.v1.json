@@ -25,6 +25,10 @@
     },
     "exclusion": {
       "type": "boolean"
+    },
+    "sourceServer": {
+      "type": "string",
+      "minLength": 1
     }
   }
 }

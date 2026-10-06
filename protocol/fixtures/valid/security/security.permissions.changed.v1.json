@@ -1,0 +1,8 @@
+{
+  "messageType": "security.permissions.changed",
+  "messageVersion": 1,
+  "playerUuid": "uuid-1",
+  "revision": 7,
+  "sourceServer": "mini-pvp",
+  "occurredAt": "2026-10-06T12:00:00Z"
+}
