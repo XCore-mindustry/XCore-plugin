@@ -210,11 +210,44 @@ console by IP.
 - The argument is one token, so a name with spaces has to be given as a UUID or `#id`.
 - Suggestions list online players only.
 
+### 11. Threads
+Mindustry's game state belongs to one thread. Each manager has a `SimulationExecutor` for it:
+`MindustryCommandManager.create(handler)` uses the application's main thread and runs the whole command
+pipeline (parsing, suggestions, handlers, error messages) there. A command issued from that thread, as Arc
+does, is still handled synchronously.
+
+Selectors and the `PlayerInfo` parser refuse to run anywhere else: they throw instead of waiting for the
+game thread. If your handler continues on a worker thread, go back before touching game state:
+
+```java
+CompletableFuture.supplyAsync(this::loadFromDatabase)
+    .thenAcceptAsync(data -> target.resolve(sender).sendMessage(data), mgr.simulationExecutor());
+```
+
+To use your own coordinator, pass the executor to the constructor as well:
+
+```java
+var simulation = SimulationExecutor.forApplication(Core.app);
+var mgr = new MindustryCommandManager<>(handler,
+        ExecutionCoordinator.coordinatorFor(simulation), senderMapper, simulation);
+```
+
+A coordinator that moves the pipeline to other threads is still allowed for work that does not touch
+game state, but selector and `Player` arguments will fail under it.
+
 ## Migrating from 0.3
 
 - `registerMindustryAnnotations(annotationParser)` registers every annotation of the library.
   `registerSelectorAnnotations` still registers the selector annotations only, so `@PlayerOnly` has no
   effect until you switch to the new method.
+- **Breaking:** resolving a selector off the game thread no longer blocks until the game thread has done
+  it; it throws `IllegalStateException`. Hop through `mgr.simulationExecutor()` first (see *Threads*).
+- **Breaking:** `MindustryCommandManager.create` now coordinates the whole pipeline on the game thread.
+  The three-argument constructor still takes your coordinator as is.
+- `SelectorResolutionBridge` is deprecated, unused by the library and will be removed in the next release.
+  The game thread is no longer guessed from thread names or set by whoever constructs a manager last.
+- `SpatialSelectorEngine` keeps no state between calls; `new SpatialSelectorEngine(simulationExecutor)`
+  binds it to a thread explicitly.
 
 ## Migrating from 0.2
 
