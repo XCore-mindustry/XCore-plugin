@@ -25,6 +25,7 @@ import org.xcore.cloud.mindustry.selector.parser.TargetSelectorParsers;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -137,6 +138,39 @@ class SimulationExecutorTest {
     }
 
     @Test
+    @DisplayName("A command that has failed before Cloud attaches its error handling is still answered on the simulation thread")
+    void alreadyFailedCommand_isAnsweredOnOwner() {
+        // Cloud handles the failure on whichever thread finds the future completed; a coordinator
+        // that returns a finished future makes that the issuing thread every time.
+        ExecutionCoordinator<MindustrySender> failing = new ExecutionCoordinator<>() {
+            @Override
+            public CompletableFuture<org.incendo.cloud.execution.CommandResult<MindustrySender>> coordinateExecution(
+                    org.incendo.cloud.CommandTree<MindustrySender> tree,
+                    org.incendo.cloud.context.CommandContext<MindustrySender> context,
+                    org.incendo.cloud.context.CommandInput input) {
+                return CompletableFuture.failedFuture(new IllegalStateException("already failed"));
+            }
+
+            @Override
+            public <S extends org.incendo.cloud.suggestion.Suggestion> CompletableFuture<org.incendo.cloud.suggestion.Suggestions<MindustrySender, S>> coordinateSuggestions(
+                    org.incendo.cloud.CommandTree<MindustrySender> tree,
+                    org.incendo.cloud.context.CommandContext<MindustrySender> context,
+                    org.incendo.cloud.context.CommandInput input,
+                    org.incendo.cloud.suggestion.SuggestionMapper<S> mapper) {
+                throw new UnsupportedOperationException();
+            }
+        };
+        var manager = manager(loop.simulation, failing);
+        manager.command(manager.commandBuilder("who").handler(ctx -> {}));
+
+        assertThrows(Exception.class,
+                () -> manager.commandExecutor().executeCommand(console(), "who").get(10, TimeUnit.SECONDS));
+
+        assertEquals(1, messages.size(), messages.toString());
+        assertEquals(List.of(loop.thread), threads);
+    }
+
+    @Test
     @DisplayName("Resolving a selector from another thread fails instead of blocking")
     void workerResolve_fails() {
         var manager = manager(loop.simulation, ExecutionCoordinator.simpleCoordinator());
@@ -148,23 +182,25 @@ class SimulationExecutorTest {
     }
 
     @Test
-    @DisplayName("A command pipeline left on another thread reports an error and does not run the handler")
+    @DisplayName("A coordinator that moves the pipeline to another thread gets an error, and the handler does not run")
     void workerPipeline_doesNotTouchGameState() throws Exception {
-        var manager = manager(loop.simulation, ExecutionCoordinator.simpleCoordinator());
-        loop.run(() -> addPlayer("alice"));
-        List<String> executed = new ArrayList<>();
-        manager.command(manager.commandBuilder("who")
-                .required("target", PlayerSelectorAdapter.playerParser(manager, manager.selectorEngine()))
-                .handler(ctx -> executed.add("who")));
-
+        Loop worker = new Loop();
         try {
-            manager.commandExecutor().executeCommand(console(), "who alice").join();
-        } catch (Exception ignored) {
-            // Reported to the sender.
-        }
+            var manager = manager(loop.simulation, ExecutionCoordinator.coordinatorFor(worker.queue));
+            loop.run(() -> addPlayer("alice"));
+            List<String> executed = new CopyOnWriteArrayList<>();
+            manager.command(manager.commandBuilder("who")
+                    .required("target", PlayerSelectorAdapter.playerParser(manager, manager.selectorEngine()))
+                    .handler(ctx -> executed.add("who")));
 
-        assertEquals(List.of(), executed);
-        assertEquals(1, messages.size(), messages.toString());
+            assertThrows(Exception.class,
+                    () -> manager.commandExecutor().executeCommand(console(), "who alice").get(10, TimeUnit.SECONDS));
+
+            assertEquals(List.of(), executed);
+            assertEquals(1, messages.size(), messages.toString());
+        } finally {
+            worker.queue.shutdownNow();
+        }
     }
 
     @Test
