@@ -4,6 +4,7 @@ import io.avaje.inject.PostConstruct;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import mindustry.gen.Player;
+import org.xcore.plugin.permission.PermissionNodes;
 import org.xcore.plugin.permission.TargetHierarchy;
 import org.xcore.plugin.config.TomlSecretsConfig;
 import org.xcore.plugin.model.BanData;
@@ -196,29 +197,29 @@ public class BanMenu extends Menu {
             return;
         }
 
-        var targetData = hierarchy.enabled() ? sessionService.getOrLoadFromDb(state.targetPid) : null;
-        if (targetData != null && !hierarchy.mayTarget(session, targetData.uuid)) {
+        // Asked again here, not only when the menu was opened: roles may have changed since.
+        hierarchy.whenAllowed(session, state.targetUuid, PermissionNodes.MODERATION_BAN, () -> {
+            var result = moderationService.banById(state.targetPid, session.player.name, session.data.discordId, state.reason, state.duration, true);
+            session.clearDraft(BanFlowState.class);
+
+            if (!result.isSuccess() || result.getData().isEmpty()) {
+                session.locale().send("error-player-not-found", args());
+                context.close();
+                return;
+            }
+
+            BanData ban = result.getData().get();
+            sessionService.broadcast("tempban-player-banned", args(
+                    "adminName", session.player.coloredName(),
+                    "playerName", state.targetColoredName
+            ));
+            session.locale().send("commands-ban-success", args("nickname", ban.name));
+            context.close();
+        }, () -> {
             session.clearDraft(BanFlowState.class);
             session.locale().send(TargetHierarchy.DENIED_KEY, args());
             context.close();
-            return;
-        }
-        var result = moderationService.banById(state.targetPid, session.player.name, session.data.discordId, state.reason, state.duration, true);
-        session.clearDraft(BanFlowState.class);
-
-        if (!result.isSuccess() || result.getData().isEmpty()) {
-            session.locale().send("error-player-not-found", args());
-            context.close();
-            return;
-        }
-
-        BanData ban = result.getData().get();
-        sessionService.broadcast("tempban-player-banned", args(
-                "adminName", session.player.coloredName(),
-                "playerName", state.targetColoredName
-        ));
-        session.locale().send("commands-ban-success", args("nickname", ban.name));
-        context.close();
+        });
     }
 
     private void cancel(MenuRenderContext<BanFlowState> context) {

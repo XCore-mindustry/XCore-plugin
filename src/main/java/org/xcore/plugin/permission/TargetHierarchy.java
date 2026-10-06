@@ -10,6 +10,8 @@ import org.xcore.plugin.permission.grant.PermissionGrants;
 import org.xcore.plugin.session.Session;
 import org.xcore.plugin.session.SessionService;
 
+import java.util.concurrent.Callable;
+
 /**
  * Who may act on whom: only somebody whose roles weigh strictly more than the target's.
  * Without roles there is no hierarchy and everything here says yes.
@@ -51,8 +53,8 @@ public class TargetHierarchy {
 
     /**
      * Whether {@code actor} may act on the player with this uuid. Reads the store when the
-     * target is not online here, so keep it off the game thread unless the caller is doing
-     * I/O there anyway.
+     * target is not online here, so never call it on the game thread: that is what
+     * {@code whenAllowed} is for.
      */
     public boolean mayTarget(Session actor, String targetUuid) {
         if (!permissions.rolesEnabled()) {
@@ -76,6 +78,15 @@ public class TargetHierarchy {
      * {@code denied} otherwise. Game thread; the store is read elsewhere when it has to be.
      */
     public void whenAllowed(Session actor, String targetUuid, Runnable action, Runnable denied) {
+        whenAllowed(actor, targetUuid, null, action, denied);
+    }
+
+    /**
+     * As {@link #whenAllowed(Session, String, Runnable, Runnable)}, for an action that needs
+     * {@code node}: if the store had to be read, the node is asked for again afterwards, since
+     * the actor may have lost it in the meantime.
+     */
+    public void whenAllowed(Session actor, String targetUuid, String node, Runnable action, Runnable denied) {
         if (!permissions.rolesEnabled()) {
             action.run();
             return;
@@ -89,14 +100,59 @@ public class TargetHierarchy {
             (mayTarget(actor, targetUuid) ? action : denied).run();
             return;
         }
-        async.supply(() -> grants.weightOf(targetUuid)).thenMain((weight, error) -> {
-            if (error != null) {
-                PLog.err("[Permissions] Could not read the weight of @: @", targetUuid, error.getMessage());
-                denied.run();
-                return;
-            }
-            // Checked again here: the actor's own roles may have changed while the store was read.
-            (permissions.canTarget(actor, weight) ? action : denied).run();
-        });
+        async.supply(() -> new Target(targetUuid, grants.weightOf(targetUuid)))
+                .thenMain((read, error) -> decide(actor, read, error, node, action, denied));
+    }
+
+    /**
+     * As {@link #whenAllowed(Session, String, String, Runnable, Runnable)} when finding out who
+     * the target is takes I/O as well. {@code targetUuid} runs off the game thread and returns
+     * null for nobody; {@code action} then runs, to report the unknown target the way it
+     * always did.
+     */
+    public void whenAllowed(Session actor, Callable<String> targetUuid, String node, Runnable action, Runnable denied) {
+        if (!permissions.rolesEnabled()) {
+            action.run();
+            return;
+        }
+        if (actor == null || actor.player == null) {
+            denied.run();
+            return;
+        }
+        async.supply(() -> {
+            String uuid = targetUuid.call();
+            return uuid == null ? null : new Target(uuid, grants.weightOf(uuid));
+        }).thenMain((read, error) -> decide(actor, read, error, node, action, denied));
+    }
+
+    /** A target and what its roles weighed in the store. */
+    private record Target(String uuid, int weight) {
+    }
+
+    /** Game thread, after the store was read: everything that may have changed meanwhile is asked again. */
+    private void decide(Session actor, Target read, Throwable error, String node, Runnable action, Runnable denied) {
+        if (actor.player == null || sessions.get().get(actor.player.uuid()) != actor) {
+            // The actor left while the store was read; there is nobody to act for or to tell.
+            return;
+        }
+        if (error != null) {
+            PLog.err("[Permissions] Could not read the roles of a target for @: @", actor.player.uuid(), error.getMessage());
+            denied.run();
+            return;
+        }
+        if (node != null && !permissions.has(actor, node)) {
+            denied.run();
+            return;
+        }
+        if (read == null || read.uuid().equals(actor.player.uuid())) {
+            action.run();
+            return;
+        }
+        // The target may have joined meanwhile; what they hold here then counts, not the store.
+        Session target = sessions.get().get(read.uuid());
+        boolean allowed = target != null && target.player != null
+                ? permissions.canTarget(actor.player, target.player)
+                : permissions.canTarget(actor, read.weight());
+        (allowed ? action : denied).run();
     }
 }

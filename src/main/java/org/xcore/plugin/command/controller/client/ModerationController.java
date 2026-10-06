@@ -72,14 +72,15 @@ public class ModerationController implements CloudClientController {
         Localization local = session.locale();
 
         var actor = ModerationActor.of(sender.actor());
-        if (outranked(session, target)) return;
-        var result = moderationService.banByTarget(target, actor.name(), actor.discordId(), reason, period, true);
+        guarded(session, target, PermissionNodes.MODERATION_BAN, () -> {
+            var result = moderationService.banByTarget(target, actor.name(), actor.discordId(), reason, period, true);
 
-        if (result.isSuccess()) {
-            local.send("commands-ban-success", args("nickname", result.getData().get().name));
-        } else {
-            sendModerationFailure(local, result);
-        }
+            if (result.isSuccess()) {
+                local.send("commands-ban-success", args("nickname", result.getData().get().name));
+            } else {
+                sendModerationFailure(local, result);
+            }
+        });
     }
 
     @Permission(PermissionNodes.MODERATION_UNBAN)
@@ -90,18 +91,19 @@ public class ModerationController implements CloudClientController {
         Localization local = session.locale();
 
         var actor = ModerationActor.of(sender.actor());
-        if (outranked(session, target)) return;
-        var result = moderationService.unbanByTarget(target, actor.name(), actor.discordId());
+        guarded(session, target, PermissionNodes.MODERATION_UNBAN, () -> {
+            var result = moderationService.unbanByTarget(target, actor.name(), actor.discordId());
 
-        if (result.isSuccess()) {
-            var pData = result.getData().get();
-            local.send("commands-unban-success", args(
-                    "nickname", pData.nickname,
-                    "pid", pData.pid
-            ));
-        } else {
-            sendModerationFailure(local, result);
-        }
+            if (result.isSuccess()) {
+                var pData = result.getData().get();
+                local.send("commands-unban-success", args(
+                        "nickname", pData.nickname,
+                        "pid", pData.pid
+                ));
+            } else {
+                sendModerationFailure(local, result);
+            }
+        });
     }
 
     @Permission(PermissionNodes.MODERATION_MUTE)
@@ -115,23 +117,24 @@ public class ModerationController implements CloudClientController {
         Localization local = session.locale();
 
         var actor = ModerationActor.of(sender.actor());
-        if (outranked(session, target)) return;
-        var result = moderationService.muteByTarget(target, actor.name(), actor.discordId(), reason, period);
+        guarded(session, target, PermissionNodes.MODERATION_MUTE, () -> {
+            var result = moderationService.muteByTarget(target, actor.name(), actor.discordId(), reason, period);
 
-        if (result.isSuccess()) {
-            var mute = result.getData().get();
-            local.send("commands-mute-success", args("nickname", mute.name));
+            if (result.isSuccess()) {
+                var mute = result.getData().get();
+                local.send("commands-mute-success", args("nickname", mute.name));
 
-            Player p = find.playerByUuid(mute.uuid);
-            if (p != null) {
-                Session s = sessionService.get(p.uuid());
-                if (s != null) {
-                    s.locale().send("you-are-muted-by", SecurityService.muteMessageArgs(sender.player().coloredName(), mute.reason, period));
+                Player p = find.playerByUuid(mute.uuid);
+                if (p != null) {
+                    Session s = sessionService.get(p.uuid());
+                    if (s != null) {
+                        s.locale().send("you-are-muted-by", SecurityService.muteMessageArgs(sender.player().coloredName(), mute.reason, period));
+                    }
                 }
+            } else {
+                sendModerationFailure(local, result);
             }
-        } else {
-            sendModerationFailure(local, result);
-        }
+        });
     }
 
     @Permission(PermissionNodes.MODERATION_UNMUTE)
@@ -142,15 +145,16 @@ public class ModerationController implements CloudClientController {
         Localization local = session.locale();
 
         var actor = ModerationActor.of(sender.actor());
-        if (outranked(session, target)) return;
-        var result = moderationService.unmuteByTarget(target, actor.name(), actor.discordId());
+        guarded(session, target, PermissionNodes.MODERATION_UNMUTE, () -> {
+            var result = moderationService.unmuteByTarget(target, actor.name(), actor.discordId());
 
-        if (result.isSuccess()) {
-            local.send("commands-unmute-success",
-                    args("nickname", result.getData().get().nickname));
-        } else {
-            sendModerationFailure(local, result);
-        }
+            if (result.isSuccess()) {
+                local.send("commands-unmute-success",
+                        args("nickname", result.getData().get().nickname));
+            } else {
+                sendModerationFailure(local, result);
+            }
+        });
     }
 
     @Permission(PermissionNodes.MODERATION_AUDIT_OTHERS)
@@ -173,17 +177,16 @@ public class ModerationController implements CloudClientController {
 
         auditHistoryMenu.history(session.data.uuid, targetData);
     }
-    /** Tells the actor and returns true when the target's roles do not weigh less than theirs. */
-    private boolean outranked(Session actor, String target) {
-        if (!hierarchy.enabled()) {
-            return false;
-        }
-        PlayerData targetData = moderationService.resolvePlayerData(target);
-        if (targetData == null || hierarchy.mayTarget(actor, targetData.uuid)) {
-            return false;
-        }
-        actor.locale().send(TargetHierarchy.DENIED_KEY, args());
-        return true;
+    /**
+     * Runs {@code action} unless the target's roles do not weigh less than the actor's, which
+     * the actor is told. Finding the target and their roles takes the store, so with roles on
+     * the action runs a little later, back on the game thread.
+     */
+    private void guarded(Session actor, String target, String node, Runnable action) {
+        hierarchy.whenAllowed(actor, () -> {
+            PlayerData targetData = moderationService.resolvePlayerData(target);
+            return targetData == null ? null : targetData.uuid;
+        }, node, action, () -> actor.locale().send(TargetHierarchy.DENIED_KEY, args()));
     }
 
     private Session resolveActiveSession(XCoreSender sender) {

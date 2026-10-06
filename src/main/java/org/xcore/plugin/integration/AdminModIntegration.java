@@ -113,35 +113,34 @@ public class AdminModIntegration {
                 return;
             }
 
-            if (!hierarchy.mayTarget(session, targetData.uuid)) {
+            hierarchy.whenAllowed(session, targetData.uuid, PermissionNodes.MODERATION_BAN, () -> {
+                var duration = moderationService.parsePeriod(req.duration, TimeUnit.DAYS);
+
+                if (duration == null) {
+                    session.locale().send("error-wrong-period-format", args());
+                    Call.clientPacketReliable(player.con, "give_ban_data", content);
+                    return;
+                }
+
+                var result = moderationService.banPlayer(targetData, player.name, session.data.discordId, req.reason, duration, true);
+            
+                if (!result.isSuccess() || result.getData().isEmpty()) {
+                    session.locale().send("error-processing-request", args());
+                    Call.clientPacketReliable(player.con, "give_ban_data", content);
+                    return;
+                }
+
+                clearPendingVanillaBan(targetData.uuid);
+                sessionService.broadcast("tempban-player-banned", args(
+                        "adminName", player.coloredName(),
+                        "playerName", req.name != null ? req.name : targetData.nickname
+                ));
+                PLog.info("@ banned @ (@) for @", player.plainName(), targetData.nickname, targetData.uuid, req.duration);
+                session.locale().send("commands-ban-success", args("nickname", targetData.nickname));
+            }, () -> {
                 session.locale().send(TargetHierarchy.DENIED_KEY, args());
                 Call.clientPacketReliable(player.con, "give_ban_data", content);
-                return;
-            }
-
-            var duration = moderationService.parsePeriod(req.duration, TimeUnit.DAYS);
-
-            if (duration == null) {
-                session.locale().send("error-wrong-period-format", args());
-                Call.clientPacketReliable(player.con, "give_ban_data", content);
-                return;
-            }
-
-            var result = moderationService.banPlayer(targetData, player.name, session.data.discordId, req.reason, duration, true);
-            
-            if (!result.isSuccess() || result.getData().isEmpty()) {
-                session.locale().send("error-processing-request", args());
-                Call.clientPacketReliable(player.con, "give_ban_data", content);
-                return;
-            }
-
-            clearPendingVanillaBan(targetData.uuid);
-            sessionService.broadcast("tempban-player-banned", args(
-                    "adminName", player.coloredName(),
-                    "playerName", req.name != null ? req.name : targetData.nickname
-            ));
-            PLog.info("@ banned @ (@) for @", player.plainName(), targetData.nickname, targetData.uuid, req.duration);
-            session.locale().send("commands-ban-success", args("nickname", targetData.nickname));
+            });
         });
 
         netServer.addPacketHandler("cancel_ban_data", (player, content) -> {
