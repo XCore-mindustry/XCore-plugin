@@ -77,7 +77,7 @@ class CloudCommandPipelineIntegrationTest {
         );
         manager = factory.createManager(handler);
         parser = new AnnotationParser<>(manager, XCoreSender.class);
-        manager.registerSelectorAnnotations(parser);
+        manager.registerMindustryAnnotations(parser);
 
         DisabledCommandPolicy policy = new DisabledCommandPolicy(config);
         CloudGuardConfigurer guardConfigurer = new CloudGuardConfigurer(

@@ -79,7 +79,7 @@ class CloudExceptionHandlingIntegrationTest {
         });
 
         parser = new AnnotationParser<>(manager, XCoreSender.class);
-        manager.registerSelectorAnnotations(parser);
+        manager.registerMindustryAnnotations(parser);
     }
 
     private List<String> run(String input) {
