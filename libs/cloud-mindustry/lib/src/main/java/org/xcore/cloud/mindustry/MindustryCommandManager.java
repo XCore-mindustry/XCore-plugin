@@ -7,6 +7,7 @@ import mindustry.game.Team;
 import mindustry.gen.Player;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.incendo.cloud.CloudCapability;
+import org.incendo.cloud.Command;
 import org.incendo.cloud.CommandManager;
 import org.incendo.cloud.SenderMapper;
 import org.incendo.cloud.annotations.AnnotationParser;
@@ -20,10 +21,13 @@ import org.incendo.cloud.exception.handling.ExceptionHandler;
 import org.incendo.cloud.exception.parsing.ParserException;
 import org.incendo.cloud.execution.ExecutionCoordinator;
 import org.incendo.cloud.internal.CommandRegistrationHandler;
+import org.incendo.cloud.key.CloudKey;
 import org.incendo.cloud.parser.ParserDescriptor;
 import org.incendo.cloud.parser.ParserParameter;
 import org.incendo.cloud.parser.ParserParameters;
 import org.incendo.cloud.services.PipelineException;
+import org.xcore.cloud.mindustry.annotation.PlayerOnly;
+import org.xcore.cloud.mindustry.exception.PlayerRequiredException;
 import org.xcore.cloud.mindustry.parser.MindustryCaptionProvider;
 import org.xcore.cloud.mindustry.parser.MindustryParsers;
 import org.xcore.cloud.mindustry.parser.TeamParser;
@@ -53,6 +57,12 @@ public class MindustryCommandManager<C> extends CommandManager<C> {
     public static final ParserParameter<Boolean> ALL_TEAMS =
             new ParserParameter<>("mindustry:all_teams", TypeToken.get(Boolean.class));
 
+    /**
+     * Command meta that restricts a command to in-game players; set by {@link PlayerOnly} or with
+     * {@code builder.meta(MindustryCommandManager.PLAYER_ONLY, true)}.
+     */
+    public static final CloudKey<Boolean> PLAYER_ONLY = CloudKey.of("mindustry:player_only", Boolean.class);
+
     private final SenderMapper<MindustrySender, C> senderMapper;
     private final SpatialSelectorEngine selectorEngine = new SpatialSelectorEngine();
     private ConflictStrategy conflictStrategy = ConflictStrategy.SKIP;
@@ -78,6 +88,7 @@ public class MindustryCommandManager<C> extends CommandManager<C> {
         registerDefaultCaptions();
         registerDefaultParsers();
         registerSelectorGuard();
+        registerPlayerOnlyGuard();
         registerDefaultExceptionHandlers();
     }
 
@@ -166,6 +177,26 @@ public class MindustryCommandManager<C> extends CommandManager<C> {
     }
 
     /**
+     * Wires every annotation of this library into {@code annotationParser}: the selector
+     * annotations of {@link #registerSelectorAnnotations} and {@link PlayerOnly}.
+     */
+    public void registerMindustryAnnotations(AnnotationParser<C> annotationParser) {
+        registerSelectorAnnotations(annotationParser);
+
+        annotationParser.registerBuilderModifier(
+                PlayerOnly.class,
+                (annotation, builder) -> builder.meta(PLAYER_ONLY, true)
+        );
+    }
+
+    /**
+     * @return whether {@code command} is restricted to in-game players
+     */
+    public boolean isPlayerOnly(Command<C> command) {
+        return command.commandMeta().getOrDefault(PLAYER_ONLY, false);
+    }
+
+    /**
      * Sends an error message produced by one of the default exception handlers. The message is
      * the formatted caption; Mindustry color tags are allowed.
      */
@@ -216,6 +247,17 @@ public class MindustryCommandManager<C> extends CommandManager<C> {
     }
 
     /**
+     * Runs once the command is known, so input that does not parse reports its parse error first.
+     */
+    private void registerPlayerOnlyGuard() {
+        registerCommandPostProcessor(ctx -> {
+            if (isPlayerOnly(ctx.command()) && !senderMapper.reverse(ctx.commandContext().sender()).isPlayer()) {
+                throw new PlayerRequiredException();
+            }
+        });
+    }
+
+    /**
      * Cloud's default handlers (captioned messages, unexpected failures logged and never shown
      * verbatim), plus:
      * <ul>
@@ -224,7 +266,7 @@ public class MindustryCommandManager<C> extends CommandManager<C> {
      *     and command handlers;</li>
      *     <li>argument failures caused by a {@link ParserException} or a {@link SelectorException}
      *     show that exception's caption;</li>
-     *     <li>{@link SelectorException}s show their caption.</li>
+     *     <li>{@link SelectorException}s and {@link PlayerRequiredException} show their caption.</li>
      * </ul>
      * Handlers registered later for the same type take precedence over these.
      */
@@ -268,6 +310,10 @@ public class MindustryCommandManager<C> extends CommandManager<C> {
 
         exceptionController().registerHandler(SelectorException.class, ctx ->
                 sendCaption(ctx.context(), ctx.exception().caption(), ctx.exception().captionVariables())
+        );
+
+        exceptionController().registerHandler(PlayerRequiredException.class, ctx ->
+                sendCaption(ctx.context(), ctx.exception().caption())
         );
     }
 

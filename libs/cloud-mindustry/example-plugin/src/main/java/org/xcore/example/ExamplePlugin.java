@@ -78,14 +78,11 @@ public class ExamplePlugin extends Plugin {
         // /spawn <type> <team> - Team and content types parse out of the box
         mgr.command(mgr.commandBuilder("spawn")
                 .permission("example.spawn")
+                .meta(MindustryCommandManager.PLAYER_ONLY, true)
                 .required("type", MindustryParsers.unitType())
                 .required("team", MindustryParsers.team())
                 .handler(ctx -> {
                     var player = ctx.sender().player();
-                    if (player == null) {
-                        ctx.sender().sendMessage("Only players can spawn units.");
-                        return;
-                    }
                     mindustry.type.UnitType type = ctx.get("type");
                     mindustry.game.Team team = ctx.get("team");
                     type.spawn(team, player.x, player.y);
