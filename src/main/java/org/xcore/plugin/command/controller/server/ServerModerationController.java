@@ -72,7 +72,7 @@ public class ServerModerationController implements CloudServerController {
             }
         }
 
-        var result = moderationService.tempBanByUuidOrIp(uuid, ip, name, period, reason, "console", null);
+        var result = moderationService.tempBanByUuidOrIp(uuid, ip, name, period, reason, sender.actor().auditName(), null);
 
         if (result.isSuccess()) {
             var ban = result.getData().get();
@@ -106,7 +106,7 @@ public class ServerModerationController implements CloudServerController {
             }
         }
 
-        var result = moderationService.tempUnban(uuid, ip, "console", null);
+        var result = moderationService.tempUnban(uuid, ip, sender.actor().auditName(), null);
         if (result.isSuccess()) {
             Log.info("Unbanned: UUID=@ / IP=@", uuid, ip);
         } else {
@@ -141,7 +141,7 @@ public class ServerModerationController implements CloudServerController {
             return;
         }
 
-        var result = moderationService.muteById(data.pid, "console", null, reason, period);
+        var result = moderationService.muteById(data.pid, sender.actor().auditName(), null, reason, period);
 
         if (result.isSuccess()) {
             Log.info("Muted @ for @ minutes.", data.nickname, period.toMinutes());
@@ -162,7 +162,7 @@ public class ServerModerationController implements CloudServerController {
             return;
         }
 
-        var result = moderationService.unmuteById(data.pid, "console", null);
+        var result = moderationService.unmuteById(data.pid, sender.actor().auditName(), null);
         if (result.isSuccess()) {
             Log.info("Unmuted @", data.nickname);
         } else {

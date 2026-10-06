@@ -1335,3 +1335,32 @@ error-username-empty = Имя пользователя не может быть 
 error-username-length = Длина имени пользователя должна быть от 4 до 32 символов!
 error-username-invalid-chars = Имя пользователя может содержать только латинские буквы, цифры и знак подчеркивания!
 error-username-taken = Это имя пользователя уже занято другим игроком!
+
+# ==============================================================================
+# Permission nodes
+# ==============================================================================
+permission-mindustry-admin = Встроенное меню администратора игры и пропуск волн
+permission-xcore-moderation-mute = Выдавать мут
+permission-xcore-moderation-unmute = Снимать мут
+permission-xcore-moderation-kick = Кикать игроков
+permission-xcore-moderation-ban = Банить игроков
+permission-xcore-moderation-unban = Снимать баны
+permission-xcore-moderation-audit-others = Смотреть историю модерации других игроков
+permission-xcore-moderation-votekick-immune = Нельзя выгнать голосованием
+permission-xcore-admin-tp = Телепортировать игроков
+permission-xcore-admin-broadcast = Отправлять объявления всем
+permission-xcore-admin-kill = Убивать юнитов и игроков
+permission-xcore-admin-heal = Лечить юнитов и игроков
+permission-xcore-admin-set-team = Менять команду игрока
+permission-xcore-maps-force-rtv = Менять карту без голосования
+permission-xcore-maps-force-vnw = Пропускать волну без голосования
+permission-xcore-votes-cancel = Отменять идущее голосование
+permission-xcore-events-create-major = Создавать крупные ивенты
+permission-xcore-events-edit-others = Редактировать чужие ивенты
+permission-xcore-events-force-vote = Запускать ивент без голосования
+permission-xcore-events-stop = Останавливать идущий ивент
+permission-xcore-players-settings-others = Менять настройки других игроков
+permission-xcore-players-private-info = Видеть приватные данные игроков, например IP-адреса
+permission-xcore-bypass-playtime = Не учитывать требования к наигранному времени в командах
+permission-xcore-permissions-inspect = Смотреть, у кого какие права
+permission-xcore-permissions-manage = Менять роли и права

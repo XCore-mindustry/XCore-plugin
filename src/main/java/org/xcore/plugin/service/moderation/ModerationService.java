@@ -19,6 +19,7 @@ import org.xcore.plugin.model.BanData;
 import org.xcore.plugin.model.MuteData;
 import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.model.PlayerPids;
+import org.xcore.plugin.permission.Actor;
 import org.xcore.plugin.service.FindService;
 import org.xcore.plugin.service.NetworkService;
 import org.xcore.plugin.service.SecurityService;
@@ -40,6 +41,7 @@ import static mindustry.Vars.netServer;
 @Singleton
 public class ModerationService {
     public static final String PLAYER_NOT_FOUND_MESSAGE = "Player not found";
+    public static final String MISSING_ACTOR_MESSAGE = "Moderation actor is missing";
     private static final String DEFAULT_REASON = "Not Specified";
     private static final String UNKNOWN_PLAYER_NAME = "Unknown";
     private static final String EMPTY_DISCORD_ID = "";
@@ -102,7 +104,10 @@ public class ModerationService {
         if (command == null) {
             return ModerationResult.failure("Invalid ban command");
         }
-        ModerationActor actor = command.actor() != null ? command.actor() : ModerationActor.CONSOLE;
+        ModerationActor actor = command.actor();
+        if (actor == null) {
+            return ModerationResult.failure(MISSING_ACTOR_MESSAGE);
+        }
         if (PlayerPids.isAssigned(command.targetId())) {
             return banById(command.targetId(), actor.name(), actor.discordId(),
                     command.reason(), command.duration(), command.kickOnline());
@@ -118,7 +123,10 @@ public class ModerationService {
         if (command == null) {
             return ModerationResult.failure("Invalid unban command");
         }
-        ModerationActor actor = command.actor() != null ? command.actor() : ModerationActor.CONSOLE;
+        ModerationActor actor = command.actor();
+        if (actor == null) {
+            return ModerationResult.failure(MISSING_ACTOR_MESSAGE);
+        }
         if (PlayerPids.isAssigned(command.targetId())) {
             return unbanById(command.targetId(), actor.name(), actor.discordId());
         }
@@ -136,7 +144,10 @@ public class ModerationService {
         if (command == null) {
             return ModerationResult.failure("Invalid mute command");
         }
-        ModerationActor actor = command.actor() != null ? command.actor() : ModerationActor.CONSOLE;
+        ModerationActor actor = command.actor();
+        if (actor == null) {
+            return ModerationResult.failure(MISSING_ACTOR_MESSAGE);
+        }
         Integer pid = resolveTargetPid(command.targetId(), command.targetUuid());
         if (pid != null) {
             return muteById(pid, actor.name(), actor.discordId(), command.reason(), command.duration());
@@ -151,7 +162,10 @@ public class ModerationService {
         if (command == null) {
             return ModerationResult.failure("Invalid unmute command");
         }
-        ModerationActor actor = command.actor() != null ? command.actor() : ModerationActor.CONSOLE;
+        ModerationActor actor = command.actor();
+        if (actor == null) {
+            return ModerationResult.failure(MISSING_ACTOR_MESSAGE);
+        }
         Integer pid = resolveTargetPid(command.targetId(), command.targetUuid());
         if (pid != null) {
             return unmuteById(pid, actor.name(), actor.discordId());
@@ -504,6 +518,14 @@ public class ModerationService {
                     .serverId(null)
                     .build();
         }
+        if (isRemoteConsole(normalizedName)) {
+            return AuditActor.builder()
+                    .type(AuditActorType.SERVER_CONSOLE)
+                    .id(normalizedName)
+                    .nameSnapshot(normalizedName)
+                    .serverId(normalizedName.substring(Actor.RemoteConsole.AUDIT_PREFIX.length()))
+                    .build();
+        }
 
         return AuditActor.builder()
                 .type(AuditActorType.PLAYER_ADMIN)
@@ -513,8 +535,14 @@ public class ModerationService {
                 .build();
     }
 
+    /** A console command relayed from another server; see {@link Actor.RemoteConsole}. */
+    private static boolean isRemoteConsole(String actorName) {
+        return actorName.startsWith(Actor.RemoteConsole.AUDIT_PREFIX);
+    }
+
     private static AuditOrigin legacyOrigin(String adminName) {
-        AuditOriginChannel channel = "console".equalsIgnoreCase(resolvePlayerName(adminName))
+        String normalizedName = resolvePlayerName(adminName);
+        AuditOriginChannel channel = "console".equalsIgnoreCase(normalizedName) || isRemoteConsole(normalizedName)
                 ? AuditOriginChannel.SERVER_CONSOLE
                 : AuditOriginChannel.IN_GAME;
         return AuditOrigin.builder()

@@ -12,6 +12,7 @@ import org.incendo.cloud.annotations.Permission;
 import org.xcore.cloud.mindustry.selector.TargetSelector.MultiplePlayerSelector;
 import org.xcore.cloud.mindustry.selector.TargetSelector.MultipleUnitSelector;
 import org.xcore.plugin.cloud.XCoreSender;
+import org.xcore.plugin.permission.PermissionNodes;
 import org.xcore.plugin.command.controller.CloudClientController;
 
 @Singleton
@@ -22,7 +23,7 @@ public class EntityAdminController implements CloudClientController {
 
     @Command("heal [targets]")
     @CommandDescription("Heals target units (or self if unspecified).")
-    @Permission("xcore.admin.heal")
+    @Permission(PermissionNodes.ADMIN_HEAL)
     public void heal(
             XCoreSender sender,
             @Argument("targets") MultipleUnitSelector targets
@@ -53,7 +54,7 @@ public class EntityAdminController implements CloudClientController {
 
     @Command("killunits <targets>")
     @CommandDescription("Kills target units.")
-    @Permission("xcore.admin.kill")
+    @Permission(PermissionNodes.ADMIN_KILL)
     public void killUnits(
             XCoreSender sender,
             @Argument("targets") MultipleUnitSelector targets
@@ -71,7 +72,7 @@ public class EntityAdminController implements CloudClientController {
 
     @Command("kill <targets>")
     @CommandDescription("Kills target players.")
-    @Permission("xcore.admin.kill")
+    @Permission(PermissionNodes.ADMIN_KILL)
     public void killPlayers(
             XCoreSender sender,
             @Argument("targets") MultiplePlayerSelector targets

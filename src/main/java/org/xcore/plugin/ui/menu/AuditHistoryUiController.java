@@ -10,6 +10,7 @@ import org.xcore.plugin.model.AuditCursor;
 import org.xcore.plugin.model.AuditRecord;
 import org.xcore.plugin.model.AuditRecordSummary;
 import org.xcore.plugin.model.PlayerData;
+import org.xcore.plugin.permission.PermissionNodes;
 import org.xcore.plugin.model.Slice;
 import org.xcore.plugin.service.PlayerDisplayService;
 import org.xcore.plugin.service.moderation.AuditService;
@@ -216,7 +217,7 @@ public class AuditHistoryUiController implements UiController<AuditHistoryUiCont
     }
 
     public AuditHistoryModel createInitialModel(AuditViewMode mode) {
-        boolean isAdmin = session != null && session.player != null && session.player.admin;
+        boolean isAdmin = session != null && session.has(PermissionNodes.MODERATION_AUDIT_OTHERS);
         String viewerUuid = session != null && session.data != null ? session.data.uuid : "";
 
         String targetColor = PlayerSettingsUiController.resolvePlayerColorHex(session, targetData);
@@ -273,7 +274,8 @@ public class AuditHistoryUiController implements UiController<AuditHistoryUiCont
     public UpdateResult<AuditHistoryModel> update(AuditHistoryModel model, AuditHistoryEvent event, ControllerContext ctx) {
         return switch (event) {
             case AuditHistoryEvent.SelectMode(var newMode) -> {
-                if (!model.isViewerAdmin() || newMode == model.mode()) {
+                if (!model.isViewerAdmin() || newMode == model.mode()
+                        || session == null || !session.has(PermissionNodes.MODERATION_AUDIT_OTHERS)) {
                     yield UpdateResult.of(model);
                 }
                 AuditHistoryModel switched = model.withMode(newMode);

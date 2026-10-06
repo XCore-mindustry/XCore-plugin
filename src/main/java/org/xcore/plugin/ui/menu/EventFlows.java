@@ -5,6 +5,8 @@ import org.xcore.plugin.common.StatusEnum;
 import org.xcore.plugin.model.EventData;
 import org.xcore.plugin.model.MapData;
 import org.xcore.plugin.model.PlayerData;
+import org.xcore.plugin.permission.PermissionNodes;
+import org.xcore.plugin.permission.PermissionService;
 import org.xcore.plugin.service.EventService;
 import org.xcore.plugin.service.EventViewService;
 import org.xcore.plugin.session.Session;
@@ -31,6 +33,14 @@ final class EventFlows {
     private EventFlows() {
     }
 
+    /** An event can be edited until it starts: by its author, or by whoever may edit the events of others. */
+    static boolean canEdit(Session session, EventData event) {
+        boolean isOwner = session.data.id != null && session.data.id.equals(event.author);
+        return !event.isFinished && !event.isActive
+                && (!event.isMajor || session.has(PermissionNodes.EVENTS_CREATE_MAJOR))
+                && (isOwner || session.has(PermissionNodes.EVENTS_EDIT_OTHERS));
+    }
+
     static final class MainFlow extends BaseMenuFlow<MainState> {
         private final EventMenu menu;
         private final EventViewService eventViewService;
@@ -52,8 +62,16 @@ final class EventFlows {
                     ctx.openRoute(MenuRoute.of(ROUTE_EVENT).withParam("eventId", active.id.toHexString()));
                 }
             });
-            action("vote-stop", ctx -> voteService.endVote());
-            action("stop", ctx -> eventService.finishActiveEvent());
+            action("vote-stop", ctx -> {
+                if (ctx.session().allowed(PermissionNodes.VOTES_CANCEL)) {
+                    voteService.endVote();
+                }
+            });
+            action("stop", ctx -> {
+                if (ctx.session().allowed(PermissionNodes.EVENTS_STOP)) {
+                    eventService.finishActiveEvent();
+                }
+            });
         }
 
         @Override
@@ -78,17 +96,15 @@ final class EventFlows {
 
             grid.rowIf(active != null, MenuButton.of(local.t("event-menu-this-event"), "this-event"));
 
-            if (session.player.admin) {
-                List<MenuButton> adminRow = new ArrayList<>();
-                if (voteService.getCurrentSession() instanceof VoteEvent) {
-                    adminRow.add(MenuButton.of(local.t("event-menu-vote-stop"), "vote-stop"));
-                }
-                if (active != null && active.isActive) {
-                    adminRow.add(MenuButton.of(local.t("event-menu-stop"), "stop"));
-                }
-                if (!adminRow.isEmpty()) {
-                    grid.row(adminRow.toArray(new MenuButton[0]));
-                }
+            List<MenuButton> adminRow = new ArrayList<>();
+            if (voteService.getCurrentSession() instanceof VoteEvent && session.has(PermissionNodes.VOTES_CANCEL)) {
+                adminRow.add(MenuButton.of(local.t("event-menu-vote-stop"), "vote-stop"));
+            }
+            if (active != null && active.isActive && session.has(PermissionNodes.EVENTS_STOP)) {
+                adminRow.add(MenuButton.of(local.t("event-menu-stop"), "stop"));
+            }
+            if (!adminRow.isEmpty()) {
+                grid.row(adminRow.toArray(new MenuButton[0]));
             }
 
             grid.defaultNavigation(session, local);
@@ -250,6 +266,9 @@ final class EventFlows {
                 }
             });
             action("admin-vote", ctx -> {
+                if (!ctx.session().allowed(PermissionNodes.EVENTS_FORCE_VOTE)) {
+                    return;
+                }
                 EventViewService.EventDetails details = resolveEventDetails(eventViewService, ctx.state().eventId);
                 if (details != null && details.event() != null) {
                     eventService.startVoteSession(ctx.session().player, details.event(), true);
@@ -258,6 +277,10 @@ final class EventFlows {
             action("edit", ctx -> {
                 EventViewService.EventDetails details = resolveEventDetails(eventViewService, ctx.state().eventId);
                 if (details != null && details.event() != null) {
+                    if (!canEdit(ctx.session(), details.event())) {
+                        ctx.session().locale().send(PermissionService.ACCESS_DENIED_KEY);
+                        return;
+                    }
                     ctx.session().setDraft(EventData.class, details.event());
                     menu.edit(menu.getUuid(ctx.session()));
                 }
@@ -307,14 +330,13 @@ final class EventFlows {
             if (!voteService.isVoting()) {
                 List<MenuButton> voteRow = new ArrayList<>();
                 voteRow.add(MenuButton.of(session.locale().t("event-vote"), "vote"));
-                if (session.player.admin) {
+                if (session.has(PermissionNodes.EVENTS_FORCE_VOTE)) {
                     voteRow.add(MenuButton.of(session.locale().t("event-avote"), "admin-vote"));
                 }
                 grid.row(voteRow.toArray(new MenuButton[0]));
             }
 
-            boolean isOwner = session.data.id != null && session.data.id.equals(event.author);
-            boolean canEdit = !event.isFinished && !event.isActive && (!event.isMajor || session.player.admin) && (isOwner || session.player.admin);
+            boolean canEdit = canEdit(session, event);
 
             if (mapData != null) {
                 grid.row(MenuButton.of(session.locale().t("event-menu-event-map"), "event-map"));

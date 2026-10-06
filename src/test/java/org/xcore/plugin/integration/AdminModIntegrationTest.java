@@ -48,7 +48,9 @@ class AdminModIntegrationTest {
                 mock(AdminAuthService.class),
                 mock(DiscordLinkService.class),
                 mock(DiscordMenu.class),
-                new Gson()
+                new Gson(),
+                mock(org.xcore.plugin.concurrent.Async.class),
+                new org.xcore.plugin.permission.PermissionService()
         );
 
         integration.holdVanillaBan("uuid-1");

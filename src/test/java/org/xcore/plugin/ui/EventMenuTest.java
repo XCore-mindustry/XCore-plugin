@@ -594,6 +594,46 @@ class EventMenuTest {
         verify(gateway).menu(eq(session.player), eq(0), eq("event-menu-event-title"), eq("error-internal"), any());
     }
 
+    private EventData activeEvent() {
+        EventData active = new EventData();
+        active.id = new ObjectId();
+        active.name = "Running";
+        active.isActive = true;
+        when(eventDataRepository.findActive()).thenReturn(Optional.of(active));
+        return active;
+    }
+
+    @Test
+    @DisplayName("the stop button is offered to an admin only and stops the event")
+    void main_stop_adminOnly() {
+        activeEvent();
+
+        eventMenu.main(session.data.uuid);
+        int withoutStop = session.activeScreen().actionCount();
+
+        session.player.admin = true;
+        eventMenu.main(session.data.uuid);
+        assertThat(session.activeScreen().actionCount()).isEqualTo(withoutStop + 1);
+
+        menuService.onMenuOption(session, 3);
+
+        verify(eventService).finishActiveEvent();
+    }
+
+    @Test
+    @DisplayName("a stop button left open from before the admin was demoted does nothing")
+    void main_stop_recheckedOnClick() {
+        activeEvent();
+        session.player.admin = true;
+        eventMenu.main(session.data.uuid);
+
+        session.player.admin = false;
+        menuService.onMenuOption(session, 3);
+
+        verify(eventService, never()).finishActiveEvent();
+        verify(session.localization).send("error-access-denied");
+    }
+
     private Session session() {
         Player player = Player.create();
         player.con = mock(NetConnection.class);

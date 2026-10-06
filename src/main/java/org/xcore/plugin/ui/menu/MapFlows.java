@@ -10,6 +10,7 @@ import org.xcore.plugin.database.repository.MapDataRepository;
 import org.xcore.plugin.model.EventData;
 import org.xcore.plugin.model.MapData;
 import org.xcore.plugin.model.enums.Feature;
+import org.xcore.plugin.permission.PermissionNodes;
 import org.xcore.plugin.service.MapService;
 import org.xcore.plugin.session.Session;
 import org.xcore.plugin.ui.flow.BaseMenuFlow;
@@ -189,6 +190,9 @@ final class MapFlows {
                 }
             });
             action("admin-rtv", ctx -> {
+                if (!ctx.session().allowed(PermissionNodes.MAPS_FORCE_RTV)) {
+                    return;
+                }
                 MapData mapData = menu.resolveMap(ctx.state().mapId);
                 if (mapData != null) {
                     Map mindustryMap = mapService.findPersistedMap(mapData);
@@ -255,7 +259,7 @@ final class MapFlows {
             if (rtvEnabled && (!isEvent() || (activeEvent == null || !activeEvent.isActive) || activeEvent.map.equals(mapData.id))) {
                 List<MenuButton> rtvRow = new ArrayList<>();
                 rtvRow.add(MenuButton.of(session.locale().t("map-rtv"), "rtv"));
-                if (session.player.admin) {
+                if (session.has(PermissionNodes.MAPS_FORCE_RTV)) {
                     rtvRow.add(MenuButton.of(session.locale().t("map-artv"), "admin-rtv"));
                 }
                 grid.row(rtvRow.toArray(new MenuButton[0]));

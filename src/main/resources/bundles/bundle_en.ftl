@@ -1311,3 +1311,32 @@ error-username-empty = Username cannot be empty!
 error-username-length = Username length must be between 4 and 32 characters!
 error-username-invalid-chars = Username can only contain Latin letters, numbers, and underscores!
 error-username-taken = This username is already taken by another player!
+
+# ==============================================================================
+# Permission nodes
+# ==============================================================================
+permission-mindustry-admin = Use the game's built-in admin menu and skip waves
+permission-xcore-moderation-mute = Mute players
+permission-xcore-moderation-unmute = Unmute players
+permission-xcore-moderation-kick = Kick players
+permission-xcore-moderation-ban = Ban players
+permission-xcore-moderation-unban = Unban players
+permission-xcore-moderation-audit-others = View the moderation history of other players
+permission-xcore-moderation-votekick-immune = Cannot be vote-kicked
+permission-xcore-admin-tp = Teleport players
+permission-xcore-admin-broadcast = Send announcements to everyone
+permission-xcore-admin-kill = Kill units and players
+permission-xcore-admin-heal = Heal units and players
+permission-xcore-admin-set-team = Change a player's team
+permission-xcore-maps-force-rtv = Change the map without a vote
+permission-xcore-maps-force-vnw = Skip a wave without a vote
+permission-xcore-votes-cancel = Cancel a running vote
+permission-xcore-events-create-major = Create major events
+permission-xcore-events-edit-others = Edit events made by other players
+permission-xcore-events-force-vote = Start an event without a vote
+permission-xcore-events-stop = Stop the running event
+permission-xcore-players-settings-others = Change the settings of other players
+permission-xcore-players-private-info = See private details of players, such as their IP addresses
+permission-xcore-bypass-playtime = Skip the playtime requirements of commands
+permission-xcore-permissions-inspect = See who has which permissions
+permission-xcore-permissions-manage = Change roles and permissions

@@ -14,7 +14,8 @@ import org.xcore.cloud.mindustry.MindustryCommandManager;
 import org.xcore.cloud.mindustry.MindustrySender;
 import org.xcore.plugin.cloud.config.CloudGuardConfigurer;
 import org.xcore.plugin.cloud.config.CloudManagerFactory;
-import org.xcore.plugin.cloud.config.CloudPermissionPolicy;
+import org.xcore.plugin.permission.PermissionService;
+import org.xcore.plugin.permission.RemoteConsoleScope;
 import org.xcore.plugin.cloud.config.DisabledCommandPolicy;
 import org.xcore.plugin.config.TomlSecretsConfig;
 import org.xcore.plugin.config.TomlXcoreConfig;
@@ -72,7 +73,7 @@ class CloudCommandPipelineIntegrationTest {
                 bundle,
                 () -> sessionService,
                 metricsService,
-                new CloudPermissionPolicy(),
+                new PermissionService(), new RemoteConsoleScope(),
                 mock(org.xcore.plugin.cloud.config.CloudCaptionConfigurer.class)
         );
         manager = factory.createManager(handler);
@@ -85,7 +86,8 @@ class CloudCommandPipelineIntegrationTest {
                 () -> sessionService,
                 secretsConfig,
                 policy,
-                metricsService
+                metricsService,
+                new PermissionService()
         );
 
         guardConfigurer.configure(manager, commandName -> {

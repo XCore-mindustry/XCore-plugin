@@ -15,6 +15,7 @@ import org.xcore.plugin.command.controller.CloudClientController;
 import org.xcore.plugin.concurrent.Async;
 import org.xcore.plugin.localization.Localization;
 import org.xcore.plugin.model.PlayerData;
+import org.xcore.plugin.permission.PermissionNodes;
 import org.xcore.plugin.service.FindService;
 import org.xcore.plugin.service.SecurityService;
 import org.xcore.plugin.service.moderation.BanCommand;
@@ -34,7 +35,6 @@ import java.util.concurrent.TimeUnit;
 import static com.ospx.flubundle.Bundle.args;
 
 @Singleton
-@Permission("admin")
 public class ModerationController implements CloudClientController {
 
     private final ModerationService moderationService;
@@ -57,6 +57,7 @@ public class ModerationController implements CloudClientController {
         this(moderationService, find, sessionService, null, null);
     }
 
+    @Permission(PermissionNodes.MODERATION_BAN)
     @Command("ban <target> <period> [reason]")
     public void ban(XCoreSender sender,
                     @Argument("target") String target,
@@ -67,7 +68,7 @@ public class ModerationController implements CloudClientController {
         if (session == null) return;
         Localization local = session.locale();
 
-        var actor = ModerationActor.of(session);
+        var actor = ModerationActor.of(sender.actor());
         var result = moderationService.banByTarget(target, actor.name(), actor.discordId(), reason, period, true);
 
         if (result.isSuccess()) {
@@ -77,13 +78,14 @@ public class ModerationController implements CloudClientController {
         }
     }
 
+    @Permission(PermissionNodes.MODERATION_UNBAN)
     @Command("unban <target>")
     public void unban(XCoreSender sender, @Argument("target") String target) {
         Session session = resolveActiveSession(sender);
         if (session == null) return;
         Localization local = session.locale();
 
-        var actor = ModerationActor.of(session);
+        var actor = ModerationActor.of(sender.actor());
         var result = moderationService.unbanByTarget(target, actor.name(), actor.discordId());
 
         if (result.isSuccess()) {
@@ -97,6 +99,7 @@ public class ModerationController implements CloudClientController {
         }
     }
 
+    @Permission(PermissionNodes.MODERATION_MUTE)
     @Command("mute <target> <period> [reason]")
     public void mute(XCoreSender sender,
                      @Argument("target") String target,
@@ -106,7 +109,7 @@ public class ModerationController implements CloudClientController {
         if (session == null) return;
         Localization local = session.locale();
 
-        var actor = ModerationActor.of(session);
+        var actor = ModerationActor.of(sender.actor());
         var result = moderationService.muteByTarget(target, actor.name(), actor.discordId(), reason, period);
 
         if (result.isSuccess()) {
@@ -125,13 +128,14 @@ public class ModerationController implements CloudClientController {
         }
     }
 
+    @Permission(PermissionNodes.MODERATION_UNMUTE)
     @Command("unmute <target>")
     public void unmute(XCoreSender sender, @Argument("target") String target) {
         Session session = resolveActiveSession(sender);
         if (session == null) return;
         Localization local = session.locale();
 
-        var actor = ModerationActor.of(session);
+        var actor = ModerationActor.of(sender.actor());
         var result = moderationService.unmuteByTarget(target, actor.name(), actor.discordId());
 
         if (result.isSuccess()) {
@@ -142,6 +146,7 @@ public class ModerationController implements CloudClientController {
         }
     }
 
+    @Permission(PermissionNodes.MODERATION_AUDIT_OTHERS)
     @Command("audit [target]")
     public void audit(XCoreSender sender, @Argument("target") @Default("") String target) {
         Session session = resolveActiveSession(sender);

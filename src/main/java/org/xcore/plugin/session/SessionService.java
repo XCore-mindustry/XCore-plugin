@@ -14,6 +14,7 @@ import org.xcore.plugin.concurrent.GameThread;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
 import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.model.PlayerPids;
+import org.xcore.plugin.permission.PermissionService;
 import org.xcore.plugin.service.TopMenuCacheService;
 
 import java.util.ArrayList;
@@ -33,6 +34,7 @@ public class SessionService {
     private final SessionFactory sessionFactory;
     private final PlayerDataRepository playerDataRepository;
     private final TopMenuCacheService topMenuCacheService;
+    private final PermissionService permissionService;
 
     /**
      * In-memory cache of online players.
@@ -43,10 +45,18 @@ public class SessionService {
     @Inject
     public SessionService(SessionFactory sessionFactory,
                           PlayerDataRepository playerDataRepository,
-                          TopMenuCacheService topMenuCacheService) {
+                          TopMenuCacheService topMenuCacheService,
+                          PermissionService permissionService) {
         this.sessionFactory = sessionFactory;
         this.playerDataRepository = playerDataRepository;
         this.topMenuCacheService = topMenuCacheService;
+        this.permissionService = permissionService;
+    }
+
+    public SessionService(SessionFactory sessionFactory,
+                          PlayerDataRepository playerDataRepository,
+                          TopMenuCacheService topMenuCacheService) {
+        this(sessionFactory, playerDataRepository, topMenuCacheService, null);
     }
 
     public SessionService(SessionFactory sessionFactory, PlayerDataRepository playerDataRepository) {
@@ -612,7 +622,11 @@ public class SessionService {
     }
 
     private Session createSession(Player player, PlayerData data) {
-        return sessionFactory.create(player, data);
+        Session session = sessionFactory.create(player, data);
+        if (session != null && permissionService != null) {
+            session.permissions = permissionService;
+        }
+        return session;
     }
 
     private boolean hasData(Session session) {

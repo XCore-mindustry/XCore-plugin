@@ -37,6 +37,8 @@ public class CloudCommandRegistrar {
                 .forEach(cloud::registerClient);
 
         serverControllers.forEach(cloud::registerServer);
+
+        cloud.verifyPermissions();
     }
 
     private boolean shouldRegister(CloudClientController controller) {

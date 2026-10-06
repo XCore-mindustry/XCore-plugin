@@ -342,6 +342,44 @@ class ModerationServiceAvajeTest {
     }
 
     @Test
+    @DisplayName("A console command relayed from another server is audited as that console, not as a player or the local one")
+    void muteById_remoteConsole_auditActor() {
+        var target = PlayerData.builder()
+                .uuid("uuid-3")
+                .nickname("Target")
+                .build();
+        when(sessionService.getOrLoadFromDb(7)).thenReturn(target);
+        when(muteDataRepository.save(any())).thenReturn(true);
+
+        var result = moderationService.muteById(7, "remote-console@hub", null, null, Duration.ofMinutes(15));
+
+        assertThat(result.isSuccess()).isTrue();
+        verify(auditService).append(argThat(command ->
+                command.actor().type == org.xcore.plugin.model.AuditActorType.SERVER_CONSOLE
+                        && "remote-console@hub".equals(command.actor().id)
+                        && "remote-console@hub".equals(command.actor().nameSnapshot)
+                        && "hub".equals(command.actor().serverId)
+                        && command.origin().channel == org.xcore.plugin.model.AuditOriginChannel.SERVER_CONSOLE));
+    }
+
+    @Test
+    @DisplayName("A moderation command without an actor is refused instead of being run as the console")
+    void commandWithoutActor_isRefused() {
+        var duration = Duration.ofMinutes(15);
+
+        assertThat(moderationService.mute(new MuteCommand(7, null, null, null, null, "r", duration)).getMessage())
+                .contains(ModerationService.MISSING_ACTOR_MESSAGE);
+        assertThat(moderationService.ban(new BanCommand(7, null, null, null, null, "r", duration, true)).getMessage())
+                .contains(ModerationService.MISSING_ACTOR_MESSAGE);
+        assertThat(moderationService.unmute(new UnmuteCommand(7, null, null, null, null)).getMessage())
+                .contains(ModerationService.MISSING_ACTOR_MESSAGE);
+        assertThat(moderationService.unban(new UnbanCommand(7, null, null, null, null)).getMessage())
+                .contains(ModerationService.MISSING_ACTOR_MESSAGE);
+
+        verifyNoInteractions(muteDataRepository, banDataRepository, network, auditService);
+    }
+
+    @Test
     @DisplayName("muteById stores mute and posts event")
     void muteByIdSuccess() {
         var target = PlayerData.builder()
