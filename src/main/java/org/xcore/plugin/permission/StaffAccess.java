@@ -83,6 +83,21 @@ public class StaffAccess {
     }
 
     /**
+     * The player's password was reset. Whoever holds this connection proved themselves with
+     * the password that is gone, so the login ends and nothing cached can bring it back.
+     */
+    public void forgetCredentials(Session session) {
+        if (session == null) {
+            return;
+        }
+        if (session.data != null) {
+            session.data.password = "";
+            session.data.clearDeviceTokens();
+        }
+        logOut(session);
+    }
+
+    /**
      * Roles mode: brings the admin flag in line with what the session holds now. Call it after
      * every change to the session's grants or login.
      */

@@ -101,4 +101,23 @@ class MongoGrantStoreIntegrationTest {
         assertThat(store.findAll(List.of("uuid-1", "uuid-3", "uuid-9")).keySet()).containsExactlyInAnyOrder("uuid-1", "uuid-3");
         assertThat(store.findUuidsWithExpiredGrants(NOW)).containsExactly("uuid-1");
     }
+
+    @Test
+    @DisplayName("A password reset raises the epoch and the revision, keeps the grants, and survives later grant writes")
+    void credentialsEpoch() {
+        GrantDocument fresh = store.bumpCredentialsEpoch(null, GrantDocument.empty("uuid-1")).orElseThrow();
+        assertThat(fresh).isEqualTo(new GrantDocument("uuid-1", 1, List.of(), 1));
+        assertThat(store.find("uuid-1")).isEqualTo(fresh);
+
+        Grant moderator = role("g-1", "moderator", null);
+        GrantDocument granted = store.replace(null, "uuid-1", 1, List.of(moderator)).orElseThrow();
+        assertThat(granted).isEqualTo(new GrantDocument("uuid-1", 2, List.of(moderator), 1));
+
+        assertThat(store.bumpCredentialsEpoch(null, fresh)).as("computed from an old revision").isEmpty();
+        GrantDocument again = store.bumpCredentialsEpoch(null, granted).orElseThrow();
+        assertThat(again).isEqualTo(new GrantDocument("uuid-1", 3, List.of(moderator), 2));
+        assertThat(store.findAll(List.of("uuid-1")).get("uuid-1")).isEqualTo(again);
+
+        assertThat(store.bumpCredentialsEpoch(null, GrantDocument.empty("uuid-1"))).as("a first write that came second").isEmpty();
+    }
 }

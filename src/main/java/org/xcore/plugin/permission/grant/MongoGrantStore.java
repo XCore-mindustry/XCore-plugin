@@ -4,6 +4,8 @@ import com.mongodb.MongoWriteException;
 import com.mongodb.client.ClientSession;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
+import com.mongodb.client.model.FindOneAndUpdateOptions;
+import com.mongodb.client.model.ReturnDocument;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import org.bson.Document;
@@ -35,6 +37,7 @@ public class MongoGrantStore implements GrantStore {
     private static final String REVISION = "revision";
     private static final String GRANTS = "grants";
     private static final String EXPIRES_AT = "expiresAt";
+    private static final String CREDENTIALS_EPOCH = "credentialsEpoch";
 
     private final MongoCollection<Document> collection;
 
@@ -75,32 +78,53 @@ public class MongoGrantStore implements GrantStore {
         if (grants.size() > GrantDocument.MAX_GRANTS) {
             throw new IllegalArgumentException("A player can hold at most " + GrantDocument.MAX_GRANTS + " grants");
         }
-        GrantDocument written = new GrantDocument(uuid, expectedRevision + 1, grants);
         List<Document> rawGrants = grants.stream().map(MongoGrantStore::raw).toList();
-
         if (expectedRevision == 0) {
-            Document fresh = new Document("_id", uuid).append(REVISION, written.revision()).append(GRANTS, rawGrants);
-            try {
-                if (session != null) {
-                    collection.insertOne(session, fresh);
-                } else {
-                    collection.insertOne(fresh);
-                }
-                return Optional.of(written);
-            } catch (MongoWriteException e) {
-                if (e.getError().getCode() == DUPLICATE_KEY) {
-                    return Optional.empty();
-                }
-                throw e;
-            }
+            return insert(session, new GrantDocument(uuid, 1, grants));
         }
+        // Only what is named is set, so the credentials epoch stays as it is.
+        return update(session, uuid, expectedRevision,
+                new Document("$set", new Document(REVISION, expectedRevision + 1).append(GRANTS, rawGrants)));
+    }
 
+    @Override
+    public Optional<GrantDocument> bumpCredentialsEpoch(@Nullable ClientSession session, GrantDocument current) {
+        if (current.revision() == 0) {
+            return insert(session, new GrantDocument(current.uuid(), 1, List.of(), 1));
+        }
+        return update(session, current.uuid(), current.revision(),
+                new Document("$set", new Document(REVISION, current.revision() + 1))
+                        .append("$inc", new Document(CREDENTIALS_EPOCH, 1L)));
+    }
+
+    /** The first write for a player; loses to another first write that got there earlier. */
+    private Optional<GrantDocument> insert(@Nullable ClientSession session, GrantDocument document) {
+        Document fresh = new Document("_id", document.uuid())
+                .append(REVISION, document.revision())
+                .append(GRANTS, document.grants().stream().map(MongoGrantStore::raw).toList())
+                .append(CREDENTIALS_EPOCH, document.credentialsEpoch());
+        try {
+            if (session != null) {
+                collection.insertOne(session, fresh);
+            } else {
+                collection.insertOne(fresh);
+            }
+            return Optional.of(document);
+        } catch (MongoWriteException e) {
+            if (e.getError().getCode() == DUPLICATE_KEY) {
+                return Optional.empty();
+            }
+            throw e;
+        }
+    }
+
+    private Optional<GrantDocument> update(@Nullable ClientSession session, String uuid, long expectedRevision, Bson update) {
         Bson unchanged = and(eq("_id", uuid), eq(REVISION, expectedRevision));
-        Bson update = new Document("$set", new Document(REVISION, written.revision()).append(GRANTS, rawGrants));
-        long matched = session != null
-                ? collection.updateOne(session, unchanged, update).getMatchedCount()
-                : collection.updateOne(unchanged, update).getMatchedCount();
-        return matched == 1 ? Optional.of(written) : Optional.empty();
+        FindOneAndUpdateOptions after = new FindOneAndUpdateOptions().returnDocument(ReturnDocument.AFTER);
+        Document raw = session != null
+                ? collection.findOneAndUpdate(session, unchanged, update, after)
+                : collection.findOneAndUpdate(unchanged, update, after);
+        return raw == null ? Optional.empty() : Optional.of(document(raw));
     }
 
     @Override
@@ -118,7 +142,9 @@ public class MongoGrantStore implements GrantStore {
             grants.add(grant(grant));
         }
         Number revision = raw.get(REVISION, Number.class);
-        return new GrantDocument(raw.getString("_id"), revision == null ? 0 : revision.longValue(), grants);
+        Number epoch = raw.get(CREDENTIALS_EPOCH, Number.class);
+        return new GrantDocument(raw.getString("_id"), revision == null ? 0 : revision.longValue(), grants,
+                epoch == null ? 0 : epoch.longValue());
     }
 
     private static Grant grant(Document raw) {

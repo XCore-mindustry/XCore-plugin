@@ -77,6 +77,7 @@ public class SecurityTransportHandler {
             return;
         }
         Timer.schedule(sessions::refreshAll, PermissionSessions.REFRESH_SECONDS, PermissionSessions.REFRESH_SECONDS);
+        Timer.schedule(sessions::reapplyAll, PermissionSessions.REAPPLY_SECONDS, PermissionSessions.REAPPLY_SECONDS);
 
         // The game's own admin list gives nothing with roles on. Listing it once lets the
         // operator hand out roles to those who are meant to keep their rights.

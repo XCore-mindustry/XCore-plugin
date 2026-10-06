@@ -28,6 +28,16 @@ public interface GrantStore {
      */
     Optional<GrantDocument> replace(@Nullable ClientSession session, String uuid, long expectedRevision, List<Grant> grants);
 
+    /**
+     * Marks the player's password as reset, if nobody wrote in between: the revision and the
+     * credentials epoch both grow by one, the grants stay.
+     *
+     * @param session the transaction to join, or null to write on its own
+     * @param current the document as it was read
+     * @return the document as written; empty when it changed since and the caller has to start over
+     */
+    Optional<GrantDocument> bumpCredentialsEpoch(@Nullable ClientSession session, GrantDocument current);
+
     /** The players who still carry a grant that ran out before {@code now}. */
     List<String> findUuidsWithExpiredGrants(Instant now);
 }

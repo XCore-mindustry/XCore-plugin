@@ -22,7 +22,7 @@ public final class PermissionSet {
     /** How long a set that could not be refreshed keeps giving staff rights. */
     public static final Duration STALE_AFTER = Duration.ofMinutes(15);
 
-    public static final PermissionSet EMPTY = new PermissionSet(0, List.of(), List.of(), Instant.EPOCH, true);
+    public static final PermissionSet EMPTY = new PermissionSet(0, 0, List.of(), List.of(), Instant.EPOCH, true);
 
     /** A rule with where it came from. */
     private record Entry(Rule rule, boolean serverSpecific, Instant expiresAt, String origin, int weight) {
@@ -36,13 +36,15 @@ public final class PermissionSet {
     }
 
     private final long revision;
+    private final long credentialsEpoch;
     private final List<Entry> direct;
     private final List<Entry> fromRoles;
     private final Instant refreshedAt;
     private final boolean placeholder;
 
-    private PermissionSet(long revision, List<Entry> direct, List<Entry> fromRoles, Instant refreshedAt, boolean placeholder) {
+    private PermissionSet(long revision, long credentialsEpoch, List<Entry> direct, List<Entry> fromRoles, Instant refreshedAt, boolean placeholder) {
         this.revision = revision;
+        this.credentialsEpoch = credentialsEpoch;
         this.direct = direct;
         this.fromRoles = fromRoles;
         this.refreshedAt = refreshedAt;
@@ -77,7 +79,7 @@ public final class PermissionSet {
             model.role(NATIVE_ADMIN_ROLE).ifPresent(role ->
                     addRole(fromRoles, role, true, null, "role " + role.name() + " (native admin list)"));
         }
-        return new PermissionSet(document.revision(), List.copyOf(direct), List.copyOf(fromRoles), loadedAt, false);
+        return new PermissionSet(document.revision(), document.credentialsEpoch(), List.copyOf(direct), List.copyOf(fromRoles), loadedAt, false);
     }
 
     /** The role a trusted entry of the game's admin list stands for. */
@@ -97,6 +99,11 @@ public final class PermissionSet {
         return revision;
     }
 
+    /** How many times the player's password had been reset when the grants were read. */
+    public long credentialsEpoch() {
+        return credentialsEpoch;
+    }
+
     /** True until the player's grants have been read for the first time. */
     public boolean isPlaceholder() {
         return placeholder;
@@ -104,7 +111,7 @@ public final class PermissionSet {
 
     /** The same set, marked as confirmed against the store at {@code now}. */
     public PermissionSet refreshedAt(Instant now) {
-        return new PermissionSet(revision, direct, fromRoles, now, placeholder);
+        return new PermissionSet(revision, credentialsEpoch, direct, fromRoles, now, placeholder);
     }
 
     public boolean isStale(Instant now) {

@@ -302,7 +302,7 @@ class SecurityTransportHandlerTest {
     }
 
     @Test
-    @DisplayName("Password reset: forgets the password, tells every server, logs the connection out, and is safe to repeat")
+    @DisplayName("Password reset: forgets the password, logs the connection out without any announcement, tells every server, and is safe to repeat")
     void resetPassword() {
         main.world.grants.addRole(stored.get(MODERATOR), "moderator", null, null, "r", Actor.LOCAL_CONSOLE);
         Session session = join(main, MODERATOR);
@@ -323,10 +323,17 @@ class SecurityTransportHandlerTest {
                 .containsEntry("operation", "reset-password")
                 .doesNotContainValue(stored.get(MODERATOR).password);
 
-        // What every server does when it hears of the reset.
+        // No announcement is delivered at all: this server reads the reset back from the store.
+        posted.clear();
+        main.world.settle();
+        assertThat(session.staffAuthenticated).isFalse();
+        assertThat(session.data.password).isEmpty();
+        assertThat(main.world.has(session, PermissionNodes.MODERATION_MUTE)).isFalse();
+
+        // The legacy announcement, for a reset that came from somewhere that writes no epoch.
+        main.world.staff.logIn(session);
         DiscordAdminAccessService access = new DiscordAdminAccessService(players, main.world.sessionService,
                 mock(PlayerDisplayService.class), mock(AuthStatusBroadcaster.class), mock(Async.class), main.world.staff);
-        session.data.password = "";
         access.onPasswordReset(MODERATOR);
         assertThat(main.world.has(session, PermissionNodes.MODERATION_MUTE)).isFalse();
 

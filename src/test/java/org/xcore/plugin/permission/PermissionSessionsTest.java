@@ -4,9 +4,11 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.xcore.plugin.model.PlayerData;
+import org.xcore.plugin.permission.grant.GrantDocument;
 import org.xcore.plugin.session.Session;
 
 import java.time.Duration;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -192,6 +194,7 @@ class PermissionSessionsTest {
         world.clock.advance(Duration.ofMinutes(15));
         world.sessions.refreshAll();
         world.settle();
+        world.sessions.reapplyAll();
         assertThat(world.has(session, BAN)).isFalse();
         assertThat(world.permissions.explain(session, BAN).reason()).contains("could not be refreshed");
         assertThat(session.player.admin).as("the admin flag follows").isFalse();
@@ -223,6 +226,90 @@ class PermissionSessionsTest {
         assertThat(world.has(session, BAN)).isFalse();
         assertThat(world.has(session, MUTE)).isTrue();
         assertThat(world.permissions.weight(session.player)).isEqualTo(10);
+    }
+
+    @Test
+    @DisplayName("The admin flag goes the moment a temporary admin grant runs out, even while the store does not answer")
+    void adminFlagFollowsExpiry() {
+        world.grants.addRole(target, "admin", null, Duration.ofMinutes(5), "five minutes", Actor.LOCAL_CONSOLE);
+        Session session = world.join("uuid-1");
+        world.staff.logIn(session);
+        assertThat(session.player.admin).isTrue();
+
+        world.clock.advance(Duration.ofMinutes(4));
+        world.sessions.reapplyAll();
+        assertThat(session.player.admin).isTrue();
+
+        // A reread is under way and never comes back.
+        world.sessions.refreshAll();
+        assertThat(world.io.size()).isEqualTo(1);
+
+        world.clock.advance(Duration.ofMinutes(2));
+        world.sessions.reapplyAll();
+
+        assertThat(world.io.size()).as("the store was not needed").isEqualTo(1);
+        assertThat(session.player.admin).isFalse();
+        assertThat(world.has(session, BAN)).isFalse();
+    }
+
+    @Test
+    @DisplayName("A password reset ends the login wherever the player is: at once where it was made, on the next reread elsewhere, and only once")
+    void credentialsEpoch() {
+        world.grants.addRole(target, "moderator", null, null, "r", Actor.LOCAL_CONSOLE);
+        RolesWorld pvp = new RolesWorld("pvp", world.clock, world.store, false);
+        world.grants.onChanged(world.sessions::onChanged);
+
+        Session here = world.join("uuid-1");
+        Session there = pvp.join("uuid-1");
+        for (Session session : List.of(here, there)) {
+            session.data.password = "old-hash";
+            session.data.addDeviceToken("device", world.clock.millis() + 60_000);
+        }
+        world.staff.logIn(here);
+        pvp.staff.logIn(there);
+
+        GrantDocument written = world.grants.resetCredentials(target, Actor.LOCAL_CONSOLE, "forgotten");
+        world.settle();
+
+        assertThat(written.credentialsEpoch()).isEqualTo(1);
+        assertThat(written.grants()).as("the roles stay").hasSize(1);
+        assertThat(here.staffAuthenticated).isFalse();
+        assertThat(here.data.password).isEmpty();
+        assertThat(here.data.deviceTokens).isEmpty();
+        assertThat(world.has(here, MUTE)).isFalse();
+
+        // The other server never hears of it; its reread finds out.
+        assertThat(pvp.has(there, MUTE)).isTrue();
+        pvp.sessions.refreshAll();
+        pvp.settle();
+        assertThat(there.staffAuthenticated).isFalse();
+        assertThat(there.data.password).isEmpty();
+        assertThat(there.data.deviceTokens).isEmpty();
+
+        // Logged in again with a new password: the reset that was already applied stays applied.
+        here.data.password = "new-hash";
+        world.staff.logIn(here);
+        world.sessions.refreshAll();
+        world.settle();
+        world.sessions.onChanged("uuid-1", written.revision());
+        world.settle();
+        assertThat(here.staffAuthenticated).isTrue();
+        assertThat(here.data.password).isEqualTo("new-hash");
+
+        // A grant written later carries the epoch along and does not reset anybody again.
+        world.grants.addRole(target, "admin", null, null, "promoted", Actor.LOCAL_CONSOLE);
+        world.settle();
+        assertThat(world.store.find("uuid-1").credentialsEpoch()).isEqualTo(1);
+        assertThat(here.staffAuthenticated).isTrue();
+        assertThat(world.has(here, BAN)).isTrue();
+
+        // Somebody who joins after the reset starts from it.
+        world.leave("uuid-1");
+        Session again = world.join("uuid-1");
+        world.staff.logIn(again);
+        world.sessions.refreshAll();
+        world.settle();
+        assertThat(again.staffAuthenticated).isTrue();
     }
 
     @Test

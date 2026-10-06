@@ -33,6 +33,9 @@ public class PermissionSessions {
     /** How often {@link #refreshAll()} is meant to be called. */
     public static final float REFRESH_SECONDS = 60f;
 
+    /** How often {@link #reapplyAll()} is meant to be called. */
+    public static final float REAPPLY_SECONDS = 1f;
+
     private final PermissionRoles roles;
     private final GrantStore store;
     private final Provider<SessionService> sessions;
@@ -154,9 +157,8 @@ public class PermissionSessions {
                     loaded.add(compile(document != null ? document : GrantDocument.empty(uuids.get(i)), nativeAdmins.get(i)));
                 }
             } catch (RuntimeException e) {
+                // The sets age on their own and reapplyAll() makes the admin flag follow them.
                 PLog.err("[Permissions] Could not refresh grants, keeping the last ones: @", e.getMessage());
-                // The sets age on their own; the admin flag has to follow them.
-                main.execute(() -> uuids.forEach(uuid -> staffAccess.apply(sessions.get().get(uuid))));
                 return;
             }
             main.execute(() -> {
@@ -165,6 +167,20 @@ public class PermissionSessions {
                 }
             });
         });
+    }
+
+    /**
+     * Brings the admin flag of everybody online in line with what their set gives right now.
+     * Game thread, no I/O. A temporary grant runs out and a set goes stale by the clock alone,
+     * so this cannot wait for the store to answer.
+     */
+    public void reapplyAll() {
+        if (!roles.enabled()) {
+            return;
+        }
+        for (Session session : sessions.get().getAllCachedSnapshot()) {
+            staffAccess.apply(session);
+        }
     }
 
     /** Game thread. A set older than the one in use is dropped: it was read before a newer change. */
@@ -176,6 +192,11 @@ public class PermissionSessions {
         PermissionSet current = session.permissionSet;
         if (current.isPlaceholder() || loaded.revision() >= current.revision()) {
             session.permissionSet = loaded;
+        }
+        if (!current.isPlaceholder() && loaded.credentialsEpoch() > current.credentialsEpoch()) {
+            // The password was reset since this connection's grants were last read.
+            staffAccess.forgetCredentials(session);
+            return;
         }
         staffAccess.apply(session);
     }

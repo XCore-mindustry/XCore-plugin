@@ -243,15 +243,34 @@ public class PermissionGrants {
     }
 
     /**
-     * Writes an audit record about a player's staff access that is not a change of grants,
-     * such as a password reset. Never put a secret or a hash into it.
+     * Marks the player's password as reset, with the audit record in the same transaction.
+     * Every server learns of it the way it learns of a changed grant, and ends the staff login
+     * of a connection that proved itself with the old password. Never put a secret or a hash
+     * into {@code reason}.
      */
-    public void record(PlayerData target, Actor by, String operation, String reason) {
-        AuditAppendResult result = audit.append(auditRecord(target, by, reason, operation, null, List.of(), List.of()));
-        if (result != null && !result.isSuccess()) {
-            PLog.err("[Permissions] The audit record for @ of @ could not be stored: @", operation, target.uuid,
-                    result.getMessage().orElse("unknown error"));
+    public GrantDocument resetCredentials(PlayerData target, Actor by, String reason) {
+        Objects.requireNonNull(target, "target");
+        Objects.requireNonNull(by, "by");
+        for (int attempt = 0; attempt < WRITE_ATTEMPTS; attempt++) {
+            GrantDocument current = store.find(target.uuid);
+            Optional<GrantDocument> written = transactions.run(session -> {
+                Optional<GrantDocument> stored = store.bumpCredentialsEpoch(session, current);
+                if (stored.isPresent()) {
+                    AuditAppendResult result = audit.append(session,
+                            auditRecord(target, by, reason, "reset-password", stored.get(), List.of(), List.of()));
+                    if (result != null && !result.isSuccess()) {
+                        throw new IllegalStateException("The audit record could not be stored: "
+                                + result.getMessage().orElse("unknown error"));
+                    }
+                }
+                return stored;
+            });
+            if (written.isPresent()) {
+                notifyChanged(target.uuid, written.get().revision());
+                return written.get();
+            }
         }
+        throw new GrantException("The grants of " + target.uuid + " kept changing; try again");
     }
 
     /** Drops the grants that have run out. Returns how many players were cleaned up. */

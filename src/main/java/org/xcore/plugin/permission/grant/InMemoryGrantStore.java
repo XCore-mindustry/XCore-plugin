@@ -50,11 +50,24 @@ public final class InMemoryGrantStore implements GrantStore {
     public synchronized Optional<GrantDocument> replace(@Nullable ClientSession session, String uuid,
                                                         long expectedRevision, List<Grant> grants) {
         checkAvailable();
-        if (find(uuid).revision() != expectedRevision) {
+        GrantDocument current = find(uuid);
+        if (current.revision() != expectedRevision) {
             return Optional.empty();
         }
-        GrantDocument written = new GrantDocument(uuid, expectedRevision + 1, grants);
+        GrantDocument written = new GrantDocument(uuid, expectedRevision + 1, grants, current.credentialsEpoch());
         documents.put(uuid, written);
+        return Optional.of(written);
+    }
+
+    @Override
+    public synchronized Optional<GrantDocument> bumpCredentialsEpoch(@Nullable ClientSession session, GrantDocument current) {
+        checkAvailable();
+        if (find(current.uuid()).revision() != current.revision()) {
+            return Optional.empty();
+        }
+        GrantDocument written = new GrantDocument(current.uuid(), current.revision() + 1, current.grants(),
+                current.credentialsEpoch() + 1);
+        documents.put(current.uuid(), written);
         return Optional.of(written);
     }
 

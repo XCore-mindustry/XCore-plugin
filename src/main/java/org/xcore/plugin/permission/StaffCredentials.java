@@ -28,7 +28,12 @@ public class StaffCredentials {
 
     /**
      * Forgets the player's password and remembered devices; the next login sets a new password.
-     * Every server is told, so a connection that was logged in with the old one is logged out.
+     * <p>
+     * The reset is written into the player's grants first, as a new credentials epoch. That is
+     * what logs out a connection that proved itself with the old password: this server reads it
+     * at once, the others on the announcement or, if that is lost, on their next reread. The
+     * password itself goes second, so a failure in between leaves a reset that can be repeated
+     * rather than a cleared password nobody was logged out for.
      *
      * @return false when there was nothing to forget
      */
@@ -39,10 +44,11 @@ public class StaffCredentials {
         if (!hadCredentials) {
             return false;
         }
+        grants.resetCredentials(target, by, "Staff password reset");
         if (!players.clearCredentials(target.uuid)) {
             throw new IllegalStateException("The password of " + target.uuid + " could not be cleared");
         }
-        grants.record(target, by, "reset-password", "Staff password reset");
+        // For what does not read grants: the legacy listeners and the bot.
         network.post(new PlayerPasswordResetCommandV1(target.uuid, roles.serverName()));
         return true;
     }

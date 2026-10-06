@@ -85,6 +85,16 @@ A change reaches the other servers by a Redis event and, if the event is lost, b
 60 seconds. If the reread fails, the last known set keeps working for 15 minutes; after that staff
 rights are off until a read succeeds. Denials hold the whole time.
 
+A temporary grant ends by the clock: its rights and the admin flag go within a second of the
+expiry, whether or not the store answers.
+
+## Password reset
+
+`perm user <player> reset-password` (or the bot) forgets the password and the remembered devices;
+the next `/login` sets a new password. The reset is stored with the player's grants, so a
+connection that was logged in with the old password is logged out on the server that made the
+reset at once and on every other server by the next reread at the latest, even if Redis is down.
+
 ## Rolling back
 
 Set `mode = "legacy"` and restart. The grants stay in `permission_grants` and are ignored.

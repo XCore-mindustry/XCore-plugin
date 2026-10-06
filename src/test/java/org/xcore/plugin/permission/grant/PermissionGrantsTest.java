@@ -45,6 +45,28 @@ class PermissionGrantsTest {
     }
 
     @Test
+    @DisplayName("A password reset is written as a new credentials epoch, audited without touching the grants, and announced")
+    void resetCredentials() {
+        grants.addRole(target, "moderator", null, null, "r", Actor.LOCAL_CONSOLE);
+        announced.clear();
+        world.audited.clear();
+
+        GrantDocument written = grants.resetCredentials(target, SYNC, "Staff password reset");
+
+        assertThat(written.revision()).isEqualTo(2);
+        assertThat(written.credentialsEpoch()).isEqualTo(1);
+        assertThat(held()).containsExactly("moderator [" + Grant.SOURCE_MANUAL + "]");
+        assertThat(announced).containsExactly("uuid-1@2");
+        assertThat(world.audited).hasSize(1);
+        assertThat(world.audited.get(0).details().extra)
+                .containsEntry("operation", "reset-password")
+                .containsEntry("revision", "2")
+                .doesNotContainKeys("added", "removed");
+
+        assertThat(grants.resetCredentials(target, SYNC, "again").credentialsEpoch()).isEqualTo(2);
+    }
+
+    @Test
     @DisplayName("A role given by hand is stored, audited and announced")
     void addRole() {
         Change change = grants.addRole(target, "Moderator", null, null, "staff recruitment", Actor.LOCAL_CONSOLE);
