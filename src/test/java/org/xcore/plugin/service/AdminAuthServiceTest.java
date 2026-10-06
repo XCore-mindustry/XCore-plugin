@@ -195,4 +195,119 @@ class AdminAuthServiceTest {
         var failedResult = authService.authenticateToken(player, token);
         assertThat(failedResult.status()).isEqualTo(AuthResultStatus.TOKEN_INVALID);
     }
+
+    private Session liveSession(Player player, PlayerData data) {
+        Session session = mock(Session.class);
+        session.data = data;
+        session.player = player;
+        when(sessionService.get("uuid-1")).thenReturn(session);
+        return session;
+    }
+
+    private Player loggingIn() {
+        Player player = mock(Player.class);
+        when(player.uuid()).thenReturn("uuid-1");
+        when(player.getInfo()).thenReturn(new Administration.PlayerInfo());
+        return player;
+    }
+
+    @Test
+    @DisplayName("checkPassword hashes into the copy it is given and never touches the repository")
+    void checkPassword_isPure() {
+        PlayerData credentials = PlayerData.builder().uuid("uuid-1").build();
+
+        var created = authService.checkPassword(credentials, "newPassword123");
+        var verified = authService.checkPassword(credentials, "newPassword123");
+        var wrong = authService.checkPassword(credentials, "somethingElse1");
+
+        assertThat(created.success()).isTrue();
+        assertThat(created.created()).isTrue();
+        assertThat(credentials.password).isNotBlank();
+        assertThat(verified.success()).isTrue();
+        assertThat(verified.created()).isFalse();
+        assertThat(wrong.success()).isFalse();
+        verifyNoInteractions(adminDataRepository);
+    }
+
+    @Test
+    @DisplayName("applyLogin grants admin, records a created password on the live data and does no I/O")
+    void applyLogin_success() {
+        Player player = loggingIn();
+        PlayerData data = new PlayerData();
+        data.uuid = "uuid-1";
+        Session session = liveSession(player, data);
+        when(discordAdminAccessService.hasDiscordAdminAccess(data)).thenReturn(true);
+
+        PlayerData credentials = PlayerData.builder().uuid("uuid-1").password("fresh-hash").build();
+        var verification = new AdminAuthService.PasswordVerificationResult(true, true, "commands-login-admin-password-created");
+
+        var result = authService.applyLogin(player, credentials, verification, true);
+
+        assertThat(result.status()).isEqualTo(AuthResultStatus.PASSWORD_CREATED);
+        assertThat(result.token()).isNotBlank();
+        assertThat(data.password).isEqualTo("fresh-hash");
+        assertThat(data.hasDeviceToken(AdminAuthService.hashToken(result.token()))).isTrue();
+        verify(player).admin(true);
+        verify(playerDisplayService).refresh(session);
+        verifyNoInteractions(adminDataRepository);
+    }
+
+    @Test
+    @DisplayName("applyLogin refuses a wrong password without touching the player")
+    void applyLogin_wrongPassword() {
+        Player player = loggingIn();
+        liveSession(player, new PlayerData());
+        var verification = new AdminAuthService.PasswordVerificationResult(false, false, "error-wrong-admin-password");
+
+        var result = authService.applyLogin(player, new PlayerData(), verification, false);
+
+        assertThat(result.status()).isEqualTo(AuthResultStatus.WRONG_PASSWORD);
+        verify(player, never()).admin(true);
+    }
+
+    @Test
+    @DisplayName("applyLogin grants nothing when the Discord approval went away while the password was hashed")
+    void applyLogin_approvalWithdrawn() {
+        Player player = loggingIn();
+        PlayerData data = new PlayerData();
+        liveSession(player, data);
+        when(discordAdminAccessService.hasDiscordAdminAccess(data)).thenReturn(false);
+        var verification = new AdminAuthService.PasswordVerificationResult(true, false, "commands-login-success");
+
+        var result = authService.applyLogin(player, new PlayerData(), verification, false);
+
+        assertThat(result.status()).isEqualTo(AuthResultStatus.DISCORD_APPROVAL_REQUIRED);
+        verify(player, never()).admin(true);
+    }
+
+    @Test
+    @DisplayName("applyLogin grants nothing when the uuid now belongs to another connection")
+    void applyLogin_reconnected() {
+        Player player = loggingIn();
+        PlayerData data = new PlayerData();
+        liveSession(mock(Player.class), data);
+        when(discordAdminAccessService.hasDiscordAdminAccess(data)).thenReturn(true);
+        var verification = new AdminAuthService.PasswordVerificationResult(true, false, "commands-login-success");
+
+        var result = authService.applyLogin(player, new PlayerData(), verification, false);
+
+        assertThat(result.status()).isEqualTo(AuthResultStatus.SESSION_NOT_FOUND);
+        verify(player, never()).admin(true);
+    }
+
+    @Test
+    @DisplayName("resumeWithToken restores admin without writing to the database")
+    void resumeWithToken_noWrite() {
+        Player player = loggingIn();
+        PlayerData data = new PlayerData();
+        data.addDeviceToken(AdminAuthService.hashToken("device-token"), System.currentTimeMillis() + 60_000L);
+        liveSession(player, data);
+        when(discordAdminAccessService.hasDiscordAdminAccess(data)).thenReturn(true);
+
+        var result = authService.resumeWithToken(player, "device-token");
+
+        assertThat(result.status()).isEqualTo(AuthResultStatus.SUCCESS);
+        verify(player).admin(true);
+        verifyNoInteractions(adminDataRepository);
+    }
 }

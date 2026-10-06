@@ -149,14 +149,30 @@ public class AdminAuthService {
      * on a background executor.
      */
     public PasswordVerificationResult verifyOrSetPassword(PlayerData data, String password) {
-        boolean created = false;
-        if (data.password == null || data.password.isEmpty()) {
-            data.hashPassword(password);
+        PasswordVerificationResult result = checkPassword(data, password);
+        if (result.created()) {
             adminDataRepository.save(data);
+        }
+        return result;
+    }
+
+    /**
+     * The BCrypt half of a login on its own: verifies {@code password} against
+     * {@code credentials.password}, or hashes it into that field when there is none yet.
+     * <p>
+     * It touches neither the repository nor game state, so it can run on a storage thread
+     * against a detached copy that carries nothing but the uuid and the password. Saving such
+     * a copy would replace the stored player with it; the caller stores the new hash through
+     * the live record instead.
+     */
+    public PasswordVerificationResult checkPassword(PlayerData credentials, String password) {
+        boolean created = false;
+        if (credentials.password == null || credentials.password.isEmpty()) {
+            credentials.hashPassword(password);
             created = true;
         }
 
-        if (data.verifyPassword(password)) {
+        if (credentials.verifyPassword(password)) {
             return new PasswordVerificationResult(
                 true,
                 created,
@@ -198,7 +214,13 @@ public class AdminAuthService {
         playerDisplayService.refresh(session);
     }
 
-    public AuthResult authenticate(Player player, String password, boolean rememberDevice) {
+    /**
+     * Everything about a password login that can be decided without hashing: the session, the
+     * length of the password, the rate limit and the Discord approval.
+     *
+     * @return why the attempt is refused, or null when the password is worth checking
+     */
+    public AuthResult rejectLogin(Player player, String password) {
         if (player == null) {
             return new AuthResult(AuthResultStatus.SESSION_NOT_FOUND, "error-processing-request");
         }
@@ -218,12 +240,66 @@ public class AdminAuthService {
             return new AuthResult(AuthResultStatus.RATE_LIMITED, "error-wrong-admin-password");
         }
 
-        PlayerData data = session.data;
-
         // Security check: Only players with Discord admin role can authenticate or set an admin password
+        if (!hasDiscordAdminAccess(session.data)) {
+            return new AuthResult(AuthResultStatus.DISCORD_APPROVAL_REQUIRED, "commands-login-request-approval-discord");
+        }
+
+        return null;
+    }
+
+    /**
+     * Finishes a login whose password was checked off the game thread by {@link #checkPassword}.
+     * Game thread only, and free of I/O: when the result is a success that created a password
+     * or minted a token, the caller still has to store the player's data.
+     *
+     * @param credentials the detached copy {@link #checkPassword} worked on
+     */
+    public AuthResult applyLogin(Player player,
+                                 PlayerData credentials,
+                                 PasswordVerificationResult verification,
+                                 boolean rememberDevice) {
+        Session session = player != null ? sessionService.get(player.uuid()) : null;
+        if (session == null || session.data == null || session.player != player) {
+            return new AuthResult(AuthResultStatus.SESSION_NOT_FOUND, "error-processing-request");
+        }
+        if (!verification.success()) {
+            return new AuthResult(AuthResultStatus.WRONG_PASSWORD, verification.messageKey());
+        }
+
+        PlayerData data = session.data;
+        // The approval may have been withdrawn while the password was being hashed.
         if (!hasDiscordAdminAccess(data)) {
             return new AuthResult(AuthResultStatus.DISCORD_APPROVAL_REQUIRED, "commands-login-request-approval-discord");
         }
+
+        rateLimits.remove(player.uuid());
+        if (verification.created()) {
+            data.password = credentials.password;
+        }
+        grantAdmin(player, session);
+
+        String mintedToken = null;
+        if (rememberDevice) {
+            mintedToken = generateDeviceToken();
+            data.addDeviceToken(hashToken(mintedToken), System.currentTimeMillis() + TOKEN_TTL_MILLIS);
+        }
+
+        return new AuthResult(
+                verification.created() ? AuthResultStatus.PASSWORD_CREATED : AuthResultStatus.SUCCESS,
+                verification.messageKey(),
+                mintedToken
+        );
+    }
+
+    public AuthResult authenticate(Player player, String password, boolean rememberDevice) {
+        AuthResult rejected = rejectLogin(player, password);
+        if (rejected != null) {
+            return rejected;
+        }
+
+        Session session = sessionService.get(player.uuid());
+        PlayerData data = session.data;
 
         PasswordVerificationResult verification = verifyOrSetPassword(data, password);
 
@@ -252,6 +328,20 @@ public class AdminAuthService {
     }
 
     public AuthResult authenticateToken(Player player, String token) {
+        AuthResult result = resumeWithToken(player, token);
+        if (result.isSuccess()) {
+            // Save in case expired tokens got purged during hasDeviceToken
+            adminDataRepository.save(sessionService.get(player.uuid()).data);
+        }
+        return result;
+    }
+
+    /**
+     * {@link #authenticateToken} without the write: nothing here leaves the game thread or
+     * waits on the database. After a success the caller stores the player's data, because
+     * looking the token up drops the expired ones.
+     */
+    public AuthResult resumeWithToken(Player player, String token) {
         if (player == null) {
             return new AuthResult(AuthResultStatus.SESSION_NOT_FOUND, "error-processing-request");
         }
@@ -286,9 +376,6 @@ public class AdminAuthService {
             String usid = player.getInfo() != null ? player.getInfo().adminUsid : null;
             netServer.admins.adminPlayer(player.uuid(), usid);
             playerDisplayService.refresh(session);
-
-            // Save in case expired tokens got purged during hasDeviceToken
-            adminDataRepository.save(data);
 
             return new AuthResult(AuthResultStatus.SUCCESS, "commands-login-success", token);
         } else {

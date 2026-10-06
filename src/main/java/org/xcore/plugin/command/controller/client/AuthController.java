@@ -145,7 +145,7 @@ public class AuthController implements CloudClientController {
 
         // 5. Offload CPU-intensive BCrypt hashing / verification to StorageExecutor
         //
-        // verifyOrSetPassword mutates and saves the PlayerData it is handed, and
+        // checkPassword hashes into the PlayerData it is handed, and
         // session.data is live state: the tick loop and every command read it, and
         // SessionService can replace it wholesale while a reload is in flight. Hashing
         // into the live object from a storage thread is a cross-thread write to shared
@@ -158,7 +158,7 @@ public class AuthController implements CloudClientController {
                 .password(data.password)
                 .build();
         try {
-            storageExecutor.supply(() -> adminAuthService.verifyOrSetPassword(authSnapshot, password))
+            storageExecutor.supply(() -> adminAuthService.checkPassword(authSnapshot, password))
                     .whenComplete((result, error) -> {
                         mainThread.execute(() -> {
                             try {
