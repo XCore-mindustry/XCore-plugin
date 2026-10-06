@@ -1,6 +1,7 @@
 package org.xcore.cloud.mindustry;
 
 import arc.struct.ObjectMap;
+import arc.struct.Seq;
 import arc.util.CommandHandler;
 import org.incendo.cloud.Command;
 import org.incendo.cloud.component.CommandComponent;
@@ -28,8 +29,14 @@ final class ArcCommandRegistrationHandler<C> implements CommandRegistrationHandl
     private final CommandHandler handler;
     private final ObjectMap<String, CommandHandler.Command> arcCommands;
 
-    private final Set<CommandComponent<?>> registeredRoots = new HashSet<>();
-    private final Map<CommandComponent<?>, Set<String>> registeredNames = new HashMap<>();
+    /**
+     * What this handler put into the Arc handler under one physical name, and what it pushed out.
+     * {@code displaced} is the command {@link ConflictStrategy#OVERRIDE} replaced, or null.
+     */
+    private record OwnedRegistration(String name, CommandHandler.Command wrapper,
+                                     CommandHandler.Command displaced, int previousIndex) {}
+
+    private final Map<CommandComponent<?>, List<OwnedRegistration>> registrations = new HashMap<>();
 
     ArcCommandRegistrationHandler(MindustryCommandManager<C> manager, CommandHandler handler) {
         this.manager = manager;
@@ -45,35 +52,48 @@ final class ArcCommandRegistrationHandler<C> implements CommandRegistrationHandl
     public boolean registerCommand(Command<C> command) {
         CommandComponent<C> root = command.rootComponent();
 
-        if (registeredRoots.contains(root)) {
+        if (registrations.containsKey(root)) {
             return false;
         }
 
-        Set<String> names = new HashSet<>();
+        List<OwnedRegistration> owned = new ArrayList<>();
 
-        String rootName = registerSingleCommand(command, root.name(), root.name(), true);
-        if (rootName == null) return false;
+        try {
+            OwnedRegistration rootRegistration = registerSingleCommand(command, root.name(), root.name());
+            if (rootRegistration == null) return false;
 
-        names.add(rootName);
+            owned.add(rootRegistration);
 
-        for (String alias : root.alternativeAliases()) {
-            String aliasName = registerSingleCommand(command, alias, alias, false);
-            if (aliasName != null) names.add(aliasName);
+            for (String alias : root.alternativeAliases()) {
+                OwnedRegistration aliasRegistration = registerSingleCommand(command, alias, alias);
+                if (aliasRegistration != null) owned.add(aliasRegistration);
+            }
+        } catch (RuntimeException e) {
+            // FAIL on an alias: take back what this attempt already published.
+            unregister(owned);
+            throw e;
         }
 
-        registeredRoots.add(root);
-        registeredNames.put(root, names);
+        registrations.put(root, owned);
         return true;
     }
 
-    private String registerSingleCommand(Command<C> command, String displayName, String inputName, boolean isRoot) {
+    private OwnedRegistration registerSingleCommand(Command<C> command, String displayName, String inputName) {
         ConflictStrategy strategy = manager.getConflictStrategy();
+
+        CommandHandler.Command displaced = null;
+        int previousIndex = -1;
 
         if (arcCommands.containsKey(displayName)) {
             switch (strategy) {
                 case SKIP -> { return null; }
                 case FAIL -> throw new IllegalStateException("Command already registered: " + displayName);
-                case OVERRIDE -> handler.removeCommand(displayName);
+                case OVERRIDE -> {
+                    displaced = arcCommands.get(displayName);
+                    previousIndex = handler.getCommandList().indexOf(displaced, true);
+                    arcCommands.remove(displayName);
+                    handler.getCommandList().remove(displaced, true);
+                }
                 case PREFIX -> {
                     displayName = manager.getCommandPrefix() + ":" + displayName;
                     if (arcCommands.containsKey(displayName)) {
@@ -93,18 +113,37 @@ final class ArcCommandRegistrationHandler<C> implements CommandRegistrationHandl
 
         arcCommands.put(displayName, wrapper);
         handler.getCommandList().add(wrapper);
-        return displayName;
+        return new OwnedRegistration(displayName, wrapper, displaced, previousIndex);
     }
 
     @Override
     public void unregisterRootCommand(CommandComponent<C> root) {
-        if (!registeredRoots.remove(root)) return;
+        List<OwnedRegistration> owned = registrations.remove(root);
+        if (owned != null) unregister(owned);
+    }
 
-        Set<String> names = registeredNames.remove(root);
-        if (names == null) return;
+    /**
+     * Removes the wrappers and puts displaced commands back where they were. Runs in reverse
+     * registration order, so the recorded indices are valid again by the time they are used.
+     * A name that someone else has re-registered since is left alone.
+     */
+    private void unregister(List<OwnedRegistration> owned) {
+        Seq<CommandHandler.Command> list = handler.getCommandList();
 
-        for (String name : names) {
-            handler.removeCommand(name);
+        for (int i = owned.size() - 1; i >= 0; i--) {
+            OwnedRegistration registration = owned.get(i);
+            list.remove(registration.wrapper(), true);
+
+            if (arcCommands.get(registration.name()) != registration.wrapper()) continue;
+            arcCommands.remove(registration.name());
+
+            CommandHandler.Command displaced = registration.displaced();
+            if (displaced == null) continue;
+
+            arcCommands.put(registration.name(), displaced);
+            int index = registration.previousIndex();
+            if (index < 0 || index > list.size) index = list.size;
+            list.insert(index, displaced);
         }
     }
 }
