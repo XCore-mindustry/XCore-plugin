@@ -253,6 +253,47 @@ class AdminAuthServiceTest {
     }
 
     @Test
+    @DisplayName("applyLogin does not let a second first-time login replace the password the first one created")
+    void applyLogin_passwordCreatedMeanwhile() {
+        Player player = loggingIn();
+        PlayerData data = new PlayerData();
+        data.password = "first-hash";
+        liveSession(player, data);
+        when(discordAdminAccessService.hasDiscordAdminAccess(data)).thenReturn(true);
+
+        PlayerData credentials = PlayerData.builder().uuid("uuid-1").password("second-hash").build();
+        var verification = new AdminAuthService.PasswordVerificationResult(true, true, "commands-login-admin-password-created");
+
+        var result = authService.applyLogin(player, credentials, verification, true);
+
+        assertThat(result.isSuccess()).isFalse();
+        assertThat(result.token()).isNull();
+        assertThat(data.password).isEqualTo("first-hash");
+        verify(player, never()).admin(true);
+    }
+
+    @Test
+    @DisplayName("applyLogin grants nothing when the password was reset or changed while it was checked")
+    void applyLogin_passwordChangedMeanwhile() {
+        Player player = loggingIn();
+        PlayerData data = new PlayerData();
+        liveSession(player, data);
+        when(discordAdminAccessService.hasDiscordAdminAccess(data)).thenReturn(true);
+
+        PlayerData credentials = PlayerData.builder().uuid("uuid-1").password("old-hash").build();
+        var verification = new AdminAuthService.PasswordVerificationResult(true, false, "commands-login-success");
+
+        data.password = null;
+        assertThat(authService.applyLogin(player, credentials, verification, false).isSuccess()).isFalse();
+        data.password = "new-hash";
+        assertThat(authService.applyLogin(player, credentials, verification, false).isSuccess()).isFalse();
+        data.password = "old-hash";
+        assertThat(authService.applyLogin(player, credentials, verification, false).isSuccess()).isTrue();
+
+        verify(player, times(1)).admin(true);
+    }
+
+    @Test
     @DisplayName("applyLogin refuses a wrong password without touching the player")
     void applyLogin_wrongPassword() {
         Player player = loggingIn();

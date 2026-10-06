@@ -273,6 +273,10 @@ public class AdminAuthService {
             return new AuthResult(AuthResultStatus.DISCORD_APPROVAL_REQUIRED, "commands-login-request-approval-discord");
         }
 
+        if (!credentialsUnchanged(data, credentials, verification)) {
+            return new AuthResult(AuthResultStatus.SESSION_NOT_FOUND, "error-processing-request");
+        }
+
         rateLimits.remove(player.uuid());
         if (verification.created()) {
             data.password = credentials.password;
@@ -290,6 +294,23 @@ public class AdminAuthService {
                 verification.messageKey(),
                 mintedToken
         );
+    }
+
+    /**
+     * Whether the password {@link #checkPassword} worked from is still the player's password.
+     * <p>
+     * The check runs off the game thread, and meanwhile another login may have created the
+     * password or a reset may have cleared it. A result computed from the old state proves
+     * nothing about the new one, so it must not be applied.
+     *
+     * @param credentials the detached copy {@link #checkPassword} worked on
+     */
+    public static boolean credentialsUnchanged(PlayerData live, PlayerData credentials, PasswordVerificationResult verification) {
+        boolean liveHasPassword = live.password != null && !live.password.isEmpty();
+        if (verification.created()) {
+            return !liveHasPassword;
+        }
+        return liveHasPassword && live.password.equals(credentials.password);
     }
 
     public AuthResult authenticate(Player player, String password, boolean rememberDevice) {

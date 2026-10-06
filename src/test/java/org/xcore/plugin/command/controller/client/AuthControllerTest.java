@@ -105,6 +105,7 @@ class AuthControllerTest {
     @DisplayName("successful login sends immediate ack, executes off-thread, and grants admin on tick thread")
     void login_successfulAuthentication() throws Exception {
         var ctx = createContext("uuid-1", true);
+        ctx.data().password = "stored-hash";
         when(adminAuthService.hasDiscordAdminAccess(ctx.data())).thenReturn(true);
         when(adminAuthService.checkPassword(argThat(sameIdentityAs(ctx.data())), eq("secret123")))
                 .thenReturn(new PasswordVerificationResult(true, false, "commands-login-success"));
@@ -121,6 +122,29 @@ class AuthControllerTest {
                     assertThat(controller.isInFlight("uuid-1")).isFalse();
                     assertThat(controller.getFailedAttempts("uuid-1")).isZero();
                 });
+    }
+
+    @Test
+    @DisplayName("a password reset while the login was being checked leaves the player without admin")
+    void login_passwordResetMeanwhile() {
+        var ctx = createContext("uuid-reset", true);
+        ctx.data().password = "stored-hash";
+        when(adminAuthService.hasDiscordAdminAccess(ctx.data())).thenReturn(true);
+        when(adminAuthService.checkPassword(argThat(sameIdentityAs(ctx.data())), eq("secret123")))
+                .thenAnswer(_ -> {
+                    ctx.data().password = null;
+                    return new PasswordVerificationResult(true, false, "commands-login-success");
+                });
+
+        controller.login(ctx.sender(), "secret123");
+
+        org.testcontainers.shaded.org.awaitility.Awaitility.await()
+                .atMost(2, TimeUnit.SECONDS)
+                .untilAsserted(() -> {
+                    verify(ctx.local()).send(eq("error-processing-request"), any());
+                    assertThat(controller.isInFlight("uuid-reset")).isFalse();
+                });
+        verify(adminAuthService, never()).grantAdmin(any(), any());
     }
 
     @Test

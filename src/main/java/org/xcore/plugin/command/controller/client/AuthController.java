@@ -173,6 +173,14 @@ public class AuthController implements CloudClientController {
                                     return;
                                 }
 
+                                // The password may have been created or reset while this
+                                // one was being checked; the result is then about a
+                                // credential that no longer exists.
+                                if (result.success() && !AdminAuthService.credentialsUnchanged(session.data, authSnapshot, result)) {
+                                    local.send("error-processing-request", args());
+                                    return;
+                                }
+
                                 if (result.success()) {
                                     tracker.reset();
                                     bruteForceMap.remove(uuid);
