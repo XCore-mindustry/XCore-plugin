@@ -16,6 +16,8 @@ import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.xcore.protocol.generated.messages.rating.RatingMessages.RatingAccountsMergeRequestV1;
+import org.xcore.protocol.generated.messages.security.SecurityMessages.SecurityStaffResetPasswordRequestV1;
+import org.xcore.protocol.generated.messages.security.SecurityMessages.SecurityStaffSyncRequestV1;
 import org.xcore.protocol.generated.messages.maps.MapsMessages.MapsListRequestV1;
 import org.xcore.protocol.generated.messages.maps.MapsMessages.MapsListResponseV1;
 import org.xcore.protocol.generated.messages.maps.MapsMessages.MapsLoadCommandV1;
@@ -589,6 +591,51 @@ class RedisNetworkBackendIntegrationTest {
         }
 
         subscription.unsubscribe();
+    }
+
+    @Test
+    @DisplayName("an idempotent rpc request reaches its handler whatever other request types share the stream")
+    void idempotentRpcRequestIsNotClaimedByOtherTypes() throws InterruptedException {
+        TomlXcoreConfig serverConfig = baseConfig("target");
+        serverBackend = new RedisNetworkBackend(serverConfig);
+        serverBackend.connect();
+
+        int requests = 12;
+        CountDownLatch synced = new CountDownLatch(requests);
+        serverBackend.subscribe(RatingAccountsMergeRequestV1.class, request -> {
+        });
+        serverBackend.subscribe(MapsRemoveRequestV1.class, request -> {
+        });
+        serverBackend.subscribe(SecurityStaffResetPasswordRequestV1.class, request -> {
+        });
+        serverBackend.subscribe(SecurityStaffSyncRequestV1.class, request -> synced.countDown());
+
+        try (RedisClient client = RedisClient.create(serverConfig.transport.redis.url);
+             StatefulRedisConnection<String, String> connection = client.connect()) {
+            long now = System.currentTimeMillis();
+            for (int i = 0; i < requests; i++) {
+                connection.sync().xadd("xcore:rpc:req:target", java.util.Map.ofEntries(
+                        java.util.Map.entry("schema_version", "1"),
+                        java.util.Map.entry("rpc_type", "security.staff.sync.request"),
+                        java.util.Map.entry("correlation_id", "c-sync-" + i),
+                        java.util.Map.entry("request_id", "r-sync-" + i),
+                        java.util.Map.entry("idempotency_key", "rpc.security.staff.sync.request:" + i),
+                        java.util.Map.entry("reply_to", "xcore:rpc:resp:discord"),
+                        java.util.Map.entry("requested_by", "discord-bot"),
+                        java.util.Map.entry("server", "target"),
+                        java.util.Map.entry("timeout_ms", "5000"),
+                        java.util.Map.entry("created_at", String.valueOf(now)),
+                        java.util.Map.entry("expires_at", String.valueOf(now + 10_000)),
+                        java.util.Map.entry("payload_json",
+                                "{\"messageType\":\"security.staff.sync.request\",\"messageVersion\":1,"
+                                        + "\"server\":\"target\",\"operationId\":\"op-" + i + "\","
+                                        + "\"playerUuid\":\"uuid\",\"discordId\":\"1\",\"roleIds\":[],"
+                                        + "\"complete\":true}")
+                ));
+            }
+
+            assertThat(synced.await(10, TimeUnit.SECONDS)).isTrue();
+        }
     }
 
     @Test
