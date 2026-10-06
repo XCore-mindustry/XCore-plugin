@@ -214,7 +214,8 @@ console by IP.
 Mindustry's game state belongs to one thread. Each manager has a `SimulationExecutor` for it:
 `MindustryCommandManager.create(handler)` uses the application's main thread and runs the whole command
 pipeline (parsing, suggestions, handlers, error messages) there. A command issued from that thread, as Arc
-does, is still handled synchronously.
+does, is still handled synchronously; `commandExecutor().executeCommand(...)` called from any other thread
+is queued for the game thread first.
 
 Selectors and the `PlayerInfo` parser refuse to run anywhere else: they throw instead of waiting for the
 game thread. If your handler continues on a worker thread, go back before touching game state:

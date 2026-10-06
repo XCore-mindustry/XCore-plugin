@@ -19,6 +19,8 @@ import org.incendo.cloud.exception.ArgumentParseException;
 import org.incendo.cloud.exception.CommandExecutionException;
 import org.incendo.cloud.exception.handling.ExceptionHandler;
 import org.incendo.cloud.exception.parsing.ParserException;
+import org.incendo.cloud.execution.CommandExecutor;
+import org.incendo.cloud.execution.CommandResult;
 import org.incendo.cloud.execution.ExecutionCoordinator;
 import org.incendo.cloud.internal.CommandRegistrationHandler;
 import org.incendo.cloud.key.CloudKey;
@@ -48,7 +50,10 @@ import org.xcore.cloud.mindustry.selector.parser.TargetSelectorParsers;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.function.BiPredicate;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
@@ -79,6 +84,7 @@ public class MindustryCommandManager<C> extends CommandManager<C> {
     private final SenderMapper<MindustrySender, C> senderMapper;
     private final SimulationExecutor simulationExecutor;
     private final SpatialSelectorEngine selectorEngine;
+    private final CommandExecutor<C> commandExecutor;
     private ConflictStrategy conflictStrategy = ConflictStrategy.SKIP;
     private BiPredicate<C, String> permissionChecker = (sender, perm) -> true;
 
@@ -112,6 +118,7 @@ public class MindustryCommandManager<C> extends CommandManager<C> {
         this.senderMapper = senderMapper;
         this.simulationExecutor = Objects.requireNonNull(simulationExecutor);
         this.selectorEngine = new SpatialSelectorEngine(simulationExecutor);
+        this.commandExecutor = new SimulationCommandExecutor(super.commandExecutor());
 
         registerCapability(CloudCapability.StandardCapabilities.ROOT_COMMAND_DELETION);
 
@@ -198,6 +205,56 @@ public class MindustryCommandManager<C> extends CommandManager<C> {
 
     public String getCommandPrefix() {
         return prefixProvider.get();
+    }
+
+    /**
+     * Commands enter the pipeline on the simulation thread, whichever thread issues them: Cloud
+     * runs preprocessors on the issuing thread, and the exception handlers too when the command
+     * has already finished by the time it attaches them.
+     */
+    @Override
+    public @NonNull CommandExecutor<C> commandExecutor() {
+        return commandExecutor;
+    }
+
+    private final class SimulationCommandExecutor implements CommandExecutor<C> {
+
+        private final CommandExecutor<C> delegate;
+
+        SimulationCommandExecutor(CommandExecutor<C> delegate) {
+            this.delegate = delegate;
+        }
+
+        @Override
+        public @NonNull CompletableFuture<CommandResult<C>> executeCommand(
+                @NonNull C sender,
+                @NonNull String input,
+                @NonNull Consumer<CommandContext<C>> contextConsumer
+        ) {
+            if (simulationExecutor.isOnThread()) {
+                return delegate.executeCommand(sender, input, contextConsumer);
+            }
+
+            CompletableFuture<CommandResult<C>> result = new CompletableFuture<>();
+            try {
+                simulationExecutor.execute(() -> delegate.executeCommand(sender, input, contextConsumer)
+                        .whenComplete((value, failure) -> {
+                            if (failure != null) {
+                                result.completeExceptionally(failure);
+                            } else {
+                                result.complete(value);
+                            }
+                        }));
+            } catch (RejectedExecutionException e) {
+                result.completeExceptionally(e);
+            }
+            return result;
+        }
+
+        @Override
+        public @NonNull ExecutionCoordinator<C> executionCoordinator() {
+            return delegate.executionCoordinator();
+        }
     }
 
     /**
