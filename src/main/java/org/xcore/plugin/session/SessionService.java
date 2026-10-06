@@ -387,7 +387,16 @@ public class SessionService {
                         if (data == null) {
                             continue;
                         }
-                        rebuilt.put(player.uuid(), createSession(player, data));
+                        Session session = createSession(player, data);
+                        // The rebuilt session is the same connection: what it was granted
+                        // and whether it logged in as staff must not be lost with the old one.
+                        Session previous = sessionCache.get(player.uuid());
+                        if (previous != null && previous.player == player) {
+                            session.permissionSet = previous.permissionSet;
+                            session.staffAuthenticated = previous.staffAuthenticated;
+                            session.nativeAdmin = previous.nativeAdmin;
+                        }
+                        rebuilt.put(player.uuid(), session);
                     }
 
                     sessionCache.clear();

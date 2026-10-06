@@ -1364,3 +1364,11 @@ permission-xcore-players-private-info = Видеть приватные данн
 permission-xcore-bypass-playtime = Не учитывать требования к наигранному времени в командах
 permission-xcore-permissions-inspect = Смотреть, у кого какие права
 permission-xcore-permissions-manage = Менять роли и права
+
+error-target-outranks = [scarlet]⚠ Нельзя применить это к игроку, чья роль не ниже вашей.
+perm-me-legacy = [accent]Роли на этом сервере выключены. Админ: [white]{ $admin }
+perm-me-header = [accent]Ваши роли здесь (вес [white]{ $weight }[accent]):
+perm-me-none = [lightgray] - нет
+perm-me-logged-in = [green]Вы вошли как стафф.
+perm-me-not-logged-in = [yellow]Вы не вошли как стафф. Используйте [white]/login <пароль>[yellow].
+perm-me-stale = [scarlet]Права стаффа приостановлены: сервер не смог их обновить. Они вернутся сами.

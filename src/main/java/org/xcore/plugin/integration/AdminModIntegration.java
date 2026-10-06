@@ -1,5 +1,6 @@
 package org.xcore.plugin.integration;
 
+import org.xcore.plugin.permission.TargetHierarchy;
 import org.xcore.plugin.common.PLog;
 import arc.struct.ObjectSet;
 import com.google.gson.Gson;
@@ -44,6 +45,7 @@ public class AdminModIntegration {
     private final Gson rawGson;
     private final Async async;
     private final PermissionService permissions;
+    private final TargetHierarchy hierarchy;
     private final ObjectSet<String> pendingVanillaBanUuids = new ObjectSet<>();
 
     @Inject
@@ -55,7 +57,8 @@ public class AdminModIntegration {
                                DiscordMenu discordMenu,
                                @Named("raw") Gson rawGson,
                                Async async,
-                               PermissionService permissions) {
+                               PermissionService permissions,
+                               TargetHierarchy hierarchy) {
         this.playerDataRepository = playerDataRepository;
         this.sessionService = sessionService;
         this.moderationService = moderationService;
@@ -65,6 +68,20 @@ public class AdminModIntegration {
         this.rawGson = rawGson;
         this.async = async;
         this.permissions = permissions;
+        this.hierarchy = hierarchy;
+    }
+
+    public AdminModIntegration(PlayerDataRepository playerDataRepository,
+                               SessionService sessionService,
+                               ModerationService moderationService,
+                               AdminAuthService adminAuthService,
+                               DiscordLinkService discordLinkService,
+                               DiscordMenu discordMenu,
+                               Gson rawGson,
+                               Async async,
+                               PermissionService permissions) {
+        this(playerDataRepository, sessionService, moderationService, adminAuthService, discordLinkService, discordMenu,
+                rawGson, async, permissions, TargetHierarchy.none());
     }
 
     @PostConstruct
@@ -96,29 +113,34 @@ public class AdminModIntegration {
                 return;
             }
 
-            var duration = moderationService.parsePeriod(req.duration, TimeUnit.DAYS);
+            hierarchy.whenAllowed(session, targetData.uuid, PermissionNodes.MODERATION_BAN, () -> {
+                var duration = moderationService.parsePeriod(req.duration, TimeUnit.DAYS);
 
-            if (duration == null) {
-                session.locale().send("error-wrong-period-format", args());
-                Call.clientPacketReliable(player.con, "give_ban_data", content);
-                return;
-            }
+                if (duration == null) {
+                    session.locale().send("error-wrong-period-format", args());
+                    Call.clientPacketReliable(player.con, "give_ban_data", content);
+                    return;
+                }
 
-            var result = moderationService.banPlayer(targetData, player.name, session.data.discordId, req.reason, duration, true);
+                var result = moderationService.banPlayer(targetData, player.name, session.data.discordId, req.reason, duration, true);
             
-            if (!result.isSuccess() || result.getData().isEmpty()) {
-                session.locale().send("error-processing-request", args());
-                Call.clientPacketReliable(player.con, "give_ban_data", content);
-                return;
-            }
+                if (!result.isSuccess() || result.getData().isEmpty()) {
+                    session.locale().send("error-processing-request", args());
+                    Call.clientPacketReliable(player.con, "give_ban_data", content);
+                    return;
+                }
 
-            clearPendingVanillaBan(targetData.uuid);
-            sessionService.broadcast("tempban-player-banned", args(
-                    "adminName", player.coloredName(),
-                    "playerName", req.name != null ? req.name : targetData.nickname
-            ));
-            PLog.info("@ banned @ (@) for @", player.plainName(), targetData.nickname, targetData.uuid, req.duration);
-            session.locale().send("commands-ban-success", args("nickname", targetData.nickname));
+                clearPendingVanillaBan(targetData.uuid);
+                sessionService.broadcast("tempban-player-banned", args(
+                        "adminName", player.coloredName(),
+                        "playerName", req.name != null ? req.name : targetData.nickname
+                ));
+                PLog.info("@ banned @ (@) for @", player.plainName(), targetData.nickname, targetData.uuid, req.duration);
+                session.locale().send("commands-ban-success", args("nickname", targetData.nickname));
+            }, () -> {
+                session.locale().send(TargetHierarchy.DENIED_KEY, args());
+                Call.clientPacketReliable(player.con, "give_ban_data", content);
+            });
         });
 
         netServer.addPacketHandler("cancel_ban_data", (player, content) -> {

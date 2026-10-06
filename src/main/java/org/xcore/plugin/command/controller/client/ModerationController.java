@@ -16,6 +16,7 @@ import org.xcore.plugin.concurrent.Async;
 import org.xcore.plugin.localization.Localization;
 import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.permission.PermissionNodes;
+import org.xcore.plugin.permission.TargetHierarchy;
 import org.xcore.plugin.service.FindService;
 import org.xcore.plugin.service.SecurityService;
 import org.xcore.plugin.service.moderation.BanCommand;
@@ -42,19 +43,21 @@ public class ModerationController implements CloudClientController {
     private final SessionService sessionService;
     private final AuditHistoryMenu auditHistoryMenu;
     private final Async async;
+    private final TargetHierarchy hierarchy;
 
     @Inject
     public ModerationController(ModerationService moderationService, FindService find, SessionService sessionService,
-                                AuditHistoryMenu auditHistoryMenu, Async async) {
+                                AuditHistoryMenu auditHistoryMenu, Async async, TargetHierarchy hierarchy) {
         this.moderationService = moderationService;
         this.find = find;
         this.sessionService = sessionService;
         this.auditHistoryMenu = auditHistoryMenu;
         this.async = async;
+        this.hierarchy = hierarchy;
     }
 
     public ModerationController(ModerationService moderationService, FindService find, SessionService sessionService) {
-        this(moderationService, find, sessionService, null, null);
+        this(moderationService, find, sessionService, null, null, TargetHierarchy.none());
     }
 
     @Permission(PermissionNodes.MODERATION_BAN)
@@ -69,13 +72,15 @@ public class ModerationController implements CloudClientController {
         Localization local = session.locale();
 
         var actor = ModerationActor.of(sender.actor());
-        var result = moderationService.banByTarget(target, actor.name(), actor.discordId(), reason, period, true);
+        guarded(session, target, PermissionNodes.MODERATION_BAN, () -> {
+            var result = moderationService.banByTarget(target, actor.name(), actor.discordId(), reason, period, true);
 
-        if (result.isSuccess()) {
-            local.send("commands-ban-success", args("nickname", result.getData().get().name));
-        } else {
-            sendModerationFailure(local, result);
-        }
+            if (result.isSuccess()) {
+                local.send("commands-ban-success", args("nickname", result.getData().get().name));
+            } else {
+                sendModerationFailure(local, result);
+            }
+        });
     }
 
     @Permission(PermissionNodes.MODERATION_UNBAN)
@@ -86,17 +91,19 @@ public class ModerationController implements CloudClientController {
         Localization local = session.locale();
 
         var actor = ModerationActor.of(sender.actor());
-        var result = moderationService.unbanByTarget(target, actor.name(), actor.discordId());
+        guarded(session, target, PermissionNodes.MODERATION_UNBAN, () -> {
+            var result = moderationService.unbanByTarget(target, actor.name(), actor.discordId());
 
-        if (result.isSuccess()) {
-            var pData = result.getData().get();
-            local.send("commands-unban-success", args(
-                    "nickname", pData.nickname,
-                    "pid", pData.pid
-            ));
-        } else {
-            sendModerationFailure(local, result);
-        }
+            if (result.isSuccess()) {
+                var pData = result.getData().get();
+                local.send("commands-unban-success", args(
+                        "nickname", pData.nickname,
+                        "pid", pData.pid
+                ));
+            } else {
+                sendModerationFailure(local, result);
+            }
+        });
     }
 
     @Permission(PermissionNodes.MODERATION_MUTE)
@@ -110,22 +117,24 @@ public class ModerationController implements CloudClientController {
         Localization local = session.locale();
 
         var actor = ModerationActor.of(sender.actor());
-        var result = moderationService.muteByTarget(target, actor.name(), actor.discordId(), reason, period);
+        guarded(session, target, PermissionNodes.MODERATION_MUTE, () -> {
+            var result = moderationService.muteByTarget(target, actor.name(), actor.discordId(), reason, period);
 
-        if (result.isSuccess()) {
-            var mute = result.getData().get();
-            local.send("commands-mute-success", args("nickname", mute.name));
+            if (result.isSuccess()) {
+                var mute = result.getData().get();
+                local.send("commands-mute-success", args("nickname", mute.name));
 
-            Player p = find.playerByUuid(mute.uuid);
-            if (p != null) {
-                Session s = sessionService.get(p.uuid());
-                if (s != null) {
-                    s.locale().send("you-are-muted-by", SecurityService.muteMessageArgs(sender.player().coloredName(), mute.reason, period));
+                Player p = find.playerByUuid(mute.uuid);
+                if (p != null) {
+                    Session s = sessionService.get(p.uuid());
+                    if (s != null) {
+                        s.locale().send("you-are-muted-by", SecurityService.muteMessageArgs(sender.player().coloredName(), mute.reason, period));
+                    }
                 }
+            } else {
+                sendModerationFailure(local, result);
             }
-        } else {
-            sendModerationFailure(local, result);
-        }
+        });
     }
 
     @Permission(PermissionNodes.MODERATION_UNMUTE)
@@ -136,14 +145,16 @@ public class ModerationController implements CloudClientController {
         Localization local = session.locale();
 
         var actor = ModerationActor.of(sender.actor());
-        var result = moderationService.unmuteByTarget(target, actor.name(), actor.discordId());
+        guarded(session, target, PermissionNodes.MODERATION_UNMUTE, () -> {
+            var result = moderationService.unmuteByTarget(target, actor.name(), actor.discordId());
 
-        if (result.isSuccess()) {
-            local.send("commands-unmute-success",
-                    args("nickname", result.getData().get().nickname));
-        } else {
-            sendModerationFailure(local, result);
-        }
+            if (result.isSuccess()) {
+                local.send("commands-unmute-success",
+                        args("nickname", result.getData().get().nickname));
+            } else {
+                sendModerationFailure(local, result);
+            }
+        });
     }
 
     @Permission(PermissionNodes.MODERATION_AUDIT_OTHERS)
@@ -166,6 +177,18 @@ public class ModerationController implements CloudClientController {
 
         auditHistoryMenu.history(session.data.uuid, targetData);
     }
+    /**
+     * Runs {@code action} unless the target's roles do not weigh less than the actor's, which
+     * the actor is told. Finding the target and their roles takes the store, so with roles on
+     * the action runs a little later, back on the game thread.
+     */
+    private void guarded(Session actor, String target, String node, Runnable action) {
+        hierarchy.whenAllowed(actor, () -> {
+            PlayerData targetData = moderationService.resolvePlayerData(target);
+            return targetData == null ? null : targetData.uuid;
+        }, node, action, () -> actor.locale().send(TargetHierarchy.DENIED_KEY, args()));
+    }
+
     private Session resolveActiveSession(XCoreSender sender) {
         Session session = resolveSession(sender, sessionService);
         return (session != null && session.data != null) ? session : null;

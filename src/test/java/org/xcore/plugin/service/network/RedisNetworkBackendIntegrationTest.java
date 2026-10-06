@@ -217,7 +217,7 @@ class RedisNetworkBackendIntegrationTest {
                 }
         );
 
-        serverBackend.send(new ServerCommandExecuteCommandV1("status", List.of(), false));
+        serverBackend.send(new ServerCommandExecuteCommandV1("status", List.of(), false, "alpha"));
 
         assertThat(alphaLatch.await(10, TimeUnit.SECONDS)).isTrue();
         assertThat(betaLatch.await(10, TimeUnit.SECONDS)).isTrue();

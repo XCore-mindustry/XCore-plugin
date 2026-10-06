@@ -6,6 +6,8 @@ import jakarta.inject.Singleton;
 import mindustry.gen.Player;
 import org.xcore.plugin.cloud.XCoreSender;
 import org.xcore.plugin.cloud.exception.XCoreCommandException;
+import org.xcore.plugin.permission.role.PermissionRoles;
+import org.xcore.plugin.permission.role.PermissionSet;
 import org.xcore.plugin.session.Session;
 import org.xcore.plugin.session.SessionService;
 
@@ -14,8 +16,9 @@ import java.util.Optional;
 /**
  * The single place that decides whether somebody may do something.
  * <p>
- * Until roles exist, every {@link Access#STAFF} node follows the player's admin flag, so the
- * outcome is the same as the scattered {@code player.admin} reads this replaces.
+ * With roles switched off every {@link Access#STAFF} node follows the player's admin flag, as
+ * it did before roles existed. With roles on, the answer comes from the {@link PermissionSet}
+ * in the player's session: no I/O either way, so it is safe on the game thread.
  */
 @Singleton
 public class PermissionService {
@@ -27,15 +30,25 @@ public class PermissionService {
     }
 
     private final Provider<SessionService> sessions;
+    private final PermissionRoles roles;
 
     @Inject
-    public PermissionService(Provider<SessionService> sessions) {
+    public PermissionService(Provider<SessionService> sessions, PermissionRoles roles) {
         this.sessions = sessions;
+        this.roles = roles;
+    }
+
+    public PermissionService(Provider<SessionService> sessions) {
+        this(sessions, PermissionRoles.legacy());
     }
 
     /** Without a session registry a session is trusted to be current as long as its player is connected. */
     public PermissionService() {
         this(null);
+    }
+
+    public boolean rolesEnabled() {
+        return roles.enabled();
     }
 
     /**
@@ -72,7 +85,31 @@ public class PermissionService {
         if (actor == null || target == null) {
             return false;
         }
-        return actor == target || !has(target, PermissionNodes.MINDUSTRY_ADMIN);
+        if (actor == target) {
+            return true;
+        }
+        if (roles.enabled()) {
+            return weight(actor) > weight(target);
+        }
+        return !has(target, PermissionNodes.MINDUSTRY_ADMIN);
+    }
+
+    /**
+     * Whether a player may act on somebody whose roles weigh {@code targetWeight}; for targets
+     * who are offline, whose weight the caller has read from the store. Without roles there is
+     * no hierarchy to check here.
+     */
+    public boolean canTarget(Session actor, int targetWeight) {
+        if (!roles.enabled()) {
+            return true;
+        }
+        return actor != null && actor.player != null && weight(actor.player) > targetWeight;
+    }
+
+    /** The highest weight among the roles a player holds on this server; 0 without roles. */
+    public int weight(Player player) {
+        Session session = roles.enabled() ? current(player) : null;
+        return session == null ? 0 : session.permissionSet.weight(roles.clock().instant());
     }
 
     public Explanation explain(XCoreSender sender, String node) {
@@ -116,6 +153,14 @@ public class PermissionService {
         if (player.con != null && player.con.hasDisconnected) {
             return new Explanation(node, false, "disconnected");
         }
+        if (roles.enabled()) {
+            Session session = current(player);
+            // No session yet: the player is still joining and holds nothing but the defaults.
+            PermissionSet set = session == null ? PermissionSet.EMPTY : session.permissionSet;
+            PermissionSet.Decision decision = set.check(declared.get(),
+                    session != null && session.staffAuthenticated, roles.clock().instant());
+            return new Explanation(node, decision.granted(), decision.reason());
+        }
         return switch (declared.get().access()) {
             case PLAYER -> new Explanation(node, true, "open to every player");
             case STAFF -> player.admin
@@ -136,6 +181,16 @@ public class PermissionService {
         }
         Session registered = registry.get(session.player.uuid());
         return registered != null && registered.player == session.player;
+    }
+
+    /** The session that speaks for this very connection, or null. */
+    private Session current(Player player) {
+        SessionService registry = sessions != null ? sessions.get() : null;
+        if (registry == null || player == null) {
+            return null;
+        }
+        Session session = registry.get(player.uuid());
+        return session != null && session.player == player ? session : null;
     }
 
     private static Explanation undeclared(String node) {

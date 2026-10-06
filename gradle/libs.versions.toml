@@ -1,6 +1,6 @@
 [versions]
 mindustry = "160"
-xcore-protocol = "0.11.0"
+xcore-protocol = "0.12.0"
 
 # Plugins
 toxopid = "4.2.0"

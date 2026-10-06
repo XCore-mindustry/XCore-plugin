@@ -7,6 +7,7 @@ import org.xcore.plugin.database.repository.AdminDataRepository;
 import org.xcore.protocol.packet.auth.AuthStatusPacket;
 import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.model.enums.AuthResultStatus;
+import org.xcore.plugin.permission.StaffAccess;
 import org.xcore.plugin.session.Session;
 import org.xcore.plugin.session.SessionService;
 
@@ -39,6 +40,7 @@ public class AdminAuthService {
     private final PlayerDisplayService playerDisplayService;
     private final DiscordAdminAccessService discordAdminAccessService;
     private final AuthStatusBroadcaster authStatusBroadcaster;
+    private final StaffAccess staffAccess;
     private final SecureRandom secureRandom = new SecureRandom();
 
     // Rate limiting: max 5 attempts per minute per player UUID
@@ -68,12 +70,23 @@ public class AdminAuthService {
                             SessionService sessionService,
                             PlayerDisplayService playerDisplayService,
                             DiscordAdminAccessService discordAdminAccessService,
-                            AuthStatusBroadcaster authStatusBroadcaster) {
+                            AuthStatusBroadcaster authStatusBroadcaster,
+                            StaffAccess staffAccess) {
         this.adminDataRepository = adminDataRepository;
         this.sessionService = sessionService;
         this.playerDisplayService = playerDisplayService;
         this.discordAdminAccessService = discordAdminAccessService;
         this.authStatusBroadcaster = authStatusBroadcaster;
+        this.staffAccess = staffAccess;
+    }
+
+    public AdminAuthService(AdminDataRepository adminDataRepository,
+                            SessionService sessionService,
+                            PlayerDisplayService playerDisplayService,
+                            DiscordAdminAccessService discordAdminAccessService,
+                            AuthStatusBroadcaster authStatusBroadcaster) {
+        this(adminDataRepository, sessionService, playerDisplayService, discordAdminAccessService,
+                authStatusBroadcaster, StaffAccess.legacy());
     }
 
     public static String hashToken(String token) {
@@ -206,12 +219,34 @@ public class AdminAuthService {
      * registry, so it does not survive a reconnect or a restart and the player grants it to
      * themselves again by logging in. That is the intended trade - the credential is
      * remembered, the privilege is not.
+     *
+     * <p>With roles on none of that applies: the login is remembered on the session, the
+     * admin flag is computed from the player's grants and the registry is left alone.
      */
     public void grantAdmin(Player player, Session session) {
-        player.admin(true);
-        String usid = player.getInfo() != null ? player.getInfo().adminUsid : null;
-        netServer.admins.adminPlayer(player.uuid(), usid);
+        if (staffAccess.rolesEnabled()) {
+            staffAccess.logIn(session);
+        } else {
+            player.admin(true);
+            String usid = player.getInfo() != null ? player.getInfo().adminUsid : null;
+            netServer.admins.adminPlayer(player.uuid(), usid);
+        }
         playerDisplayService.refresh(session);
+    }
+
+    /** Whether the player is logged in as staff on this connection. */
+    public boolean isLoggedIn(Session session) {
+        return staffAccess.isLoggedIn(session);
+    }
+
+    /** Ends the staff login of this connection. Game thread; the caller refreshes what it shows. */
+    public void dropAdmin(Player player, Session session) {
+        if (staffAccess.rolesEnabled()) {
+            staffAccess.logOut(session);
+            return;
+        }
+        player.admin(false);
+        netServer.admins.unAdminPlayer(player.uuid());
     }
 
     /**
@@ -393,10 +428,7 @@ public class AdminAuthService {
         if (data.hasDeviceToken(tokenHash)) {
             rateLimits.remove(player.uuid());
 
-            player.admin(true);
-            String usid = player.getInfo() != null ? player.getInfo().adminUsid : null;
-            netServer.admins.adminPlayer(player.uuid(), usid);
-            playerDisplayService.refresh(session);
+            grantAdmin(player, session);
 
             return new AuthResult(AuthResultStatus.SUCCESS, "commands-login-success", token);
         } else {
@@ -416,8 +448,7 @@ public class AdminAuthService {
         }
 
         // 1. Runtime de-admin
-        player.admin(false);
-        netServer.admins.unAdminPlayer(player.uuid());
+        dropAdmin(player, session);
 
         // 2. Display refresh
         if (session != null) {
@@ -436,8 +467,7 @@ public class AdminAuthService {
             adminDataRepository.save(session.data);
         }
 
-        player.admin(false);
-        netServer.admins.unAdminPlayer(player.uuid());
+        dropAdmin(player, session);
 
         if (session != null) {
             playerDisplayService.refresh(session);

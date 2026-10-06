@@ -17,6 +17,7 @@ import org.xcore.plugin.event.transport.ChatTransportHandler;
 import org.xcore.plugin.event.transport.DiscordLinkTransportHandler;
 import org.xcore.plugin.event.transport.MapTransportHandler;
 import org.xcore.plugin.event.transport.RatingTransportHandler;
+import org.xcore.plugin.event.transport.SecurityTransportHandler;
 import org.xcore.plugin.event.transport.ModerationTransportHandler;
 import org.xcore.plugin.concurrent.StorageExecutor;
 import org.xcore.plugin.service.NetworkService;
@@ -39,6 +40,7 @@ public class TransportService {
     private final ModerationTransportHandler moderationTransportHandler;
     private final MapTransportHandler mapTransportHandler;
     private final RatingTransportHandler ratingTransportHandler;
+    private final SecurityTransportHandler securityTransportHandler;
     private final NetworkService network;
     private final TomlXcoreConfig config;
     private final StorageExecutor storageExecutor;
@@ -52,6 +54,7 @@ public class TransportService {
                             ModerationTransportHandler moderationTransportHandler,
                             MapTransportHandler mapTransportHandler,
                             RatingTransportHandler ratingTransportHandler,
+                            SecurityTransportHandler securityTransportHandler,
                             NetworkService network,
                             TomlXcoreConfig config,
                             StorageExecutor storageExecutor) {
@@ -60,6 +63,7 @@ public class TransportService {
         this.moderationTransportHandler = moderationTransportHandler;
         this.mapTransportHandler = mapTransportHandler;
         this.ratingTransportHandler = ratingTransportHandler;
+        this.securityTransportHandler = securityTransportHandler;
         this.network = network;
         this.config = config;
         this.storageExecutor = storageExecutor;
@@ -72,6 +76,7 @@ public class TransportService {
 
         Events.on(EventType.ServerLoadEvent.class, event -> {
             network.post(new ServerActionV1("Server loaded", config.server.name));
+            securityTransportHandler.start();
 
             Timer.schedule(() -> {
                 try {
@@ -113,6 +118,7 @@ public class TransportService {
         moderationTransportHandler.registerListeners();
         mapTransportHandler.registerListeners();
         ratingTransportHandler.registerListeners();
+        securityTransportHandler.registerListeners();
     }
 
     /**

@@ -1313,3 +1313,11 @@ error-username-empty = Ім'я користувача не може бути п�
 error-username-length = Довжина імені користувача має бути від 4 до 32 символів!
 error-username-invalid-chars = Ім'я користувача може містити лише латинські літери, цифри та символ підкреслення!
 error-username-taken = Це ім'я користувача вже зайнято іншим гравцем!
+
+error-target-outranks = [scarlet]⚠ Не можна застосувати це до гравця, чия роль не нижча за вашу.
+perm-me-legacy = [accent]Ролі на цьому сервері вимкнено. Адмін: [white]{ $admin }
+perm-me-header = [accent]Ваші ролі тут (вага [white]{ $weight }[accent]):
+perm-me-none = [lightgray] - немає
+perm-me-logged-in = [green]Ви увійшли як стафф.
+perm-me-not-logged-in = [yellow]Ви не увійшли як стафф. Використайте [white]/login <пароль>[yellow].
+perm-me-stale = [scarlet]Права стаффу призупинено: сервер не зміг їх оновити. Вони повернуться самі.
