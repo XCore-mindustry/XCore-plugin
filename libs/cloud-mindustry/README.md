@@ -66,6 +66,7 @@ import org.xcore.cloud.mindustry.ConflictStrategy;
 // Define what happens if a command name is already taken
 mgr.setConflictStrategy(ConflictStrategy.PREFIX); 
 mgr.setCommandPrefix("myplugin"); // usage: /myplugin:command
+// With OVERRIDE, deleting the root command later (mgr.deleteRootCommand) puts the replaced command back
 
 // console and Mindustry admins get everything
 mgr.setPermissionChecker((sender, permission) -> sender.isAdmin());
