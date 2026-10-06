@@ -451,4 +451,16 @@ class ProtocolPayloadTest {
         assertThrows(IllegalArgumentException.class,
                 () -> new SeasonRefV1("mini-pvp", 0, "Season 0", "2026-07-01T00:00:00Z", "2026-10-01T00:00:00Z"));
     }
+
+    @Test
+    void staffSyncRejectsDuplicateRoleIds() {
+        IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
+                () -> new SecurityStaffSyncRequestV1("mini-pvp", "op-1", "uuid-1", "123456789012345678",
+                        List.of("111111111111111111", "111111111111111111"), true));
+        assertEquals("roleIds must not contain duplicate items", error.getMessage());
+
+        new SecurityStaffSyncRequestV1("mini-pvp", "op-1", "uuid-1", "123456789012345678",
+                List.of("111111111111111111", "222222222222222222"), true);
+        new SecurityStaffSyncRequestV1("mini-pvp", "op-1", "uuid-1", "123456789012345678", List.of(), true);
+    }
 }

@@ -298,6 +298,8 @@ class SecurityStaffSyncRequestV1:
             raise TypeError("roleIds must be a tuple")
         for item in self.roleIds:
             _expect_str(item, 'roleIds[]')
+        if len(set(self.roleIds)) != len(self.roleIds):
+            raise ValueError("roleIds must not contain duplicate items")
         _expect_bool(self.complete, 'complete')
 
     @classmethod

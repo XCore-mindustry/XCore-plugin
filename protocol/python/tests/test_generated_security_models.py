@@ -87,6 +87,18 @@ def test_staff_sync_keeps_an_empty_complete_snapshot_apart_from_a_missing_one() 
         raise AssertionError("A sync request that does not say whether it is complete must be rejected")
 
 
+def test_staff_sync_rejects_duplicate_role_ids() -> None:
+    duplicate = load_json(
+        fixtures_root() / "invalid" / "security" / "security.staff.sync.request.v1.duplicate-role.json"
+    )
+    try:
+        SecurityStaffSyncRequestV1.from_payload(duplicate)
+    except ValueError as error:
+        assert "roleIds must not contain duplicate items" in str(error)
+    else:
+        raise AssertionError("A sync request that names a role twice must be rejected")
+
+
 def test_generated_route_registry_includes_permission_messages() -> None:
     assert SECURITY_PERMISSIONS_CHANGED_V1.payloadType is SecurityPermissionsChangedV1
     assert SECURITY_STAFF_SYNC_REQUEST_V1.payloadType is SecurityStaffSyncRequestV1

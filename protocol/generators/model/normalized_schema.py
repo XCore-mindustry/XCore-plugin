@@ -45,6 +45,7 @@ class NormalizedField:
     minimum: int | float | None = None
     min_length: int | None = None
     min_items: int | None = None
+    unique_items: bool = False
     map_value_types: tuple[FieldType, ...] = ()
     map_allows_null: bool = False
 
@@ -188,7 +189,14 @@ def _normalize_array_field(
     if min_items is not None and not isinstance(min_items, int):
         raise ValueError(f"Unsupported minItems for field {name}: {min_items!r}")
 
+    unique_items = definition.get("uniqueItems", False)
+    if not isinstance(unique_items, bool):
+        raise ValueError(f"Unsupported uniqueItems for field {name}: {unique_items!r}")
+
     if "$ref" in items:
+        if unique_items:
+            # Generated models compare items by value; objects have no agreed equality across languages.
+            raise ValueError(f"uniqueItems is only supported for primitive items: {name}")
         ref = items["$ref"]
         if not isinstance(ref, str):
             raise ValueError(f"Invalid array $ref for field {name}")
@@ -213,6 +221,7 @@ def _normalize_array_field(
         shape=FieldShape.ARRAY,
         field_type=field_type,
         min_items=min_items,
+        unique_items=unique_items,
     )
 
 

@@ -184,6 +184,9 @@ public final class SecurityMessages {
             for (String item : roleIds) {
                 Objects.requireNonNull(item, "roleIds[] must not be null");
             }
+            if (roleIds.stream().distinct().count() != roleIds.size()) {
+                throw new IllegalArgumentException("roleIds must not contain duplicate items");
+            }
         }
 
         @Override
