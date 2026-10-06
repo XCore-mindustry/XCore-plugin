@@ -212,6 +212,22 @@ class MindustryHelpTest {
     }
 
     @Test
+    @DisplayName("A branch whose commands are all restricted is not listed")
+    void query_restrictedBranchIsHidden() {
+        manager.command(manager.commandBuilder("perm").literal("check").handler(ctx -> {}));
+        manager.command(manager.commandBuilder("perm").literal("admin").literal("reload")
+                .permission("perm.reload").handler(ctx -> {}));
+        MindustryHelp<AppSender> help = new MindustryHelp<>(manager, 8);
+
+        help.sendQuery(sender(null), "perm", 1);
+        assertEquals(List.of("/perm check"), syntaxes());
+
+        messages.clear();
+        help.sendQuery(sender(null, "perm.reload"), "perm", 1);
+        assertEquals(List.of("/perm admin reload", "/perm check"), syntaxes());
+    }
+
+    @Test
     @DisplayName("An unknown query and a command the sender may not use look the same")
     void query_noMatch() {
         command("ban", "Ban a player.", "mod.ban");
@@ -281,6 +297,10 @@ class MindustryHelpTest {
         messages.clear();
         help.sendQuery(sender(null), "sync", 1);
         assertEquals(List.of("[scarlet]No command matches '[white]sync[]'."), messages);
+
+        messages.clear();
+        help.sendQuery(sender(null), "/t", 1);
+        assertEquals("[orange]/t <message...>[lightgray] - Send a message only to your teammates.", messages.get(1));
     }
 
     @Test

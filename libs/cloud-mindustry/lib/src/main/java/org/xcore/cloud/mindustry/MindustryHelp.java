@@ -105,7 +105,7 @@ public final class MindustryHelp<C> {
                     lines.add(line(entry, published));
                 }
             }
-            String root = trimmed.split(" ", 2)[0];
+            String root = stripPrefix(trimmed).split(" ", 2)[0];
             for (CommandHandler.Command legacy : legacyCommands(sender)) {
                 if (legacy.text.regionMatches(true, 0, root, 0, root.length())) {
                     lines.add(line(legacy));
@@ -132,6 +132,9 @@ public final class MindustryHelp<C> {
 
     private boolean isVisible(C sender, Command<C> command, Map<String, String> published) {
         if (!published.containsKey(command.rootComponent().name())) return false;
+        // Cloud only checks permissions on commands, so a branch leading to nothing but
+        // restricted commands would still be listed.
+        if (!manager.testPermission(sender, command.commandPermission()).allowed()) return false;
         if (manager.isPlayerOnly(command) && !manager.senderMapper().reverse(sender).isPlayer()) return false;
         return visibility.test(sender, command);
     }
@@ -174,10 +177,7 @@ public final class MindustryHelp<C> {
 
     /** The reverse of {@link #physical}: lets a query name a command the way it is typed. */
     private String toCloudName(String query, Map<String, String> published) {
-        String prefix = manager.commandHandler().getPrefix();
-        if (!prefix.isEmpty() && query.startsWith(prefix)) {
-            query = query.substring(prefix.length());
-        }
+        query = stripPrefix(query);
         int end = query.indexOf(' ');
         String root = end < 0 ? query : query.substring(0, end);
         for (Map.Entry<String, String> entry : published.entrySet()) {
@@ -186,6 +186,11 @@ public final class MindustryHelp<C> {
             }
         }
         return query;
+    }
+
+    private String stripPrefix(String query) {
+        String prefix = manager.commandHandler().getPrefix();
+        return !prefix.isEmpty() && query.startsWith(prefix) ? query.substring(prefix.length()) : query;
     }
 
     private void sendUsage(C sender, CommandEntry<C> entry, Map<String, String> published) {
