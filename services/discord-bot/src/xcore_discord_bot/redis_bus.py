@@ -24,6 +24,12 @@ from xcore_protocol.generated.rating import (
     RatingSeasonRescheduleRequestV1Operation,
     RatingSeasonRescheduleResponseV1,
 )
+from xcore_protocol.generated.security import (
+    SecurityStaffResetPasswordRequestV1,
+    SecurityStaffResetPasswordResponseV1,
+    SecurityStaffSyncRequestV1,
+    SecurityStaffSyncResponseV1,
+)
 from xcore_protocol.generated.sentinel import (
     SentinelSubnetRulesCheckRequestV1,
     SentinelSubnetRulesCheckResponseV1,
@@ -876,6 +882,50 @@ class RedisBus:
             nx=True,
         )
         return bool(claimed)
+
+    async def rpc_staff_sync(
+        self,
+        request: SecurityStaffSyncRequestV1,
+        *,
+        timeout_ms: int,
+    ) -> SecurityStaffSyncResponseV1:
+        body = await self._rpc_request(
+            server=request.server,
+            rpc_type=request.MESSAGE_TYPE,
+            payload=request.to_payload(),
+            timeout_ms=timeout_ms,
+        )
+        response = SecurityStaffSyncResponseV1.from_payload(
+            json.loads(body.get("payload_json", "{}"))
+        )
+        if (
+            response.server != request.server
+            or response.operationId != request.operationId
+        ):
+            raise ValueError("Staff sync response does not match request")
+        return response
+
+    async def rpc_staff_reset_password(
+        self,
+        request: SecurityStaffResetPasswordRequestV1,
+        *,
+        timeout_ms: int,
+    ) -> SecurityStaffResetPasswordResponseV1:
+        body = await self._rpc_request(
+            server=request.server,
+            rpc_type=request.MESSAGE_TYPE,
+            payload=request.to_payload(),
+            timeout_ms=timeout_ms,
+        )
+        response = SecurityStaffResetPasswordResponseV1.from_payload(
+            json.loads(body.get("payload_json", "{}"))
+        )
+        if (
+            response.server != request.server
+            or response.operationId != request.operationId
+        ):
+            raise ValueError("Password reset response does not match request")
+        return response
 
     async def rpc_maps_list(self, server: str, timeout_ms: int) -> list[dict[str, str]]:
         body = await self._rpc_request(
