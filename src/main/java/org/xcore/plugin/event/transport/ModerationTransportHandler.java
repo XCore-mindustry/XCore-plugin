@@ -148,12 +148,15 @@ public class ModerationTransportHandler {
                 "badge inventory"
         )));
 
-        network.subscribe(PlayerPasswordResetCommandV1.class, e -> async.main(() -> updatePlayerSession(
-                e.playerUuid(),
-                data -> data.password = "",
-                false,
-                "password reset"
-        )));
+        network.subscribe(PlayerPasswordResetCommandV1.class, e -> async.main(() -> {
+            updatePlayerSession(
+                    e.playerUuid(),
+                    data -> data.password = "",
+                    false,
+                    "password reset"
+            );
+            discordAdminAccessService.onPasswordReset(e.playerUuid());
+        }));
 
         // The cache rebuild walks Groups.player and queries MongoDB per player, so it
         // takes its own snapshot on the game thread and installs the result back onto it.
@@ -164,7 +167,7 @@ public class ModerationTransportHandler {
         });
 
         // handleCommandString runs game logic, including player and world mutation.
-        // The message does not say which server sent it, so the origin is only known to be remote.
+        // Senders older than the sourceServer field leave it out; the origin is then only known to be remote.
         network.subscribe(ServerCommandExecuteCommandV1.class, e -> {
             if (!e.targetServers().isEmpty()) {
                 if (e.exclusion()) {
@@ -176,8 +179,10 @@ public class ModerationTransportHandler {
 
             async.main(() -> {
                 Log.infoTag("ExecuteCommandEvent", "Executing command: " + e.command());
-                remoteConsole.run(Actor.RemoteConsole.UNKNOWN_SOURCE,
-                        () -> ServerControl.instance.handleCommandString(e.command()));
+                String source = e.sourceServer() == null || e.sourceServer().isBlank()
+                        ? Actor.RemoteConsole.UNKNOWN_SOURCE
+                        : e.sourceServer();
+                remoteConsole.run(source, () -> ServerControl.instance.handleCommandString(e.command()));
             });
         });
     }

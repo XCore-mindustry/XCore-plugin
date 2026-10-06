@@ -225,9 +225,8 @@ public class AuthController implements CloudClientController {
         // registry: /login is the admin path for players without the admin mod, so this
         // grant is a real registration and logging out is meant to take it back out. The
         // password is untouched, so /login restores it. See AdminAuthService#grantAdmin.
-        if (session.player.admin) {
-            session.player.admin(false);
-            netServer.admins.unAdminPlayer(session.player.uuid());
+        if (adminAuthService.isLoggedIn(session)) {
+            adminAuthService.dropAdmin(session.player, session);
             playerDisplayService.refresh(session);
             local.send("commands-logout-successful", args());
         }

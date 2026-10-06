@@ -1,5 +1,6 @@
 package org.xcore.plugin.integration;
 
+import org.xcore.plugin.permission.TargetHierarchy;
 import org.xcore.plugin.common.PLog;
 import arc.struct.ObjectSet;
 import com.google.gson.Gson;
@@ -44,6 +45,7 @@ public class AdminModIntegration {
     private final Gson rawGson;
     private final Async async;
     private final PermissionService permissions;
+    private final TargetHierarchy hierarchy;
     private final ObjectSet<String> pendingVanillaBanUuids = new ObjectSet<>();
 
     @Inject
@@ -55,7 +57,8 @@ public class AdminModIntegration {
                                DiscordMenu discordMenu,
                                @Named("raw") Gson rawGson,
                                Async async,
-                               PermissionService permissions) {
+                               PermissionService permissions,
+                               TargetHierarchy hierarchy) {
         this.playerDataRepository = playerDataRepository;
         this.sessionService = sessionService;
         this.moderationService = moderationService;
@@ -65,6 +68,20 @@ public class AdminModIntegration {
         this.rawGson = rawGson;
         this.async = async;
         this.permissions = permissions;
+        this.hierarchy = hierarchy;
+    }
+
+    public AdminModIntegration(PlayerDataRepository playerDataRepository,
+                               SessionService sessionService,
+                               ModerationService moderationService,
+                               AdminAuthService adminAuthService,
+                               DiscordLinkService discordLinkService,
+                               DiscordMenu discordMenu,
+                               Gson rawGson,
+                               Async async,
+                               PermissionService permissions) {
+        this(playerDataRepository, sessionService, moderationService, adminAuthService, discordLinkService, discordMenu,
+                rawGson, async, permissions, TargetHierarchy.none());
     }
 
     @PostConstruct
@@ -92,6 +109,12 @@ public class AdminModIntegration {
 
             if (targetData == null) {
                 session.locale().send("error-player-not-found", args());
+                Call.clientPacketReliable(player.con, "give_ban_data", content);
+                return;
+            }
+
+            if (!hierarchy.mayTarget(session, targetData.uuid)) {
+                session.locale().send(TargetHierarchy.DENIED_KEY, args());
                 Call.clientPacketReliable(player.con, "give_ban_data", content);
                 return;
             }

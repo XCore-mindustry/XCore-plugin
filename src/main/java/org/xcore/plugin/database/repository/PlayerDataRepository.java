@@ -355,6 +355,21 @@ public class PlayerDataRepository extends DataRepository<PlayerData> {
         return updateAdminStatusAsync(uuid, false, "NONE");
     }
 
+    /** The players whose admin flag was set through their Discord role; for the move to roles. */
+    public List<PlayerData> findDiscordRoleAdmins() {
+        return collection.find(com.mongodb.client.model.Filters.and(eq("is_admin", true), eq("admin_source", "DISCORD_ROLE")))
+                .into(new ArrayList<>());
+    }
+
+    /** Forgets the password and every remembered device, so that the next login sets a new password. */
+    public boolean clearCredentials(String uuid) {
+        return updateByUuid(uuid, Updates.combine(
+                Updates.set("password_hash", ""),
+                Updates.set("device_token_hashes", new ArrayList<String>()),
+                Updates.set("device_tokens", new org.bson.Document())
+        ));
+    }
+
     private String normalizeAdminSource(String adminSource) {
         return adminSource == null || adminSource.isBlank() ? "NONE" : adminSource;
     }

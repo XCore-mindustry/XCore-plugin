@@ -8,6 +8,7 @@ import org.incendo.cloud.annotations.Argument;
 import org.incendo.cloud.annotations.Command;
 import org.incendo.cloud.annotations.CommandDescription;
 import org.incendo.cloud.annotations.Permission;
+import org.xcore.plugin.permission.TargetHierarchy;
 import org.xcore.cloud.mindustry.selector.TargetSelector.MultiplePlayerSelector;
 import org.xcore.cloud.mindustry.selector.TargetSelector.SinglePlayerSelector;
 import org.xcore.plugin.cloud.XCoreSender;
@@ -17,8 +18,21 @@ import org.xcore.plugin.command.controller.CloudClientController;
 @Singleton
 public class TeleportController implements CloudClientController {
 
+    private final TargetHierarchy hierarchy;
+
     @Inject
-    public TeleportController() {}
+    public TeleportController(TargetHierarchy hierarchy) {
+        this.hierarchy = hierarchy;
+    }
+
+    public TeleportController() {
+        this(TargetHierarchy.none());
+    }
+
+    /** The console moves anybody; a player only those they outrank. */
+    private boolean mayMove(XCoreSender sender, Player target) {
+        return !sender.isPlayer() || hierarchy.outranks(sender.player(), target);
+    }
 
     @Command("tp|teleport|goto <destination>")
     @CommandDescription("Teleports yourself to a destination player.")
@@ -35,6 +49,11 @@ public class TeleportController implements CloudClientController {
         Player dest = destination.resolve(sender.getHandle());
         if (dest.unit() == null) {
             sender.sendMessage("[scarlet]Target player has no active unit.");
+            return;
+        }
+
+        if (!mayMove(sender, dest)) {
+            sender.sendMessage("[scarlet]You cannot teleport to a player whose role is not below yours.");
             return;
         }
 
@@ -63,7 +82,7 @@ public class TeleportController implements CloudClientController {
         var resolved = targets.resolve(sender.getHandle());
         int count = 0;
         for (Player p : resolved) {
-            if (p != self && p.unit() != null) {
+            if (p != self && p.unit() != null && mayMove(sender, p)) {
                 p.unit().set(sx, sy);
                 p.snapInterpolation();
                 count++;
@@ -93,7 +112,7 @@ public class TeleportController implements CloudClientController {
         var resolved = targets.resolve(sender.getHandle());
         int count = 0;
         for (Player p : resolved) {
-            if (p.unit() != null) {
+            if (p.unit() != null && mayMove(sender, p)) {
                 p.unit().set(dx, dy);
                 p.snapInterpolation();
                 count++;
@@ -128,7 +147,7 @@ public class TeleportController implements CloudClientController {
         var resolved = targets.resolve(sender.getHandle());
         int count = 0;
         for (Player p : resolved) {
-            if (p.unit() != null) {
+            if (p.unit() != null && mayMove(sender, p)) {
                 p.unit().set(targetX, targetY);
                 p.snapInterpolation();
                 count++;

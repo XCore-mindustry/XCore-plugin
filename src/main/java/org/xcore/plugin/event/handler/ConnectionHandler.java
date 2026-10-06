@@ -15,6 +15,8 @@ import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.localization.Localization;
 import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.model.enums.IdentityDisplayMode;
+import org.xcore.plugin.permission.PermissionSessions;
+import org.xcore.plugin.permission.role.PermissionSet;
 import org.xcore.plugin.service.NetworkService;
 import org.xcore.plugin.service.PlayerDisplayService;
 import org.xcore.plugin.service.PrivateMessageService;
@@ -44,6 +46,7 @@ public class ConnectionHandler {
     private final ObserverService observerService;
     private final MapVoteObserverService mapVoteObserverService;
     private final Async async;
+    private final PermissionSessions permissionSessions;
 
     @Inject
     public ConnectionHandler(SessionService sessionService,
@@ -56,7 +59,8 @@ public class ConnectionHandler {
                              DiscordAdminAccessService discordAdminAccessService,
                              ObserverService observerService,
                              MapVoteObserverService mapVoteObserverService,
-                             Async async) {
+                             Async async,
+                             PermissionSessions permissionSessions) {
         this.sessionService = sessionService;
         this.network = network;
         this.config = config;
@@ -68,6 +72,23 @@ public class ConnectionHandler {
         this.observerService = observerService;
         this.mapVoteObserverService = mapVoteObserverService;
         this.async = async;
+        this.permissionSessions = permissionSessions;
+    }
+
+    /** Without roles. */
+    public ConnectionHandler(SessionService sessionService,
+                             NetworkService network,
+                             TomlXcoreConfig config,
+                             TomlSecretsConfig secretsConfig,
+                             VoteService voteService,
+                             PrivateMessageService privateMessageService,
+                             PlayerDisplayService playerDisplayService,
+                             DiscordAdminAccessService discordAdminAccessService,
+                             ObserverService observerService,
+                             MapVoteObserverService mapVoteObserverService,
+                             Async async) {
+        this(sessionService, network, config, secretsConfig, voteService, privateMessageService, playerDisplayService,
+                discordAdminAccessService, observerService, mapVoteObserverService, async, null);
     }
 
     public void onPlayerJoin(PlayerJoin event) {
@@ -119,13 +140,23 @@ public class ConnectionHandler {
 
         long unreadMessages = privateMessageService.countUnread(data.uuid);
 
-        return new PreparedJoin(data, ipChanged, unreadMessages);
+        if (rolesEnabled()) {
+            // The game's admin list vouches for a connection only from the address it knows.
+            boolean nativeAdmin = permissionSessions.trustsNativeAdmin(join.admin()) && !ipChanged;
+            PermissionSet permissions = permissionSessions.load(data.uuid, nativeAdmin);
+            return new PreparedJoin(data, ipChanged, unreadMessages, permissions, nativeAdmin);
+        }
+
+        return new PreparedJoin(data, ipChanged, unreadMessages, PermissionSet.EMPTY, false);
     }
 
     private void completeJoin(Player player, JoinSnapshot join, PreparedJoin prepared) {
-        boolean admin = join.admin();
+        boolean roles = rolesEnabled();
+        // With roles the admin flag is computed from the grants once the session exists; the
+        // game's own list gives nothing by itself and is never written.
+        boolean admin = join.admin() && (!roles || permissionSessions.trustsNativeAdmin(true));
         boolean revokeAdmin = admin && prepared.ipChanged();
-        if (admin && !revokeAdmin) {
+        if (admin && !revokeAdmin && !roles) {
             player.admin(true);
         }
 
@@ -134,6 +165,10 @@ public class ConnectionHandler {
             Log.err("Session is null! Player: @", player);
             player.kick("Session is null! Write to us on Discord to resolve issues.");
             return;
+        }
+
+        if (roles) {
+            permissionSessions.attach(session, prepared.permissions(), prepared.nativeAdmin());
         }
 
         observerService.restore(player);
@@ -150,7 +185,9 @@ public class ConnectionHandler {
         }
 
         if (revokeAdmin) {
-            discordAdminAccessService.deactivateRuntimeAdmin(player, player.uuid());
+            if (!roles) {
+                discordAdminAccessService.deactivateRuntimeAdmin(player, player.uuid());
+            }
             if (locale != null) {
                 locale.send("error-ip-changed", args());
             }
@@ -195,7 +232,12 @@ public class ConnectionHandler {
     ) {
     }
 
-    private record PreparedJoin(PlayerData data, boolean ipChanged, long unreadMessages) {
+    private record PreparedJoin(PlayerData data, boolean ipChanged, long unreadMessages,
+                                PermissionSet permissions, boolean nativeAdmin) {
+    }
+
+    private boolean rolesEnabled() {
+        return permissionSessions != null && permissionSessions.enabled();
     }
 
     public void onPlayerLeave(PlayerLeave event) {

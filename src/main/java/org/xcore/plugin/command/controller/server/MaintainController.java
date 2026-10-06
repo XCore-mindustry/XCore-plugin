@@ -248,7 +248,7 @@ public class MaintainController implements CloudServerController {
 
         if (targets.length == 0) {
             PLog.info("Dispatching '@' to [ALL]", normalizedCommand);
-            network.post(new ServerCommandExecuteCommandV1(normalizedCommand, List.of(), false));
+            network.post(new ServerCommandExecuteCommandV1(normalizedCommand, List.of(), false, serverLocalConfig.server.name));
             return;
         }
 
@@ -258,7 +258,7 @@ public class MaintainController implements CloudServerController {
             PLog.info("Dispatching '@' to @", normalizedCommand, Seq.with(targets));
         }
 
-        network.post(new ServerCommandExecuteCommandV1(normalizedCommand, Arrays.asList(targets), except));
+        network.post(new ServerCommandExecuteCommandV1(normalizedCommand, Arrays.asList(targets), except, serverLocalConfig.server.name));
     }
 
     private String[] parseTargetList(String targetsCsv) {

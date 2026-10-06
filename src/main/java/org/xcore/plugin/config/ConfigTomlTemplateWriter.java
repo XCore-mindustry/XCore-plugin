@@ -104,6 +104,10 @@ public final class ConfigTomlTemplateWriter {
         enabled = false
         map_id = ""
 
+        [permissions]
+        mode = "legacy"
+        trust_native_admins = false
+
         [translation]
         enabled = true
         pipeline = ["google"]

@@ -105,6 +105,9 @@ public final class ServerLocalConfigPathEditor {
         bind(bindings, "event_hub.enabled", ValueType.BOOLEAN);
         bind(bindings, "event_hub.map_id", ValueType.STRING);
 
+        bind(bindings, "permissions.mode", ValueType.STRING);
+        bind(bindings, "permissions.trust_native_admins", ValueType.BOOLEAN);
+
         bind(bindings, "translation.enabled", ValueType.BOOLEAN);
         bind(bindings, "translation.pipeline", ValueType.STRING_LIST);
         bind(bindings, "translation.preserve_original_message_on_failure", ValueType.BOOLEAN);

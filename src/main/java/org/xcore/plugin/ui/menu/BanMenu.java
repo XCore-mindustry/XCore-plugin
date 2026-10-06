@@ -4,6 +4,7 @@ import io.avaje.inject.PostConstruct;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import mindustry.gen.Player;
+import org.xcore.plugin.permission.TargetHierarchy;
 import org.xcore.plugin.config.TomlSecretsConfig;
 import org.xcore.plugin.model.BanData;
 import org.xcore.plugin.service.TimeService;
@@ -35,17 +36,28 @@ public class BanMenu extends Menu {
     private final ModerationService moderationService;
     private final TimeService timeService;
     private final MenuService menuService;
+    private final TargetHierarchy hierarchy;
 
     @Inject
     public BanMenu(TomlSecretsConfig secretsConfig,
                    SessionService sessionService,
                    ModerationService moderationService,
                    TimeService timeService,
-                   MenuService menuService) {
+                   MenuService menuService,
+                   TargetHierarchy hierarchy) {
         super(secretsConfig, sessionService);
         this.moderationService = moderationService;
         this.timeService = timeService;
         this.menuService = menuService;
+        this.hierarchy = hierarchy;
+    }
+
+    public BanMenu(TomlSecretsConfig secretsConfig,
+                   SessionService sessionService,
+                   ModerationService moderationService,
+                   TimeService timeService,
+                   MenuService menuService) {
+        this(secretsConfig, sessionService, moderationService, timeService, menuService, TargetHierarchy.none());
     }
 
     @PostConstruct
@@ -184,6 +196,13 @@ public class BanMenu extends Menu {
             return;
         }
 
+        var targetData = hierarchy.enabled() ? sessionService.getOrLoadFromDb(state.targetPid) : null;
+        if (targetData != null && !hierarchy.mayTarget(session, targetData.uuid)) {
+            session.clearDraft(BanFlowState.class);
+            session.locale().send(TargetHierarchy.DENIED_KEY, args());
+            context.close();
+            return;
+        }
         var result = moderationService.banById(state.targetPid, session.player.name, session.data.discordId, state.reason, state.duration, true);
         session.clearDraft(BanFlowState.class);
 

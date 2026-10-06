@@ -16,6 +16,7 @@ import org.xcore.plugin.concurrent.Async;
 import org.xcore.plugin.localization.Localization;
 import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.permission.PermissionNodes;
+import org.xcore.plugin.permission.TargetHierarchy;
 import org.xcore.plugin.service.FindService;
 import org.xcore.plugin.service.SecurityService;
 import org.xcore.plugin.service.moderation.BanCommand;
@@ -42,19 +43,21 @@ public class ModerationController implements CloudClientController {
     private final SessionService sessionService;
     private final AuditHistoryMenu auditHistoryMenu;
     private final Async async;
+    private final TargetHierarchy hierarchy;
 
     @Inject
     public ModerationController(ModerationService moderationService, FindService find, SessionService sessionService,
-                                AuditHistoryMenu auditHistoryMenu, Async async) {
+                                AuditHistoryMenu auditHistoryMenu, Async async, TargetHierarchy hierarchy) {
         this.moderationService = moderationService;
         this.find = find;
         this.sessionService = sessionService;
         this.auditHistoryMenu = auditHistoryMenu;
         this.async = async;
+        this.hierarchy = hierarchy;
     }
 
     public ModerationController(ModerationService moderationService, FindService find, SessionService sessionService) {
-        this(moderationService, find, sessionService, null, null);
+        this(moderationService, find, sessionService, null, null, TargetHierarchy.none());
     }
 
     @Permission(PermissionNodes.MODERATION_BAN)
@@ -69,6 +72,7 @@ public class ModerationController implements CloudClientController {
         Localization local = session.locale();
 
         var actor = ModerationActor.of(sender.actor());
+        if (outranked(session, target)) return;
         var result = moderationService.banByTarget(target, actor.name(), actor.discordId(), reason, period, true);
 
         if (result.isSuccess()) {
@@ -86,6 +90,7 @@ public class ModerationController implements CloudClientController {
         Localization local = session.locale();
 
         var actor = ModerationActor.of(sender.actor());
+        if (outranked(session, target)) return;
         var result = moderationService.unbanByTarget(target, actor.name(), actor.discordId());
 
         if (result.isSuccess()) {
@@ -110,6 +115,7 @@ public class ModerationController implements CloudClientController {
         Localization local = session.locale();
 
         var actor = ModerationActor.of(sender.actor());
+        if (outranked(session, target)) return;
         var result = moderationService.muteByTarget(target, actor.name(), actor.discordId(), reason, period);
 
         if (result.isSuccess()) {
@@ -136,6 +142,7 @@ public class ModerationController implements CloudClientController {
         Localization local = session.locale();
 
         var actor = ModerationActor.of(sender.actor());
+        if (outranked(session, target)) return;
         var result = moderationService.unmuteByTarget(target, actor.name(), actor.discordId());
 
         if (result.isSuccess()) {
@@ -166,6 +173,19 @@ public class ModerationController implements CloudClientController {
 
         auditHistoryMenu.history(session.data.uuid, targetData);
     }
+    /** Tells the actor and returns true when the target's roles do not weigh less than theirs. */
+    private boolean outranked(Session actor, String target) {
+        if (!hierarchy.enabled()) {
+            return false;
+        }
+        PlayerData targetData = moderationService.resolvePlayerData(target);
+        if (targetData == null || hierarchy.mayTarget(actor, targetData.uuid)) {
+            return false;
+        }
+        actor.locale().send(TargetHierarchy.DENIED_KEY, args());
+        return true;
+    }
+
     private Session resolveActiveSession(XCoreSender sender) {
         Session session = resolveSession(sender, sessionService);
         return (session != null && session.data != null) ? session : null;

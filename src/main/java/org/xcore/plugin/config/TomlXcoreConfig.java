@@ -25,6 +25,7 @@ public class TomlXcoreConfig implements SelfNormalizing {
     public TelemetryConfig telemetry = new TelemetryConfig();
     public TranslationConfig translation = new TranslationConfig();
     public AnnouncementConfig announcements = new AnnouncementConfig();
+    public PermissionsConfig permissions = new PermissionsConfig();
 
     public void normalize() {
         if (server == null) {
@@ -54,6 +55,9 @@ public class TomlXcoreConfig implements SelfNormalizing {
         if (announcements == null) {
             announcements = new AnnouncementConfig();
         }
+        if (permissions == null) {
+            permissions = new PermissionsConfig();
+        }
 
         server.normalize();
         paths.normalize();
@@ -63,6 +67,36 @@ public class TomlXcoreConfig implements SelfNormalizing {
         telemetry.normalize();
         translation.normalize();
         announcements.normalize();
+        permissions.normalize();
+    }
+
+    public static class PermissionsConfig {
+        public static final String MODE_LEGACY = "legacy";
+        public static final String MODE_ROLES = "roles";
+
+        /**
+         * {@code legacy}: staff rights follow the admin flag, as before roles existed.
+         * {@code roles}: they come from {@code permissions.toml} and the grants of each player.
+         */
+        public String mode = MODE_LEGACY;
+
+        /**
+         * In {@code roles} mode the game's own admin list gives nothing. Turning this on makes an
+         * entry of that list hold the {@code admin} role on this server; meant for local and dev
+         * servers only.
+         */
+        public boolean trustNativeAdmins = false;
+
+        public void normalize() {
+            mode = mode == null ? MODE_LEGACY : mode.strip().toLowerCase(java.util.Locale.ROOT);
+            if (!MODE_LEGACY.equals(mode) && !MODE_ROLES.equals(mode)) {
+                throw new IllegalStateException("xcore.toml: permissions.mode must be \"legacy\" or \"roles\", not \"" + mode + "\"");
+            }
+        }
+
+        public boolean rolesEnabled() {
+            return MODE_ROLES.equals(mode);
+        }
     }
 
     public static class ServerConfig {

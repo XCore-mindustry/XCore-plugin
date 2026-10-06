@@ -13,6 +13,7 @@ import org.xcore.plugin.database.repository.PlayerDataRepository;
 import org.xcore.plugin.localization.Localization;
 import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.permission.PermissionService;
+import org.xcore.plugin.permission.role.PermissionSet;
 import org.xcore.plugin.ui.MenuBuilder;
 import org.xcore.plugin.ui.MenuService;
 import org.xcore.plugin.ui.flow.ActiveMenuPrompt;
@@ -37,6 +38,12 @@ public class Session {
     public XCoreSender sender;
     /** Replaced by the shared service when the session is registered. */
     public PermissionService permissions = new PermissionService();
+    /** What the player is granted on this server; replaced as a whole when the grants change. Roles mode only. */
+    public volatile PermissionSet permissionSet = PermissionSet.EMPTY;
+    /** Whether the player has logged in as staff on this connection. A role alone proves nothing about who holds the uuid. */
+    public boolean staffAuthenticated;
+    /** Whether the game's own admin list vouched for the player when they joined and this server trusts it. */
+    public boolean nativeAdmin;
 
     public final List<Runnable> actions = new ArrayList<>();
     public final Map<String, StatusEnum> sortStatus = new HashMap<>();

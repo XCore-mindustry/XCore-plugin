@@ -1340,3 +1340,11 @@ permission-xcore-players-private-info = See private details of players, such as 
 permission-xcore-bypass-playtime = Skip the playtime requirements of commands
 permission-xcore-permissions-inspect = See who has which permissions
 permission-xcore-permissions-manage = Change roles and permissions
+
+error-target-outranks = [scarlet]⚠ You cannot do that to a player whose role is not below yours.
+perm-me-legacy = [accent]Roles are off on this server. Admin: [white]{ $admin }
+perm-me-header = [accent]Your roles here (weight [white]{ $weight }[accent]):
+perm-me-none = [lightgray] - none
+perm-me-logged-in = [green]You are logged in as staff.
+perm-me-not-logged-in = [yellow]You are not logged in as staff. Use [white]/login <password>[yellow].
+perm-me-stale = [scarlet]Your staff rights are paused: the server could not refresh them. They return on their own.

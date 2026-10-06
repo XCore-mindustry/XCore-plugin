@@ -4,6 +4,7 @@ import com.ospx.flubundle.Bundle;
 import io.avaje.inject.PostConstruct;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
+import org.xcore.plugin.permission.TargetHierarchy;
 import org.xcore.plugin.concurrent.Async;
 import org.xcore.plugin.config.TomlSecretsConfig;
 import org.xcore.plugin.database.repository.GameDataRepository;
@@ -23,6 +24,7 @@ import org.xcore.plugin.ui.route.MenuRoute;
 @Singleton
 public class PlayerMenu extends Menu {
 
+    private final TargetHierarchy hierarchy;
     private final Bundle bundle;
     private final PlayerProfileSettingsService profileSettings;
     private final PlayerDisplayService playerDisplayService;
@@ -44,8 +46,10 @@ public class PlayerMenu extends Menu {
                       AuditHistoryMenu auditHistoryMenu,
                       MenuService menuService,
                       Async async,
-                      ProfileSectionRegistry profileSections) {
+                      ProfileSectionRegistry profileSections,
+                      TargetHierarchy hierarchy) {
         super(secretsConfig, sessionService);
+        this.hierarchy = hierarchy;
         this.profileSections = profileSections;
         this.bundle = bundle;
         this.profileSettings = profileSettings;
@@ -55,6 +59,21 @@ public class PlayerMenu extends Menu {
         this.playerDataRepository = playerDataRepository;
         this.async = async;
         this.auditHistoryMenu = auditHistoryMenu;
+    }
+
+    public PlayerMenu(TomlSecretsConfig secretsConfig,
+                      SessionService sessionService,
+                      GameDataRepository gameDataRepository,
+                      PlayerDataRepository playerDataRepository,
+                      Bundle bundle,
+                      PlayerDisplayService playerDisplayService,
+                      PlayerProfileSettingsService profileSettings,
+                      AuditHistoryMenu auditHistoryMenu,
+                      MenuService menuService,
+                      Async async,
+                      ProfileSectionRegistry profileSections) {
+        this(secretsConfig, sessionService, gameDataRepository, playerDataRepository, bundle, playerDisplayService,
+                profileSettings, auditHistoryMenu, menuService, async, profileSections, TargetHierarchy.none());
     }
 
     public PlayerMenu(TomlSecretsConfig secretsConfig,
@@ -178,10 +197,13 @@ public class PlayerMenu extends Menu {
         session.clear();
         if (!canAccessSettings(session, targetData)) return;
 
-        var controller = new PlayerSettingsUiController(this, profileSettings, session, targetData);
-        var initialModel = PlayerSettingsUiController.createModel(session, targetData, tab);
-        // Filling the screen is what lets the cards scroll on a screen shorter than the settings.
-        menuService.openUi(session, controller, initialModel, true);
+        // Somebody else's settings are theirs to change only for a viewer who outranks them.
+        hierarchy.whenAllowed(session, targetData.uuid, () -> {
+            var controller = new PlayerSettingsUiController(this, profileSettings, session, targetData);
+            var initialModel = PlayerSettingsUiController.createModel(session, targetData, tab);
+            // Filling the screen is what lets the cards scroll on a screen shorter than the settings.
+            menuService.openUi(session, controller, initialModel, true);
+        }, () -> session.locale().send(TargetHierarchy.DENIED_KEY));
     }
 
     public void chatSettings(String uuid, PlayerData targetData) {
