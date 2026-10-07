@@ -60,7 +60,7 @@ Multifunctional plugin for XCore Mindustry servers. Provides player profiles, cr
 - Java 25+
 - MongoDB 6.0+
 - Redis (for cross-server transport)
-- Mindustry v158 (or compatible forks)
+- Mindustry v160 (or compatible forks)
 - `cloud-mindustry` `0.2.0+` from `https://maven.x-core.org/releases`
 - `FluBundle` `1.3+` from `https://maven.x-core.org/releases`
 
@@ -313,7 +313,7 @@ Bundles are stored in `src/main/resources/bundles/` and distributed via FluBundl
 
 ## Maven Publishing
 - Snapshots are published to `https://maven.x-core.org/snapshots` on every non-PR push via GitHub Actions.
-- Releases are published to `https://maven.x-core.org/releases` when a GitHub Release is published.
+- Release tags (`vX.Y.Z`) trigger validation, Maven publication to `https://maven.x-core.org/releases`, and a GitHub Release with the packaged JAR.
 - Gradle repository names follow the Reposilite pattern: `xcoreRepositorySnapshots` and `xcoreRepositoryReleases`.
 - GitHub Actions maps `XCORE_USERNAME` and `XCORE_PASSWORD` to matching Gradle properties.
 

@@ -4,8 +4,34 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [5.0.0] - 2026-10-07
+
+### Breaking changes
+- Replaced the old player-field-based PvP rating API with the shared ladder and seasonal standings API. Removed `PlayerData.pvpRating`, `PlayerDataRepository.updatePvpRating*`, `TopCategory.MINI_PVP`, and `TopMenuService.loadPage()` / `resolveDefaultCategory()`. Dependent plugins must use the ladder API and registered top category providers; `legacyPvpRating` only stores the pre-Elo historical value.
+- Database migrations V4–V6 preserve the pre-Elo rating, initialize the new MiniPvP Elo baseline, migrate standings to `rating_standings`, remove the `players.pvp_rating/pvp_matches/pvp_wins` mirror, and archive the old HexedCore rating collection. Restoring an older JAR alone does not restore the previous rating storage; back up the database before upgrading and coordinate all servers sharing it.
+- Player PIDs are signed: zero and negative values, including `-1`, can identify players. Use `PlayerPids.NONE` (`Integer.MIN_VALUE`) and `PlayerPids.isAssigned()` instead of negative-value or `-1` checks in integrations.
+
+### Added
+- Shared Elo ladder engine, seasonal leaderboards for MiniPvP and Hexed, season lifecycle commands and menus, profile sections, rating RPCs, and season events.
+- Season prizes with per-player delivery and retry-safe grant processing.
+- Usernames, username-based player lookup, and configurable PID/username identity display.
+- Declared permission nodes across commands, menus, and AdminTools integration.
+- Optional permission roles with inheritance, explicit denials, server-scoped and expiring grants, staff hierarchy, console management, Discord bindings, password reset, and a legacy-admin migration command. Roles are opt-in through `permissions.mode = "roles"`; the default remains `legacy`.
+- Shared menu layout kit and responsive menus for phones, with reactive profile, settings, help, leaderboard, and audit views.
+
 ### Changed
-- Updated `xcore-protocol` to 0.11.0, which accepts negative player PIDs.
+- Updated `xcore-protocol` to 0.12.0 and `cloud-mindustry` to 0.4.0-SNAPSHOT.
+- Let clients resolve dialog widths and improved profile, leaderboard, and help text layout.
+- Centralized localized command failure handling and reused cloud-mindustry selectors.
+
+### Fixed
+- Prevented spectator unit spawning and world actions, corrected observer appearance, and closed the MiniPvP disconnect-dodging loophole.
+- Hardened admin authentication against stale password verification and prevented account merges from transferring admin rights or credentials.
+- Revoked staff access on grant expiry and password reset without waiting for network availability, and excluded merged accounts from legacy-admin migration.
+- Moved offline permission lookups off the game thread.
+- Fixed stale UI loads and dialog/session close tracking.
+- Checked RPC type compatibility before claiming an idempotency key.
+- Kept legacy `-1` podium placeholders separate from real signed player PIDs.
 
 ### Fixed
 - Supported negative and zero player PIDs that technical admins assign to special players (for example event participants): such players keep their PID instead of being given a new one on save, can be found by `#-12` or `-12` in commands and menus, and are sent with their PID in moderation, Discord, private message and rating events.
@@ -282,7 +308,8 @@ No changelog entries were recorded in the Unreleased section.
 ### Security
 - Added ingress-based connection verification to harden request entry points.
 
-[Unreleased]: https://github.com/XCore-mindustry/XCore-plugin/compare/v4.2.0...HEAD
+[Unreleased]: https://github.com/XCore-mindustry/XCore-plugin/compare/v5.0.0...HEAD
+[5.0.0]: https://github.com/XCore-mindustry/XCore-plugin/compare/v4.7.0...v5.0.0
 [4.2.0]: https://github.com/XCore-mindustry/XCore-plugin/compare/v4.1.0...v4.2.0
 [4.1.0]: https://github.com/XCore-mindustry/XCore-plugin/compare/4.0.0...4.1.0
 [4.0.0]: https://github.com/XCore-mindustry/XCore-plugin/compare/3.2.1...4.0.0
