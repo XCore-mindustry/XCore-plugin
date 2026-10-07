@@ -37,6 +37,16 @@ public record MiniPvPMatchSnapshot(String matchId, long startedAt, long endedAt,
         return teams.stream().mapToInt(team -> team.members().size()).sum();
     }
 
+    public long ratedPlayers() {
+        return teams.stream().flatMap(team -> team.members().stream())
+                .filter(member -> member.participation() > 0.0).count();
+    }
+
+    public long ratedTeamCount() {
+        return teams.stream().filter(team -> team.members().stream()
+                .anyMatch(member -> member.participation() > 0.0)).count();
+    }
+
     public List<String> playerUuids() {
         return teams.stream().flatMap(team -> team.members().stream()).map(Member::uuid).toList();
     }

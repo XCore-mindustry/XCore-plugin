@@ -92,9 +92,9 @@ public class MiniPvPRatingSettler {
             return CompletableFuture.completedFuture(false);
         }
 
-        if (match.teams().size() < 2 || match.totalPlayers() < policy.minimumPlayers()) {
+        if (match.ratedTeamCount() < 2 || match.ratedPlayers() < policy.minimumPlayers()) {
             Log.info("MiniPvP match @ had insufficient players (@) or teams (@); unrated",
-                    match.matchId(), match.totalPlayers(), match.teams().size());
+                    match.matchId(), match.ratedPlayers(), match.ratedTeamCount());
             settled.set(false);
             return CompletableFuture.completedFuture(false);
         }

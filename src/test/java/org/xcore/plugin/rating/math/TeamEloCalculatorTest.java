@@ -133,6 +133,41 @@ class TeamEloCalculatorTest {
     }
 
     @Test
+    void exemptPlayersCannotChangeOtherPlayersDeltas() {
+        for (int placement : List.of(1, 2)) {
+            var winnerOrLoser = new TeamEloCalculator.RatedTeam(1, placement,
+                    List.of(new TeamEloCalculator.RatedMember("a", 1000)));
+            var opponent = new TeamEloCalculator.RatedTeam(2, 3 - placement,
+                    List.of(new TeamEloCalculator.RatedMember("b", 1000)));
+            var baseline = calculator.calculate(List.of(winnerOrLoser, opponent), policy);
+            var padded = new TeamEloCalculator.RatedTeam(1, placement, List.of(
+                    new TeamEloCalculator.RatedMember("a", 1000),
+                    new TeamEloCalculator.RatedMember("low-alt", 100, 0.0),
+                    new TeamEloCalculator.RatedMember("high-alt", 5000, 0.0)));
+            var exemptTeam = new TeamEloCalculator.RatedTeam(3, 3,
+                    List.of(new TeamEloCalculator.RatedMember("late-alt", 5000, 0.0)));
+            var result = calculator.calculate(List.of(padded, opponent, exemptTeam), policy);
+
+            assertThat(result.deltas().stream().filter(d -> d.participation() > 0.0).toList())
+                    .isEqualTo(baseline.deltas());
+            assertThat(result.deltas().stream().filter(d -> d.participation() == 0.0))
+                    .allSatisfy(d -> assertThat(d.delta()).isZero());
+        }
+    }
+
+    @Test
+    void exemptPlayersCannotMeetMinimumPlayerRequirement() {
+        var strictPolicy = new RatingPolicy(1000, 100, 32, 3);
+        var a = new TeamEloCalculator.RatedTeam(1, 1,
+                List.of(new TeamEloCalculator.RatedMember("a", 1000)));
+        var b = new TeamEloCalculator.RatedTeam(2, 2, List.of(
+                new TeamEloCalculator.RatedMember("b", 1000),
+                new TeamEloCalculator.RatedMember("alt", 1000, 0.0)));
+        assertThatThrownBy(() -> calculator.calculate(List.of(a, b), strictPolicy))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
     @DisplayName("rejects duplicate UUID across teams or less than 2 teams")
     void validationRules() {
         var team1 = new TeamEloCalculator.RatedTeam(1, 1, List.of(new TeamEloCalculator.RatedMember("p1", 1000)));

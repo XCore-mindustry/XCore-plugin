@@ -129,6 +129,20 @@ class MiniPvPRatingSettlerTest {
     }
 
     @Test
+    void settle_skipsWhenOnlyOpponentIsExempt() {
+        long started = System.currentTimeMillis() - 120_000L;
+        tracker.setStartedAt(started);
+        tracker.trackParticipant(new MiniPvPMatchTracker.ParticipantInfo("p1", "Winner", Team.sharded.id, started, 0L));
+        tracker.trackParticipant(new MiniPvPMatchTracker.ParticipantInfo("alt", "Late opponent", Team.crux.id,
+                System.currentTimeMillis() - 1000L, 0L));
+
+        assertThat(settler.settle(Team.sharded).join()).isFalse();
+        assertThat(settler.isSettled()).isFalse();
+        assertThat(ladder.count()).isZero();
+        verifyNoInteractions(gameDataService);
+    }
+
+    @Test
     @DisplayName("settle writes the ladder, mirrors the legacy profile fields and notifies once")
     void settle_successfulRoundSettlement() {
         twoTeamsOfTwo(120_000L);
