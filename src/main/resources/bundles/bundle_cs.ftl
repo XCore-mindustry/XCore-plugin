@@ -10,3 +10,6 @@ error-admin-password-too-short = [scarlet]⚠ Heslo administrátora musí mít a
 error-processing-request = [scarlet]Při zpracování požadavku došlo k chybě.
 
 error-only-players = [scarlet]⚠ Tento příkaz mohou používat pouze hráči.
+
+help-ui-search-hint = Hledat příkazy, aliasy nebo popisy
+help-ui-search-empty = [lightgray]Žádné příkazy neodpovídají hledání.[]

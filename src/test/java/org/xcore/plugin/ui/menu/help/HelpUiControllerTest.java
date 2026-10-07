@@ -141,6 +141,7 @@ class HelpUiControllerTest {
             assertThat(LayoutAssert.actions(window)).containsExactly(
                     "action:tab:all", "action:tab:general", "action:tab:game", "action:tab:social",
                     "action:tab:votes", "action:tab:admin",
+                    "action:search", "action:clear_search",
                     "action:cmd:hub", "action:cmd:votekick", "action:cmd:ban");
             assertThat(LayoutAssert.allText(window)).contains("help-ui-title", "help-ui-overloads");
         }
@@ -188,6 +189,43 @@ class HelpUiControllerTest {
                     assertThat(LayoutAssert.allText(window)).doesNotContain("help-ui-", "help-cat-");
                 }
                 LayoutAssert.assertFitsPacket(controller.render(details), language + " /" + name);
+            }
+        }
+    }
+
+    @Test
+    void search_matchesNamesAliasesAndDescriptionsAndPreservesQuery() {
+        HelpUiModel model = new HelpUiModel(HelpUiModel.ViewMode.LIST, HelpCategory.ALL, sampleCommands(), null);
+        assertThat(model.withSearch(" /HUB ").filteredCommands()).extracting(HelpCommandItem::name).containsExactly("hub");
+        assertThat(model.withSearch("SERVERS").filteredCommands()).extracting(HelpCommandItem::name).containsExactly("hub");
+        assertThat(model.withSearch("ban a player").filteredCommands()).extracting(HelpCommandItem::name).containsExactly("ban");
+        assertThat(model.withSearch("servers").withCategory(HelpCategory.ADMIN).filteredCommands()).isEmpty();
+        assertThat(model.withSearch("servers").withDetails("hub").withList().searchQuery()).isEqualTo("servers");
+        assertThat(model.withSearch("missing").withPage(99).page()).isZero();
+        assertThat(model.withSearch("missing").withSearch("").filteredCommands()).hasSize(3);
+    }
+
+    @Test
+    void search_patchesSlotsResetsPageAndShowsLocalizedEmptyState() {
+        HelpUiController controller = new HelpUiController(realSession("ru"), null);
+        HelpUiModel model = new HelpUiModel(HelpUiModel.ViewMode.LIST, HelpCategory.ALL, manyCommands(), null, 3);
+        MenuResult wire = new MenuResult("action:search");
+        wire.values = arc.struct.ObjectMap.of("field_help_search", "servers");
+        assertThat(controller.parseEvent(wire)).isEqualTo(new HelpUiEvent.Search("servers"));
+        assertThat(controller.parseEvent(new MenuResult("action:search"))).isEqualTo(new HelpUiEvent.Search(""));
+        assertThat(controller.parseEvent(new MenuResult("action:clear_search"))).isEqualTo(new HelpUiEvent.Search(""));
+        var result = controller.update(model, controller.parseEvent(wire), mock(ControllerContext.class));
+        assertThat(result.fullRerender()).isFalse();
+        assertThat(result.model().page()).isZero();
+        assertThat(result.model().pageCommands()).extracting(HelpCommandItem::name).containsExactly("hub");
+        assertThat(result.dirtySlots()).containsExactlyElementsOf(
+                Screen.slots(HelpUiController.SLOT_SEARCH, HelpUiController.SLOT_COMMANDS, HelpUiController.SLOT_PAGER));
+        for (String language : LayoutAssert.LANGUAGES) {
+            var localized = new HelpUiController(realSession(language), null);
+            for (Screen screen : Screen.ALL) {
+                var window = localized.window(model.withSearch("no matches"), screen);
+                LayoutAssert.assertLaidOut(window, screen);
+                assertThat(LayoutAssert.allText(window)).doesNotContain("help-ui-search-empty");
             }
         }
     }

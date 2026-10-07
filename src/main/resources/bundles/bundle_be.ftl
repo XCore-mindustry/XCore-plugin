@@ -216,3 +216,6 @@ commands-login-request-approval-discord = [accent]Ваш акаунт не ма�
 error-admin-password-too-short = [scarlet]⚠ Пароль адміністратора павін быць не карочкі за 8 сімвалаў.
 error-processing-request = [scarlet]Адбылася памылка пры апрацоўкі запыту.
 error-only-players = [scarlet]⚠ Гэтая каманда даступная толькі гульцам.
+
+help-ui-search-hint = Пошук па камандах, псеўданімах і апісаннях
+help-ui-search-empty = [lightgray]Па вашым запыце каманд не знойдзена.[]

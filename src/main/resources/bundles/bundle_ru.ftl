@@ -1372,3 +1372,6 @@ perm-me-none = [lightgray] - нет
 perm-me-logged-in = [green]Вы вошли как стафф.
 perm-me-not-logged-in = [yellow]Вы не вошли как стафф. Используйте [white]/login <пароль>[yellow].
 perm-me-stale = [scarlet]Права стаффа приостановлены: сервер не смог их обновить. Они вернутся сами.
+
+help-ui-search-hint = Поиск по командам, алиасам и описаниям
+help-ui-search-empty = [lightgray]По вашему запросу команды не найдены.[]

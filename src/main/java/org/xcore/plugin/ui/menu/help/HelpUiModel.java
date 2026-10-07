@@ -1,6 +1,7 @@
 package org.xcore.plugin.ui.menu.help;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 
 /**
@@ -18,7 +19,8 @@ public record HelpUiModel(
         HelpCategory selectedCategory,
         List<HelpCommandItem> allCommands,
         String selectedCommandName,
-        int page
+        int page,
+        String searchQuery
 ) {
     /**
      * Commands on a page. The dialog travels as one packet with a copy of the list per class of
@@ -33,21 +35,40 @@ public record HelpUiModel(
 
     public HelpUiModel {
         allCommands = allCommands == null ? List.of() : List.copyOf(allCommands);
+        searchQuery = searchQuery == null ? "" : searchQuery.trim();
+        String query = searchQuery;
         int count = (int) allCommands.stream()
                 .filter(cmd -> selectedCategory == HelpCategory.ALL || cmd.category() == selectedCategory)
+                .filter(cmd -> matches(cmd, query))
                 .count();
         page = Math.clamp(page, 0, Math.max(0, (count - 1) / PAGE_SIZE));
     }
 
     public HelpUiModel(ViewMode mode, HelpCategory selectedCategory, List<HelpCommandItem> allCommands,
                        String selectedCommandName) {
-        this(mode, selectedCategory, allCommands, selectedCommandName, 0);
+        this(mode, selectedCategory, allCommands, selectedCommandName, 0, "");
+    }
+
+    public HelpUiModel(ViewMode mode, HelpCategory selectedCategory, List<HelpCommandItem> allCommands,
+                       String selectedCommandName, int page) {
+        this(mode, selectedCategory, allCommands, selectedCommandName, page, "");
     }
 
     public List<HelpCommandItem> filteredCommands() {
         return allCommands.stream()
                 .filter(cmd -> selectedCategory == HelpCategory.ALL || cmd.category() == selectedCategory)
+                .filter(cmd -> matches(cmd, searchQuery))
                 .toList();
+    }
+
+    private static boolean matches(HelpCommandItem command, String query) {
+        String normalized = query.toLowerCase(Locale.ROOT).replaceFirst("^/+", "");
+        return normalized.isBlank()
+                || command.name().toLowerCase(Locale.ROOT).contains(normalized)
+                || (command.aliases() != null && command.aliases().stream()
+                    .anyMatch(alias -> alias.toLowerCase(Locale.ROOT).contains(normalized)))
+                || (command.rawDescription() != null && arc.util.Strings.stripColors(command.rawDescription())
+                    .toLowerCase(Locale.ROOT).contains(normalized));
     }
 
     public int pages() {
@@ -74,19 +95,23 @@ public record HelpUiModel(
     }
 
     public HelpUiModel withCategory(HelpCategory cat) {
-        return new HelpUiModel(ViewMode.LIST, cat, allCommands, null, 0);
+        return new HelpUiModel(ViewMode.LIST, cat, allCommands, null, 0, searchQuery);
     }
 
     public HelpUiModel withPage(int page) {
-        return new HelpUiModel(ViewMode.LIST, selectedCategory, allCommands, null, page);
+        return new HelpUiModel(ViewMode.LIST, selectedCategory, allCommands, null, page, searchQuery);
+    }
+
+    public HelpUiModel withSearch(String query) {
+        return new HelpUiModel(ViewMode.LIST, selectedCategory, allCommands, null, 0, query);
     }
 
     /** The page stays, so going back from a command returns to where it was picked. */
     public HelpUiModel withDetails(String commandName) {
-        return new HelpUiModel(ViewMode.DETAILS, selectedCategory, allCommands, commandName, page);
+        return new HelpUiModel(ViewMode.DETAILS, selectedCategory, allCommands, commandName, page, searchQuery);
     }
 
     public HelpUiModel withList() {
-        return new HelpUiModel(ViewMode.LIST, selectedCategory, allCommands, null, page);
+        return new HelpUiModel(ViewMode.LIST, selectedCategory, allCommands, null, page, searchQuery);
     }
 }

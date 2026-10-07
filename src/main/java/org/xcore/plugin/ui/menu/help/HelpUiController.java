@@ -12,6 +12,7 @@ import org.xcore.plugin.ui.kit.Screen;
 import org.xcore.plugin.ui.kit.TextWidth;
 import org.xcore.plugin.ui.menu.HelpMenu;
 import org.xcore.ui.Ui;
+import org.xcore.ui.Text;
 import org.xcore.ui.VNode;
 import org.xcore.ui.runtime.ControllerContext;
 import org.xcore.ui.runtime.SlotKey;
@@ -36,6 +37,7 @@ public class HelpUiController implements UiController<HelpUiModel, HelpUiEvent> 
 
     public static final SlotKey<Object> SLOT_COMMANDS = SlotKey.of("slot_help_commands");
     public static final SlotKey<Object> SLOT_PAGER = SlotKey.of("slot_help_pager");
+    public static final SlotKey<Object> SLOT_SEARCH = SlotKey.of("slot_help_search");
 
     private static final float STRIPE = 4f;
 
@@ -71,6 +73,8 @@ public class HelpUiController implements UiController<HelpUiModel, HelpUiEvent> 
                 HelpUiModel updated = model.withPage(e.page());
                 yield UpdateResult.patch(updated, Screen.slots(SLOT_COMMANDS, SLOT_PAGER));
             }
+            case HelpUiEvent.Search e -> UpdateResult.patch(model.withSearch(e.query()),
+                    Screen.slots(SLOT_SEARCH, SLOT_COMMANDS, SLOT_PAGER));
             case HelpUiEvent.BackToList e -> {
                 HelpUiModel updated = model.withList();
                 yield UpdateResult.rerender(updated);
@@ -113,8 +117,14 @@ public class HelpUiController implements UiController<HelpUiModel, HelpUiEvent> 
         if ("action:back".equals(action)) {
             return new HelpUiEvent.BackToList();
         }
+        if ("action:search".equals(action)) {
+            return new HelpUiEvent.Search(result.getString("field_help_search", ""));
+        }
+        if ("action:clear_search".equals(action)) {
+            return new HelpUiEvent.Search("");
+        }
         if (action.startsWith("action:tab:")) {
-            String catName = action.substring("action:tab:".length()).toUpperCase();
+            String catName = action.substring("action:tab:".length()).toUpperCase(Locale.ROOT);
             try {
                 return new HelpUiEvent.SelectCategory(HelpCategory.valueOf(catName));
             } catch (IllegalArgumentException ignored) {
@@ -173,6 +183,7 @@ public class HelpUiController implements UiController<HelpUiModel, HelpUiEvent> 
             }
             window.add(Kit.tabs(width, "help_tabs", tabs)).row();
             window.add(Kit.line(width, Accent.of(model.selectedCategory().colorHex()))).row();
+            window.slot(screen.slot(SLOT_SEARCH).path(), slot -> slot.add(search(model, width))).row();
 
             // A turned page changes these two and leaves the rest of the window as it is.
             window.slot(screen.slot(SLOT_COMMANDS).path(), slot ->
@@ -188,10 +199,27 @@ public class HelpUiController implements UiController<HelpUiModel, HelpUiEvent> 
         });
     }
 
+    private VNode search(HelpUiModel model, float width) {
+        float button = Kit.FIELD_HEIGHT;
+        float field = width - 2f * (button + Kit.TAB_GAP);
+        return Ui.table(bar -> {
+            bar.layout(l -> l.padTop(GAP).padBottom(GAP));
+            bar.field("field_help_search", f -> f.value(model.searchQuery())
+                    .hint(arc.util.Strings.stripColors(t("help-ui-search-hint")))
+                    .enter("action:search")
+                    .layout(l -> l.width(field).height(Kit.FIELD_HEIGHT).padRight(Kit.TAB_GAP)));
+            bar.button(Text.raw("[accent]" + Iconc.zoom + "[]"), "action:search", b -> b.style("flatBordert")
+                    .layout(l -> l.width(button).height(Kit.FIELD_HEIGHT).padRight(Kit.TAB_GAP)));
+            bar.button(Text.raw("[gray]" + Iconc.cancel + "[]"), "action:clear_search", b -> b.style("flatBordert")
+                    .layout(l -> l.width(button).height(Kit.FIELD_HEIGHT)));
+        });
+    }
+
     private void commands(Ui.TableBuilder list, HelpUiModel model, Screen screen) {
         List<HelpCommandItem> commands = model.pageCommands();
         if (commands.isEmpty()) {
-            list.add(Kit.note(screen.cards(), t("help-ui-empty-category"))).row();
+            list.add(Kit.note(screen.cards(), t(model.searchQuery().isBlank()
+                    ? "help-ui-empty-category" : "help-ui-search-empty"))).row();
             return;
         }
         for (HelpCommandItem command : commands) {

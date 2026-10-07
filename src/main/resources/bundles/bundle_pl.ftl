@@ -10,3 +10,6 @@ error-admin-password-too-short = [scarlet]⚠ Hasło administratora musi mieć c
 error-processing-request = [scarlet]Wystąpił błąd podczas przetwarzania żądania.
 
 error-only-players = [scarlet]⚠ To polecenie może użyć tylko gracz.
+
+help-ui-search-hint = Szukaj poleceń, aliasów lub opisów
+help-ui-search-empty = [lightgray]Nie znaleziono pasujących poleceń.[]

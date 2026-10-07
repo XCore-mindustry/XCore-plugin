@@ -1348,3 +1348,6 @@ perm-me-none = [lightgray] - none
 perm-me-logged-in = [green]You are logged in as staff.
 perm-me-not-logged-in = [yellow]You are not logged in as staff. Use [white]/login <password>[yellow].
 perm-me-stale = [scarlet]Your staff rights are paused: the server could not refresh them. They return on their own.
+
+help-ui-search-hint = Search commands, aliases or descriptions
+help-ui-search-empty = [lightgray]No commands match your search.[]

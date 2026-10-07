@@ -10,3 +10,6 @@ error-admin-password-too-short = [scarlet]⚠ La contraseña de administrador de
 error-processing-request = [scarlet]Se produjo un error al procesar la solicitud.
 
 error-only-players = [scarlet]⚠ Este comando solo puede usarse por jugadores.
+
+help-ui-search-hint = Buscar comandos, alias o descripciones
+help-ui-search-empty = [lightgray]No se encontraron comandos para tu búsqueda.[]
