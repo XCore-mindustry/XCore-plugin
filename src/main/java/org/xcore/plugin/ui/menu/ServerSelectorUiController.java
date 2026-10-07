@@ -59,8 +59,18 @@ public class ServerSelectorUiController implements UiController<ServerSelectorUi
             List<ServerStatus> allServers,
             int totalOnlinePlayers,
             int totalOnlineServers,
-            int totalServersCount
+            int totalServersCount,
+            String feedback
     ) {
+        public ServerSelectorModel(String currentServerId, Category selectedCategory, List<ServerStatus> allServers,
+                                   int totalOnlinePlayers, int totalOnlineServers, int totalServersCount) {
+            this(currentServerId, selectedCategory, allServers, totalOnlinePlayers, totalOnlineServers, totalServersCount, "");
+        }
+
+        public ServerSelectorModel withFeedback(String message) {
+            return new ServerSelectorModel(currentServerId, selectedCategory, allServers, totalOnlinePlayers,
+                    totalOnlineServers, totalServersCount, message);
+        }
         public List<ServerStatus> filteredServers() {
             if (selectedCategory == Category.ALL) return allServers;
             return allServers.stream()
@@ -145,6 +155,9 @@ public class ServerSelectorUiController implements UiController<ServerSelectorUi
     }
 
     private void servers(Ui.TableBuilder list, ServerSelectorModel model, Screen screen) {
+        if (model.feedback() != null && !model.feedback().isBlank()) {
+            list.add(Kit.note(screen.cards(), model.feedback())).row();
+        }
         List<ServerStatus> servers = model.filteredServers();
         if (servers.isEmpty()) {
             list.add(Kit.note(screen.cards(), t("player-servers-empty-category"))).row();
@@ -272,9 +285,12 @@ public class ServerSelectorUiController implements UiController<ServerSelectorUi
                 yield UpdateResult.rerender(refreshed);
             }
             case ServerSelectorEvent.Connect e -> {
-                handleConnect(e.serverId());
-                ctx.close();
-                yield UpdateResult.close(model);
+                ConnectionAttempt attempt = handleConnect(e.serverId());
+                if (attempt.transferred()) {
+                    ctx.close();
+                    yield UpdateResult.close(model);
+                }
+                yield UpdateResult.rerender(createModel(registryService, model.selectedCategory()).withFeedback(attempt.feedback()));
             }
             case ServerSelectorEvent.Close e -> {
                 ctx.close();
@@ -283,39 +299,44 @@ public class ServerSelectorUiController implements UiController<ServerSelectorUi
         };
     }
 
-    private void handleConnect(String serverId) {
+    private record ConnectionAttempt(boolean transferred, String feedback) {}
+
+    private ConnectionAttempt rejected(String key, Map<String, Object> arguments) {
+        session.locale().send(key, arguments);
+        return new ConnectionAttempt(false, t(key, arguments));
+    }
+
+    private ConnectionAttempt handleConnect(String serverId) {
         if (session == null || session.player == null) {
-            return;
+            return new ConnectionAttempt(false, "");
         }
 
         Optional<ServerStatus> opt = registryService.findServer(serverId);
         if (opt.isEmpty()) {
-            session.locale().send("player-servers-not-found", Bundle.args("server", serverId));
-            return;
+            return rejected("player-servers-not-found", Bundle.args("server", serverId));
         }
 
         ServerStatus target = opt.get();
         if (target.isCurrent()) {
-            session.locale().send("player-servers-already-connected");
-            return;
+            return rejected("player-servers-already-connected", Map.of());
         }
 
         if (!target.online()) {
-            session.locale().send("player-servers-offline", Bundle.args("server", target.template().name()));
-            return;
+            return rejected("player-servers-offline", Bundle.args("server", target.template().name()));
         }
 
         boolean isAdmin = session.data != null && session.data.admin;
         if (target.isFull() && !isAdmin) {
-            session.locale().send("player-servers-full", Bundle.args("server", target.template().name()));
-            return;
+            return rejected("player-servers-full", Bundle.args("server", target.template().name()));
         }
 
         if (session.player.con != null) {
             session.locale().send("player-servers-transferring", Bundle.args("server", target.template().name()));
             Log.info("Transferring player @ to @ (@:@)", session.player.plainName(), target.template().name(), target.host(), target.template().port());
             Call.connect(session.player.con, target.host(), target.template().port());
+            return new ConnectionAttempt(true, "");
         }
+        return new ConnectionAttempt(false, "");
     }
 
     @Override
@@ -332,7 +353,7 @@ public class ServerSelectorUiController implements UiController<ServerSelectorUi
             return new ServerSelectorEvent.Refresh();
         }
         if (action.startsWith("action:tab:")) {
-            String catName = action.substring("action:tab:".length()).toUpperCase();
+            String catName = action.substring("action:tab:".length()).toUpperCase(Locale.ROOT);
             try {
                 return new ServerSelectorEvent.SelectCategory(Category.valueOf(catName));
             } catch (IllegalArgumentException ignored) {

@@ -88,6 +88,8 @@ class ServerSelectorUiClientIntegrationTest {
             };
         });
         when(bundle.localizer(any(java.util.function.Supplier.class))).thenReturn(localizer);
+        when(bundle.context(any(Player.class), any(java.util.function.Supplier.class)))
+                .thenReturn(mock(com.ospx.flubundle.BundleContext.class));
 
         sessionService = mock(SessionService.class);
         Provider<SessionService> sessionProvider = () -> sessionService;
@@ -221,6 +223,24 @@ class ServerSelectorUiClientIntegrationTest {
         assertThat(showDsl).contains("Mini-PvP");
         assertThat(showDsl).contains("HexedCore");
         assertThat(showDsl).doesNotContain("Mini-Surv");
+    }
+
+    @Test
+    void rejectedTransfer_keepsClientDialogVisibleAndShowsReason() {
+        serverMenu.open(session);
+        int menuId = menuService.getMenuBuilderId();
+        assertThat(loop.stepServerToClient()).isTrue();
+        loop.client().click(menuId, "action:connect:mini-pvp");
+        assertThat(loop.stepClientToServer()).isTrue();
+        assertThat(loop.stepServerToClient()).isTrue();
+        assertThat(loop.client().isVisible(menuId)).isTrue();
+        assertThat(session.hasActiveUiSession()).isTrue();
+        assertThat(loop.transcript().all()).noneMatch(message -> message instanceof UiWireMessage.Hide);
+        var last = (UiWireMessage.Show) loop.transcript().all().stream()
+                .filter(message -> message instanceof UiWireMessage.Show)
+                .reduce((first, second) -> second).orElseThrow();
+        assertThat(UiDslWriter.write((NodeBuilder<?>) last.body().decode()))
+                .contains("player-servers-already-connected", "action:refresh");
     }
 
     @Test

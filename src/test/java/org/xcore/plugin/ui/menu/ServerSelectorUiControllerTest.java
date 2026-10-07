@@ -271,10 +271,12 @@ class ServerSelectorUiControllerTest {
         ServerSelectorUiController.ServerSelectorModel model = ServerSelectorUiController.createModel(registry, Category.ALL);
         ControllerContext ctx = mock(ControllerContext.class);
 
-        controller.update(model, new ServerSelectorUiController.ServerSelectorEvent.Connect("unknown-server"), ctx);
+        var result = controller.update(model, new ServerSelectorUiController.ServerSelectorEvent.Connect("unknown-server"), ctx);
 
         verify(context).send(eq("player-servers-not-found"), anyMap());
-        verify(ctx).close();
+        verify(ctx, never()).close();
+        assertThat(result.close()).isFalse();
+        assertThat(result.fullRerender()).isTrue();
     }
 
     @Test
@@ -289,9 +291,53 @@ class ServerSelectorUiControllerTest {
         ServerSelectorUiController.ServerSelectorModel model = ServerSelectorUiController.createModel(registry, Category.ALL);
         ControllerContext ctx = mock(ControllerContext.class);
 
-        controller.update(model, new ServerSelectorUiController.ServerSelectorEvent.Connect("mini-pvp"), ctx);
+        var result = controller.update(model, new ServerSelectorUiController.ServerSelectorEvent.Connect("mini-pvp"), ctx);
 
         verify(context).send(eq("player-servers-already-connected"), anyMap());
-        verify(ctx).close();
+        verify(ctx, never()).close();
+        assertThat(result.close()).isFalse();
+        assertThat(result.fullRerender()).isTrue();
+    }
+
+    @Test
+    void unavailableOrFullServer_keepsBrowserOpenWithFreshSnapshot() {
+        ServerRegistryService registry = spy(crowdedRegistry());
+        var template = registry.findServer("hexedcore").orElseThrow().template();
+        var offline = new ServerRegistryService.ServerStatus(template, 0, 16, false, false,
+                "", "-", null, "", 0, 0, "localhost", 0);
+        doReturn(java.util.Optional.of(offline)).when(registry).findServer("siege");
+        Player player = mock(Player.class);
+        BundleContext context = mock(BundleContext.class);
+        Session session = createTestSession("uuid-1", player, context);
+        var controller = new ServerSelectorUiController(registry, session);
+        var oldModel = ServerSelectorUiController.createModel(registry, Category.PVP);
+        for (String target : List.of("hexedcore", "siege")) {
+            ControllerContext ctx = mock(ControllerContext.class);
+            var result = controller.update(oldModel, new ServerSelectorUiController.ServerSelectorEvent.Connect(target), ctx);
+            assertThat(result.close()).isFalse();
+            assertThat(result.fullRerender()).isTrue();
+            assertThat(result.model().selectedCategory()).isEqualTo(Category.PVP);
+            assertThat(result.model().feedback()).isNotBlank();
+            verify(ctx, never()).close();
+        }
+        verify(context).send(eq("player-servers-full"), anyMap());
+        verify(context).send(eq("player-servers-offline"), anyMap());
+    }
+
+    @Test
+    void successfulTransfer_closesBrowserAndSendsConnect() {
+        var registry = createRegistry();
+        Player player = mock(Player.class);
+        player.con = mock(mindustry.net.NetConnection.class);
+        Session session = createTestSession("uuid-1", player, mock(BundleContext.class));
+        var controller = new ServerSelectorUiController(registry, session);
+        ControllerContext ctx = mock(ControllerContext.class);
+        try (var call = mockStatic(mindustry.gen.Call.class)) {
+            var result = controller.update(ServerSelectorUiController.createModel(registry, Category.ALL),
+                    new ServerSelectorUiController.ServerSelectorEvent.Connect("mini-surv"), ctx);
+            assertThat(result.close()).isTrue();
+            verify(ctx).close();
+            call.verify(() -> mindustry.gen.Call.connect(eq(player.con), anyString(), anyInt()));
+        }
     }
 }
