@@ -93,15 +93,20 @@ public final class ConfigTomlLoader {
     public static LoadResult<TomlXcoreConfig> loadXcoreConfig(Fi dataDirectory) {
         Fi tomlFile = resolveXcoreToml(dataDirectory);
         if (tomlFile.exists()) {
-            TomlXcoreConfig toml = readToml(tomlFile, TomlXcoreConfig.class);
-            toml.normalize();
+            TomlXcoreConfig toml = readXcoreToml(tomlFile);
             return new LoadResult<>(toml, Source.TOML, tomlFile);
         }
 
         ConfigTomlTemplateWriter.writeDefaultXcoreToml(tomlFile);
-        TomlXcoreConfig toml = readToml(tomlFile, TomlXcoreConfig.class);
-        toml.normalize();
+        TomlXcoreConfig toml = readXcoreToml(tomlFile);
         return new LoadResult<>(toml, Source.DEFAULT_TEMPLATE, tomlFile);
+    }
+
+    /** Parses and normalizes an existing file without creating templates or writing anything. */
+    public static TomlXcoreConfig readXcoreToml(Fi file) {
+        TomlXcoreConfig config = readToml(file, TomlXcoreConfig.class);
+        config.normalize();
+        return config;
     }
 
     /**
