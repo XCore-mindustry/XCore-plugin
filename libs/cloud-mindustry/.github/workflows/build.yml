@@ -12,6 +12,13 @@ on:
 permissions:
   contents: read
 
+# Snapshot metadata and checksum uploads must have a single writer per branch.
+# Let active publications finish and queue duplicate/new pushes instead of racing.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+  queue: max
+
 jobs:
   build:
     runs-on: ubuntu-latest
