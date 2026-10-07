@@ -75,6 +75,11 @@ class _Interaction:
 
 
 class _Store:
+    async def find_player_by_username(self, username: str) -> PlayerRecord | None:
+        if username.casefold() == "br":
+            return await self.find_player_by_pid(123)
+        return None
+
     async def find_player_by_pid(self, pid: int) -> PlayerRecord | None:
         if pid != 123:
             return None
@@ -324,6 +329,39 @@ async def test_cmd_stats_by_discord_user_is_for_admins() -> None:
     await cmd_stats(bot, cast(Any, admin), None, cast(Any, linked))
 
     assert admin.response.sent[0]["embed"].title == "Main"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("reference", ["123", "#123", "@br", "@BR", "br"])
+async def test_stats_accepts_text_without_a_separate_search(reference: str) -> None:
+    bot = object.__new__(XCoreDiscordBot)
+    bot.__dict__["_store"] = _Store()
+    bot.__dict__["_settings"] = SimpleNamespace(discord_admin_role_id=5)
+    interaction = _Interaction(
+        id=10, user=_User(id=10, display_name="guest", roles=[]), client=bot
+    )
+
+    await cmd_stats(bot, cast(Any, interaction), reference)
+
+    assert interaction.response.sent[0]["embed"].title == "Vortex"
+    assert interaction.response.sent[0]["view"] is None
+
+
+@pytest.mark.asyncio
+async def test_stats_unknown_username_replies_without_an_embed() -> None:
+    bot = object.__new__(XCoreDiscordBot)
+    bot.__dict__["_store"] = _Store()
+    bot.__dict__["_settings"] = SimpleNamespace(discord_admin_role_id=5)
+    interaction = _Interaction(
+        id=11, user=_User(id=10, display_name="guest", roles=[]), client=bot
+    )
+
+    await cmd_stats(bot, cast(Any, interaction), "@missing")
+
+    sent = interaction.response.sent[0]
+    assert sent["ephemeral"] is True
+    assert sent["embed"] is None
+    assert "Player not found" in sent["content"]
 
 
 @pytest.mark.asyncio

@@ -7,7 +7,7 @@ from discord import Interaction, app_commands
 from discord.ext import commands
 
 from .. import handlers_misc
-from .autocomplete import _autocomplete_player_id
+from .autocomplete import _autocomplete_player_id, _autocomplete_stats_player
 from .checks import admin_check
 
 if TYPE_CHECKING:
@@ -31,11 +31,11 @@ class InfoCog(commands.Cog):
         player_id="Player ID, nickname or @username",
         user="A Discord user with a linked game account",
     )
-    @app_commands.autocomplete(player_id=_autocomplete_player_id)
+    @app_commands.autocomplete(player_id=_autocomplete_stats_player)
     async def cmd_stats(
         self,
         interaction: Interaction,
-        player_id: int | None = None,
+        player_id: str | None = None,
         user: discord.User | None = None,
     ) -> None:
         await handlers_misc.cmd_stats(self.bot, interaction, player_id, user)

@@ -31,6 +31,8 @@ Standalone Discord bot for XCore transport migration.
   - `/stats [player_id] [user]` is the player's profile: league, rating, place and the way to the next
     league on every ladder of the current season (`rating_standings`), the games played mode by mode
     (`games_v2`), playtime, badges and presence. Without arguments it opens the caller's linked account.
+    `player_id` accepts a signed PID (also with `#`) or an in-game `@username` directly; type a nickname
+    and click an autocomplete suggestion to open that player without running `/search` first.
     The Discord link, the lookup by `user` and the ban/mute notes are shown to the player and the admins only
   - account merges move rating standings through `rating.accounts.merge.request`; if no server
     answers, the merge is queued in `rating_merge_pending` and retried every minute

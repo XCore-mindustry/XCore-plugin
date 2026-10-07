@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import re
 import secrets
 import time
 from collections.abc import Awaitable
@@ -150,10 +151,30 @@ async def _linked_accounts(
     return None
 
 
+async def _stats_player(
+    bot: XCoreDiscordBot, interaction: Interaction, reference: str | int
+) -> PlayerRecord | None:
+    text = str(reference).strip()
+    pid = text.removeprefix("#")
+    if re.fullmatch(r"-?\d+", pid):
+        return await bot._get_player_or_reply(interaction, int(pid))
+    username = text.removeprefix("@").strip()
+    if username:
+        player = await bot.find_player_by_username(username)
+        if player is not None:
+            return player
+    await interaction.response.send_message(
+        "Player not found. Enter a player ID or @username, "
+        "or type a nickname and select a player from the suggestions.",
+        ephemeral=True,
+    )
+    return None
+
+
 async def cmd_stats(
     bot: XCoreDiscordBot,
     interaction: Interaction,
-    player_id: int | None = None,
+    player_id: str | int | None = None,
     user: discord.abc.User | None = None,
 ) -> None:
     settings = settings_from_interaction(interaction)
@@ -165,7 +186,7 @@ async def cmd_stats(
     member: discord.abc.User | None = None
     other_accounts: list[PlayerRecord] = []
     if player_id is not None:
-        player = await bot._get_player_or_reply(interaction, player_id)
+        player = await _stats_player(bot, interaction, player_id)
         if player is None:
             return
     else:

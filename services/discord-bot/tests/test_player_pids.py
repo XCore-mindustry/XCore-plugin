@@ -4,8 +4,13 @@ from dataclasses import dataclass
 from typing import Any
 
 import pytest
+from discord import AppCommandOptionType
 
-from xcore_discord_bot.cogs.autocomplete import _autocomplete_player_id
+from xcore_discord_bot.cogs.autocomplete import (
+    _autocomplete_player_id,
+    _autocomplete_stats_player,
+)
+from xcore_discord_bot.cogs.info import InfoCog
 from xcore_discord_bot.dto import PlayerRecord
 from xcore_discord_bot.handlers_moderation import _format_vote_kick_party_value
 from xcore_discord_bot.player_pids import NO_PID, is_assigned, or_none
@@ -64,4 +69,27 @@ async def test_autocomplete_offers_zero_and_negative_pids(
     assert [(choice.name, choice.value) for choice in choices] == [
         ("Event (#-12)", -12),
         ("Zero @zero (#0)", 0),
+    ]
+
+
+def test_stats_player_option_accepts_text_with_autocomplete() -> None:
+    parameter = next(p for p in InfoCog.cmd_stats.parameters if p.name == "player_id")
+    assert parameter.type is AppCommandOptionType.string
+    assert parameter.autocomplete
+    assert not parameter.required
+
+
+@pytest.mark.asyncio
+async def test_stats_suggestions_use_string_pids(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr("xcore_discord_bot.cogs.autocomplete.StoreService", _Store)
+    interaction: Any = _Interaction(
+        client=_Store([PlayerRecord(pid=-12, nickname="Event", username="br")])
+    )
+
+    choices = await _autocomplete_stats_player(interaction, "@br")
+
+    assert [(choice.name, choice.value) for choice in choices] == [
+        ("Event @br (#-12)", "-12"),
     ]

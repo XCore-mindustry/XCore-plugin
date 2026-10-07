@@ -439,6 +439,9 @@ class XCoreDiscordBot(commands.Bot):
     async def find_player_by_pid(self, pid: int) -> PlayerRecord | None:
         return await self._store.find_player_by_pid(pid)
 
+    async def find_player_by_username(self, username: str) -> PlayerRecord | None:
+        return await self._store.find_player_by_username(username)
+
     async def find_player_by_uuid(self, uuid: str) -> PlayerRecord | None:
         return await self._store.find_player_by_uuid(uuid)
 

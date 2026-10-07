@@ -39,6 +39,18 @@ async def _autocomplete_player_id(
     return choices
 
 
+async def _autocomplete_stats_player(
+    interaction: Interaction,
+    current: str,
+) -> list[app_commands.Choice[str]]:
+    """Stats accepts text so Discord can offer names without integer validation."""
+    choices = await _autocomplete_player_id(interaction, current)
+    return [
+        app_commands.Choice(name=choice.name, value=str(choice.value))
+        for choice in choices
+    ]
+
+
 async def _autocomplete_map_file(
     interaction: Interaction,
     current: str,

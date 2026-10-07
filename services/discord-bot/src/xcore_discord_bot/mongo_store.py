@@ -168,6 +168,16 @@ class MongoStore:
             PlayerDoc.model_validate(raw).model_dump(mode="python")
         )
 
+    async def find_player_by_username(self, username: str) -> PlayerRecord | None:
+        raw = await self._db_required()["players"].find_one(
+            {"username": {"$regex": f"^{re.escape(username)}$", "$options": "i"}}
+        )
+        if raw is None:
+            return None
+        return player_record_from_doc(
+            PlayerDoc.model_validate(raw).model_dump(mode="python")
+        )
+
     async def find_player_by_uuid(self, uuid: str) -> PlayerRecord | None:
         raw = await self._db_required()["players"].find_one({"uuid": uuid})
         if raw is None:
