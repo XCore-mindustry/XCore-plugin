@@ -1,7 +1,8 @@
 import arc.files.Fi;
 import com.ospx.flubundle.Args;
 import com.ospx.flubundle.Bundle;
-import com.ospx.flubundle.DefaultValueFactory;
+import com.ospx.flubundle.MissingKeyPolicy;
+import com.ospx.flubundle.Text;
 import fluent.bundle.FluentBundle;
 import mindustry.gen.Player;
 import org.junit.jupiter.api.Test;
@@ -54,7 +55,7 @@ public class BundleApiTest {
         selected.put(player, Locale.of("ru", "RU"));
         assertEquals(Locale.of("ru"), bundle.locale(player));
         assertEquals("Привет", bundle.localizer(player).format("greeting"));
-        assertEquals("Привет", bundle.context(player).format("greeting"));
+        assertEquals("Привет", bundle.format(bundle.locale(player), Text.of("greeting")));
 
         bundle.setLocaleResolver(null);
         assertEquals(Locale.ENGLISH, bundle.locale(player));
@@ -132,9 +133,9 @@ public class BundleApiTest {
     }
 
     @Test
-    void logMissingDelegatesToWrappedFactory() {
+    void logMissingDelegatesToWrappedPolicy() {
         Bundle bundle = bundleWith("present = Here\n", Locale.ENGLISH);
-        bundle.setDefaultValueFactory(DefaultValueFactory.logMissing((key, args, locale) -> "?" + key));
+        bundle.setMissingKeyPolicy(MissingKeyPolicy.logOnce((key, args, locale) -> "?" + key));
 
         assertEquals("?absent", bundle.format(Locale.ENGLISH, "absent"));
         assertEquals("?absent", bundle.format(Locale.ENGLISH, "absent"));
@@ -147,5 +148,59 @@ public class BundleApiTest {
         add(bundle, "shared = Second\n", Locale.ENGLISH);
 
         assertEquals("Second", bundle.format(Locale.ENGLISH, "shared"));
+    }
+
+    @Test
+    void missingKeyPolicies() {
+        Bundle bundle = bundleWith("present = Here\n", Locale.ENGLISH);
+
+        assertEquals("absent", bundle.format(Locale.ENGLISH, "absent"), "returns the key by default");
+
+        bundle.setMissingKeyPolicy(MissingKeyPolicy.bracketed());
+        assertEquals("⟦absent⟧", bundle.format(Locale.ENGLISH, "absent"));
+        assertEquals("⟦present.title⟧", bundle.formatAttribute(Locale.ENGLISH, "present", "title", Map.of()));
+
+        bundle.setMissingKeyPolicy(MissingKeyPolicy.throwing());
+        assertThrows(IllegalStateException.class, () -> bundle.format(Locale.ENGLISH, "absent"));
+        assertEquals("Here", bundle.format(Locale.ENGLISH, "present"));
+
+        bundle.setMissingKeyPolicy(null);
+        assertEquals("absent", bundle.format(Locale.ENGLISH, "absent"));
+    }
+
+    @Test
+    void textRendersWithBundleAndLocalizer() {
+        Bundle bundle = bundleWith("hello = Hello, { $name }!\n", Locale.ENGLISH);
+        add(bundle, "hello = Привет, { $name }!\n", Locale.of("ru"));
+        Text text = Text.of("hello", Args.of("name", "Billy"));
+
+        assertEquals("Hello, Billy!", text.render(bundle, Locale.ENGLISH));
+        assertEquals("Привет, Billy!", bundle.format(Locale.of("ru"), text));
+        assertEquals("Привет, Billy!", text.render(bundle.localizer(Locale.of("ru"))));
+        assertEquals(Map.of(), Text.of("hello", null).args());
+        assertThrows(NullPointerException.class, () -> Text.of(null));
+    }
+
+    @Test
+    void localizerHasFollowsFallbackChain() {
+        Bundle bundle = bundleWith("only-en = English\n", Locale.ENGLISH);
+        add(bundle, "only-ru = Только\n", Locale.of("ru"));
+
+        assertTrue(bundle.localizer(Locale.of("ru")).has("only-en"));
+        assertTrue(bundle.localizer(Locale.of("ru")).has("only-ru"));
+        assertFalse(bundle.localizer(Locale.ENGLISH).has("only-ru"));
+    }
+
+    @Test
+    void argsBuilderSupportsManyAndConditionalPairs() {
+        Map<String, Object> args = Args.builder()
+                .put("a", 1).put("b", 2).put("c", 3).put("d", 4)
+                .put("e", 5).put("f", 6).put("g", 7)
+                .putIf(false, "skipped", 0)
+                .putIf(true, "h", null)
+                .build();
+
+        assertEquals(List.of("a", "b", "c", "d", "e", "f", "g", "h"), new ArrayList<>(args.keySet()));
+        assertThrows(UnsupportedOperationException.class, () -> args.put("i", 9));
     }
 }
