@@ -1,6 +1,28 @@
 # FluBundle: улучшение API и использования в плагинах
 
-Статус: предложение (draft). Основано на разборе `FluBundle 1.7.1`, `XCore-plugin`, `HexedCore-plugin`, `xcore-ui`.
+Статус: 1.8.0 реализован (см. раздел 0), остальное — предложение. Основано на разборе `FluBundle 1.7.1`, `XCore-plugin`, `HexedCore-plugin`, `xcore-ui`.
+
+## 0. Принятые решения и статус
+
+| Вопрос | Решение | Почему |
+|---|---|---|
+| Каталог на плагин или общий | Пока **общий** `Bundle.INSTANCE`, но с логированием перекрытых ключей (с указанием мода-источника) и без «freeze» | Отдельные каталоги с `parent` дают мало выгоды при префиксах `hexed_*`, но требуют миграции всех плагинов. Вернуться к ним, если коллизии реально появятся. |
+| Где живёт `LocaleResolver` | В `Bundle` (`setLocaleResolver`); XCore устанавливает `SessionLocaleResolver` на общий экземпляр | Плагины без DI и вызовы `bundle.locale(player)` получают правильный язык без изменений кода. |
+| Кодогенерация ключей | Отложена; вместо неё `LocaleConsistencyChecker` + `DefaultValueFactory.logMissing` | Проверка ловит реальные ошибки (переменные), лог показывает отсутствующие ключи; codegen требует Gradle-плагина. |
+| Переименовать `hexed_*` в kebab-case | Нет | Ломает переводы/Weblate без пользы для игроков. |
+| `Text` / `Messenger` / `Audience` | Отложено до 2.0 | Крупная смена API; в 1.8 рассылка уже форматирует текст один раз на локаль. |
+
+Сделано в **FluBundle 1.8.0**: `LocaleResolver`, `Args.of(...)`, `has`/`keys`/`variables`/`formatAttribute`,
+перегрузки без аргументов (`format(locale, id)`, `send(player, id)`, `announce(player, id)`), регистрация функций
+в любой момент, логирование ошибок рендера и перекрытий ключей, `DefaultValueFactory.logMissing`,
+рассылки с форматированием раз на локаль, потокобезопасное хранилище бандлов, `LocaleConsistencyChecker`.
+
+В **XCore-plugin**: `SessionLocaleResolver`, удалён `BundlePlaceholderRegistry` (→ `bundle.has/variables`),
+`has()` в мосте к xcore-ui, логирование отсутствующих ключей, тест согласованности переменных.
+
+В **HexedCore-plugin**: язык сообщений теперь берётся из настроек игрока (через resolver), циклы
+`locale + Call.announce` заменены на `bundle.announce`, рассылки — на `bundle.send(id, args)`,
+убран дублирующий alias, тест согласованности переменных.
 
 ## 1. Как FluBundle используется сейчас
 

@@ -262,7 +262,7 @@ public class FtlCompiler {
         }
     }
 
-    private static Map<String, Integer> indexMessageLines(String content) {
+    static Map<String, Integer> indexMessageLines(String content) {
         Map<String, Integer> map = new HashMap<>();
         String[] lines = content.split("\\R", -1);
         for (int i = 0; i < lines.length; i++) {
