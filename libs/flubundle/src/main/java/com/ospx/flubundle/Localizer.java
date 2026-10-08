@@ -8,6 +8,9 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.function.Supplier;
 
+/**
+ * Formats messages of a {@link Bundle} in a locale chosen when each message is formatted.
+ */
 public final class Localizer {
 
     private final Bundle bundle;
@@ -28,6 +31,21 @@ public final class Localizer {
 
     public String format(String id, Map<String, Object> args) {
         return bundle.format(locale(), id, args);
+    }
+
+    public String format(Text text) {
+        return format(text.key(), text.args());
+    }
+
+    /**
+     * @return whether the message exists in the current locale or one of its fallbacks
+     */
+    public boolean has(String id) {
+        return bundle.has(locale(), id);
+    }
+
+    public Bundle bundle() {
+        return bundle;
     }
 
     public String formatStrict(String id, Map<String, Object> args) {

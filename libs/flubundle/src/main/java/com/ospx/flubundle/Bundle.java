@@ -20,8 +20,6 @@ import fluent.syntax.ast.Message;
 import fluent.syntax.parser.FTLParser;
 
 import mindustry.game.Team;
-import mindustry.gen.Call;
-import mindustry.gen.Groups;
 import mindustry.gen.Player;
 import mindustry.mod.Mod;
 
@@ -34,18 +32,23 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 
 import static mindustry.Vars.mods;
 
+/**
+ * A catalog of Fluent messages for several locales, with locale fallback and formatting.
+ *
+ * <p>Delivering messages to players lives in {@link com.ospx.flubundle.mindustry.Messenger}.
+ */
 @SuppressWarnings("unused")
 public class Bundle {
-    public static Bundle INSTANCE = new Bundle();
+    /** The catalog shared by all plugins on a server. */
+    public static final Bundle INSTANCE = new Bundle();
 
-    public Locale defaultLocale = Locale.of("en");
-    public DefaultValueFactory defaultValueFactory = new NoopDefaultValueFactory();
+    private volatile Locale defaultLocale = Locale.of("en");
+    private volatile MissingKeyPolicy missingKeyPolicy = MissingKeyPolicy.returnKey();
 
     private static final int MAX_REPORTED_FORMAT_ERRORS = 512;
 
@@ -233,8 +236,13 @@ public class Bundle {
         return defaultLocale;
     }
 
-    public DefaultValueFactory getDefaultValueFactory() {
-        return defaultValueFactory;
+    public MissingKeyPolicy getMissingKeyPolicy() {
+        return missingKeyPolicy;
+    }
+
+    /** Sets what {@code format} returns for a key no locale defines. */
+    public void setMissingKeyPolicy(MissingKeyPolicy missingKeyPolicy) {
+        this.missingKeyPolicy = missingKeyPolicy == null ? MissingKeyPolicy.returnKey() : missingKeyPolicy;
     }
 
     public Bundle addLocaleAlias(String alias, String targetCode) {
@@ -306,24 +314,16 @@ public class Bundle {
         return new Localizer(this, () -> player == null ? defaultLocale : locale(player));
     }
 
-    public BundleContext context(Player player) {
-        return new BundleContext(player, localizer(player));
-    }
-
-    public BundleContext context(Player player, Locale locale) {
-        return new BundleContext(player, localizer(locale));
-    }
-
-    public BundleContext context(Player player, java.util.function.Supplier<Locale> localeSupplier) {
-        return new BundleContext(player, localizer(localeSupplier));
-    }
-
     public String format(Locale locale, String id) {
-        return format(locale, id, Collections.emptyMap(), defaultValueFactory);
+        return format(locale, id, Collections.emptyMap(), missingKeyPolicy);
     }
 
     public String format(Locale locale, String id, Map<String, Object> args) {
-        return format(locale, id, args, defaultValueFactory);
+        return format(locale, id, args, missingKeyPolicy);
+    }
+
+    public String format(Locale locale, Text text) {
+        return format(locale, text.key(), text.args(), missingKeyPolicy);
     }
 
     /**
@@ -347,14 +347,14 @@ public class Bundle {
             }
         }
 
-        return defaultValueFactory.getDefaultValue(id + "." + attribute, safeArgs, normalizeLocale(requestedLocale));
+        return missingKeyPolicy.onMissing(id + "." + attribute, safeArgs, normalizeLocale(requestedLocale));
     }
 
     public String format(Locale locale, String id, String defaultValue, Map<String, Object> args) {
         return format(locale, id, args, (k, a, l) -> defaultValue);
     }
 
-    public String format(Locale locale, String id, Map<String, Object> args, DefaultValueFactory defaultValue) {
+    public String format(Locale locale, String id, Map<String, Object> args, MissingKeyPolicy missingKey) {
         ensureRegistry();
         Map<String, Object> safeArgs = args == null ? Collections.emptyMap() : args;
         var requestedLocale = locale == null ? defaultLocale : locale;
@@ -370,20 +370,21 @@ public class Bundle {
             }
         }
 
-        return defaultValue.getDefaultValue(id, safeArgs, normalizeLocale(requestedLocale));
+        return missingKey.onMissing(id, safeArgs, normalizeLocale(requestedLocale));
     }
 
+    /**
+     * Formats a message from exactly this locale, without the fallback chain.
+     *
+     * @throws IllegalStateException if no bundle is loaded for the locale
+     */
     public String formatStrict(Locale locale, String id, Map<String, Object> args) {
-        return formatStrict(locale, id, args, defaultValueFactory);
-    }
-
-    public String formatStrict(Locale locale, String id, Map<String, Object> args, DefaultValueFactory defaultValue) {
         ensureRegistry();
         var requestedLocale = applyAlias(normalizeLocale(locale));
         var bundle = sources.get(requestedLocale);
 
         if (bundle == null) {
-            throw new RuntimeException("No bundle for locale " + requestedLocale);
+            throw new IllegalStateException("No bundle for locale " + requestedLocale);
         }
 
         Map<String, Object> safeArgs = args == null ? Collections.emptyMap() : args;
@@ -391,7 +392,7 @@ public class Bundle {
             return bundle.format(id, safeArgs);
         }
 
-        return defaultValue.getDefaultValue(id, safeArgs, requestedLocale);
+        return missingKeyPolicy.onMissing(id, safeArgs, requestedLocale);
     }
 
     /**
@@ -411,149 +412,10 @@ public class Bundle {
         return resolveLocale(code);
     }
 
-    public void send(Player player, String id) {
-        send(player, id, Collections.emptyMap(), defaultValueFactory);
-    }
-
-    public void send(Player player, String id, Map<String, Object> args) {
-        send(player, id, args, defaultValueFactory);
-    }
-
-    public void send(Player player, String id, Map<String, Object> args, DefaultValueFactory defaultValue) {
-        player.sendMessage(format(locale(player), id, args, defaultValue));
-    }
-
-    public void infoMessage(Player player, String id, Map<String, Object> args) {
-        infoMessage(player, id, args, defaultValueFactory);
-    }
-
-    public void infoMessage(Player player, String id, Map<String, Object> args, DefaultValueFactory defaultValue) {
-        Call.infoMessage(player.con, format(locale(player), id, args, defaultValue));
-    }
-
-    public void setHud(Player player, String id, Map<String, Object> args) {
-        setHud(player, id, args, defaultValueFactory);
-    }
-
-    public void setHud(Player player, String id, Map<String, Object> args, DefaultValueFactory defaultValue) {
-        Call.setHudText(player.con, format(locale(player), id, args, defaultValue));
-    }
-
-    public void announce(Player player, String id) {
-        announce(player, id, Collections.emptyMap(), defaultValueFactory);
-    }
-
-    public void announce(Player player, String id, Map<String, Object> args) {
-        announce(player, id, args, defaultValueFactory);
-    }
-
-    public void announce(Player player, String id, Map<String, Object> args, DefaultValueFactory defaultValue) {
-        Call.announce(player.con, format(locale(player), id, args, defaultValue));
-    }
-
-    public void toast(Player player, int icon, String id, Map<String, Object> args) {
-        toast(player, icon, id, args, defaultValueFactory);
-    }
-
-    public void toast(Player player, int icon, String id, Map<String, Object> args, DefaultValueFactory defaultValue) {
-        Call.warningToast(player.con, icon, format(locale(player), id, args, defaultValue));
-    }
-
-    public void label(Player player, float duration, float x, float y, String id, Map<String, Object> args) {
-        label(player, duration, x, y, id, args, defaultValueFactory);
-    }
-
-    public void label(Player player, float duration, float x, float y, String id, Map<String, Object> args, DefaultValueFactory defaultValue) {
-        Call.label(player.con, format(locale(player), id, args, defaultValue), duration, x, y);
-    }
-
-    public void popup(Player player, float duration, int align, int top, int left, int bottom, int right,
-                      String id, Map<String, Object> args) {
-        popup(player, duration, align, top, left, bottom, right, id, args, defaultValueFactory);
-    }
-
-    public void popup(Player player, float duration, int align, int top, int left, int bottom, int right,
-                      String id, Map<String, Object> args, DefaultValueFactory defaultValue) {
-        Call.infoPopup(player.con, format(locale(player), id, args, defaultValue), duration, align, top, left, bottom, right);
-    }
-
-    public void kick(Player player, String id, Map<String, Object> args) {
-        kick(player, id, args, defaultValueFactory);
-    }
-
-    public void kick(Player player, String id, Map<String, Object> args, DefaultValueFactory defaultValue) {
-        Call.kick(player.con, format(locale(player), id, args, defaultValue));
-    }
-
-    public void send(String id, Map<String, Object> args) {
-        send(id, args, defaultValueFactory);
-    }
-
-    public void send(String id, Map<String, Object> args, DefaultValueFactory defaultValue) {
-        broadcast(id, args, defaultValue, Player::sendMessage);
-    }
-
-    public void infoMessage(String id, Map<String, Object> args) {
-        infoMessage(id, args, defaultValueFactory);
-    }
-
-    public void infoMessage(String id, Map<String, Object> args, DefaultValueFactory defaultValue) {
-        broadcast(id, args, defaultValue, (p, text) -> Call.infoMessage(p.con, text));
-    }
-
-    public void setHud(String id, Map<String, Object> args) {
-        setHud(id, args, defaultValueFactory);
-    }
-
-    public void setHud(String id, Map<String, Object> args, DefaultValueFactory defaultValue) {
-        broadcast(id, args, defaultValue, (p, text) -> Call.setHudText(p.con, text));
-    }
-
-    public void announce(String id, Map<String, Object> args) {
-        announce(id, args, defaultValueFactory);
-    }
-
-    public void announce(String id, Map<String, Object> args, DefaultValueFactory defaultValue) {
-        broadcast(id, args, defaultValue, (p, text) -> Call.announce(p.con, text));
-    }
-
-    public void toast(int icon, String id, Map<String, Object> args) {
-        toast(icon, id, args, defaultValueFactory);
-    }
-
-    public void toast(int icon, String id, Map<String, Object> args, DefaultValueFactory defaultValue) {
-        broadcast(id, args, defaultValue, (p, text) -> Call.warningToast(p.con, icon, text));
-    }
-
-    public void label(float duration, float x, float y, String id, Map<String, Object> args) {
-        label(duration, x, y, id, args, defaultValueFactory);
-    }
-
-    public void label(float duration, float x, float y, String id, Map<String, Object> args, DefaultValueFactory defaultValue) {
-        broadcast(id, args, defaultValue, (p, text) -> Call.label(p.con, text, duration, x, y));
-    }
-
-    public void popup(float duration, int align, int top, int left, int bottom, int right,
-                      String id, Map<String, Object> args) {
-        popup(duration, align, top, left, bottom, right, id, args, defaultValueFactory);
-    }
-
-    public void popup(float duration, int align, int top, int left, int bottom, int right,
-                      String id, Map<String, Object> args, DefaultValueFactory defaultValue) {
-        broadcast(id, args, defaultValue,
-                (p, text) -> Call.infoPopup(p.con, text, duration, align, top, left, bottom, right));
-    }
-
     /**
-     * Delivers a message to every online player, formatting it once per locale.
+     * Builds arguments from alternating names and values. Prefer {@link Args#of}, which checks the
+     * pairs at compile time; this method remains for call sites with many pairs.
      */
-    private void broadcast(String id, Map<String, Object> args, DefaultValueFactory defaultValue,
-                           BiConsumer<Player, String> delivery) {
-        var formatted = new HashMap<Locale, String>();
-        Groups.player.each(p -> delivery.accept(p,
-                formatted.computeIfAbsent(locale(p), locale -> format(locale, id, args, defaultValue))));
-    }
-
     public static Map<String, Object> args(Object... values) {
         if (values.length == 0) return Collections.emptyMap();
 
@@ -572,20 +434,6 @@ public class Bundle {
         }
 
         return map;
-    }
-
-    public static Map<String, Object> numArgs(Object... values) {
-        var map = new HashMap<String, Object>();
-
-        for (int i = 0; i < values.length; i++) {
-            map.put("a"+i, values[i]);
-        }
-
-        return map;
-    }
-
-    public void setDefaultValueFactory(DefaultValueFactory defaultValueFactory) {
-        this.defaultValueFactory = defaultValueFactory;
     }
 
     public void setDefaultLocale(Locale defaultLocale) {

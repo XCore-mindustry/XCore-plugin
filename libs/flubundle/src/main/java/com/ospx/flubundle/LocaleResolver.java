@@ -9,8 +9,9 @@ import java.util.Locale;
  *
  * <p>A plugin that lets players pick their language (for example, stored in a session) installs
  * one resolver on the shared {@link Bundle} via {@link Bundle#setLocaleResolver(LocaleResolver)}.
- * Every {@code Bundle#locale(Player)}, {@code send}, {@code announce}, {@link Localizer} and
- * {@link BundleContext} call then honours that choice, including calls made by other plugins.
+ * Every {@code Bundle#locale(Player)}, {@code Bundle#localizer(Player)} and
+ * {@link com.ospx.flubundle.mindustry.Messenger} call then honours that choice, including calls
+ * made by other plugins.
  */
 @FunctionalInterface
 public interface LocaleResolver {

@@ -33,7 +33,7 @@ public class BundleTests {
                 Bundle.args("userName", "Billy")));
 
         assertEquals("Hello, Billy!", bundle.format(Locale.of("en"), "hello-num-user",
-                Bundle.numArgs("Billy")));
+                com.ospx.flubundle.Args.of("a0", "Billy")));
     }
 
     @Test
@@ -63,14 +63,14 @@ public class BundleTests {
     }
 
     @Test
-    void usesDefaultValueFactoryAfterFallbackChainMiss() {
+    void usesMissingKeyPolicyAfterFallbackChainMiss() {
         assertEquals("missing-key", bundle.format(Locale.of("fr", "FR"), "missing-key", Map.of()));
         assertEquals("default text", bundle.format(Locale.of("fr", "FR"), "missing-key", "default text", Map.of()));
     }
 
     @Test
     void strictFormattingPreservesPreviousFailureMode() {
-        assertThrows(RuntimeException.class,
+        assertThrows(IllegalStateException.class,
                 () -> bundle.formatStrict(Locale.of("fr", "FR"), "shared-message", Map.of()));
     }
 

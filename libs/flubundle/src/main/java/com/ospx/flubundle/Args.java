@@ -11,7 +11,8 @@ import java.util.Map;
  * error rather than a runtime exception. Values may be {@code null}.
  *
  * <pre>{@code
- * bundle.send(player, "votekick-fail", Args.of("target", target.coloredName()));
+ * bundle.format(locale, "votekick-fail", Args.of("target", target.coloredName()));
+ * Args.builder().put("used", used).put("max", max).putIf(verbose, "detail", detail).build();
  * }</pre>
  */
 public final class Args {
@@ -50,11 +51,44 @@ public final class Args {
         return build(k1, v1, k2, v2, k3, v3, k4, v4, k5, v5, k6, v6);
     }
 
+    /** For messages with more than six arguments, or arguments that depend on a condition. */
+    public static Builder builder() {
+        return new Builder();
+    }
+
     private static Map<String, Object> build(Object... pairs) {
         var map = new LinkedHashMap<String, Object>(pairs.length);
         for (int i = 0; i < pairs.length; i += 2) {
             map.put((String) pairs[i], pairs[i + 1]);
         }
         return Collections.unmodifiableMap(map);
+    }
+
+    public static final class Builder {
+        private final LinkedHashMap<String, Object> values = new LinkedHashMap<>();
+
+        private Builder() {
+        }
+
+        public Builder put(String name, Object value) {
+            values.put(name, value);
+            return this;
+        }
+
+        public Builder putIf(boolean condition, String name, Object value) {
+            if (condition) {
+                values.put(name, value);
+            }
+            return this;
+        }
+
+        public Builder putAll(Map<String, ?> other) {
+            values.putAll(other);
+            return this;
+        }
+
+        public Map<String, Object> build() {
+            return Collections.unmodifiableMap(new LinkedHashMap<>(values));
+        }
     }
 }
