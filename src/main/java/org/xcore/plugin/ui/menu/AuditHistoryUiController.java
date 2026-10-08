@@ -484,7 +484,6 @@ public class AuditHistoryUiController implements UiController<AuditHistoryUiCont
     }
 
     private static String resolveFilterLabel(ActionFilter filter, Localization local) {
-        if (local == null) return filter.name();
         return switch (filter) {
             case ALL -> t(local, "audit-menu-filter-all");
             case BANS -> t(local, "audit-menu-filter-bans");
