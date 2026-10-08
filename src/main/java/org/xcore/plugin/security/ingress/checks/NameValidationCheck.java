@@ -6,12 +6,10 @@ import com.ospx.flubundle.Bundle;
 import jakarta.inject.Singleton;
 import mindustry.net.NetConnection;
 import mindustry.net.Packets.ConnectPacket;
-import org.xcore.plugin.localization.Localization;
 import org.xcore.plugin.security.ingress.AccessResult;
 import org.xcore.plugin.security.ingress.FailureMode;
 import org.xcore.plugin.security.ingress.IngressCheck;
 
-import static com.ospx.flubundle.Bundle.args;
 import static arc.util.Strings.stripColors;
 import static arc.util.Strings.stripGlyphs;
 import static mindustry.Vars.netServer;
@@ -39,11 +37,8 @@ public class NameValidationCheck implements IngressCheck {
     public AccessResult check(NetConnection con, ConnectPacket packet) {
         String name = packet.name;
 
-        Localization local = new Localization(bundle, bundle.resolveLocale(packet.locale));
-
         if (name != null && BANNED_NAMES.contains(name.toLowerCase())) {
-            String reason = local.format(
-                    "kick-pirated-game", args());
+            String reason = bundle.format(bundle.locale(packet), "kick-pirated-game");
             return new AccessResult.Denied(reason, false, 0);
         }
 
