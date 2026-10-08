@@ -92,8 +92,8 @@ public class PlayerSettingsUiController implements UiController<PlayerSettingsUi
 
     public record LanguageOption(String code, String displayName) {}
 
+    /** The languages, each named in itself; "auto", the language of the player's client, is offered apart. */
     public static final List<LanguageOption> AVAILABLE_LANGUAGES = List.of(
-            new LanguageOption("auto", "Auto"),
             new LanguageOption("uk_UA", "Українська"),
             new LanguageOption("ru", "Русский"),
             new LanguageOption("en", "English"),
@@ -404,9 +404,9 @@ public class PlayerSettingsUiController implements UiController<PlayerSettingsUi
         return m;
     }
 
-    public static String resolveLanguageDisplay(String code) {
+    public static String resolveLanguageDisplay(String code, Localization local) {
         if (code == null || code.isBlank() || "auto".equalsIgnoreCase(code)) {
-            return "Auto";
+            return t(local, "auto");
         }
         for (LanguageOption opt : AVAILABLE_LANGUAGES) {
             if (opt.code().equalsIgnoreCase(code)) {
@@ -420,7 +420,7 @@ public class PlayerSettingsUiController implements UiController<PlayerSettingsUi
         if (code == null || code.isBlank() || "off".equalsIgnoreCase(code)) {
             return t(local, "player-settings-translator-off");
         }
-        return resolveLanguageDisplay(code);
+        return resolveLanguageDisplay(code, local);
     }
 
     public static String activeBadgeName(Localization local, PlayerData targetData) {
@@ -485,7 +485,7 @@ public class PlayerSettingsUiController implements UiController<PlayerSettingsUi
         // 3. Player name (preserving existing color tags, or prepending [accent] if plain)
         String rawName = model.customNickname() != null && !model.customNickname().isBlank()
                 ? model.customNickname()
-                : (model.nickname() != null && !model.nickname().isBlank() ? model.nickname() : "Player");
+                : (model.nickname() != null && !model.nickname().isBlank() ? model.nickname() : t(local, "player-menu-player"));
 
         if (rawName.startsWith("[")) {
             sb.append(rawName);
@@ -494,7 +494,7 @@ public class PlayerSettingsUiController implements UiController<PlayerSettingsUi
         }
 
         // 4. Message suffix
-        sb.append("[white][lightgray]: [white]Hello world![]");
+        sb.append("[white][lightgray]: [white]").append(t(local, "player-settings-chat-preview-message")).append("[]");
 
         return sb.toString();
     }
@@ -803,7 +803,6 @@ public class PlayerSettingsUiController implements UiController<PlayerSettingsUi
         List<Option> options = new ArrayList<>();
         options.add(new Option(t(session, "player-settings-translator-off"), "action:select_translator:off", off));
         for (LanguageOption language : AVAILABLE_LANGUAGES) {
-            if ("auto".equalsIgnoreCase(language.code())) continue;
             options.add(new Option(language.displayName(), "action:select_translator:" + language.code(),
                     !off && language.code().equalsIgnoreCase(model.translatorLanguage())));
         }
@@ -821,12 +820,13 @@ public class PlayerSettingsUiController implements UiController<PlayerSettingsUi
 
     private void language(Ui.TableBuilder body, Screen screen, SettingsModel model) {
         List<Option> options = new ArrayList<>();
+        options.add(new Option(t(session, "auto"), "action:select_lang:auto", "auto".equalsIgnoreCase(model.language())));
         for (LanguageOption language : AVAILABLE_LANGUAGES) {
             options.add(new Option(language.displayName(), "action:select_lang:" + language.code(),
                     language.code().equalsIgnoreCase(model.language())));
         }
         body.add(Kit.card(screen.cards(), Tab.LANGUAGE.accent,
-                Iconc.planet + " " + t(session, "player-settings-language") + ": [white]" + resolveLanguageDisplay(model.language()),
+                Iconc.planet + " " + t(session, "player-settings-language") + ": [white]" + resolveLanguageDisplay(model.language(), locale(session)),
                 (content, inner) -> {
                     content.labelWrap(Text.raw("[lightgray]" + t(session, "player-settings-language-hint") + "[]"),
                             l -> l.width(inner).padBottom(GAP)).row();

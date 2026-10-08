@@ -112,12 +112,12 @@ class PlayerProfileUiControllerTest {
     @DisplayName("renderHexedProgressBar formats progress and handles max rank")
     void renderHexedProgressBar_formatsCorrectly() {
         // Advanced rank requires 10 wins; with 5 points it should be 50%
-        String bar = PlayerProfileUiController.renderHexedProgressBar(HexedRanks.HexedRank.advanced, 5, 10);
+        String bar = PlayerProfileUiController.renderHexedProgressBar(HexedRanks.HexedRank.advanced, 5, 10, LayoutAssert.localization("en"));
         assertThat(bar).contains("■");
         assertThat(bar).contains("25%"); // regular -> advanced: regular requirements = 10; 5/20 = 25%
 
         // Max rank
-        String maxBar = PlayerProfileUiController.renderHexedProgressBar(HexedRanks.HexedRank.the_legend, 100, 10);
+        String maxBar = PlayerProfileUiController.renderHexedProgressBar(HexedRanks.HexedRank.the_legend, 100, 10, LayoutAssert.localization("en"));
         assertThat(maxBar).contains("★ MAX RANK ACHIEVED ★");
     }
 
@@ -125,13 +125,13 @@ class PlayerProfileUiControllerTest {
     @DisplayName("renderRatingLeagueProgressBar formats league progress and handles max tier")
     void renderRatingLeagueProgressBar_formatsCorrectly() {
         // Lead (1000) to Graphite (1200): at 1100, progress is 50%
-        String bar = PlayerProfileUiController.renderRatingLeagueProgressBar(RatingLeague.LEAD, 1100, 10);
+        String bar = PlayerProfileUiController.renderRatingLeagueProgressBar(RatingLeague.LEAD, 1100, 10, LayoutAssert.localization("en"));
         assertThat(bar).contains("[sky]");
         assertThat(bar).contains("[darkgray]");
         assertThat(bar).contains("50%");
 
         // Max tier
-        String maxBar = PlayerProfileUiController.renderRatingLeagueProgressBar(RatingLeague.SURGE_ALLOY, 3000, 10);
+        String maxBar = PlayerProfileUiController.renderRatingLeagueProgressBar(RatingLeague.SURGE_ALLOY, 3000, 10, LayoutAssert.localization("en"));
         assertThat(maxBar).contains("★ MAX LEAGUE ACHIEVED ★");
     }
 

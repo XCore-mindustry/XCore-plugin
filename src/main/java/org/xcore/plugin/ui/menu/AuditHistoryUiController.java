@@ -333,7 +333,7 @@ public class AuditHistoryUiController implements UiController<AuditHistoryUiCont
 
             case AuditHistoryEvent.CopyAuditId(String auditId) -> {
                 if (session != null && session.player != null && auditId != null) {
-                    session.player.sendMessage("[accent]Audit ID: [white]" + auditId);
+                    session.player.sendMessage("[accent]" + t(session, "audit-menu-field-id") + ": [white]" + auditId);
                 }
                 String msg = t(session, "audit-menu-copy-id-success", args("auditId", auditId));
                 yield UpdateResult.patch(model.withFeedback("[lime]" + Iconc.ok + " " + msg + "[]"), Screen.slots(SLOT_HEADER));
@@ -560,7 +560,7 @@ public class AuditHistoryUiController implements UiController<AuditHistoryUiCont
                 }
                 body.add(Kit.columns(screen,
                         List.of(eventCard(rec, screen.card(), local), reasonCard(rec, screen.card(), local)),
-                        List.of(timeCard(rec, screen.card(), local), idCard(rec, screen.card())))).row();
+                        List.of(timeCard(rec, screen.card(), local), idCard(rec, screen.card(), local)))).row();
             });
 
             List<Kit.Action> actions = new ArrayList<>();
@@ -626,9 +626,10 @@ public class AuditHistoryUiController implements UiController<AuditHistoryUiCont
         });
     }
 
-    private VNode idCard(AuditRecord rec, float width) {
+    private VNode idCard(AuditRecord rec, float width, Localization local) {
         return Kit.card(width, (content, inner) ->
-                content.add(Kit.text("[gray]Audit ID[]\n[lightgray]" + lines(rec.auditId, inner) + "[]", inner)).row());
+                content.add(Kit.text("[gray]" + t(local, "audit-menu-field-id") + "[]\n[lightgray]"
+                        + lines(rec.auditId, inner) + "[]", inner)).row());
     }
 
     // --- Helper Formatters ---
@@ -655,7 +656,7 @@ public class AuditHistoryUiController implements UiController<AuditHistoryUiCont
     }
 
     private static String formatActionName(AuditAction action, Localization local) {
-        if (action == null) return "UNKNOWN";
+        if (action == null) return t(local, "unknown");
         if (local != null) {
             String key = "audit-menu-action-" + action.name().toLowerCase();
             String translated = local.t(key);

@@ -579,25 +579,25 @@ class TopUiControllerTest {
     @DisplayName("resolveNickname preserves valid hex colors and handles empty nicknames and truncation")
     void resolveNickname_handlesColorsAndLimits() {
         LeaderboardEntry normal = new LeaderboardEntry("u1", 5, "NormalPlayer", "1000", Map.of(), "");
-        assertThat(TopUiController.resolveNickname(normal, Map.of(), 24)).isEqualTo("NormalPlayer");
+        assertThat(TopUiController.resolveNickname(normal, Map.of(), 24, LayoutAssert.localization("en"))).isEqualTo("NormalPlayer");
 
         LeaderboardEntry withGlyphAndColor = new LeaderboardEntry("u2", 58, " [#FFFFFFFF]TR|@XDictator", "1000", Map.of(), "");
         // Should keep colors intact, never escaping to [[#FFFFFFFF]
-        String resolved = TopUiController.resolveNickname(withGlyphAndColor, Map.of(), 24);
+        String resolved = TopUiController.resolveNickname(withGlyphAndColor, Map.of(), 24, LayoutAssert.localization("en"));
         assertThat(resolved).contains("[#FFFFFFFF]");
         assertThat(resolved).doesNotContain("[[");
 
         // Empty nickname falls back to Player #rank
         LeaderboardEntry empty = new LeaderboardEntry("u3", 55, "   ", "1000", Map.of(), "");
-        assertThat(TopUiController.resolveNickname(empty, Map.of(), 24)).isEqualTo("Player #55");
+        assertThat(TopUiController.resolveNickname(empty, Map.of(), 24, LayoutAssert.localization("en"))).isEqualTo("Player #55");
 
         // Stripped whitespace / color-only nickname falls back to Player #rank
         LeaderboardEntry colorOnly = new LeaderboardEntry("u4", 77, "[#123456]   []", "1000", Map.of(), "");
-        assertThat(TopUiController.resolveNickname(colorOnly, Map.of(), 24)).isEqualTo("Player #77");
+        assertThat(TopUiController.resolveNickname(colorOnly, Map.of(), 24, LayoutAssert.localization("en"))).isEqualTo("Player #77");
 
         // Nickname exceeding maxPlainLen truncates cleanly on visible plain text
         LeaderboardEntry longNick = new LeaderboardEntry("u5", 10, "VeryLongNicknameExceedingLimitHere", "1000", Map.of(), "");
-        String truncated = TopUiController.resolveNickname(longNick, Map.of(), 10);
+        String truncated = TopUiController.resolveNickname(longNick, Map.of(), 10, LayoutAssert.localization("en"));
         assertThat(truncated).isEqualTo("VeryLongNi...");
     }
 }

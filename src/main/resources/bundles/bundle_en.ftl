@@ -568,6 +568,7 @@ player-settings-tab-chat = Chat
 player-settings-tab-badges = Badges
 player-settings-chat-preview = Chat Preview
 player-settings-chat-preview-sample = Sample
+player-settings-chat-preview-message = Hello world!
 player-settings-symbol-color-mode = Symbol Color
 player-settings-badges-my = My Badges
 player-settings-badges-all = All Badges
@@ -636,6 +637,7 @@ audit-menu-filter-other = Other
 audit-menu-btn-back = Back to History
 audit-menu-btn-copy-id = Copy ID
 audit-menu-copy-id-success = The record's ID was sent to chat
+audit-menu-field-id = Audit ID
 audit-menu-page = Page { $page }
 audit-menu-details-unavailable = The record is unavailable.
 audit-menu-field-target = Player
@@ -1262,6 +1264,7 @@ off = Off
 error-command-disabled = [scarlet]⚠ Command [accent]/{ $command }[scarlet] is disabled on this server.
 error-feature-disabled = [scarlet]⚠ This feature is disabled on this server.
 none = None
+unknown = Unknown
 error-nickname-badge-glyph = [scarlet]⚠ Custom nickname cannot contain reserved badge icons.
 
 # Server browser (/servers)

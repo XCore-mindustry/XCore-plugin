@@ -359,9 +359,9 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
         return filter == AdminFilter.ADMINS_ONLY ? isAdmin : !isAdmin;
     }
 
-    public static String renderHexedProgressBar(HexedRank rank, int currentPoints, int barWidth) {
+    public static String renderHexedProgressBar(HexedRank rank, int currentPoints, int barWidth, Localization local) {
         if (rank == null || !rank.hasNext()) {
-            return "[gold]★ MAX RANK ACHIEVED ★[]";
+            return t(local, "player-stats-max-rank");
         }
         int required = rank.next.requirements.wins();
         float pct = Math.clamp(required > 0 ? (float) currentPoints / required : 0f, 0f, 1f);
@@ -373,9 +373,9 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
                 + "[] [white]" + Math.round(pct * 100f) + "%[]";
     }
 
-    public static String renderRatingLeagueProgressBar(RatingLeague league, int currentRating, int barWidth) {
+    public static String renderRatingLeagueProgressBar(RatingLeague league, int currentRating, int barWidth, Localization local) {
         if (league == null || !league.hasNext()) {
-            return "[gold]★ MAX LEAGUE ACHIEVED ★[]";
+            return t(local, "player-stats-max-league");
         }
         RatingLeague next = league.next();
         int min = league.minimumRating();
@@ -731,7 +731,7 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
             identity.append("[scarlet]<").append(Iconc.admin).append(' ').append(t(local, "admin")).append(">[] ");
         }
         appendName(identity, model.activeBadge(), model.badgeSymbolColorMode(), model.playerColorHex(),
-                model.customNickname(), model.nickname(), "[accent]");
+                model.customNickname(), model.nickname(), "[accent]", local);
         appendUsername(identity, model.username(), room);
         return identity.append(" [gray]#").append(model.pid()).append("[]").toString();
     }
@@ -746,7 +746,7 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
     }
 
     private static void appendName(StringBuilder text, String badgeId, String badgeColorMode, String colorHex,
-                                   String customNickname, String nickname, String color) {
+                                   String customNickname, String nickname, String color, Localization local) {
         if (badgeId != null && !badgeId.isBlank()) {
             Badge badge = Badge.byId(badgeId);
             if (badge != null) {
@@ -755,7 +755,7 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
         }
         String name = customNickname != null && !customNickname.isBlank()
                 ? customNickname
-                : (nickname != null && !nickname.isBlank() ? nickname : "Player");
+                : (nickname != null && !nickname.isBlank() ? nickname : t(local, "player-menu-player"));
         // A name that brings its own colours keeps them.
         text.append(name.startsWith("[") ? "" : color).append(name).append("[]");
     }
@@ -842,7 +842,7 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
             } else {
                 int remaining = Math.max(0, rank.next.requirements.wins() - model.hexedPoints());
                 String nextRank = t(local, "hexed-ranks-" + rank.next.name(), rank.next.name());
-                progress = renderHexedProgressBar(rank, model.hexedPoints(), 14) + "  "
+                progress = renderHexedProgressBar(rank, model.hexedPoints(), 14, local) + "  "
                         + t(local, "player-stats-hexed-wins-left", args("wins", remaining, "rank", nextRank));
             }
             content.add(Kit.text(t(local, "player-stats-hexed-rank") + " " + (rank.tag != null ? rank.tag : "")
@@ -975,7 +975,7 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
                             name.append("[scarlet]<").append(Iconc.admin).append(">[] ");
                         }
                         appendName(name, player.activeBadge(), player.badgeSymbolColorMode(), player.playerColorHex(),
-                                player.customNickname(), player.nickname(), "[white]");
+                                player.customNickname(), player.nickname(), "[white]", local);
                         appendUsername(name, player.username(), inner);
                         name.append(" [gray]#").append(player.pid()).append("[]");
                         row.add(Kit.text(TextWidth.fit(name.toString(), inner), inner));

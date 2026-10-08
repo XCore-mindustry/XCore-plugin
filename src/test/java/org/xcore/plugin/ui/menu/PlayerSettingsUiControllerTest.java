@@ -199,6 +199,7 @@ class PlayerSettingsUiControllerTest {
     void render_compilesLanguageTab() {
         String dsl = dsl(false, PlayerSettingsUiController.Tab.LANGUAGE);
 
+        assertThat(dsl).contains("action:select_lang:auto");
         for (var language : PlayerSettingsUiController.AVAILABLE_LANGUAGES) {
             assertThat(dsl).contains("action:select_lang:" + language.code());
         }
@@ -296,7 +297,7 @@ class PlayerSettingsUiControllerTest {
                 session, session.data, PlayerSettingsUiController.Tab.BADGES
         );
 
-        String preview = PlayerSettingsUiController.buildChatPreviewText(model, null);
+        String preview = PlayerSettingsUiController.buildChatPreviewText(model, LayoutAssert.localization("en"));
 
         assertThat(preview).contains("[#2CABFEFF]mizoa");
         assertThat(preview).doesNotContain("[[#2CABFEFF]");

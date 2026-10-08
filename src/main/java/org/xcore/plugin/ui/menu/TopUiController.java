@@ -270,7 +270,7 @@ public class TopUiController implements UiController<TopUiController.TopModel, T
 
     private List<CategoryTab> resolveCategoryTabs(Localization local) {
         if (categoryRegistry == null) {
-            return List.of(new CategoryTab("PLAYTIME", "Playtime", String.valueOf(Iconc.refresh), 10));
+            return List.of(new CategoryTab("PLAYTIME", t(local, "top-menu-category-playtime"), String.valueOf(Iconc.refresh), 10));
         }
         return categoryRegistry.all().stream()
                 .sorted(Comparator.comparingInt(TopCategoryProvider::priority).reversed())
@@ -596,7 +596,7 @@ public class TopUiController implements UiController<TopUiController.TopModel, T
         if ("true".equalsIgnoreCase(attrs.get("admin"))) {
             identity.append("[scarlet]").append(Iconc.admin).append("[] ");
         }
-        identity.append(isViewer ? "[accent]" : "[white]").append(resolveNickname(entry, attrs, NICKNAME_BUDGET));
+        identity.append(isViewer ? "[accent]" : "[white]").append(resolveNickname(entry, attrs, NICKNAME_BUDGET, local));
 
         StringBuilder value = new StringBuilder();
         if (attrs.containsKey("leagueIcon")) {
@@ -689,16 +689,16 @@ public class TopUiController implements UiController<TopUiController.TopModel, T
         return provider.id();
     }
 
-    public static String resolveNickname(LeaderboardEntry entry, Map<String, String> attrs, int maxPlainLen) {
+    public static String resolveNickname(LeaderboardEntry entry, Map<String, String> attrs, int maxPlainLen, Localization local) {
         String raw = attrs != null && attrs.containsKey("customNickname") ? attrs.get("customNickname") : (entry != null ? entry.displayName() : null);
         if (raw == null || raw.isBlank()) {
-            return entry != null && entry.rank() > 0 ? "Player #" + entry.rank() : "Player";
+            return unnamed(entry, local);
         }
         String clean = raw.replace('\n', ' ').trim();
 
         String stripped = Strings.stripColors(clean).trim();
         if (stripped.isEmpty()) {
-            return entry != null && entry.rank() > 0 ? "Player #" + entry.rank() : "Player";
+            return unnamed(entry, local);
         }
 
         // If stripped plain length is within limit, preserve original colors and formatting intact
@@ -708,6 +708,12 @@ public class TopUiController implements UiController<TopUiController.TopModel, T
 
         // Otherwise truncate visible plain text cleanly to avoid broken color tags, overflow, or color bleeding
         return stripped.substring(0, maxPlainLen) + "...";
+    }
+
+    /** A player with no name to show, told apart by the place they hold. */
+    private static String unnamed(LeaderboardEntry entry, Localization local) {
+        String name = t(local, "player-menu-player");
+        return entry != null && entry.rank() > 0 ? name + " #" + entry.rank() : name;
     }
 
     private String formatValue(String categoryId, LeaderboardEntry entry, Localization local) {

@@ -993,6 +993,7 @@ player-settings-tab-chat = Чат
 player-settings-tab-badges = Значки
 player-settings-chat-preview = Прев'ю в чаті
 player-settings-chat-preview-sample = Приклад
+player-settings-chat-preview-message = Всім привіт!
 player-settings-symbol-color-mode = Колір символу
 player-settings-badges-my = Мої значки
 player-settings-badges-all = Всі значки
@@ -1061,6 +1062,7 @@ audit-menu-filter-other = Інше
 audit-menu-btn-back = Назад до історії
 audit-menu-btn-copy-id = Копіювати ID
 audit-menu-copy-id-success = ID запису надіслано в чат
+audit-menu-field-id = ID запису
 audit-menu-page = Стор. { $page }
 audit-menu-details-unavailable = Запис недоступний.
 audit-menu-field-target = Гравець
@@ -1265,6 +1267,7 @@ badge-veteran-description = Надається шанованим досвідч
 badge-season-champion-name = Чемпіон сезону
 badge-season-champion-description = Надається за місце на подіумі рейтингового сезону.
 none = Немає
+unknown = Невідомо
 
 # Серверний браузер (/servers)
 player-servers-title = ІГРОВІ СЕРВЕРИ XCORE

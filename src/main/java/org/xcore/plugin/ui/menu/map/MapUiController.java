@@ -730,8 +730,8 @@ public class MapUiController implements UiController<MapUiModel, MapUiEvent> {
             mindustryMap = mapService.findPersistedMap(data);
         }
 
-        String name = data != null ? data.name : (mindustryMap != null ? mindustryMap.plainName() : "Unknown");
-        String author = data != null ? data.author : (mindustryMap != null ? mindustryMap.author() : "Unknown");
+        String name = data != null ? data.name : (mindustryMap != null ? mindustryMap.plainName() : t(session, "unknown"));
+        String author = data != null ? data.author : (mindustryMap != null ? mindustryMap.author() : t(session, "unknown"));
         String desc = mindustryMap != null ? mindustryMap.description() : "";
         int w = mindustryMap != null ? mindustryMap.width : 0;
         int h = mindustryMap != null ? mindustryMap.height : 0;
