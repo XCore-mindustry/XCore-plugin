@@ -9,7 +9,6 @@ import org.incendo.cloud.annotations.Permission;
 import org.xcore.plugin.cloud.XCoreSender;
 import tilelogger.service.TileLoggerService;
 
-import static com.ospx.flubundle.Bundle.args;
 
 @Singleton
 public class TileLoggerServerController {

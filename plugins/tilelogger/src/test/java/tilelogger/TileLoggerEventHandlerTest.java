@@ -13,7 +13,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.xcore.plugin.session.SessionService;
 import org.xcore.testkit.fixtures.HeadlessWorld;
 import org.xcore.testkit.fixtures.MockPlayer;
 import org.xcore.testkit.fixtures.junit.HeadlessWorldExtension;
@@ -32,14 +31,11 @@ class TileLoggerEventHandlerTest {
     @Mock
     private TileLoggerService service;
 
-    @Mock
-    private SessionService sessionService;
-
     private TileLoggerEventHandler handler;
 
     @BeforeEach
     void setUp() {
-        handler = new TileLoggerEventHandler(service, Bundle.INSTANCE, sessionService);
+        handler = new TileLoggerEventHandler(service, Bundle.INSTANCE);
         handler.init();
     }
 

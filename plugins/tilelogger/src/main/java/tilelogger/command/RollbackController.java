@@ -18,7 +18,6 @@ import tilelogger.service.TileLoggerService;
 import java.time.Duration;
 import java.util.concurrent.TimeUnit;
 
-import static com.ospx.flubundle.Bundle.args;
 
 @Singleton
 public class RollbackController {
