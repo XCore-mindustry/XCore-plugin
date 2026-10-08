@@ -77,6 +77,10 @@ public class FunctionCatalog {
                     .positionals(1, 1)
                     .build());
 
+            register(FunctionSpec.builder("ESCAPE")
+                    .positionals(1, 1)
+                    .build());
+
             register(FunctionSpec.builder("DATETIME")
                     .positionals(1, 1)
                     .option("dateStyle", OptionSpec.stringEnum("full", "long", "medium", "short"))

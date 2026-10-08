@@ -11,7 +11,7 @@ repositories {
 ### 2. Add dependency
 ```groovy
 dependencies {
-    implementation "com.ospx:flubundle:2.0.0"
+    implementation "com.ospx:flubundle:2.1.0"
 }
 ```
 
@@ -46,6 +46,38 @@ messenger.all().send("server-restart", Args.of("seconds", 10)); // formatted onc
 messenger.team(team).toast(Iconc.warning, "core-under-attack");
 messenger.filter(p -> p.admin).popup(text, Popup.at(Align.top).duration(5f));
 messenger.to(players).deliver(text, (player, message) -> customTransport(player, message));
+```
+
+### Vanilla content names
+A dedicated server loads no game bundles. FluBundle ships the names of vanilla blocks, units, items,
+liquids, status effects, teams, planets, sectors and weather in every language Mindustry is
+translated to, and renders any `UnlockableContent` or `Team` argument with them:
+```java
+// bundle_ru.ftl: core-destroyed = Ядро { $team } уничтожено юнитом { $unit }
+messenger.all().send("core-destroyed", Args.of("team", Team.crux, "unit", UnitTypes.dagger));
+ContentNames.vanilla().name(Blocks.router, locale); // "Маршрутизатор"
+```
+After changing `mindustryVersion`, refresh the data with `./gradlew updateMindustryContentNames`.
+
+### Untrusted text
+Chat messages, sign text or reasons typed by players can carry color tags. Escape them so they
+cannot recolor or close the rest of the message (do not escape intentionally colored values such
+as `player.coloredName()`):
+```java
+Args.of("message", Markup.escape(text))
+```
+```ftl
+report = [scarlet]{ $reporter }[] reported: { ESCAPE($message) }
+```
+
+### Before the player joins
+Connection checks run before a `Player` exists. `LocaleResolver.resolve(ConnectPacket)` lets a
+plugin pick the stored language by `packet.uuid`; without it the client locale from the packet is
+used:
+```java
+Locale locale = bundle.locale(packet);
+messenger.connecting(con, packet).kick("ban-notice", Args.of("reason", reason));
+String text = messenger.connecting(con, packet).format("whitelist-denied");
 ```
 
 ### Introspection
@@ -97,5 +129,7 @@ messenger.to(player).send(BundleKeys.HEXED_ROUND_STARTED);
 - Configurable locale aliases via `addLocaleAlias(...)`
 - Built-in fallback chain: exact locale -> language locale -> default locale -> missing key policy
 - Immutable `Localizer` for locale-bound formatting, `Messenger`/`Audience` for delivery to players
+- Functions: `DURATION` (CLDR unit names via ICU4J), `COLOR`, `STRIP`, `ESCAPE`, plus Fluent's `NUMBER` and `DATETIME`
+- Localized vanilla content and team names, pre-join localization by connect packet
 - `LocaleResolver` for player-selected languages shared by all plugins
 - Functions and formatters can be registered at any time, also after sources are loaded

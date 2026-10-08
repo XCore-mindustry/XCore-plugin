@@ -1,6 +1,7 @@
 package com.ospx.flubundle;
 
 import mindustry.gen.Player;
+import mindustry.net.Packets;
 
 import java.util.Locale;
 
@@ -25,4 +26,19 @@ public interface LocaleResolver {
      *         ({@code player.locale})
      */
     Locale resolve(Player player);
+
+    /**
+     * Picks the locale for a connection that has not joined yet, used by
+     * {@code Bundle#locale(ConnectPacket)} to localize messages such as a ban notice or a
+     * connection-check kick. The packet carries the player's {@code uuid}, so a plugin that
+     * stores a selected language can look it up here.
+     *
+     * <p>Called from whichever thread validates the connection, possibly the game thread, so
+     * implementations should avoid blocking there.
+     *
+     * @return the requested locale, or {@code null} to use {@code packet.locale}
+     */
+    default Locale resolve(Packets.ConnectPacket packet) {
+        return null;
+    }
 }

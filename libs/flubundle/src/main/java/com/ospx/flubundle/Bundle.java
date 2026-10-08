@@ -6,7 +6,9 @@ import arc.util.Log;
 
 import com.ospx.flubundle.functions.ColorFunction;
 import com.ospx.flubundle.functions.DurationFunction;
+import com.ospx.flubundle.functions.EscapeFunction;
 import com.ospx.flubundle.functions.StripFunction;
+import com.ospx.flubundle.mindustry.ContentNames;
 
 import fluent.bundle.FluentBundle;
 import fluent.bundle.FluentFunctionCache;
@@ -19,8 +21,10 @@ import fluent.function.functions.DefaultFunctionFactories;
 import fluent.syntax.ast.Message;
 import fluent.syntax.parser.FTLParser;
 
+import mindustry.ctype.UnlockableContent;
 import mindustry.game.Team;
 import mindustry.gen.Player;
+import mindustry.net.Packets;
 import mindustry.mod.Mod;
 
 import java.util.ArrayList;
@@ -408,6 +412,20 @@ public class Bundle {
         return requested != null ? resolveLocale(requested) : resolveLocale(player.locale);
     }
 
+    /**
+     * Resolves the locale for a connection that has not joined yet, for example to explain a
+     * denied connection: the {@link LocaleResolver#resolve(Packets.ConnectPacket)} choice if any,
+     * otherwise the client locale from the packet, narrowed to a supported locale.
+     */
+    public Locale locale(Packets.ConnectPacket packet) {
+        if (packet == null) {
+            return resolveLocale((Locale) null);
+        }
+
+        var requested = localeResolver.resolve(packet);
+        return requested != null ? resolveLocale(requested) : resolveLocale(packet.locale);
+    }
+
     public Locale locale(String code) {
         return resolveLocale(code);
     }
@@ -443,10 +461,14 @@ public class Bundle {
     private void initDefaults() {
         registryBuilder.addFactories(DefaultFunctionFactories.allNonImplicits());
         registryBuilder.addFactory(StripFunction.STRIP);
+        registryBuilder.addFactory(EscapeFunction.ESCAPE);
         registryBuilder.addFactory(ColorFunction.COLOR);
         registryBuilder.addFactory(DurationFunction.DURATION);
         registryBuilder.addDefaultFormatterExact(Player.class, (player, scope) -> player.name);
-        registryBuilder.addDefaultFormatterExact(Team.class, (team, scope) -> team.name);
+        registryBuilder.addDefaultFormatterExact(Team.class,
+                (team, scope) -> ContentNames.vanilla().name(team, scope.locale()));
+        registryBuilder.addDefaultFormatter(UnlockableContent.class,
+                (content, scope) -> ContentNames.vanilla().name(content, scope.locale()));
     }
 
     private synchronized FluentFunctionRegistry ensureRegistry() {
