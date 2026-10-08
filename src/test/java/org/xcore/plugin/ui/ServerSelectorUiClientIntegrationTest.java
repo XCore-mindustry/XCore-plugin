@@ -33,7 +33,10 @@ import java.util.Locale;
 import static mindustry.Vars.state;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
@@ -47,6 +50,7 @@ class ServerSelectorUiClientIntegrationTest {
     private DeterministicUiLoop loop;
     private MenuService menuService;
     private Session session;
+    private Player player;
     private SessionService sessionService;
     private ServerRegistryService registryService;
     private ServerMenu serverMenu;
@@ -88,8 +92,6 @@ class ServerSelectorUiClientIntegrationTest {
             };
         });
         when(bundle.localizer(any(java.util.function.Supplier.class))).thenReturn(localizer);
-        when(bundle.context(any(Player.class), any(java.util.function.Supplier.class)))
-                .thenReturn(mock(com.ospx.flubundle.BundleContext.class));
 
         sessionService = mock(SessionService.class);
         Provider<SessionService> sessionProvider = () -> sessionService;
@@ -122,8 +124,9 @@ class ServerSelectorUiClientIntegrationTest {
         menuService = new MenuService(sessionProvider, gateway);
         menuService.init();
 
-        Player player = Player.create();
+        player = spy(Player.create());
         player.con = mock(NetConnection.class);
+        doNothing().when(player).sendMessage(anyString());
 
         session = new Session(
                 new TomlSecretsConfig(),
@@ -241,6 +244,7 @@ class ServerSelectorUiClientIntegrationTest {
                 .reduce((first, second) -> second).orElseThrow();
         assertThat(UiDslWriter.write((NodeBuilder<?>) last.body().decode()))
                 .contains("player-servers-already-connected", "action:refresh");
+        verify(player).sendMessage("player-servers-already-connected");
     }
 
     @Test

@@ -1,7 +1,6 @@
 package org.xcore.plugin.ui.menu;
 
 import com.ospx.flubundle.Bundle;
-import com.ospx.flubundle.BundleContext;
 import mindustry.gen.Player;
 import mindustry.ui.builder.MenuResult;
 import org.junit.jupiter.api.DisplayName;
@@ -33,11 +32,11 @@ class ServerSelectorUiControllerTest {
 
     @SuppressWarnings("unchecked")
     private Session createTestSession(String uuid) {
-        return createTestSession(uuid, null, null);
+        return createTestSession(uuid, null);
     }
 
     @SuppressWarnings("unchecked")
-    private Session createTestSession(String uuid, Player player, BundleContext context) {
+    private Session createTestSession(String uuid, Player player) {
         PlayerData data = new PlayerData(uuid, true);
         data.nickname = "TestUser";
 
@@ -63,9 +62,6 @@ class ServerSelectorUiControllerTest {
             };
         });
         when(bundle.localizer(any(java.util.function.Supplier.class))).thenReturn(localizer);
-        if (context != null) {
-            when(bundle.context(any(Player.class), any(java.util.function.Supplier.class))).thenReturn(context);
-        }
 
         return new Session(
                 new TomlSecretsConfig(),
@@ -260,12 +256,11 @@ class ServerSelectorUiControllerTest {
     }
 
     @Test
-    @DisplayName("connect to unknown server sends player-servers-not-found via locale.send")
+    @DisplayName("connect to unknown server sends player-servers-not-found via the player's chat")
     void connect_unknownServer_sendsNotFound() {
         ServerRegistryService registry = createRegistry();
         Player player = mock(Player.class);
-        BundleContext context = mock(BundleContext.class);
-        Session session = createTestSession("uuid-1", player, context);
+        Session session = createTestSession("uuid-1", player);
 
         ServerSelectorUiController controller = new ServerSelectorUiController(registry, session);
         ServerSelectorUiController.ServerSelectorModel model = ServerSelectorUiController.createModel(registry, Category.ALL);
@@ -273,19 +268,18 @@ class ServerSelectorUiControllerTest {
 
         var result = controller.update(model, new ServerSelectorUiController.ServerSelectorEvent.Connect("unknown-server"), ctx);
 
-        verify(context).send(eq("player-servers-not-found"), anyMap());
+        verify(player).sendMessage("player-servers-not-found");
         verify(ctx, never()).close();
         assertThat(result.close()).isFalse();
         assertThat(result.fullRerender()).isTrue();
     }
 
     @Test
-    @DisplayName("connect to current server sends player-servers-already-connected via locale.send")
+    @DisplayName("connect to current server sends player-servers-already-connected via the player's chat")
     void connect_currentServer_sendsAlreadyConnected() {
         ServerRegistryService registry = createRegistry();
         Player player = mock(Player.class);
-        BundleContext context = mock(BundleContext.class);
-        Session session = createTestSession("uuid-1", player, context);
+        Session session = createTestSession("uuid-1", player);
 
         ServerSelectorUiController controller = new ServerSelectorUiController(registry, session);
         ServerSelectorUiController.ServerSelectorModel model = ServerSelectorUiController.createModel(registry, Category.ALL);
@@ -293,7 +287,7 @@ class ServerSelectorUiControllerTest {
 
         var result = controller.update(model, new ServerSelectorUiController.ServerSelectorEvent.Connect("mini-pvp"), ctx);
 
-        verify(context).send(eq("player-servers-already-connected"), anyMap());
+        verify(player).sendMessage("player-servers-already-connected");
         verify(ctx, never()).close();
         assertThat(result.close()).isFalse();
         assertThat(result.fullRerender()).isTrue();
@@ -307,8 +301,7 @@ class ServerSelectorUiControllerTest {
                 "", "-", null, "", 0, 0, "localhost", 0);
         doReturn(java.util.Optional.of(offline)).when(registry).findServer("siege");
         Player player = mock(Player.class);
-        BundleContext context = mock(BundleContext.class);
-        Session session = createTestSession("uuid-1", player, context);
+        Session session = createTestSession("uuid-1", player);
         var controller = new ServerSelectorUiController(registry, session);
         var oldModel = ServerSelectorUiController.createModel(registry, Category.PVP);
         for (String target : List.of("hexedcore", "siege")) {
@@ -320,8 +313,8 @@ class ServerSelectorUiControllerTest {
             assertThat(result.model().feedback()).isNotBlank();
             verify(ctx, never()).close();
         }
-        verify(context).send(eq("player-servers-full"), anyMap());
-        verify(context).send(eq("player-servers-offline"), anyMap());
+        verify(player).sendMessage("player-servers-full");
+        verify(player).sendMessage("player-servers-offline");
     }
 
     @Test
@@ -329,7 +322,7 @@ class ServerSelectorUiControllerTest {
         var registry = createRegistry();
         Player player = mock(Player.class);
         player.con = mock(mindustry.net.NetConnection.class);
-        Session session = createTestSession("uuid-1", player, mock(BundleContext.class));
+        Session session = createTestSession("uuid-1", player);
         var controller = new ServerSelectorUiController(registry, session);
         ControllerContext ctx = mock(ControllerContext.class);
         try (var call = mockStatic(mindustry.gen.Call.class)) {
