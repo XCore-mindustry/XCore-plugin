@@ -134,6 +134,7 @@ public final class Audience {
     }
 
     public void popup(Text text, Popup popup) {
+        Objects.requireNonNull(popup, "popup");
         deliver(text, (player, message) -> Call.infoPopup(player.con, message, popup.duration(), popup.align(),
                 popup.top(), popup.left(), popup.bottom(), popup.right()));
     }

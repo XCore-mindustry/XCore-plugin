@@ -182,6 +182,21 @@ public class BundleApiTest {
     }
 
     @Test
+    void textKeepsASnapshotOfItsArguments() {
+        Bundle bundle = bundleWith("hello = Hello, { $name }!\n", Locale.ENGLISH);
+        Map<String, Object> args = Bundle.args("name", "Billy");
+        Text text = Text.of("hello", args);
+
+        args.put("name", "Changed");
+
+        assertEquals("Hello, Billy!", text.render(bundle, Locale.ENGLISH));
+        assertThrows(UnsupportedOperationException.class, () -> text.args().put("name", "x"));
+        Map<String, Object> withNull = new HashMap<>();
+        withNull.put("name", null);
+        assertTrue(Text.of("hello", withNull).args().containsKey("name"), "null values are allowed");
+    }
+
+    @Test
     void localizerHasFollowsFallbackChain() {
         Bundle bundle = bundleWith("only-en = English\n", Locale.ENGLISH);
         add(bundle, "only-ru = Только\n", Locale.of("ru"));

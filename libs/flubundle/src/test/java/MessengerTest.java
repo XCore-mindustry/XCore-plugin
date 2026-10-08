@@ -125,6 +125,9 @@ public class MessengerTest {
         assertThrows(NullPointerException.class, () -> messenger.to((Player) null));
         assertThrows(NullPointerException.class, () -> messenger.to((Iterable<Player>) null));
         assertThrows(NullPointerException.class, () -> messenger.team(null));
+        assertThrows(NullPointerException.class,
+                () -> messenger.to(List.<Player>of()).popup(Text.of("greeting"), null),
+                "a null popup is rejected even for an empty audience");
     }
 
     @Test
