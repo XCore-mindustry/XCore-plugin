@@ -128,10 +128,7 @@ public class Localization {
             return bundle.getDefaultLocale();
         }
 
-        if (session.data.language == null || session.data.language.equals("auto")) {
-            return bundle.locale(session.player);
-        }
-
-        return bundle.resolveLocale(session.data.language);
+        Locale selected = SessionLocaleResolver.selectedLocale(session);
+        return selected != null ? bundle.resolveLocale(selected) : bundle.locale(session.player);
     }
 }

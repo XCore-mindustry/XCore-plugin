@@ -36,7 +36,14 @@ public class SessionLocaleResolver implements LocaleResolver {
 
     @Override
     public Locale resolve(Player player) {
-        Session session = sessionService.get(player);
+        return selectedLocale(sessionService.get(player));
+    }
+
+    /**
+     * The language the player selected in settings, or {@code null} when there is no session or the
+     * selection is {@code auto} (use the client locale).
+     */
+    public static Locale selectedLocale(Session session) {
         if (session == null || session.data == null) {
             return null;
         }
