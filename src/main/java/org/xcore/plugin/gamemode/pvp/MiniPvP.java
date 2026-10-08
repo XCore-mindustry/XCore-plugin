@@ -3,6 +3,9 @@ package org.xcore.plugin.gamemode.pvp;
 import arc.Core;
 import arc.Events;
 import arc.struct.Seq;
+import com.ospx.flubundle.Args;
+import com.ospx.flubundle.Bundle;
+import com.ospx.flubundle.mindustry.ContentNames;
 import io.avaje.inject.PostConstruct;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
@@ -25,6 +28,11 @@ import org.xcore.plugin.service.TopMenuCacheService;
 import org.xcore.plugin.session.ObserverService;
 import org.xcore.plugin.session.Session;
 import org.xcore.plugin.session.SessionService;
+
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.Locale;
+import java.util.Map;
 
 import static com.ospx.flubundle.Bundle.args;
 import static org.xcore.plugin.common.PLog.info;
@@ -189,23 +197,41 @@ public class MiniPvP {
         long durationSeconds = Math.max(0L, (now - started) / 1000L);
         String timeStr = String.format("%02d:%02d", durationSeconds / 60, durationSeconds % 60);
 
-        StringBuilder teamsLine = new StringBuilder();
+        Map<Team, Integer> alive = new LinkedHashMap<>();
         if (Vars.state.teams != null) {
             for (TeamData t : Vars.state.teams.getActive()) {
                 if (t.team == Team.derelict || observerService.isObserverTeam(t.team) || !t.isAlive()) continue;
-                int count = countActivePlayers(t.team);
-                if (!teamsLine.isEmpty()) teamsLine.append(" [gray]vs[] ");
-                teamsLine.append("[#").append(t.team.color.toString()).append("]").append(t.team.name)
-                        .append(" (").append(count).append(")[]");
+                alive.put(t.team, countActivePlayers(t.team));
             }
         }
 
-        if (!teamsLine.isEmpty()) {
+        if (alive.isEmpty()) {
+            return;
+        }
+
+        // Rendered once per locale: team names and the HUD label are localized.
+        Bundle bundle = Bundle.INSTANCE;
+        Map<Locale, String> rendered = new HashMap<>();
+        Groups.player.each(player -> {
+            if (player.con == null) return;
+            String text = rendered.computeIfAbsent(bundle.locale(player), locale -> bundle.format(locale,
+                    "pvp-hud-status", Args.of("teams", teamsLine(alive, locale), "time", timeStr)));
             try {
-                Call.setHudText("[accent]MiniPvP[] | [stat]Alive:[] " + teamsLine + " | [gray]" + timeStr + "[]");
+                Call.setHudText(player.con, text);
             } catch (Exception ignored) {
             }
-        }
+        });
+    }
+
+    static String teamsLine(Map<Team, Integer> alive, Locale locale) {
+        StringBuilder line = new StringBuilder();
+        alive.forEach((team, count) -> {
+            if (!line.isEmpty()) line.append(" [gray]vs[] ");
+            line.append("[#").append(team.color.toString()).append("]")
+                    .append(ContentNames.vanilla().name(team, locale))
+                    .append(" (").append(count).append(")[]");
+        });
+        return line.toString();
     }
 
     public int countAliveTeamsWithCores() {
