@@ -8,6 +8,7 @@ import org.xcore.plugin.database.ReactiveMongoStore;
 import com.mongodb.client.model.Filters;
 import com.mongodb.client.model.FindOneAndUpdateOptions;
 import com.mongodb.client.model.IndexOptions;
+import com.mongodb.client.model.Projections;
 import com.mongodb.client.model.ReturnDocument;
 import com.mongodb.client.model.Updates;
 import jakarta.inject.Inject;
@@ -168,6 +169,20 @@ public class PlayerDataRepository extends DataRepository<PlayerData> {
             return List.of();
         }
         return collection.find(Filters.in("uuid", uuids)).into(new ArrayList<>());
+    }
+
+    /**
+     * The language a player selected in settings ({@code auto} when unset), or {@code null} for an
+     * unknown player. Reads only that field.
+     */
+    public String findLanguage(String uuid) {
+        if (uuid == null || uuid.isBlank()) {
+            return null;
+        }
+        PlayerData data = collection.find(eq("uuid", uuid))
+                .projection(Projections.include("local_language"))
+                .first();
+        return data == null ? null : data.language;
     }
 
     public java.util.concurrent.CompletionStage<PlayerData> findByUuidAsync(String uuid) {

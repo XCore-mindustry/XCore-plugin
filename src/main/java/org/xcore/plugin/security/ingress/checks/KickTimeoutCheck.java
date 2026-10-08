@@ -1,18 +1,17 @@
 package org.xcore.plugin.security.ingress.checks;
 
 import arc.util.Time;
+import com.ospx.flubundle.Args;
 import com.ospx.flubundle.Bundle;
 import jakarta.inject.Singleton;
 import mindustry.net.NetConnection;
 import mindustry.net.Packets.ConnectPacket;
-import org.xcore.plugin.localization.Localization;
 import org.xcore.plugin.security.ingress.AccessResult;
 import org.xcore.plugin.security.ingress.FailureMode;
 import org.xcore.plugin.security.ingress.IngressCheck;
 
 import java.time.Duration;
 
-import static com.ospx.flubundle.Bundle.args;
 import static mindustry.Vars.netServer;
 
 /**
@@ -35,12 +34,10 @@ public class KickTimeoutCheck implements IngressCheck {
         if (Time.millis() < kickTime) {
             Duration remain = Duration.ofMillis(kickTime - Time.millis());
 
-            Localization local = new Localization(bundle, bundle.resolveLocale(packet.locale));
-
-            String reason = local.format(
-                    "kick-recently-kicked", args(
-                            "remaining", Math.max(0, remain.toSeconds())
-                    ));
+            // The player's selected language when it is already known; this check runs on the
+            // game thread, so the resolver does not go to the database for it.
+            String reason = bundle.format(bundle.locale(packet), "kick-recently-kicked",
+                    Args.of("remaining", Math.max(0, remain.toSeconds())));
 
             return new AccessResult.Denied(reason, false, 0);
         }
