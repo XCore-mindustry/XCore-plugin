@@ -20,9 +20,16 @@
 В **XCore-plugin**: `SessionLocaleResolver`, удалён `BundlePlaceholderRegistry` (→ `bundle.has/variables`),
 `has()` в мосте к xcore-ui, логирование отсутствующих ключей, тест согласованности переменных.
 
-В **HexedCore-plugin**: язык сообщений теперь берётся из настроек игрока (через resolver), циклы
-`locale + Call.announce` заменены на `bundle.announce`, рассылки — на `bundle.send(id, args)`,
-убран дублирующий alias, тест согласованности переменных.
+В **HexedCore-plugin**: циклы `locale + Call.announce` заменены на `bundle.announce`, рассылки — на
+`bundle.send(id, args)`, убран дублирующий alias. Код остаётся на API 1.7.1, потому что:
+
+> XCore встраивает FluBundle в свой shadow-jar без relocate, и HexedCore во время работы (и при компиляции,
+> через `xcore-plugin` на classpath) использует **ту версию FluBundle, что внутри XCore**. Поэтому
+> исправление языка для HexedCore приходит вместе со сборкой XCore на FluBundle 1.8 — без изменений
+> HexedCore. Перейти на новый API (`Args`, `LocaleConsistencyChecker`) HexedCore сможет после того, как
+> поднимет зависимость `xcore-plugin` до версии, собранной с FluBundle 1.8.
+
+Порядок выпуска: релиз FluBundle 1.8.0 → сборка/релиз XCore → (опционально) HexedCore на новый XCore.
 
 ## 1. Как FluBundle используется сейчас
 
