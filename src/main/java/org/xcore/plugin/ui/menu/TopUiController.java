@@ -39,6 +39,8 @@ import java.util.Objects;
 
 import static com.ospx.flubundle.Bundle.args;
 import static org.xcore.plugin.ui.kit.Kit.GAP;
+import static org.xcore.plugin.ui.kit.Texts.locale;
+import static org.xcore.plugin.ui.kit.Texts.t;
 
 /**
  * The leaderboard ({@code /top}, {@code /lb}): a tab per category, the players of a page as rows
@@ -178,7 +180,7 @@ public class TopUiController implements UiController<TopUiController.TopModel, T
     public TopQuery query(String categoryId, String scopeId, int page, String cursor, Deque<String> backStack) {
         String category = categoryId;
         if (category == null || category.isBlank()) {
-            List<CategoryTab> tabs = resolveCategoryTabs(locale());
+            List<CategoryTab> tabs = resolveCategoryTabs(locale(session));
             category = tabs.isEmpty() ? "PLAYTIME" : tabs.getFirst().id();
         }
         return new TopQuery(category, scopeId, page, cursor, backStack, true);
@@ -219,7 +221,7 @@ public class TopUiController implements UiController<TopUiController.TopModel, T
     public TopModel model(TopData data) {
         TopModel blank = new TopModel(
                 session != null && session.data != null ? session.data.uuid : "",
-                data.query().categoryId(), resolveCategoryTabs(locale()), List.of(), null,
+                data.query().categoryId(), resolveCategoryTabs(locale(session)), List.of(), null,
                 1, 1, 0L, null, null,
                 List.of(), false, null, null, new ArrayDeque<>(), ""
         );
@@ -268,7 +270,7 @@ public class TopUiController implements UiController<TopUiController.TopModel, T
 
     private List<CategoryTab> resolveCategoryTabs(Localization local) {
         if (categoryRegistry == null) {
-            return List.of(new CategoryTab("PLAYTIME", "Playtime", String.valueOf(Iconc.refresh), 10));
+            return List.of(new CategoryTab("PLAYTIME", t(local, "top-menu-category-playtime"), String.valueOf(Iconc.refresh), 10));
         }
         return categoryRegistry.all().stream()
                 .sorted(Comparator.comparingInt(TopCategoryProvider::priority).reversed())
@@ -280,7 +282,7 @@ public class TopUiController implements UiController<TopUiController.TopModel, T
     private String selfPrimaryValue(String categoryId, LeaderboardPage page) {
         TopCategoryProvider provider = provider(categoryId);
         if (provider == null || session == null || session.data == null) return null;
-        Localization local = locale();
+        Localization local = locale(session);
 
         for (LeaderboardEntry entry : page.entries()) {
             if (Objects.equals(entry.playerUuid(), session.data.uuid)) {
@@ -295,10 +297,6 @@ public class TopUiController implements UiController<TopUiController.TopModel, T
 
     private TopCategoryProvider provider(String categoryId) {
         return categoryRegistry == null ? null : categoryRegistry.resolve(categoryId).orElse(null);
-    }
-
-    private Localization locale() {
-        return session != null ? session.locale() : null;
     }
 
     private PlayerData viewer() {
@@ -475,7 +473,7 @@ public class TopUiController implements UiController<TopUiController.TopModel, T
 
     /** The leaderboard laid out for one class of screens. */
     VNode window(TopModel model, Screen screen) {
-        Localization local = locale();
+        Localization local = locale(session);
         float width = screen.width();
         String categoryName = model.categories().stream()
                 .filter(c -> Objects.equals(c.id(), model.selectedCategoryId()))
@@ -496,14 +494,10 @@ public class TopUiController implements UiController<TopUiController.TopModel, T
         Accent lineAccent = accent;
 
         return Kit.window(window -> {
-            String title = local != null
-                    ? local.t("top-menu-title", args("category", categoryName))
-                    : "Top Players: " + categoryName;
+            String title = t(local, "top-menu-title", args("category", categoryName));
             String total = "";
             if (model.totalEntries() != null && model.totalEntries() > 0) {
-                total = "\n[lightgray]" + (local != null
-                        ? local.t("top-menu-total-count", args("count", model.totalEntries()))
-                        : model.totalEntries() + " players") + "[]";
+                total = "\n[lightgray]" + t(local, "top-menu-total-count", args("count", model.totalEntries())) + "[]";
             }
             window.add(Kit.header(width, "[gold]" + Iconc.star + "[] [white]" + title + "[]" + total)).row();
 
@@ -569,9 +563,7 @@ public class TopUiController implements UiController<TopUiController.TopModel, T
                          String categoryName) {
         float width = screen.cards();
         if (model.entries().isEmpty()) {
-            list.add(Kit.note(width, local != null
-                    ? local.t("top-menu-empty", args("category", categoryName))
-                    : "No entries found.")).row();
+            list.add(Kit.note(width, t(local, "top-menu-empty", args("category", categoryName)))).row();
             return;
         }
         for (LeaderboardEntry entry : model.entries()) {
@@ -604,7 +596,7 @@ public class TopUiController implements UiController<TopUiController.TopModel, T
         if ("true".equalsIgnoreCase(attrs.get("admin"))) {
             identity.append("[scarlet]").append(Iconc.admin).append("[] ");
         }
-        identity.append(isViewer ? "[accent]" : "[white]").append(resolveNickname(entry, attrs, NICKNAME_BUDGET));
+        identity.append(isViewer ? "[accent]" : "[white]").append(resolveNickname(entry, attrs, NICKNAME_BUDGET, local));
 
         StringBuilder value = new StringBuilder();
         if (attrs.containsKey("leagueIcon")) {
@@ -613,7 +605,7 @@ public class TopUiController implements UiController<TopUiController.TopModel, T
             String league = attrs.get("leagueName");
             try {
                 RatingLeague rl = RatingLeague.valueOf(league.toUpperCase());
-                league = local != null ? local.t(rl.localizationKey()) : rl.name();
+                league = t(local, rl.localizationKey(), rl.name());
             } catch (Exception ignored) {
                 // An unknown league is shown as it was stored.
             }
@@ -622,7 +614,7 @@ public class TopUiController implements UiController<TopUiController.TopModel, T
         if (attrs.containsKey("rankName")) {
             String rankName = attrs.get("rankName");
             value.append("[purple]").append(TextWidth.escape(
-                    local != null ? local.t("hexed-ranks-" + rankName) : rankName)).append("[] ");
+                    t(local, "hexed-ranks-" + rankName, rankName))).append("[] ");
         }
         value.append(entry.rank() <= 3 ? "[gold]" : "[sky]")
                 .append(formatValue(model.selectedCategoryId(), entry, local)).append("[]");
@@ -648,17 +640,13 @@ public class TopUiController implements UiController<TopUiController.TopModel, T
     /** Where the viewer stands in the category, whatever page is open. */
     private String selfRank(TopModel model, Localization local) {
         if (model.selfRank() == null) {
-            return "[gray]" + Iconc.info + " " + (local != null
-                    ? local.t("top-menu-unranked")
-                    : "You are not ranked in this category yet") + "[]";
+            return "[gray]" + Iconc.info + " " + t(local, "top-menu-unranked") + "[]";
         }
         String rank = "[#ffd37f]#" + model.selfRank() + "[]";
-        String line = "[lime]●[] " + (local != null
-                ? local.t("top-menu-self-rank-line", args("rank", rank))
-                : "Your rank: " + rank);
+        String line = "[lime]●[] " + t(local, "top-menu-self-rank-line", args("rank", rank));
         boolean onPage = model.entries().stream().anyMatch(e -> Objects.equals(e.playerUuid(), model.viewerUuid()));
         if (onPage) {
-            return line + "  [gray](" + (local != null ? local.t("top-menu-on-this-page") : "on this page") + ")[]";
+            return line + "  [gray](" + t(local, "top-menu-on-this-page") + ")[]";
         }
         if (model.selfPrimaryValue() != null) {
             return line + "  [gray]|[] [sky]" + model.selfPrimaryValue() + "[]";
@@ -701,16 +689,16 @@ public class TopUiController implements UiController<TopUiController.TopModel, T
         return provider.id();
     }
 
-    public static String resolveNickname(LeaderboardEntry entry, Map<String, String> attrs, int maxPlainLen) {
+    public static String resolveNickname(LeaderboardEntry entry, Map<String, String> attrs, int maxPlainLen, Localization local) {
         String raw = attrs != null && attrs.containsKey("customNickname") ? attrs.get("customNickname") : (entry != null ? entry.displayName() : null);
         if (raw == null || raw.isBlank()) {
-            return entry != null && entry.rank() > 0 ? "Player #" + entry.rank() : "Player";
+            return unnamed(entry, local);
         }
         String clean = raw.replace('\n', ' ').trim();
 
         String stripped = Strings.stripColors(clean).trim();
         if (stripped.isEmpty()) {
-            return entry != null && entry.rank() > 0 ? "Player #" + entry.rank() : "Player";
+            return unnamed(entry, local);
         }
 
         // If stripped plain length is within limit, preserve original colors and formatting intact
@@ -720,6 +708,12 @@ public class TopUiController implements UiController<TopUiController.TopModel, T
 
         // Otherwise truncate visible plain text cleanly to avoid broken color tags, overflow, or color bleeding
         return stripped.substring(0, maxPlainLen) + "...";
+    }
+
+    /** A player with no name to show, told apart by the place they hold. */
+    private static String unnamed(LeaderboardEntry entry, Localization local) {
+        String name = t(local, "player-menu-player");
+        return entry != null && entry.rank() > 0 ? name + " #" + entry.rank() : name;
     }
 
     private String formatValue(String categoryId, LeaderboardEntry entry, Localization local) {

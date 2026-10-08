@@ -578,6 +578,7 @@ player-settings-tab-chat = Чат
 player-settings-tab-badges = Значки
 player-settings-chat-preview = Превью в чате
 player-settings-chat-preview-sample = Пример
+player-settings-chat-preview-message = Всем привет!
 player-settings-symbol-color-mode = Цвет символа
 player-settings-badges-my = Мои значки
 player-settings-badges-all = Все значки
@@ -1197,6 +1198,7 @@ audit-menu-filter-other = Прочее
 audit-menu-btn-back = Назад к истории
 audit-menu-btn-copy-id = Копировать ID
 audit-menu-copy-id-success = ID записи отправлен в чат
+audit-menu-field-id = ID записи
 audit-menu-page = Стр. { $page }
 audit-menu-details-unavailable = Запись недоступна.
 audit-menu-field-target = Игрок
@@ -1286,6 +1288,7 @@ off = Выключено
 error-command-disabled = [scarlet]⚠ Команда [accent]/{ $command }[scarlet] отключена на этом сервере.
 error-feature-disabled = [scarlet]⚠ Эта функция отключена на этом сервере.
 none = Нет
+unknown = Неизвестно
 error-nickname-badge-glyph = [scarlet]⚠ Пользовательский ник не может содержать зарезервированные иконки бейджей.
 
 # Серверный браузер (/servers)

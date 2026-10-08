@@ -35,6 +35,8 @@ import static org.xcore.plugin.ui.kit.Kit.GAP;
 import static org.xcore.plugin.ui.kit.Kit.MARGIN;
 import static org.xcore.plugin.ui.kit.Kit.PAD;
 import static org.xcore.plugin.ui.kit.Kit.TAB_GAP;
+import static org.xcore.plugin.ui.kit.Texts.locale;
+import static org.xcore.plugin.ui.kit.Texts.t;
 
 /**
  * The player settings: profile, chat, language and badges, on four tabs of cards, laid out once
@@ -90,8 +92,8 @@ public class PlayerSettingsUiController implements UiController<PlayerSettingsUi
 
     public record LanguageOption(String code, String displayName) {}
 
+    /** The languages, each named in itself; "auto", the language of the player's client, is offered apart. */
     public static final List<LanguageOption> AVAILABLE_LANGUAGES = List.of(
-            new LanguageOption("auto", "Auto"),
             new LanguageOption("uk_UA", "Українська"),
             new LanguageOption("ru", "Русский"),
             new LanguageOption("en", "English"),
@@ -402,9 +404,9 @@ public class PlayerSettingsUiController implements UiController<PlayerSettingsUi
         return m;
     }
 
-    public static String resolveLanguageDisplay(String code) {
+    public static String resolveLanguageDisplay(String code, Localization local) {
         if (code == null || code.isBlank() || "auto".equalsIgnoreCase(code)) {
-            return "Auto";
+            return t(local, "auto");
         }
         for (LanguageOption opt : AVAILABLE_LANGUAGES) {
             if (opt.code().equalsIgnoreCase(code)) {
@@ -416,34 +418,34 @@ public class PlayerSettingsUiController implements UiController<PlayerSettingsUi
 
     public static String resolveTranslatorDisplay(String code, Localization local) {
         if (code == null || code.isBlank() || "off".equalsIgnoreCase(code)) {
-            return local != null ? local.t("player-settings-translator-off") : "Off";
+            return t(local, "player-settings-translator-off");
         }
-        return resolveLanguageDisplay(code);
+        return resolveLanguageDisplay(code, local);
     }
 
     public static String activeBadgeName(Localization local, PlayerData targetData) {
-        if (targetData == null) return local != null ? local.t("none") : "";
+        if (targetData == null) return t(local, "none");
         Badge badge = Badge.byId(targetData.activeBadge);
         if (badge == null || targetData.unlockedBadges == null || !targetData.unlockedBadges.contains(badge.id())) {
-            return local != null ? local.t("none") : "";
+            return t(local, "none");
         }
         return badgeLabel(local, badge);
     }
 
     public static String systemBadgeName(Localization local, PlayerData targetData) {
-        if (targetData == null) return local != null ? local.t("none") : "";
-        return targetData.admin ? badgeLabel(local, Badge.ADMIN) : (local != null ? local.t("none") : "");
+        if (targetData == null) return t(local, "none");
+        return targetData.admin ? badgeLabel(local, Badge.ADMIN) : t(local, "none");
     }
 
     public static String badgeLabel(Localization local, Badge badge) {
         if (badge == null) return "";
-        String name = local != null ? local.t(badge.nameKey()) : badge.name();
+        String name = t(local, badge.nameKey(), badge.name());
         return badge.tag() + " [white]" + name + "[]";
     }
 
     public static String badgeLabelWithColor(Localization local, Badge badge, String symbolColorMode, String playerColorHex) {
         if (badge == null) return "";
-        String name = local != null ? local.t(badge.nameKey()) : badge.name();
+        String name = t(local, badge.nameKey(), badge.name());
         String tag = renderBadgeTagExact(badge, symbolColorMode, playerColorHex);
         return tag + " [white]" + name + "[]";
     }
@@ -483,7 +485,7 @@ public class PlayerSettingsUiController implements UiController<PlayerSettingsUi
         // 3. Player name (preserving existing color tags, or prepending [accent] if plain)
         String rawName = model.customNickname() != null && !model.customNickname().isBlank()
                 ? model.customNickname()
-                : (model.nickname() != null && !model.nickname().isBlank() ? model.nickname() : "Player");
+                : (model.nickname() != null && !model.nickname().isBlank() ? model.nickname() : t(local, "player-menu-player"));
 
         if (rawName.startsWith("[")) {
             sb.append(rawName);
@@ -492,7 +494,7 @@ public class PlayerSettingsUiController implements UiController<PlayerSettingsUi
         }
 
         // 4. Message suffix
-        sb.append("[white][lightgray]: [white]Hello world![]");
+        sb.append("[white][lightgray]: [white]").append(t(local, "player-settings-chat-preview-message")).append("[]");
 
         return sb.toString();
     }
@@ -514,9 +516,7 @@ public class PlayerSettingsUiController implements UiController<PlayerSettingsUi
                     var validation = profileSettings.validateCustomNickname(newNick);
                     if (!validation.valid()) {
                         String errKey = validation.errorKey() != null ? validation.errorKey() : "error-nickname-invalid";
-                        String localizedErr = session != null
-                                ? session.locale().t(errKey, Map.of("max", validation.maxBytes()))
-                                : errKey;
+                        String localizedErr = t(session, errKey, Map.of("max", validation.maxBytes()));
                         yield UpdateResult.rerender(updated.withFeedback("[scarlet]⚠ " + localizedErr + "[]", false));
                     }
                 }
@@ -528,14 +528,14 @@ public class PlayerSettingsUiController implements UiController<PlayerSettingsUi
                     var validation = profileSettings.validateUsername(newUsername);
                     if (!validation.valid()) {
                         yield UpdateResult.rerender(updated.withFeedback(
-                                "[scarlet]⚠ " + t(validation.errorKey()) + "[]", false));
+                                "[scarlet]⚠ " + t(session, validation.errorKey()) + "[]", false));
                     }
                     PlayerDataRepository players = session != null ? session.playerDataRepository : null;
                     if (players != null) {
                         PlayerData holder = players.findByUsername(newUsername);
                         if (holder != null && !Objects.equals(holder.uuid, targetData.uuid)) {
                             yield UpdateResult.rerender(updated.withFeedback(
-                                    "[scarlet]⚠ " + t("error-username-taken") + "[]", false));
+                                    "[scarlet]⚠ " + t(session, "error-username-taken") + "[]", false));
                         }
                     }
                 }
@@ -552,9 +552,7 @@ public class PlayerSettingsUiController implements UiController<PlayerSettingsUi
                     profileSettings.updateDescription(targetData, updated.description() != null ? updated.description().trim() : "");
                 }
 
-                String successMsg = session != null
-                        ? session.locale().t("player-settings-saved")
-                        : "Settings saved!";
+                String successMsg = t(session, "player-settings-saved");
                 yield UpdateResult.rerender(updated.withFeedback(successMsg, true));
             }
 
@@ -563,9 +561,7 @@ public class PlayerSettingsUiController implements UiController<PlayerSettingsUi
                 if (profileSettings != null) {
                     profileSettings.updateCustomNickname(targetData, "", true, true);
                 }
-                String resetMsg = session != null
-                        ? session.locale().t("player-settings-reset-feedback")
-                        : "Custom nickname reset.";
+                String resetMsg = t(session, "player-settings-reset-feedback");
                 yield UpdateResult.rerender(updated.withCustomNickname("").withFeedback(resetMsg, true));
             }
 
@@ -628,7 +624,7 @@ public class PlayerSettingsUiController implements UiController<PlayerSettingsUi
                 Badge badge = Badge.byId(badgeId);
                 boolean isOwned = model.unlockedBadges() != null && model.unlockedBadges().contains(badgeId);
                 if (badge == null || !badge.selectable() || badge.system() || !isOwned) {
-                    String err = session != null ? session.locale().t("error-badge-not-unlocked") : "Cannot equip this badge.";
+                    String err = t(session, "error-badge-not-unlocked");
                     yield UpdateResult.rerender(model.withFeedback("[scarlet]⚠ " + err + "[]", false));
                 }
                 if (profileSettings != null) {
@@ -677,7 +673,7 @@ public class PlayerSettingsUiController implements UiController<PlayerSettingsUi
         float width = screen.width();
 
         return Kit.window(window -> {
-            window.add(Kit.header(width, "[accent]" + Iconc.settings + "[] " + t("player-menu-settings-title")
+            window.add(Kit.header(width, "[accent]" + Iconc.settings + "[] " + t(session, "player-menu-settings-title")
                     + "[]  " + playerName(model))).row();
             window.add(tabs(width, model)).row();
             window.add(Kit.line(width, current.accent)).row();
@@ -702,7 +698,7 @@ public class PlayerSettingsUiController implements UiController<PlayerSettingsUi
         for (Tab tab : Tab.values()) {
             String count = tab == Tab.BADGES && !model.unlockedBadges().isEmpty()
                     ? " (" + model.unlockedBadges().size() + ")" : "";
-            tabs.add(new Kit.Tab(tab.glyph, t(tab.key()) + count, tab.action(), tab.accent, tab == model.tab()));
+            tabs.add(new Kit.Tab(tab.glyph, t(session, tab.key()) + count, tab.action(), tab.accent, tab == model.tab()));
         }
         return Kit.tabs(width, "tabs", tabs);
     }
@@ -710,17 +706,17 @@ public class PlayerSettingsUiController implements UiController<PlayerSettingsUi
     // ------------------------------------------------------------------ tabs
 
     private void profile(Ui.TableBuilder body, Screen screen, SettingsModel model) {
-        VNode identity = Kit.card(screen.card(), Tab.PROFILE.accent, Iconc.pencil + " " + t("player-settings-identity"),
+        VNode identity = Kit.card(screen.card(), Tab.PROFILE.accent, Iconc.pencil + " " + t(session, "player-settings-identity"),
                 (content, inner) -> {
                     float half = (inner - TAB_GAP) / 2f;
-                    content.labelWrap(Text.raw("[lightgray]" + t("player-menu-settings-customNickname") + "[]"),
+                    content.labelWrap(Text.raw("[lightgray]" + t(session, "player-menu-settings-customNickname") + "[]"),
                             l -> l.width(inner).padBottom(2f)).row();
                     content.field("field_nickname", f -> f
                             .value(model.customNickname())
-                            .hint(Strings.stripColors(t("player-menu-settings-customNickname-message")))
+                            .hint(Strings.stripColors(t(session, "player-menu-settings-customNickname-message")))
                             .maxLength(256)
                             .layout(l -> l.width(inner).height(FIELD_HEIGHT).padBottom(GAP))).row();
-                    content.labelWrap(Text.raw("[lightgray]" + t("player-menu-settings-description") + "[]"),
+                    content.labelWrap(Text.raw("[lightgray]" + t(session, "player-menu-settings-description") + "[]"),
                             l -> l.width(inner).padBottom(2f)).row();
                     content.field("field_description", f -> f
                             .value(model.description())
@@ -728,40 +724,40 @@ public class PlayerSettingsUiController implements UiController<PlayerSettingsUi
                             .layout(l -> l.width(inner).height(FIELD_HEIGHT).padBottom(GAP))).row();
                     username(content, inner, model);
                     content.add(Ui.table(actions -> {
-                        actions.button(Text.raw(t("player-menu-settings-customNickname-reset")),
+                        actions.button(Text.raw(t(session, "player-menu-settings-customNickname-reset")),
                                 "action:reset_nick", b -> b
                                         .style("flatBordert")
                                         .layout(l -> l.width(half).height(BUTTON_HEIGHT).padRight(TAB_GAP)));
-                        actions.button(Text.raw("[accent]" + Iconc.save + " " + t("save") + "[]"),
+                        actions.button(Text.raw("[accent]" + Iconc.save + " " + t(session, "save") + "[]"),
                                 "action:save", b -> b
                                         .style("flatBordert")
                                         .layout(l -> l.width(half).height(BUTTON_HEIGHT)));
                     })).row();
                 });
 
-        VNode display = Kit.card(screen.card(), Tab.PROFILE.accent, Iconc.chartBar + " " + t("player-settings-interface"),
+        VNode display = Kit.card(screen.card(), Tab.PROFILE.accent, Iconc.chartBar + " " + t(session, "player-settings-interface"),
                 (content, inner) -> {
                     content.add(toggle(Setting.LEADERBOARD, model.leaderboard(),
                             "player-settings-leaderboard", inner, GAP)).row();
-                    content.labelWrap(Text.raw("[lightgray]" + Strings.stripColors(t("player-settings-identity-mode")) + "[]"),
+                    content.labelWrap(Text.raw("[lightgray]" + Strings.stripColors(t(session, "player-settings-identity-mode")) + "[]"),
                             l -> l.width(inner).padBottom(2f)).row();
                     List<Option> modes = new ArrayList<>();
                     for (IdentityDisplayMode mode : IdentityDisplayMode.values()) {
                         String name = mode.name().toLowerCase(Locale.ROOT);
-                        modes.add(new Option(t("player-settings-identity-mode-" + name),
+                        modes.add(new Option(t(session, "player-settings-identity-mode-" + name),
                                 "action:identity_mode:" + name, mode == model.identityDisplayMode()));
                     }
                     Kit.options(content, inner, "identity_mode", modes);
                 });
 
-        VNode badge = Kit.card(screen.card(), Tab.PROFILE.accent, Iconc.star + " " + t("player-settings-tab-badges"),
+        VNode badge = Kit.card(screen.card(), Tab.PROFILE.accent, Iconc.star + " " + t(session, "player-settings-tab-badges"),
                 (content, inner) -> {
                     Badge active = Badge.byId(model.activeBadge());
                     String name = active != null
-                            ? badgeLabelWithColor(local(), active, model.badgeSymbolColorMode(), model.playerColorHex())
-                            : "[gray]" + t("none") + "[]";
+                            ? badgeLabelWithColor(locale(session), active, model.badgeSymbolColorMode(), model.playerColorHex())
+                            : "[gray]" + t(session, "none") + "[]";
                     content.labelWrap(Text.raw(name), l -> l.width(inner).padBottom(GAP)).row();
-                    content.button(Text.raw("[accent]" + t("player-settings-manage-badges") + " " + Iconc.right + "[]"),
+                    content.button(Text.raw("[accent]" + t(session, "player-settings-manage-badges") + " " + Iconc.right + "[]"),
                             Tab.BADGES.action(), b -> b
                                     .style("flatBordert")
                                     .layout(l -> l.width(inner).height(BUTTON_HEIGHT))).row();
@@ -773,31 +769,29 @@ public class PlayerSettingsUiController implements UiController<PlayerSettingsUi
     /** The username: a field while it can be changed, a line of text once it is settled. */
     private void username(Ui.TableBuilder content, float inner, SettingsModel model) {
         if (model.usernameEditable()) {
-            content.labelWrap(Text.raw(t("player-settings-username-editable")),
+            content.labelWrap(Text.raw(t(session, "player-settings-username-editable")),
                     l -> l.width(inner).padBottom(2f)).row();
             content.field("field_username", f -> f
                     .value(model.usernameDraft())
-                    .hint(Strings.stripColors(t("player-settings-username-hint")))
+                    .hint(Strings.stripColors(t(session, "player-settings-username-hint")))
                     .maxLength(32)
                     .layout(l -> l.width(inner).height(FIELD_HEIGHT).padBottom(GAP))).row();
             return;
         }
-        Localization local = local();
+        Localization local = locale(session);
         // The longest username is wider than a card of a phone, and there is nowhere to break it.
         String name = TextWidth.fit(TextWidth.escape(model.username()), inner - TextWidth.of("@"));
         String line;
         if (model.username().isBlank()) {
-            line = t("player-settings-username-none");
-        } else if (local != null) {
-            line = local.t("player-settings-username-locked", Map.of("username", name));
+            line = t(session, "player-settings-username-none");
         } else {
-            line = "@" + name;
+            line = t(local, "player-settings-username-locked", Map.of("username", name), "@" + name);
         }
         content.labelWrap(Text.raw(line), l -> l.width(inner).padBottom(GAP)).row();
     }
 
     private void chat(Ui.TableBuilder body, Screen screen, SettingsModel model) {
-        VNode visibility = Kit.card(screen.card(), Tab.CHAT.accent, Iconc.chat + " " + t("player-menu-settings-chat"),
+        VNode visibility = Kit.card(screen.card(), Tab.CHAT.accent, Iconc.chat + " " + t(session, "player-menu-settings-chat"),
                 (content, inner) -> {
                     content.add(toggle(Setting.GLOBAL_CHAT, model.globalChatVisible(),
                             "player-settings-global-chat", inner, TAB_GAP)).row();
@@ -807,17 +801,16 @@ public class PlayerSettingsUiController implements UiController<PlayerSettingsUi
 
         boolean off = isTranslatorOff(model.translatorLanguage());
         List<Option> options = new ArrayList<>();
-        options.add(new Option(t("player-settings-translator-off"), "action:select_translator:off", off));
+        options.add(new Option(t(session, "player-settings-translator-off"), "action:select_translator:off", off));
         for (LanguageOption language : AVAILABLE_LANGUAGES) {
-            if ("auto".equalsIgnoreCase(language.code())) continue;
             options.add(new Option(language.displayName(), "action:select_translator:" + language.code(),
                     !off && language.code().equalsIgnoreCase(model.translatorLanguage())));
         }
         VNode translator = Kit.card(screen.card(), Tab.CHAT.accent,
-                Iconc.bookOpen + " " + t("player-settings-translator-lang") + ": [white]"
-                        + resolveTranslatorDisplay(model.translatorLanguage(), local()),
+                Iconc.bookOpen + " " + t(session, "player-settings-translator-lang") + ": [white]"
+                        + resolveTranslatorDisplay(model.translatorLanguage(), locale(session)),
                 (content, inner) -> {
-                    content.labelWrap(Text.raw("[lightgray]" + t("player-settings-translator-hint") + "[]"),
+                    content.labelWrap(Text.raw("[lightgray]" + t(session, "player-settings-translator-hint") + "[]"),
                             l -> l.width(inner).padBottom(GAP)).row();
                     Kit.options(content, inner, LANGUAGE_OPTION, "translator", options);
                 });
@@ -827,14 +820,15 @@ public class PlayerSettingsUiController implements UiController<PlayerSettingsUi
 
     private void language(Ui.TableBuilder body, Screen screen, SettingsModel model) {
         List<Option> options = new ArrayList<>();
+        options.add(new Option(t(session, "auto"), "action:select_lang:auto", "auto".equalsIgnoreCase(model.language())));
         for (LanguageOption language : AVAILABLE_LANGUAGES) {
             options.add(new Option(language.displayName(), "action:select_lang:" + language.code(),
                     language.code().equalsIgnoreCase(model.language())));
         }
         body.add(Kit.card(screen.cards(), Tab.LANGUAGE.accent,
-                Iconc.planet + " " + t("player-settings-language") + ": [white]" + resolveLanguageDisplay(model.language()),
+                Iconc.planet + " " + t(session, "player-settings-language") + ": [white]" + resolveLanguageDisplay(model.language(), locale(session)),
                 (content, inner) -> {
-                    content.labelWrap(Text.raw("[lightgray]" + t("player-settings-language-hint") + "[]"),
+                    content.labelWrap(Text.raw("[lightgray]" + t(session, "player-settings-language-hint") + "[]"),
                             l -> l.width(inner).padBottom(GAP)).row();
                     Kit.options(content, inner, LANGUAGE_OPTION, "language", options);
                 })).row();
@@ -843,31 +837,31 @@ public class PlayerSettingsUiController implements UiController<PlayerSettingsUi
     private void badges(Ui.TableBuilder body, Screen screen, SettingsModel model) {
         float full = screen.cards();
 
-        body.add(Kit.card(full, Tab.BADGES.accent, Iconc.eye + " " + t("player-settings-chat-preview"), (content, inner) -> {
+        body.add(Kit.card(full, Tab.BADGES.accent, Iconc.eye + " " + t(session, "player-settings-chat-preview"), (content, inner) -> {
             content.add(Ui.table(line -> {
                 line.background("whiteui");
                 line.margin(MARGIN);
                 line.layout(l -> l.width(inner).color(Kit.INSET));
-                line.labelWrap(Text.raw(buildChatPreviewText(model, local())), l -> l.width(inner - 2f * MARGIN));
+                line.labelWrap(Text.raw(buildChatPreviewText(model, locale(session))), l -> l.width(inner - 2f * MARGIN));
             })).row();
             Badge shown = Badge.byId(model.previewBadge() != null && !model.previewBadge().isBlank()
                     ? model.previewBadge() : model.activeBadge());
             if (shown != null) {
                 boolean worn = shown.id().equals(model.activeBadge());
                 content.labelWrap(Text.raw(worn
-                                ? "[lightgray]" + t("badge-state-active") + ": [lime]" + t(shown.nameKey()) + "[]"
-                                : "[lightgray]" + t("player-settings-chat-preview-sample") + ": [accent]"
-                                + t(shown.nameKey()) + "[]"),
+                                ? "[lightgray]" + t(session, "badge-state-active") + ": [lime]" + t(session, shown.nameKey()) + "[]"
+                                : "[lightgray]" + t(session, "player-settings-chat-preview-sample") + ": [accent]"
+                                + t(session, shown.nameKey()) + "[]"),
                         l -> l.width(inner).padTop(TAB_GAP)).row();
             }
         })).row();
 
         boolean playerColor = usesPlayerBadgeSymbolColor(model.badgeSymbolColorMode());
-        body.add(Kit.card(full, Tab.BADGES.accent, Iconc.pick + " " + t("player-settings-symbol-color-mode"), (content, inner) ->
+        body.add(Kit.card(full, Tab.BADGES.accent, Iconc.pick + " " + t(session, "player-settings-symbol-color-mode"), (content, inner) ->
                 Kit.options(content, inner, COLOR_OPTION, "symbol", List.of(
-                        new Option("[white]● []" + t("badge-menu-symbol-color-default"),
+                        new Option("[white]● []" + t(session, "badge-menu-symbol-color-default"),
                                 "action:symbol_color:default", !playerColor),
-                        new Option("[#" + model.playerColorHex() + "]● []" + t("badge-menu-symbol-color-player-color"),
+                        new Option("[#" + model.playerColorHex() + "]● []" + t(session, "badge-menu-symbol-color-player-color"),
                                 "action:symbol_color:player-color", playerColor))))).row();
 
         List<Badge> mine = new ArrayList<>();
@@ -880,14 +874,14 @@ public class PlayerSettingsUiController implements UiController<PlayerSettingsUi
         body.add(Ui.table(filter -> {
             filter.layout(l -> l.padBottom(GAP - TAB_GAP));
             Kit.options(filter, full, FILTER_OPTION, "filter", List.of(
-                    new Option(t("player-settings-badges-my") + " (" + mine.size() + ")",
+                    new Option(t(session, "player-settings-badges-my") + " (" + mine.size() + ")",
                             "action:badges_filter:my", onlyMine),
-                    new Option(t("player-settings-badges-all") + " (" + Badge.values().length + ")",
+                    new Option(t(session, "player-settings-badges-all") + " (" + Badge.values().length + ")",
                             "action:badges_filter:all", !onlyMine)));
         })).row();
 
         if (onlyMine && mine.isEmpty()) {
-            body.add(Kit.note(full, t("player-settings-badges-empty"))).row();
+            body.add(Kit.note(full, t(session, "player-settings-badges-empty"))).row();
             return;
         }
 
@@ -912,8 +906,8 @@ public class PlayerSettingsUiController implements UiController<PlayerSettingsUi
             row.layout(l -> l.width(width).padBottom(padBottom));
             row.label(Text.raw(on ? "[lime]" + Iconc.ok + "[]" : "[gray]" + Iconc.cancel + "[]"),
                     l -> l.width(STATE_ICON).padRight(GAP));
-            row.add(Ui.labelWrap(Text.raw((on ? "[white]" : "[lightgray]") + t(key) + "[]\n[gray]"
-                    + t(key + "-hint") + "[]"), l -> l.width(text)));
+            row.add(Ui.labelWrap(Text.raw((on ? "[white]" : "[lightgray]") + t(session, key) + "[]\n[gray]"
+                    + t(session, key + "-hint") + "[]"), l -> l.width(text)));
         });
     }
 
@@ -928,36 +922,36 @@ public class PlayerSettingsUiController implements UiController<PlayerSettingsUi
         String status;
         if (badge.system()) {
             status = model.isAdmin()
-                    ? "[coral]" + Iconc.admin + " " + t("badge-state-system-active") + "[]"
-                    : "[gray]" + Iconc.lock + " " + t("badge-state-system") + "[]";
+                    ? "[coral]" + Iconc.admin + " " + t(session, "badge-state-system-active") + "[]"
+                    : "[gray]" + Iconc.lock + " " + t(session, "badge-state-system") + "[]";
         } else if (equipped) {
-            status = "[lime]" + Iconc.ok + " " + t("badge-state-active") + "[]";
+            status = "[lime]" + Iconc.ok + " " + t(session, "badge-state-active") + "[]";
         } else if (unlocked) {
-            status = "[accent]" + Iconc.lockOpen + " " + t("badge-state-unlocked") + "[]";
+            status = "[accent]" + Iconc.lockOpen + " " + t(session, "badge-state-unlocked") + "[]";
         } else {
-            status = "[gray]" + Iconc.lock + " " + t("badge-state-locked") + "[]";
+            status = "[gray]" + Iconc.lock + " " + t(session, "badge-state-locked") + "[]";
         }
-        String description = t(badge.descriptionKey());
+        String description = t(session, badge.descriptionKey());
 
         List<VNode> actions = new ArrayList<>();
         boolean canWear = equipped || (unlocked && badge.selectable() && !badge.system());
         float buttonWidth = canWear ? (inner - TAB_GAP) / 2f : inner;
         if (previewing) {
-            actions.add(Ui.button(Text.raw(t("player-settings-badge-previewing")), "action:preview_badge:" + badge.id(),
+            actions.add(Ui.button(Text.raw(t(session, "player-settings-badge-previewing")), "action:preview_badge:" + badge.id(),
                     b -> b.style("flatBordert").disabled()
                             .layout(l -> l.width(buttonWidth).height(BUTTON_HEIGHT).padRight(canWear ? TAB_GAP : 0f))));
         } else {
-            actions.add(Ui.button(Text.raw("[sky]" + Iconc.eye + " " + t("player-settings-badge-preview") + "[]"),
+            actions.add(Ui.button(Text.raw("[sky]" + Iconc.eye + " " + t(session, "player-settings-badge-preview") + "[]"),
                     "action:preview_badge:" + badge.id(),
                     b -> b.style("flatBordert")
                             .layout(l -> l.width(buttonWidth).height(BUTTON_HEIGHT).padRight(canWear ? TAB_GAP : 0f))));
         }
         if (equipped) {
-            actions.add(Ui.button(Text.raw("[scarlet]" + t("player-settings-badge-unequip") + "[]"),
+            actions.add(Ui.button(Text.raw("[scarlet]" + t(session, "player-settings-badge-unequip") + "[]"),
                     "action:unequip_badge",
                     b -> b.style("flatBordert").layout(l -> l.width(buttonWidth).height(BUTTON_HEIGHT))));
         } else if (canWear) {
-            actions.add(Ui.button(Text.raw("[accent]" + t("player-settings-badge-equip") + "[]"),
+            actions.add(Ui.button(Text.raw("[accent]" + t(session, "player-settings-badge-equip") + "[]"),
                     "action:equip_badge:" + badge.id(),
                     b -> b.style("flatBordert").layout(l -> l.width(buttonWidth).height(BUTTON_HEIGHT))));
         }
@@ -970,7 +964,7 @@ public class PlayerSettingsUiController implements UiController<PlayerSettingsUi
                 band.background("whiteui");
                 band.margin(Kit.BAND_MARGIN);
                 band.layout(l -> l.width(width).color(equipped ? Tab.BADGES.accent.band() : Kit.HEADER));
-                band.labelWrap(Text.raw(badgeLabelWithColor(local(), badge, model.badgeSymbolColorMode(),
+                band.labelWrap(Text.raw(badgeLabelWithColor(locale(session), badge, model.badgeSymbolColorMode(),
                         model.playerColorHex())), l -> l.width(width - 2f * Kit.BAND_MARGIN));
             })).row();
 
@@ -991,16 +985,6 @@ public class PlayerSettingsUiController implements UiController<PlayerSettingsUi
 
     private static boolean isTranslatorOff(String code) {
         return code == null || code.isBlank() || "off".equalsIgnoreCase(code);
-    }
-
-    private Localization local() {
-        return session != null ? session.locale() : null;
-    }
-
-    /** The text of {@code key} in the player's language. */
-    private String t(String key) {
-        Localization local = local();
-        return local != null ? local.t(key) : key;
     }
 
     @Override
