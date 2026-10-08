@@ -51,7 +51,7 @@ tilelogger-select-done = [#98ff98]✔ Область выбрана.[] [#b0b5c8]
 tilelogger-subnet-accept = [#98ff98]✔ РАЗРЕШЕНО[] [#b0b5c8]Подсеть:[] [#ffd37f]{$subnet}[]
 tilelogger-subnet-deny = [#ff8a8a]✖ ЗАПРЕЩЕНО[] [#b0b5c8]Подсеть:[] [#ffd37f]{$subnet}[]
 
-tilelogger-fill-success = [#98ff98]✔ Заливка выполнена[] [#b0b5c8]блоком[] {$block}
+tilelogger-fill-success = [#98ff98]✔ Заливка выполнена[] [#b0b5c8]блоком[] {$emoji} {$block}
 
 tilelogger-history-player = [#a4b8ff]📜 История:[] [#ffd37f]{$player}[] [#6e7080]|[] [#b0b5c8]{$time}[]
 tilelogger-history-tile = [#a4b8ff]📜 История тайла:[] [#ffd37f]({$x}, {$y})[] [#6e7080]|[] [#b0b5c8]{$time}[]
