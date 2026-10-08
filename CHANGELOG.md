@@ -4,10 +4,14 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Breaking changes
+- Updated the shaded FluBundle to 2.0.0. Dependent plugins compile and run against it: `Bundle.send/announce/infoMessage/setHud/toast/label/popup/kick`, `Bundle.context(...)`, `BundleContext`, `DefaultValueFactory` and `Bundle.numArgs` are removed. Deliver messages with `Messenger` (`messenger.to(player).send(...)`, `messenger.all().announce(...)`), which XCore now provides as a DI bean; see FluBundle's `docs/migrating-to-2.0.md`.
+- `Localization.context()` and `contextOrNull()` are removed; use `Localization.send(...)` or `Messenger`.
+
 ### Changed
-- Updated FluBundle to 1.8.0. The language a player selects in settings now applies to every message sent through the shared bundle, including messages from dependent plugins such as HexedCore (`SessionLocaleResolver`).
+- Missing bundle keys go through `MissingKeyPolicy.logOnce()`.
+- The language a player selects in settings now applies to every message sent through the shared bundle, including messages from dependent plugins such as HexedCore (`SessionLocaleResolver`).
 - Cloud captions read message placeholders from the loaded bundle instead of re-parsing FTL files; `BundlePlaceholderRegistry` is removed.
-- Missing bundle keys are logged once per key.
 - Complete translations for Belarusian, Czech, German, Spanish, French and Polish (previously 9–174 of 905 keys), and the remaining Ukrainian permission names. Belarusian, Czech, German, Spanish, French and Polish bundles now follow the English file's order and section headers.
 
 ### Added

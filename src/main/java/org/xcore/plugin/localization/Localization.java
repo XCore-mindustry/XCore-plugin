@@ -1,8 +1,8 @@
 package org.xcore.plugin.localization;
 
 import com.ospx.flubundle.Bundle;
-import com.ospx.flubundle.BundleContext;
 import com.ospx.flubundle.Localizer;
+import com.ospx.flubundle.mindustry.Messenger;
 import org.xcore.plugin.session.Session;
 
 import java.util.Locale;
@@ -16,13 +16,11 @@ public class Localization {
     private final Bundle bundle;
     private final Session session;
     private final Localizer localizer;
-    private final BundleContext context;
 
     public Localization(Bundle bundle, Session session) {
         this.bundle = bundle;
         this.session = session;
         this.localizer = bundle.localizer(() -> resolveLocale(bundle, session));
-        this.context = bundle.context(session.player, () -> resolveLocale(bundle, session));
     }
 
     public Localization(Bundle bundle, Locale locale) {
@@ -30,7 +28,6 @@ public class Localization {
         this.session = null;
         Locale resolvedLocale = bundle.resolveLocale(locale);
         this.localizer = bundle.localizer(resolvedLocale);
-        this.context = null;
     }
 
     public Localization(Bundle bundle) {
@@ -43,14 +40,6 @@ public class Localization {
 
     public Localizer localizer() {
         return localizer;
-    }
-
-    public BundleContext context() {
-        return Objects.requireNonNull(context, "This localization is not bound to a player context");
-    }
-
-    public BundleContext contextOrNull() {
-        return context;
     }
 
     public Locale getLocale() {
@@ -91,9 +80,9 @@ public class Localization {
 
     public void send(String key, Map<String, Object> args) {
         if (session != null) {
-            context.send(key, args);
+            session.player.sendMessage(localizer.format(key, args));
         } else {
-            bundle.send(key, args);
+            Messenger.of(bundle).all().send(key, args);
         }
     }
 

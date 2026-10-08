@@ -14,7 +14,7 @@ import java.util.Locale;
 
 /**
  * Makes the shared {@link Bundle} honour the language a player selected in settings, so every
- * {@code bundle.locale(player)} / {@code bundle.send(player, ...)} call, including the ones made by
+ * {@code bundle.locale(player)} / {@code messenger.to(player).send(...)} call, including the ones made by
  * other plugins, uses it instead of the client locale.
  */
 @Singleton
