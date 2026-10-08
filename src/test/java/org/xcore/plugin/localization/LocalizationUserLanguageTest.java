@@ -10,6 +10,7 @@ import org.xcore.plugin.config.TomlSecretsConfig;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
 import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.session.Session;
+import org.xcore.plugin.session.SessionService;
 import org.xcore.plugin.ui.MenuService;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -54,6 +55,28 @@ class LocalizationUserLanguageTest {
 
         assertThat(session.data.language).isEqualTo("ru");
         assertThat(session.locale().format("close")).isEqualTo("[scarlet]Закрыть");
+    }
+
+    @Test
+    @DisplayName("session locale resolver makes plain bundle calls honour the saved language")
+    void sessionLocaleResolverAppliesToPlainBundleCalls() {
+        Session russian = session("en", "ru");
+        Session auto = session("uk", "auto");
+        SessionService sessionService = mock(SessionService.class);
+        when(sessionService.get(russian.player)).thenReturn(russian);
+        when(sessionService.get(auto.player)).thenReturn(auto);
+
+        assertThat(bundle.locale(russian.player)).isEqualTo(java.util.Locale.ENGLISH);
+
+        new SessionLocaleResolver(bundle, sessionService).install();
+
+        assertThat(bundle.locale(russian.player)).isEqualTo(java.util.Locale.of("ru"));
+        assertThat(bundle.localizer(russian.player).format("close")).isEqualTo("[scarlet]Закрыть");
+        assertThat(bundle.locale(auto.player)).isEqualTo(java.util.Locale.of("uk", "UA"));
+
+        Player withoutSession = Player.create();
+        withoutSession.locale = "ru";
+        assertThat(bundle.locale(withoutSession)).isEqualTo(java.util.Locale.of("ru"));
     }
 
     private Session session(String clientLocale, String savedLanguage) {
