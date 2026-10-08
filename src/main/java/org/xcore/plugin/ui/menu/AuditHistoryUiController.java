@@ -40,6 +40,8 @@ import java.util.Set;
 import static com.ospx.flubundle.Bundle.args;
 import static org.xcore.plugin.ui.kit.Kit.GAP;
 import static org.xcore.plugin.ui.kit.Kit.MARGIN;
+import static org.xcore.plugin.ui.kit.Texts.locale;
+import static org.xcore.plugin.ui.kit.Texts.t;
 
 /**
  * Reactive Elm/MVI controller for Mindustry server-side Audit History inspection (/audit).
@@ -319,8 +321,7 @@ public class AuditHistoryUiController implements UiController<AuditHistoryUiCont
                 }
                 AuditRecord record = auditService.findByAuditId(auditId).orElse(null);
                 if (record == null) {
-                    Localization local = session != null ? session.locale() : null;
-                    String err = local != null ? local.t("error-processing-request") : "Record not found";
+                    String err = t(session, "error-processing-request");
                     yield UpdateResult.patch(model.withFeedback("[scarlet]" + Iconc.warning + " " + err + "[]"), Screen.slots(SLOT_HEADER));
                 }
                 yield UpdateResult.rerender(model.withDetails(auditId, record));
@@ -334,10 +335,7 @@ public class AuditHistoryUiController implements UiController<AuditHistoryUiCont
                 if (session != null && session.player != null && auditId != null) {
                     session.player.sendMessage("[accent]Audit ID: [white]" + auditId);
                 }
-                Localization local = session != null ? session.locale() : null;
-                String msg = local != null
-                        ? local.t("audit-menu-copy-id-success", args("auditId", auditId))
-                        : "Audit ID sent to chat: " + auditId;
+                String msg = t(session, "audit-menu-copy-id-success", args("auditId", auditId));
                 yield UpdateResult.patch(model.withFeedback("[lime]" + Iconc.ok + " " + msg + "[]"), Screen.slots(SLOT_HEADER));
             }
 
@@ -414,7 +412,7 @@ public class AuditHistoryUiController implements UiController<AuditHistoryUiCont
 
     /** The whole menu as it is on a screen of the given class. */
     VNode window(AuditHistoryModel model, Screen screen) {
-        Localization local = session != null ? session.locale() : null;
+        Localization local = locale(session);
         return model.screen() == ViewScreen.DETAILS ? details(model, screen, local) : list(model, screen, local);
     }
 
@@ -427,7 +425,7 @@ public class AuditHistoryUiController implements UiController<AuditHistoryUiCont
             window.slot(screen.slot(SLOT_TABS).path(), slot -> tabs(slot, model, width, local)).row();
             window.slot(screen.slot(SLOT_LIST).path(), slot -> slot.add(records(model, screen, local))).row();
             window.slot(screen.slot(SLOT_PAGINATION).path(), slot -> slot.add(Kit.pager(width,
-                    t(local, "audit-menu-page", args("page", model.pageIndex()), "Page " + model.pageIndex()),
+                    t(local, "audit-menu-page", args("page", model.pageIndex())),
                     model.cursorBackStack().isEmpty() ? null : "action:page:prev",
                     model.hasNext() && model.nextCursor() != null ? "action:page:next" : null,
                     "action:refresh"))).row();
@@ -437,7 +435,7 @@ public class AuditHistoryUiController implements UiController<AuditHistoryUiCont
                 window.add(Ui.table(bar -> {
                     bar.layout(l -> l.padTop(GAP));
                     bar.add(Kit.actions(width, List.of(
-                            new Kit.Action(Iconc.left + " " + t(local, "back", "Back"), "action:back"))));
+                            new Kit.Action(Iconc.left + " " + t(local, "back"), "action:back"))));
                 })).row();
             }
         });
@@ -455,12 +453,12 @@ public class AuditHistoryUiController implements UiController<AuditHistoryUiCont
             second = model.feedbackMessage();
         } else if (model.screen() == ViewScreen.DETAILS) {
             second = sanctions
-                    ? "[#" + Accent.ORANGE.color() + "]" + Iconc.warning + " " + t(local, "audit-menu-tab-sanctions", "Sanctions") + "[]"
-                    : "[#" + Accent.GOLD.color() + "]" + Iconc.admin + " " + t(local, "audit-menu-tab-actions", "Staff actions") + "[]";
+                    ? "[#" + Accent.ORANGE.color() + "]" + Iconc.warning + " " + t(local, "audit-menu-tab-sanctions") + "[]"
+                    : "[#" + Accent.GOLD.color() + "]" + Iconc.admin + " " + t(local, "audit-menu-tab-actions") + "[]";
         } else {
             second = "[lightgray]" + (sanctions
-                    ? t(local, "audit-menu-history-hint", "Sanctions against the player")
-                    : t(local, "audit-menu-actions-hint", "Actions taken by the player")) + "[]";
+                    ? t(local, "audit-menu-history-hint")
+                    : t(local, "audit-menu-actions-hint")) + "[]";
         }
         return Kit.header(width, name + "\n" + second);
     }
@@ -470,9 +468,9 @@ public class AuditHistoryUiController implements UiController<AuditHistoryUiCont
         boolean sanctions = model.mode() == AuditViewMode.TARGET;
         if (model.isViewerAdmin()) {
             slot.add(Kit.tabs(width, "audit_mode", List.of(
-                    new Kit.Tab(Iconc.warning, t(local, "audit-menu-tab-sanctions", "Sanctions"),
+                    new Kit.Tab(Iconc.warning, t(local, "audit-menu-tab-sanctions"),
                             "action:mode:TARGET", Accent.ORANGE, sanctions),
-                    new Kit.Tab(Iconc.admin, t(local, "audit-menu-tab-actions", "Staff actions"),
+                    new Kit.Tab(Iconc.admin, t(local, "audit-menu-tab-actions"),
                             "action:mode:ACTOR", Accent.GOLD, !sanctions)))).row();
         }
         slot.add(Kit.line(width, sanctions ? Accent.ORANGE : Accent.GOLD)).row();
@@ -488,11 +486,11 @@ public class AuditHistoryUiController implements UiController<AuditHistoryUiCont
     private static String resolveFilterLabel(ActionFilter filter, Localization local) {
         if (local == null) return filter.name();
         return switch (filter) {
-            case ALL -> local.t("audit-menu-filter-all");
-            case BANS -> local.t("audit-menu-filter-bans");
-            case MUTES -> local.t("audit-menu-filter-mutes");
-            case WARNS -> local.t("audit-menu-filter-warns");
-            case OTHER -> local.t("audit-menu-filter-other");
+            case ALL -> t(local, "audit-menu-filter-all");
+            case BANS -> t(local, "audit-menu-filter-bans");
+            case MUTES -> t(local, "audit-menu-filter-mutes");
+            case WARNS -> t(local, "audit-menu-filter-warns");
+            case OTHER -> t(local, "audit-menu-filter-other");
         };
     }
 
@@ -504,8 +502,8 @@ public class AuditHistoryUiController implements UiController<AuditHistoryUiCont
         return Kit.pane(screen, body -> {
             if (filtered.isEmpty()) {
                 body.add(Kit.note(screen.cards(), model.mode() == AuditViewMode.TARGET
-                        ? t(local, "audit-menu-history-empty", "No audit entries found for this player yet.")
-                        : t(local, "audit-menu-actions-empty", "No audit actions found for this player yet."))).row();
+                        ? t(local, "audit-menu-history-empty")
+                        : t(local, "audit-menu-actions-empty"))).row();
                 return;
             }
             List<VNode> rows = new ArrayList<>();
@@ -539,7 +537,7 @@ public class AuditHistoryUiController implements UiController<AuditHistoryUiCont
                 ? "-" : DATE_TIME_FORMAT.format(Instant.ofEpochMilli(item.createdAtEpochMs()))) + "[]";
 
         String reason = item.reason() == null || item.reason().isBlank()
-                ? t(local, "audit-menu-reason-unspecified", "Not specified")
+                ? t(local, "audit-menu-reason-unspecified")
                 : item.reason().trim().replaceAll("\\s+", " ");
 
         return TextWidth.fit(what, width) + "\n" + TextWidth.fit(whom, width) + "\n"
@@ -557,7 +555,7 @@ public class AuditHistoryUiController implements UiController<AuditHistoryUiCont
 
             Kit.body(window, screen, body -> {
                 if (rec == null) {
-                    body.add(Kit.note(screen.cards(), t(local, "audit-menu-details-unavailable", "The record is unavailable."))).row();
+                    body.add(Kit.note(screen.cards(), t(local, "audit-menu-details-unavailable"))).row();
                     return;
                 }
                 body.add(Kit.columns(screen,
@@ -566,9 +564,9 @@ public class AuditHistoryUiController implements UiController<AuditHistoryUiCont
             });
 
             List<Kit.Action> actions = new ArrayList<>();
-            actions.add(new Kit.Action(Iconc.left + " " + t(local, "audit-menu-btn-back", "Back to history"), "action:back_to_list"));
+            actions.add(new Kit.Action(Iconc.left + " " + t(local, "audit-menu-btn-back"), "action:back_to_list"));
             if (rec != null) {
-                actions.add(new Kit.Action(Iconc.copy + " " + t(local, "audit-menu-btn-copy-id", "Copy ID"), "action:copy_id:" + rec.auditId));
+                actions.add(new Kit.Action(Iconc.copy + " " + t(local, "audit-menu-btn-copy-id"), "action:copy_id:" + rec.auditId));
             }
             window.add(Ui.table(bar -> {
                 bar.layout(l -> l.padTop(GAP));
@@ -586,42 +584,42 @@ public class AuditHistoryUiController implements UiController<AuditHistoryUiCont
             if (!status.isEmpty()) lines.add(status);
 
             String target = rec.target != null && rec.target.nameSnapshot != null
-                    ? rec.target.nameSnapshot : t(local, "audit-menu-unknown-target", "Unknown");
+                    ? rec.target.nameSnapshot : t(local, "audit-menu-unknown-target");
             String actor = rec.actor != null && rec.actor.nameSnapshot != null
-                    ? rec.actor.nameSnapshot : t(local, "audit-menu-unknown-actor", "Unknown");
-            lines.add(field(local, "audit-menu-field-target", "Player") + " [white]" + TextWidth.escape(target) + "[]");
-            lines.add(field(local, "audit-menu-field-actor", "Performed by") + " [white]" + TextWidth.escape(actor) + "[]"
+                    ? rec.actor.nameSnapshot : t(local, "audit-menu-unknown-actor");
+            lines.add(field(local, "audit-menu-field-target") + " [white]" + TextWidth.escape(target) + "[]");
+            lines.add(field(local, "audit-menu-field-actor") + " [white]" + TextWidth.escape(actor) + "[]"
                     + (rec.actor != null && rec.actor.type != null ? " [gray](" + rec.actor.type + ")[]" : ""));
             if (rec.origin != null && rec.origin.serverId != null && !rec.origin.serverId.isBlank()) {
-                lines.add(field(local, "audit-menu-field-server", "Server") + " [sky]" + TextWidth.escape(rec.origin.serverId) + "[]");
+                lines.add(field(local, "audit-menu-field-server") + " [sky]" + TextWidth.escape(rec.origin.serverId) + "[]");
             }
             content.add(Kit.text(String.join("\n", lines), inner)).row();
         });
     }
 
     private VNode reasonCard(AuditRecord rec, float width, Localization local) {
-        return Kit.card(width, Accent.GRAY, Iconc.chat + " " + t(local, "audit-menu-field-reason", "Reason"), (content, inner) -> {
+        return Kit.card(width, Accent.GRAY, Iconc.chat + " " + t(local, "audit-menu-field-reason"), (content, inner) -> {
             String reason = rec.reason != null && !rec.reason.isBlank()
-                    ? rec.reason : t(local, "audit-menu-reason-unspecified", "Not specified");
+                    ? rec.reason : t(local, "audit-menu-reason-unspecified");
             content.add(Kit.text("[white]" + TextWidth.escape(reason) + "[]", inner)).row();
         });
     }
 
     private VNode timeCard(AuditRecord rec, float width, Localization local) {
-        return Kit.card(width, Accent.BLUE, Iconc.refresh + " " + t(local, "audit-menu-section-time", "Time"), (content, inner) -> {
+        return Kit.card(width, Accent.BLUE, Iconc.refresh + " " + t(local, "audit-menu-section-time"), (content, inner) -> {
             List<String> lines = new ArrayList<>();
-            lines.add(field(local, "audit-menu-field-occurred", "When") + " [white]"
+            lines.add(field(local, "audit-menu-field-occurred") + " [white]"
                     + (rec.occurredAt != null ? DATE_TIME_FORMAT.format(rec.occurredAt) : "-") + "[]");
             if (rec.details != null && rec.details.durationMs != null) {
                 long minutes = Math.max(1L, rec.details.durationMs / 60000L);
-                lines.add(field(local, "audit-menu-field-duration", "Duration") + " [white]"
+                lines.add(field(local, "audit-menu-field-duration") + " [white]"
                         + PlayerProfileUiController.formatDuration((int) minutes, local) + "[]");
             } else if (rec.action == AuditAction.BAN || rec.action == AuditAction.MUTE) {
-                lines.add(field(local, "audit-menu-field-duration", "Duration") + " [scarlet]"
-                        + t(local, "audit-menu-duration-permanent", "Permanent") + "[]");
+                lines.add(field(local, "audit-menu-field-duration") + " [scarlet]"
+                        + t(local, "audit-menu-duration-permanent") + "[]");
             }
             if (rec.details != null && rec.details.expiresAt != null) {
-                lines.add(field(local, "audit-menu-field-expires", "Expires") + " [white]"
+                lines.add(field(local, "audit-menu-field-expires") + " [white]"
                         + DATE_TIME_FORMAT.format(rec.details.expiresAt) + "[]");
             }
             content.add(Kit.text(String.join("\n", lines), inner)).row();
@@ -635,17 +633,9 @@ public class AuditHistoryUiController implements UiController<AuditHistoryUiCont
 
     // --- Helper Formatters ---
 
-    private static String t(Localization local, String key, String fallback) {
-        return local != null ? local.t(key) : fallback;
-    }
-
-    private static String t(Localization local, String key, java.util.Map<String, Object> args, String fallback) {
-        return local != null ? local.t(key, args) : fallback;
-    }
-
     /** The name of a field of a record, as it stands before its value. */
-    private static String field(Localization local, String key, String fallback) {
-        return "[gray]" + t(local, key, fallback) + ":[]";
+    private static String field(Localization local, String key) {
+        return "[gray]" + t(local, key) + ":[]";
     }
 
     /** An id is one long word, which no label wraps: it is cut into lines that fit {@code width}. */
@@ -708,11 +698,11 @@ public class AuditHistoryUiController implements UiController<AuditHistoryUiCont
     private static String status(AuditAction action, Instant expiresAt, Localization local) {
         if (action != AuditAction.BAN && action != AuditAction.MUTE) return "";
         if (expiresAt == null) {
-            return "[scarlet]" + t(local, "audit-menu-status-permanent", "PERMANENT") + "[]";
+            return "[scarlet]" + t(local, "audit-menu-status-permanent") + "[]";
         }
         if (Instant.now().isBefore(expiresAt)) {
-            return "[scarlet]" + t(local, "audit-menu-status-active", "ACTIVE") + "[]";
+            return "[scarlet]" + t(local, "audit-menu-status-active") + "[]";
         }
-        return "[gray]" + t(local, "audit-menu-status-expired", "EXPIRED") + "[]";
+        return "[gray]" + t(local, "audit-menu-status-expired") + "[]";
     }
 }

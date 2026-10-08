@@ -27,6 +27,7 @@ import java.util.Optional;
 
 import static com.ospx.flubundle.Bundle.args;
 import static org.xcore.plugin.ui.kit.Kit.GAP;
+import static org.xcore.plugin.ui.kit.Texts.t;
 
 /**
  * The server browser ({@code /servers}, {@code /hub}, {@code /play}): a tab per kind of server and
@@ -125,14 +126,14 @@ public class ServerSelectorUiController implements UiController<ServerSelectorUi
         Accent accent = accent(model.selectedCategory());
 
         return Kit.window(window -> {
-            window.add(Kit.header(width, "[accent]" + Iconc.host + "[] [white]" + t("player-servers-title") + "[]\n"
-                    + t("player-servers-online-summary",
+            window.add(Kit.header(width, "[accent]" + Iconc.host + "[] [white]" + t(session, "player-servers-title") + "[]\n"
+                    + t(session, "player-servers-online-summary",
                     args("players", model.totalOnlinePlayers(), "servers", model.totalOnlineServers())))).row();
 
             List<Kit.Tab> tabs = new ArrayList<>();
             for (Category category : Category.values()) {
                 tabs.add(new Kit.Tab(category.icon(),
-                        t(category.bundleKey()) + " [gray]" + model.countForCategory(category) + "[]",
+                        t(session, category.bundleKey()) + " [gray]" + model.countForCategory(category) + "[]",
                         "action:tab:" + category.name().toLowerCase(Locale.ROOT),
                         accent(category), model.selectedCategory() == category));
             }
@@ -160,7 +161,7 @@ public class ServerSelectorUiController implements UiController<ServerSelectorUi
         }
         List<ServerStatus> servers = model.filteredServers();
         if (servers.isEmpty()) {
-            list.add(Kit.note(screen.cards(), t("player-servers-empty-category"))).row();
+            list.add(Kit.note(screen.cards(), t(session, "player-servers-empty-category"))).row();
             return;
         }
         List<VNode> cards = new ArrayList<>();
@@ -194,7 +195,7 @@ public class ServerSelectorUiController implements UiController<ServerSelectorUi
         if (!server.isCurrent()) {
             return TextWidth.fit(name + tag, width);
         }
-        String here = "  " + t("player-servers-badge-current");
+        String here = "  " + t(session, "player-servers-badge-current");
         if (TextWidth.of(name + tag + here) <= width) {
             return name + tag + here;
         }
@@ -203,11 +204,11 @@ public class ServerSelectorUiController implements UiController<ServerSelectorUi
 
     private String load(ServerStatus server) {
         if (!server.online()) {
-            return t("player-servers-offline-badge");
+            return t(session, "player-servers-offline-badge");
         }
         String players = server.isFull()
-                ? t("player-servers-capacity-full", args("players", server.onlinePlayers(), "max", server.maxPlayers()))
-                : t("player-servers-capacity-normal", args("players", server.onlinePlayers(),
+                ? t(session, "player-servers-capacity-full", args("players", server.onlinePlayers(), "max", server.maxPlayers()))
+                : t(session, "player-servers-capacity-normal", args("players", server.onlinePlayers(),
                 "max", server.maxPlayers(), "bar", server.capacityBar()));
         return players + "  [#50fa7b]" + server.tps() + " TPS[]"
                 + (server.pingMs() > 0 ? " [sky]" + server.pingMs() + "ms[]" : "");
@@ -215,20 +216,20 @@ public class ServerSelectorUiController implements UiController<ServerSelectorUi
 
     /** What is going on there, in one line; a space where there is nothing to say keeps the line. */
     private String playing(ServerStatus server, float width) {
-        String wave = server.wave() != null ? " " + t("player-servers-card-wave", args("wave", server.wave())) : "";
+        String wave = server.wave() != null ? " " + t(session, "player-servers-card-wave", args("wave", server.wave())) : "";
         String line;
         if (!server.online()) {
             line = "";
         } else if (server.isCurrent()) {
-            line = t("player-servers-card-current") + wave;
+            line = t(session, "player-servers-card-current") + wave;
         } else if (server.onlinePlayers() == 0) {
-            line = t("player-servers-card-empty");
+            line = t(session, "player-servers-card-empty");
         } else if (server.description() != null && !server.description().isBlank()) {
             line = "[lightgray]" + server.description().trim() + "[]";
         } else if (server.currentMap() != null && !"-".equals(server.currentMap())) {
-            line = t("player-servers-card-map", args("map", server.currentMap())) + wave;
+            line = t(session, "player-servers-card-map", args("map", server.currentMap())) + wave;
         } else if (server.mode() != null && !server.mode().isBlank()) {
-            line = t("player-servers-card-mode", args("mode", server.mode()));
+            line = t(session, "player-servers-card-mode", args("mode", server.mode()));
         } else {
             line = "";
         }
@@ -238,8 +239,8 @@ public class ServerSelectorUiController implements UiController<ServerSelectorUi
     /** The hint and the button that reads the servers anew: side by side where there is room, the button under the hint where not. */
     private VNode footer(Screen screen) {
         float width = screen.width();
-        String hint = "[gray]" + Iconc.info + "[] [lightgray]" + t("player-servers-hint") + "[]";
-        Kit.Action refresh = new Kit.Action("[sky]" + Iconc.refresh + "[] " + t("player-servers-refresh"), "action:refresh");
+        String hint = "[gray]" + Iconc.info + "[] [lightgray]" + t(session, "player-servers-hint") + "[]";
+        Kit.Action refresh = new Kit.Action("[sky]" + Iconc.refresh + "[] " + t(session, "player-servers-refresh"), "action:refresh");
         return Ui.table(footer -> {
             footer.layout(l -> l.padTop(GAP));
             if (screen.columns() > 1) {
@@ -256,14 +257,6 @@ public class ServerSelectorUiController implements UiController<ServerSelectorUi
                 footer.add(Kit.button(refresh, width)).row();
             }
         });
-    }
-
-    private String t(String key) {
-        return session != null ? session.locale().t(key) : key;
-    }
-
-    private String t(String key, Map<String, Object> args) {
-        return session != null ? session.locale().t(key, args) : key;
     }
 
     @Override
@@ -303,7 +296,7 @@ public class ServerSelectorUiController implements UiController<ServerSelectorUi
 
     private ConnectionAttempt rejected(String key, Map<String, Object> arguments) {
         session.locale().send(key, arguments);
-        return new ConnectionAttempt(false, t(key, arguments));
+        return new ConnectionAttempt(false, t(session, key, arguments));
     }
 
     private ConnectionAttempt handleConnect(String serverId) {

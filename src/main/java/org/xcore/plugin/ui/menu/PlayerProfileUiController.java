@@ -39,6 +39,8 @@ import java.util.Set;
 
 import static com.ospx.flubundle.Bundle.args;
 import static org.xcore.plugin.ui.kit.Kit.GAP;
+import static org.xcore.plugin.ui.kit.Texts.locale;
+import static org.xcore.plugin.ui.kit.Texts.t;
 
 /**
  * A player's profile ({@code /stats}) and the list of who is online ({@code /players}) as tabs of
@@ -408,7 +410,7 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
 
     public static String formatDuration(int totalMinutes, Localization local) {
         if (totalMinutes <= 0) {
-            return local != null ? local.t("player-menu-time-minutes", args("value", 0)) : "0m";
+            return t(local, "player-menu-time-minutes", args("value", 0), "0m");
         }
 
         int days = totalMinutes / (60 * 24);
@@ -416,20 +418,16 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
         int minutes = totalMinutes % 60;
 
         StringBuilder result = new StringBuilder();
-        if (days > 0 && local != null) {
-            result.append(local.t("player-menu-time-days", args("value", days)));
-        } else if (days > 0) {
-            result.append(days).append("d");
+        if (days > 0) {
+            result.append(t(local, "player-menu-time-days", args("value", days), days + "d"));
         }
         if (hours > 0) {
             if (!result.isEmpty()) result.append(' ');
-            if (local != null) result.append(local.t("player-menu-time-hours", args("value", hours)));
-            else result.append(hours).append("h");
+            result.append(t(local, "player-menu-time-hours", args("value", hours), hours + "h"));
         }
         if (minutes > 0 || result.isEmpty()) {
             if (!result.isEmpty()) result.append(' ');
-            if (local != null) result.append(local.t("player-menu-time-minutes", args("value", minutes)));
-            else result.append(minutes).append("m");
+            result.append(t(local, "player-menu-time-minutes", args("value", minutes), minutes + "m"));
         }
 
         return result.toString();
@@ -514,7 +512,7 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
                 }
 
                 if (target == null) {
-                    String err = session != null ? session.locale().t("error-player-not-found") : "Player not found";
+                    String err = t(session, "error-player-not-found");
                     yield UpdateResult.rerender(model.withFeedback("[scarlet]" + Iconc.warning + " " + err + "[]"));
                 }
 
@@ -633,7 +631,7 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
     /** The window as one {@link Screen} sees it. */
     VNode window(ProfileModel model, Screen screen) {
         float width = screen.width();
-        Localization local = session != null ? session.locale() : null;
+        Localization local = locale(session);
         boolean players = model.tab() == Tab.PLAYERS;
 
         return Kit.window(window -> {
@@ -649,9 +647,8 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
                             accent(Tab.OVERVIEW), model.tab() == Tab.OVERVIEW),
                     new Kit.Tab(Iconc.chartBar, t(local, "player-stats-tab-stats"), "action:tab:stats",
                             accent(Tab.STATS), model.tab() == Tab.STATS),
-                    new Kit.Tab(Iconc.players, local != null
-                            ? local.t("player-stats-tab-players", args("count", model.totalOnlineCount()))
-                            : "Online (" + model.totalOnlineCount() + ")", "action:tab:players",
+                    new Kit.Tab(Iconc.players,
+                            t(local, "player-stats-tab-players", args("count", model.totalOnlineCount())), "action:tab:players",
                             accent(Tab.PLAYERS), players)))).row();
             window.add(Kit.line(width, accent(model.tab()))).row();
 
@@ -722,10 +719,6 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
             }
         }
         return actions;
-    }
-
-    private static String t(Localization local, String key) {
-        return local != null ? local.t(key) : key;
     }
 
     /**
@@ -841,19 +834,16 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
         // The rank of the old Hexed mode and the way to the next one.
         right.add(Kit.card(card, (content, inner) -> {
             HexedRank rank = model.hexedRank() != null ? model.hexedRank() : HexedRank.values()[0];
-            String rankName = local != null ? local.t("hexed-ranks-" + rank.name()) : rank.name();
-            String points = local != null
-                    ? local.t("player-stats-hexed-points", args("points", model.hexedPoints()))
-                    : "(" + model.hexedPoints() + " pts)";
+            String rankName = t(local, "hexed-ranks-" + rank.name(), rank.name());
+            String points = t(local, "player-stats-hexed-points", args("points", model.hexedPoints()));
             String progress;
             if (!rank.hasNext()) {
                 progress = t(local, "player-stats-max-rank");
             } else {
                 int remaining = Math.max(0, rank.next.requirements.wins() - model.hexedPoints());
-                String nextRank = local != null ? local.t("hexed-ranks-" + rank.next.name()) : rank.next.name();
-                progress = renderHexedProgressBar(rank, model.hexedPoints(), 14) + "  " + (local != null
-                        ? local.t("player-stats-hexed-wins-left", args("wins", remaining, "rank", nextRank))
-                        : remaining + " wins to " + nextRank);
+                String nextRank = t(local, "hexed-ranks-" + rank.next.name(), rank.next.name());
+                progress = renderHexedProgressBar(rank, model.hexedPoints(), 14) + "  "
+                        + t(local, "player-stats-hexed-wins-left", args("wins", remaining, "rank", nextRank));
             }
             content.add(Kit.text(t(local, "player-stats-hexed-rank") + " " + (rank.tag != null ? rank.tag : "")
                     + " [white]" + rankName + "[] " + points + "\n"
@@ -884,10 +874,8 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
         // Every game of every mode together.
         left.add(Kit.card(card, (content, inner) -> content.add(Kit.text(
                 t(local, "player-stats-total-games") + " [white]" + nf.format(overall.gamesPlayed()) + "[]\n"
-                        + (local != null
-                        ? local.t("player-stats-victories-value",
-                        args("wins", nf.format(overall.gamesWon()), "winRate", overall.winRatePercent()))
-                        : overall.gamesWon() + " wins | " + overall.winRatePercent() + "% win rate"),
+                        + t(local, "player-stats-victories-value",
+                        args("wins", nf.format(overall.gamesWon()), "winRate", overall.winRatePercent())),
                 inner)).row()));
 
         // Mode by mode: the rating ladders first, then the modes that keep no rating.
@@ -900,20 +888,16 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
             ModeStatsSummary survival = overview.survival();
             modes.add("[green]" + Iconc.defense + "[] " + t(local, "player-stats-survival-summary") + " "
                     + (survival.hasData()
-                    ? games(local, nf, survival.gamesPlayed()) + SEPARATOR + (local != null
-                    ? local.t("player-stats-waves-summary",
+                    ? games(local, nf, survival.gamesPlayed()) + SEPARATOR + t(local, "player-stats-waves-summary",
                     args("best", nf.format(survival.bestWave()), "avg", nf.format(survival.averageWave())))
-                    : "waves: max " + survival.bestWave() + ", avg " + survival.averageWave())
                     : t(local, "player-menu-player-no-mode-stats")));
             ModeStatsSummary hexed = overview.hexed();
             modes.add("[purple]" + Iconc.star + "[] " + t(local, "player-stats-hexed-summary") + " "
                     + (hexed.hasData()
                     ? games(local, nf, hexed.gamesPlayed()) + SEPARATOR
                     + t(local, "player-stats-victories") + " [lime]" + nf.format(hexed.gamesWon()) + "[]" + SEPARATOR
-                    + (local != null
-                    ? local.t("player-stats-hexed-top-placement",
+                    + t(local, "player-stats-hexed-top-placement",
                     args("best", hexed.bestPlacement(), "top3", hexed.top3Finishes()))
-                    : "best #" + hexed.bestPlacement() + ", top-3: " + hexed.top3Finishes())
                     : t(local, "player-menu-player-no-mode-stats")));
             for (int i = 0; i < modes.size(); i++) {
                 String mode = modes.get(i);
@@ -951,9 +935,7 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
     }
 
     private static String games(Localization local, NumberFormat nf, long count) {
-        return local != null
-                ? local.t("player-stats-games-played-value", args("count", nf.format(count)))
-                : count + " games";
+        return t(local, "player-stats-games-played-value", args("count", nf.format(count)));
     }
 
     // =========================================================================
