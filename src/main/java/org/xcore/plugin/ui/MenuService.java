@@ -19,6 +19,7 @@ import org.xcore.plugin.ui.flow.MenuScreen;
 import org.xcore.plugin.ui.flow.MenuScreenToUiAdapter;
 import org.xcore.plugin.ui.route.MenuRoute;
 import org.xcore.plugin.ui.route.RoutedMenuFlow;
+import org.xcore.plugin.localization.Localization;
 import org.xcore.ui.LocalizerResolver;
 import org.xcore.ui.VNode;
 import org.xcore.ui.VNodeCompiler;
@@ -323,7 +324,18 @@ public class MenuService {
         if (session == null || session.locale() == null) {
             return LocalizerResolver.IDENTITY;
         }
-        return (key, args) -> session.locale().format(key, args);
+        return new LocalizerResolver() {
+            @Override
+            public String format(String key, Map<String, Object> args) {
+                return session.locale().format(key, args);
+            }
+
+            @Override
+            public boolean has(String key) {
+                Localization localization = session.locale();
+                return localization.bundle().has(localization.getLocale(), key);
+            }
+        };
     }
 
     public <TState> void renderFlow(Session session, MenuFlow<TState> flow) {

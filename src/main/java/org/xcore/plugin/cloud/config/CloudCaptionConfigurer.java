@@ -2,48 +2,45 @@ package org.xcore.plugin.cloud.config;
 
 import com.ospx.flubundle.Bundle;
 import jakarta.inject.Inject;
-import jakarta.inject.Provider;
 import jakarta.inject.Singleton;
 import org.incendo.cloud.caption.Caption;
-import org.xcore.plugin.XcorePlugin;
 import org.xcore.cloud.mindustry.MindustryCommandManager;
 import org.xcore.plugin.cloud.XCoreSender;
-import org.xcore.plugin.localization.BundlePlaceholderRegistry;
-import org.xcore.plugin.session.SessionService;
 
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 @Singleton
 public class CloudCaptionConfigurer {
 
     private final Bundle bundle;
-    private final Provider<SessionService> sessionService;
-    private final BundlePlaceholderRegistry placeholderRegistry;
 
     @Inject
-    public CloudCaptionConfigurer(Bundle bundle,
-                                  Provider<SessionService> sessionService) {
+    public CloudCaptionConfigurer(Bundle bundle) {
         this.bundle = bundle;
-        this.sessionService = sessionService;
-        this.placeholderRegistry = BundlePlaceholderRegistry.fromMod(XcorePlugin.class);
     }
 
     public void configure(MindustryCommandManager<XCoreSender> manager) {
         manager.captionRegistry().registerProvider((caption, recipient) -> {
             String key = bundleKey(caption);
-            if (!placeholderRegistry.containsKey(key)) {
+            if (!bundle.has(key)) {
                 return null;
             }
 
-            Map<String, Object> args = placeholderRegistry.placeholderArgs(key);
-            if (recipient.isPlayer()) {
-                var session = sessionService.get().get(recipient.player());
-                if (session != null) {
-                    return session.locale().format(key, args);
-                }
-            }
-            return bundle.format(recipient.locale(), key, args);
+            return bundle.format(recipient.locale(), key, placeholderArgs(key));
         });
+    }
+
+    /**
+     * Renders each {@code $variable} of the message as a {@code <variable>} placeholder, which Cloud
+     * then fills with the caption variables.
+     */
+    private Map<String, Object> placeholderArgs(String key) {
+        var args = new LinkedHashMap<String, Object>();
+        for (String name : bundle.variables(key)) {
+            args.put(name, "<" + name + ">");
+        }
+        return args;
     }
 
     /**

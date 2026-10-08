@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+- Updated FluBundle to 1.8.0. The language a player selects in settings now applies to every message sent through the shared bundle, including messages from dependent plugins such as HexedCore (`SessionLocaleResolver`).
+- Cloud captions read message placeholders from the loaded bundle instead of re-parsing FTL files; `BundlePlaceholderRegistry` is removed.
+- Missing bundle keys are logged once per key.
+
+### Added
+- Test that every translation uses the same `$variables` as the English bundle.
+
 ## [5.0.0] - 2026-10-07
 
 ### Breaking changes
