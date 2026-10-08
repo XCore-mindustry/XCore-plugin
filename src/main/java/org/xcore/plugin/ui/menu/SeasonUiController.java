@@ -22,6 +22,8 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import static org.xcore.plugin.ui.kit.Kit.GAP;
+import static org.xcore.plugin.ui.kit.Texts.locale;
+import static org.xcore.plugin.ui.kit.Texts.t;
 
 /**
  * The {@code /season} dialog: one card per rating ladder with its current season, the time it
@@ -96,16 +98,16 @@ public class SeasonUiController implements UiController<SeasonUiController.Seaso
     /** The window as one {@link Screen} sees it. */
     VNode window(SeasonModel model, Screen screen) {
         float width = screen.width();
-        Localization local = session != null ? session.locale() : null;
+        Localization local = locale(session);
 
         return Kit.window(window -> {
             window.add(Kit.header(width, "[gold]" + Iconc.star + "[] [white]"
-                    + (local != null ? local.t("season-menu-title") : "season-menu-title") + "[]")).row();
+                    + t(local, "season-menu-title") + "[]")).row();
             window.add(Kit.line(width, Accent.GOLD)).row();
 
             Kit.body(window, screen, body -> {
                 if (model.ladders().isEmpty() || local == null) {
-                    body.add(Kit.note(screen.cards(), local != null ? local.t("season-menu-empty") : "season-menu-empty")).row();
+                    body.add(Kit.note(screen.cards(), t(local, "season-menu-empty"))).row();
                     return;
                 }
                 List<VNode> cards = new ArrayList<>();
@@ -132,7 +134,7 @@ public class SeasonUiController implements UiController<SeasonUiController.Seaso
             if (entry.topCategoryId() != null) {
                 content.add(Ui.table(open -> {
                     open.layout(l -> l.padTop(GAP));
-                    open.add(Kit.button(new Kit.Action("[accent]" + Iconc.list + "[] " + local.t("season-menu-open-top"),
+                    open.add(Kit.button(new Kit.Action("[accent]" + Iconc.list + "[] " + t(local, "season-menu-open-top"),
                             "action:top:" + entry.topCategoryId()), inner));
                 })).row();
             }

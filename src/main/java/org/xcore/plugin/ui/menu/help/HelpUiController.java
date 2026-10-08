@@ -27,6 +27,8 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 import static org.xcore.plugin.ui.kit.Kit.GAP;
+import static org.xcore.plugin.ui.kit.Texts.locale;
+import static org.xcore.plugin.ui.kit.Texts.t;
 
 /**
  * The command browser ({@code /help}): a tab per kind of command, the commands of a page as rows
@@ -168,8 +170,8 @@ public class HelpUiController implements UiController<HelpUiModel, HelpUiEvent> 
         float width = screen.width();
 
         return Kit.window(window -> {
-            window.add(Kit.header(width, "[accent]" + Iconc.bookOpen + "[] [white]" + t("help-ui-title") + "[]\n"
-                    + t("help-ui-summary", Map.of("count", model.allCommands().size())))).row();
+            window.add(Kit.header(width, "[accent]" + Iconc.bookOpen + "[] [white]" + t(session, "help-ui-title") + "[]\n"
+                    + t(session, "help-ui-summary", Map.of("count", model.allCommands().size())))).row();
 
             List<Kit.Tab> tabs = new ArrayList<>();
             for (HelpCategory category : HelpCategory.values()) {
@@ -177,7 +179,7 @@ public class HelpUiController implements UiController<HelpUiModel, HelpUiEvent> 
                     continue;
                 }
                 tabs.add(new Kit.Tab(category.icon(),
-                        t(category.bundleKey()) + " [gray]" + model.countForCategory(category) + "[]",
+                        t(session, category.bundleKey()) + " [gray]" + model.countForCategory(category) + "[]",
                         "action:tab:" + category.name().toLowerCase(Locale.ROOT),
                         Accent.of(category.colorHex()), model.selectedCategory() == category));
             }
@@ -205,7 +207,7 @@ public class HelpUiController implements UiController<HelpUiModel, HelpUiEvent> 
         return Ui.table(bar -> {
             bar.layout(l -> l.padTop(GAP).padBottom(GAP));
             bar.field("field_help_search", f -> f.value(model.searchQuery())
-                    .hint(arc.util.Strings.stripColors(t("help-ui-search-hint")))
+                    .hint(arc.util.Strings.stripColors(t(session, "help-ui-search-hint")))
                     .enter("action:search")
                     .layout(l -> l.width(field).height(Kit.FIELD_HEIGHT).padRight(Kit.TAB_GAP)));
             bar.button(Text.raw("[accent]" + Iconc.zoom + "[]"), "action:search", b -> b.style("flatBordert")
@@ -218,7 +220,7 @@ public class HelpUiController implements UiController<HelpUiModel, HelpUiEvent> 
     private void commands(Ui.TableBuilder list, HelpUiModel model, Screen screen) {
         List<HelpCommandItem> commands = model.pageCommands();
         if (commands.isEmpty()) {
-            list.add(Kit.note(screen.cards(), t(model.searchQuery().isBlank()
+            list.add(Kit.note(screen.cards(), t(session, model.searchQuery().isBlank()
                     ? "help-ui-empty-category" : "help-ui-search-empty"))).row();
             return;
         }
@@ -233,7 +235,7 @@ public class HelpUiController implements UiController<HelpUiModel, HelpUiEvent> 
             float text = inner - STRIPE - GAP;
             row.add(Ui.image("whiteui", l -> l.width(STRIPE).growY().padRight(GAP)
                     .color(command.category().colorHex())));
-            row.add(Kit.text(rowText(command, text, session != null ? session.locale() : null), text));
+            row.add(Kit.text(rowText(command, text, locale(session)), text));
         });
     }
 
@@ -246,9 +248,8 @@ public class HelpUiController implements UiController<HelpUiModel, HelpUiEvent> 
         int space = syntax.indexOf(' ');
         String arguments = space < 0 ? "" : " [gray]" + TextWidth.escape(syntax.substring(space + 1)) + "[]";
         String overloads = command.syntaxes().size() > 1
-                ? "  [darkgray]" + (local != null
-                ? local.t("help-ui-overloads", Map.of("count", command.syntaxes().size()))
-                : "(" + command.syntaxes().size() + ")") + "[]"
+                ? "  [darkgray]" + t(local, "help-ui-overloads", Map.of("count", command.syntaxes().size()),
+                "(" + command.syntaxes().size() + ")") + "[]"
                 : "";
         String first = (command.isAdminOnly() ? "[scarlet]" + Iconc.admin + "[] " : "")
                 + "[accent]/" + command.name() + "[]" + arguments + overloads;
@@ -268,10 +269,10 @@ public class HelpUiController implements UiController<HelpUiModel, HelpUiEvent> 
         Accent accent = Accent.of(category.colorHex());
 
         return Kit.window(window -> {
-            window.add(Kit.header(width, "[accent]" + Iconc.bookOpen + "[] [white]" + t("help-ui-title") + "[]\n"
+            window.add(Kit.header(width, "[accent]" + Iconc.bookOpen + "[] [white]" + t(session, "help-ui-title") + "[]\n"
                     + (command.isAdminOnly() ? "[scarlet]" + Iconc.admin + "[] " : "")
                     + "[accent]/" + command.name() + "[]  [#" + category.colorHex() + "]" + category.icon() + " "
-                    + t(category.bundleKey()) + "[]")).row();
+                    + t(session, category.bundleKey()) + "[]")).row();
             window.add(Kit.line(width, accent)).row();
 
             Kit.body(window, screen, body -> {
@@ -285,18 +286,18 @@ public class HelpUiController implements UiController<HelpUiModel, HelpUiEvent> 
                                 .collect(Collectors.joining("[gray],[] "));
                         content.add(Ui.table(line -> {
                             line.layout(l -> l.padTop(GAP));
-                            line.add(Kit.text(t("help-ui-aliases", Map.of("aliases", aliases)), inner));
+                            line.add(Kit.text(t(session, "help-ui-aliases", Map.of("aliases", aliases)), inner));
                         })).row();
                     }
                 }));
-                left.add(Kit.card(screen.card(), accent, Iconc.edit + " " + t("help-ui-syntax-title"), (content, inner) ->
+                left.add(Kit.card(screen.card(), accent, Iconc.edit + " " + t(session, "help-ui-syntax-title"), (content, inner) ->
                         content.add(Kit.text(command.syntaxes().stream()
                                 .map(syntax -> "[accent]/" + TextWidth.escape(syntax) + "[]")
                                 .collect(Collectors.joining("\n")), inner)).row()));
 
                 List<VNode> right = new ArrayList<>();
                 if (!command.arguments().isEmpty()) {
-                    right.add(Kit.card(screen.card(), accent, Iconc.list + " " + t("help-ui-args-title"), (content, inner) -> {
+                    right.add(Kit.card(screen.card(), accent, Iconc.list + " " + t(session, "help-ui-args-title"), (content, inner) -> {
                         for (int i = 0; i < command.arguments().size(); i++) {
                             HelpCommandItem.ArgumentInfo argument = command.arguments().get(i);
                             boolean first = i == 0;
@@ -311,12 +312,12 @@ public class HelpUiController implements UiController<HelpUiModel, HelpUiEvent> 
             });
 
             List<Kit.Action> actions = new ArrayList<>();
-            actions.add(new Kit.Action("[accent]" + Iconc.left + "[] " + t("help-ui-btn-back"), "action:back"));
+            actions.add(new Kit.Action("[accent]" + Iconc.left + "[] " + t(session, "help-ui-btn-back"), "action:back"));
             if (command.hasNoRequiredArgs()) {
-                actions.add(new Kit.Action("[green]" + Iconc.play + "[] " + t("help-ui-btn-run"),
+                actions.add(new Kit.Action("[green]" + Iconc.play + "[] " + t(session, "help-ui-btn-run"),
                         "action:run:" + command.name()));
             }
-            actions.add(new Kit.Action("[sky]" + Iconc.copy + "[] " + t("help-ui-btn-copy"),
+            actions.add(new Kit.Action("[sky]" + Iconc.copy + "[] " + t(session, "help-ui-btn-copy"),
                     "action:copy:" + command.primarySyntax()));
             window.add(Ui.table(bar -> {
                 bar.layout(l -> l.padTop(GAP));
@@ -330,18 +331,10 @@ public class HelpUiController implements UiController<HelpUiModel, HelpUiEvent> 
         String name = argument.required()
                 ? "[scarlet]<" + TextWidth.escape(argument.name()) + ">[]"
                 : "[sky][[" + TextWidth.escape(argument.name()) + "][]";
-        String kind = t(argument.required() ? "help-ui-arg-required" : "help-ui-arg-optional");
+        String kind = t(session, argument.required() ? "help-ui-arg-required" : "help-ui-arg-optional");
         String description = argument.description() == null || argument.description().isBlank()
                 ? "" : "\n[white]" + argument.description() + "[]";
         return name + "  [gray]—[] " + kind + "[]" + description;
-    }
-
-    private String t(String key) {
-        return session != null ? session.locale().t(key) : key;
-    }
-
-    private String t(String key, Map<String, Object> args) {
-        return session != null ? session.locale().t(key, args) : key;
     }
 
     private static final java.util.regex.Pattern ADMIN_ONLY_PATTERN = java.util.regex.Pattern.compile(

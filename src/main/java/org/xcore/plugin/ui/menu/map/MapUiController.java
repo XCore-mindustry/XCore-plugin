@@ -37,6 +37,7 @@ import static org.xcore.plugin.ui.kit.Kit.GLYPH_BUTTON;
 import static org.xcore.plugin.ui.kit.Kit.MARGIN;
 import static org.xcore.plugin.ui.kit.Kit.PAD;
 import static org.xcore.plugin.ui.kit.Kit.TAB_GAP;
+import static org.xcore.plugin.ui.kit.Texts.t;
 
 /**
  * Modern reactive controller for Map browsing, inspection, texture streaming,
@@ -282,8 +283,8 @@ public class MapUiController implements UiController<MapUiModel, MapUiEvent> {
     private VNode browser(MapUiModel model, Screen screen) {
         float width = screen.width();
         return Kit.window(window -> {
-            window.add(Kit.header(width, "[accent]" + Iconc.map + "[] [white]" + t("map-maps") + "[]\n"
-                    + t("map-ui-total", args("count", model.totalMapsCount())))).row();
+            window.add(Kit.header(width, "[accent]" + Iconc.map + "[] [white]" + t(session, "map-maps") + "[]\n"
+                    + t(session, "map-ui-total", args("count", model.totalMapsCount())))).row();
             window.add(Kit.line(width, Accent.GOLD)).row();
             window.add(search(model, width)).row();
 
@@ -305,7 +306,7 @@ public class MapUiController implements UiController<MapUiModel, MapUiEvent> {
             bar.layout(l -> l.padBottom(GAP));
             bar.field("field_search", f -> f
                     .value(model.searchQuery())
-                    .hint(Strings.stripColors(t("map-ui-search-hint")))
+                    .hint(Strings.stripColors(t(session, "map-ui-search-hint")))
                     .enter("action:search")
                     .layout(l -> l.width(field).height(FIELD_HEIGHT).padRight(TAB_GAP)));
             bar.button(Text.raw("[accent]" + Iconc.zoom + "[]"), "action:search", b -> b
@@ -316,7 +317,7 @@ public class MapUiController implements UiController<MapUiModel, MapUiEvent> {
 
     private void maps(Ui.TableBuilder body, MapUiModel model, Screen screen) {
         if (model.displayedMaps().isEmpty()) {
-            body.add(Kit.note(screen.cards(), Strings.stripColors(t("map-ui-no-maps-found")))).row();
+            body.add(Kit.note(screen.cards(), Strings.stripColors(t(session, "map-ui-no-maps-found")))).row();
             return;
         }
         List<VNode> rows = new ArrayList<>();
@@ -346,8 +347,8 @@ public class MapUiController implements UiController<MapUiModel, MapUiEvent> {
         float width = screen.width();
         float text = width - 2f * MARGIN;
         return Kit.window(window -> {
-            String author = Strings.stripColors(t("map-ui-by", args("author", Strings.stripColors(model.mapAuthor()))));
-            String mode = Strings.stripColors(t("map-ui-mode", args("mode", model.gamemodeName())));
+            String author = Strings.stripColors(t(session, "map-ui-by", args("author", Strings.stripColors(model.mapAuthor()))));
+            String mode = Strings.stripColors(t(session, "map-ui-mode", args("mode", model.gamemodeName())));
             window.add(Kit.header(width,
                     TextWidth.fit("[accent]" + Iconc.map + "[] [white]" + model.mapName() + "[]", text) + "\n"
                             + TextWidth.fit("[lightgray]" + author + " · " + mode + "[]", text))).row();
@@ -361,7 +362,7 @@ public class MapUiController implements UiController<MapUiModel, MapUiEvent> {
             window.add(Ui.table(bar -> {
                 bar.layout(l -> l.padTop(GAP));
                 bar.add(Kit.actions(width, List.of(
-                        new Kit.Action(Iconc.left + " " + t("map-maps-back"), "action:back_to_list"))));
+                        new Kit.Action(Iconc.left + " " + t(session, "map-maps-back"), "action:back_to_list"))));
             })).row();
         });
     }
@@ -376,7 +377,7 @@ public class MapUiController implements UiController<MapUiModel, MapUiEvent> {
                                 model.previewTextureRegion(), null, VImage.SCALING_FIT));
                         return;
                     }
-                    String note = model.previewLoading() ? t("map-ui-loading") : t("map-ui-no-preview");
+                    String note = model.previewLoading() ? t(session, "map-ui-loading") : t(session, "map-ui-no-preview");
                     slot.add(Ui.table(empty -> {
                         empty.background("whiteui");
                         empty.layout(l -> l.width(PREVIEW_SIZE).height(PREVIEW_SIZE).color(Kit.INSET));
@@ -386,41 +387,41 @@ public class MapUiController implements UiController<MapUiModel, MapUiEvent> {
     }
 
     private VNode aboutCard(MapUiModel model, float width) {
-        return Kit.card(width, Accent.GOLD, Iconc.info + " " + t("map-ui-about-title"), (content, inner) -> {
+        return Kit.card(width, Accent.GOLD, Iconc.info + " " + t(session, "map-ui-about-title"), (content, inner) -> {
             String description = model.mapDescription() == null || model.mapDescription().isBlank()
-                    ? t("map-ui-no-description")
-                    : t("map-ui-description", args("description", model.mapDescription()));
+                    ? t(session, "map-ui-no-description")
+                    : t(session, "map-ui-description", args("description", model.mapDescription()));
             content.add(Kit.text(String.join("\n",
-                    t("map-ui-dimensions", args("width", model.width(), "height", model.height())),
-                    t("map-ui-total-plays", args("played", model.playedTimes(), "playedYear", model.playedTimesYear())),
-                    t("map-ui-last-played", args("lastPlayed", model.lastPlayedFormatted())),
+                    t(session, "map-ui-dimensions", args("width", model.width(), "height", model.height())),
+                    t(session, "map-ui-total-plays", args("played", model.playedTimes(), "playedYear", model.playedTimesYear())),
+                    t(session, "map-ui-last-played", args("lastPlayed", model.lastPlayedFormatted())),
                     description), inner)).row();
         });
     }
 
     /** The vote for this map: how it stands while one runs, and the buttons that start or join it. */
     private VNode rtvCard(MapUiModel model, Screen screen) {
-        return Kit.card(screen.card(), Accent.ORANGE, Iconc.refresh + " " + t("map-ui-rtv-title"), (content, inner) ->
+        return Kit.card(screen.card(), Accent.ORANGE, Iconc.refresh + " " + t(session, "map-ui-rtv-title"), (content, inner) ->
                 content.slot(screen.slot(SLOT_RTV).path(), slot -> {
                     slot.layout(l -> l.width(inner));
                     List<Kit.Action> actions = new ArrayList<>();
                     if (model.rtvActive()) {
                         slot.add(Ui.table(status -> {
                             status.layout(l -> l.padBottom(GAP));
-                            status.add(Kit.centered(t("map-ui-rtv-active-status", args(
+                            status.add(Kit.centered(t(session, "map-ui-rtv-active-status", args(
                                     "votes", model.rtvVotes(),
                                     "required", model.rtvVotesRequired(),
                                     "seconds", model.rtvRemainingSeconds())), inner));
                         })).row();
-                        actions.add(new Kit.Action("[accent]" + Iconc.ok + " " + t("map-ui-rtv-vote-yes") + "[]", "action:rtv"));
+                        actions.add(new Kit.Action("[accent]" + Iconc.ok + " " + t(session, "map-ui-rtv-vote-yes") + "[]", "action:rtv"));
                     } else {
-                        actions.add(new Kit.Action("[accent]" + Iconc.play + " " + t("map-ui-rtv-start") + "[]", "action:rtv"));
+                        actions.add(new Kit.Action("[accent]" + Iconc.play + " " + t(session, "map-ui-rtv-start") + "[]", "action:rtv"));
                     }
                     // An admin changes the map at once, on the second press.
                     if (model.isAdmin()) {
                         actions.add(model.adminForceConfirming()
-                                ? new Kit.Action("[scarlet]" + Iconc.warning + " " + t("map-ui-admin-rtv-confirm") + "[]", "action:admin_rtv")
-                                : new Kit.Action("[scarlet]" + Iconc.admin + " " + t("map-ui-admin-rtv") + "[]", "action:admin_rtv"));
+                                ? new Kit.Action("[scarlet]" + Iconc.warning + " " + t(session, "map-ui-admin-rtv-confirm") + "[]", "action:admin_rtv")
+                                : new Kit.Action("[scarlet]" + Iconc.admin + " " + t(session, "map-ui-admin-rtv") + "[]", "action:admin_rtv"));
                     }
                     for (int i = 0; i < actions.size(); i++) {
                         Kit.Action action = actions.get(i);
@@ -435,14 +436,14 @@ public class MapUiController implements UiController<MapUiModel, MapUiEvent> {
 
     /** What players think of the map, and the player's own vote on it. */
     private VNode communityCard(MapUiModel model, Screen screen) {
-        return Kit.card(screen.card(), Accent.GREEN, Iconc.players + " " + t("map-ui-col-community"), (content, inner) ->
+        return Kit.card(screen.card(), Accent.GREEN, Iconc.players + " " + t(session, "map-ui-col-community"), (content, inner) ->
                 content.slot(screen.slot(SLOT_REPUTATION).path(), slot -> {
                     slot.layout(l -> l.width(inner));
                     String score = (model.reputation() > 0 ? "+" : "") + model.reputation();
                     slot.add(Ui.table(numbers -> {
                         numbers.layout(l -> l.padBottom(GAP));
-                        numbers.add(Kit.text(t("map-ui-community-approval", args("rate", model.approvalRatePercent()))
-                                + "\n" + t("map-ui-popularity-score", args("value", score)), inner));
+                        numbers.add(Kit.text(t(session, "map-ui-community-approval", args("rate", model.approvalRatePercent()))
+                                + "\n" + t(session, "map-ui-popularity-score", args("value", score)), inner));
                     })).row();
 
                     // The votes cannot be given until the map's record is read.
@@ -451,33 +452,25 @@ public class MapUiController implements UiController<MapUiModel, MapUiEvent> {
                     boolean disliked = Boolean.FALSE.equals(model.playerVote());
                     slot.add(Kit.actions(inner, List.of(
                             new Kit.Action((liked ? "[green]" + Iconc.ok : "[lightgray]" + Iconc.up) + " "
-                                    + t("map-ui-btn-like", args("count", model.likes())) + "[]", "action:like", ready),
+                                    + t(session, "map-ui-btn-like", args("count", model.likes())) + "[]", "action:like", ready),
                             new Kit.Action((disliked ? "[scarlet]" + Iconc.ok : "[lightgray]" + Iconc.down) + " "
-                                    + t("map-ui-btn-dislike", args("count", model.dislikes())) + "[]", "action:dislike", ready)))).row();
+                                    + t(session, "map-ui-btn-dislike", args("count", model.dislikes())) + "[]", "action:dislike", ready)))).row();
                 }).row());
     }
 
     private VNode durationCard(MapUiModel model, float width) {
-        return Kit.card(width, Accent.BLUE, Iconc.play + " " + t("map-ui-col-duration"), (content, inner) ->
+        return Kit.card(width, Accent.BLUE, Iconc.play + " " + t(session, "map-ui-col-duration"), (content, inner) ->
                 content.add(Kit.text(String.join("\n",
-                        t("map-ui-duration-min", args("value", model.minGameTime())),
-                        t("map-ui-duration-avg", args("value", model.avgGameTime())),
-                        t("map-ui-duration-max", args("value", model.maxGameTime()))), inner)).row());
+                        t(session, "map-ui-duration-min", args("value", model.minGameTime())),
+                        t(session, "map-ui-duration-avg", args("value", model.avgGameTime())),
+                        t(session, "map-ui-duration-max", args("value", model.maxGameTime()))), inner)).row());
     }
 
     private VNode popularityCard(MapUiModel model, float width) {
-        return Kit.card(width, Accent.PURPLE, Iconc.chartBar + " " + t("map-ui-col-popularity"), (content, inner) ->
+        return Kit.card(width, Accent.PURPLE, Iconc.chartBar + " " + t(session, "map-ui-col-popularity"), (content, inner) ->
                 content.add(Kit.text(String.join("\n",
-                        t("map-ui-popularity-pop", args("value", String.format("%.1f", model.popularity()))),
-                        t("map-ui-popularity-interest", args("value", String.format("%.1f", model.interest())))), inner)).row());
-    }
-
-    private String t(String key) {
-        return session != null ? session.locale().t(key) : key;
-    }
-
-    private String t(String key, java.util.Map<String, Object> args) {
-        return session != null ? session.locale().t(key, args) : key;
+                        t(session, "map-ui-popularity-pop", args("value", String.format("%.1f", model.popularity()))),
+                        t(session, "map-ui-popularity-interest", args("value", String.format("%.1f", model.interest())))), inner)).row());
     }
 
     // ==================================================================
@@ -737,8 +730,8 @@ public class MapUiController implements UiController<MapUiModel, MapUiEvent> {
             mindustryMap = mapService.findPersistedMap(data);
         }
 
-        String name = data != null ? data.name : (mindustryMap != null ? mindustryMap.plainName() : "Unknown");
-        String author = data != null ? data.author : (mindustryMap != null ? mindustryMap.author() : "Unknown");
+        String name = data != null ? data.name : (mindustryMap != null ? mindustryMap.plainName() : t(session, "unknown"));
+        String author = data != null ? data.author : (mindustryMap != null ? mindustryMap.author() : t(session, "unknown"));
         String desc = mindustryMap != null ? mindustryMap.description() : "";
         int w = mindustryMap != null ? mindustryMap.width : 0;
         int h = mindustryMap != null ? mindustryMap.height : 0;
@@ -758,7 +751,7 @@ public class MapUiController implements UiController<MapUiModel, MapUiEvent> {
         long plays = data != null ? data.playedTimes : 0L;
         long playsYear = data != null ? data.playedTimesYear : 0L;
         String last = (data == null || data.playedTimes == 0)
-                ? (session != null ? session.locale().t("never") : "")
+                ? t(session, "never")
                 : formatDuration((int) ((System.currentTimeMillis() - data.lastPlayedTime) / 60000));
 
         String minTime = data != null ? formatDuration((int) (data.minimumGameTime / 60000)) : "-";
@@ -937,20 +930,20 @@ public class MapUiController implements UiController<MapUiModel, MapUiEvent> {
         if (minutes < 0) return "-";
         if (session != null) {
             if (minutes <= 0) {
-                return session.locale().t("player-menu-time-minutes", args("value", 0));
+                return t(session, "player-menu-time-minutes", args("value", 0));
             }
             int days = minutes / (60 * 24);
             int hours = (minutes / 60) % 24;
             int mins = minutes % 60;
             StringBuilder result = new StringBuilder();
             if (days > 0) {
-                result.append(session.locale().t("player-menu-time-days", args("value", days))).append(" ");
+                result.append(t(session, "player-menu-time-days", args("value", days))).append(" ");
             }
             if (hours > 0) {
-                result.append(session.locale().t("player-menu-time-hours", args("value", hours))).append(" ");
+                result.append(t(session, "player-menu-time-hours", args("value", hours))).append(" ");
             }
             if (mins > 0 || result.isEmpty()) {
-                result.append(session.locale().t("player-menu-time-minutes", args("value", mins)));
+                result.append(t(session, "player-menu-time-minutes", args("value", mins)));
             }
             return result.toString().trim();
         }
