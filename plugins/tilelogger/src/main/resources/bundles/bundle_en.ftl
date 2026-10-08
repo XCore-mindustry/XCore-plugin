@@ -44,7 +44,7 @@ tilelogger-select-done = [#98ff98]✔ Area selected.[] [#b0b5c8]Tiles:[] [#ffd37
 tilelogger-subnet-accept = [#98ff98]✔ ACCEPTED[] [#b0b5c8]Subnet:[] [#ffd37f]{$subnet}[]
 tilelogger-subnet-deny = [#ff8a8a]✖ DENIED[] [#b0b5c8]Subnet:[] [#ffd37f]{$subnet}[]
 
-tilelogger-fill-success = [#98ff98]✔ Area filled[] [#b0b5c8]with[] {$block}
+tilelogger-fill-success = [#98ff98]✔ Area filled[] [#b0b5c8]with[] {$emoji} {$block}
 
 tilelogger-history-player = [#a4b8ff]📜 History:[] [#ffd37f]{$player}[] [#6e7080]|[] [#b0b5c8]{$time}[]
 tilelogger-history-tile = [#a4b8ff]📜 Tile History:[] [#ffd37f]({$x}, {$y})[] [#6e7080]|[] [#b0b5c8]{$time}[]

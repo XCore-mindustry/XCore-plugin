@@ -238,7 +238,8 @@ public class TileLoggerService {
         }
         if (caller != null) {
             messenger.to(caller).send("tilelogger-fill-success", Args.of(
-                    "block", block.emoji() + " " + block.name
+                    "emoji", block.emoji(),
+                    "block", block
             ));
         }
     }
