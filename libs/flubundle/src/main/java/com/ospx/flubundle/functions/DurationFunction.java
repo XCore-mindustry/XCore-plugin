@@ -1,5 +1,10 @@
 package com.ospx.flubundle.functions;
 
+import com.ibm.icu.number.LocalizedNumberFormatter;
+import com.ibm.icu.number.NumberFormatter;
+import com.ibm.icu.text.ListFormatter;
+import com.ibm.icu.util.MeasureUnit;
+import com.ibm.icu.util.ULocale;
 import fluent.bundle.resolver.Scope;
 import fluent.function.FluentFunction;
 import fluent.function.FluentFunctionException;
@@ -13,9 +18,24 @@ import fluent.types.FluentValue;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
+/**
+ * {@code DURATION($seconds, style: "compact" | "full" | "timer", unit: ..., colored: "true", maxUnits: N)}.
+ *
+ * <p>Unit names and their plural forms come from ICU4J (CLDR), so every locale gets its own words:
+ * {@code compact} uses narrow units joined by spaces ({@code 1h 5m}, {@code 1 ч 5 мин}), {@code full}
+ * uses full unit names joined by the locale's list pattern ({@code 1 hour, 5 minutes},
+ * {@code 1 Stunde und 5 Minuten}). {@code timer} prints {@code [d:]hh:mm:ss} and is not localized.
+ */
 public enum DurationFunction implements FluentFunctionFactory<FluentFunction.Transform> {
     DURATION;
+
+    private static final MeasureUnit[] UNITS = {MeasureUnit.DAY, MeasureUnit.HOUR, MeasureUnit.MINUTE, MeasureUnit.SECOND};
+    private static final long[] UNIT_SECONDS = {86400, 3600, 60, 1};
+
+    private static final Map<String, Formatters> FORMATTERS = new ConcurrentHashMap<>();
 
     @Override
     public FluentFunction.Transform create(Locale locale, Options options) {
@@ -70,17 +90,15 @@ public enum DurationFunction implements FluentFunctionFactory<FluentFunction.Tra
         };
     }
 
-    record UnitPart(long value, String unitName) {}
-
     private static String formatDuration(long totalSec, String style, boolean colored, int maxUnits, Locale locale) {
         long absSec = Math.abs(totalSec);
-        long days = absSec / 86400;
-        long hours = (absSec % 86400) / 3600;
-        long minutes = (absSec % 3600) / 60;
-        long seconds = absSec % 60;
+        String sign = totalSec < 0 ? "-" : "";
 
         if ("timer".equals(style) || "digital".equals(style)) {
-            String sign = totalSec < 0 ? "-" : "";
+            long days = absSec / 86400;
+            long hours = (absSec % 86400) / 3600;
+            long minutes = (absSec % 3600) / 60;
+            long seconds = absSec % 60;
             if (days > 0) {
                 return String.format(Locale.ROOT, "%s%d:%02d:%02d:%02d", sign, days, hours, minutes, seconds);
             } else if (hours > 0) {
@@ -90,99 +108,65 @@ public enum DurationFunction implements FluentFunctionFactory<FluentFunction.Tra
             }
         }
 
-        String lang = locale.getLanguage().toLowerCase(Locale.ROOT);
-        boolean isFull = "full".equals(style) || "words".equals(style);
+        boolean full = "full".equals(style) || "words".equals(style);
+        Formatters formatters = formatters(locale == null ? Locale.ENGLISH : locale, full);
 
-        List<UnitPart> parts = new ArrayList<>();
-        if (days > 0) parts.add(new UnitPart(days, getUnitLabel(days, "day", isFull, lang)));
-        if (hours > 0) parts.add(new UnitPart(hours, getUnitLabel(hours, "hour", isFull, lang)));
-        if (minutes > 0) parts.add(new UnitPart(minutes, getUnitLabel(minutes, "minute", isFull, lang)));
-        if (seconds > 0 || parts.isEmpty()) {
-            parts.add(new UnitPart(seconds, getUnitLabel(seconds, "second", isFull, lang)));
+        List<String> parts = new ArrayList<>();
+        long rest = absSec;
+        for (int i = 0; i < UNITS.length; i++) {
+            long value = rest / UNIT_SECONDS[i];
+            rest %= UNIT_SECONDS[i];
+            boolean lastUnit = i == UNITS.length - 1;
+            if (value > 0 || (lastUnit && parts.isEmpty())) {
+                parts.add(formatters.part(i, value, colored));
+            }
         }
 
         if (maxUnits > 0 && parts.size() > maxUnits) {
             parts = parts.subList(0, maxUnits);
         }
 
-        StringBuilder sb = new StringBuilder();
-        if (totalSec < 0) {
-            sb.append("-");
-        }
+        String joined = full ? formatters.list.format(parts) : String.join(" ", parts);
+        return sign + normalizeSpaces(joined);
+    }
 
-        for (int i = 0; i < parts.size(); i++) {
-            UnitPart p = parts.get(i);
-            if (i > 0) sb.append(" ");
-            if (colored) {
-                sb.append("[white]").append(p.value()).append("[lightgray]");
-                if (isFull) sb.append(" ");
-                sb.append(p.unitName());
-            } else {
-                sb.append(p.value());
-                if (isFull) sb.append(" ");
-                sb.append(p.unitName());
+    private static Formatters formatters(Locale locale, boolean full) {
+        return FORMATTERS.computeIfAbsent(locale.toLanguageTag() + (full ? "#full" : "#compact"),
+                key -> new Formatters(ULocale.forLocale(locale), full));
+    }
+
+    /** Immutable, thread-safe ICU formatters for one locale and style. */
+    private static final class Formatters {
+        private final LocalizedNumberFormatter number;
+        private final LocalizedNumberFormatter[] units = new LocalizedNumberFormatter[UNITS.length];
+        private final ListFormatter list;
+
+        Formatters(ULocale locale, boolean full) {
+            number = NumberFormatter.withLocale(locale);
+            NumberFormatter.UnitWidth width = full ? NumberFormatter.UnitWidth.FULL_NAME : NumberFormatter.UnitWidth.NARROW;
+            for (int i = 0; i < UNITS.length; i++) {
+                units[i] = number.unit(UNITS[i]).unitWidth(width);
             }
-        }
-        return sb.toString();
-    }
-
-    private static String getUnitLabel(long count, String type, boolean isFull, String lang) {
-        if (!isFull) {
-            return switch (type) {
-                case "day" -> ("ru".equals(lang) || "uk".equals(lang) || "be".equals(lang)) ? "д" : "d";
-                case "hour" -> ("ru".equals(lang)) ? "ч" : (("uk".equals(lang) || "be".equals(lang)) ? "г" : "h");
-                case "minute" -> ("ru".equals(lang)) ? "м" : (("uk".equals(lang) || "be".equals(lang)) ? "хв" : "m");
-                case "second" -> ("ru".equals(lang) || "uk".equals(lang) || "be".equals(lang)) ? "с" : "s";
-                default -> "";
-            };
+            list = ListFormatter.getInstance(locale, ListFormatter.Type.UNITS, ListFormatter.Width.WIDE);
         }
 
-        if ("ru".equals(lang)) {
-            return switch (type) {
-                case "day" -> slavicPlural(count, "день", "дня", "дней");
-                case "hour" -> slavicPlural(count, "час", "часа", "часов");
-                case "minute" -> slavicPlural(count, "минута", "минуты", "минут");
-                case "second" -> slavicPlural(count, "секунда", "секунды", "секунд");
-                default -> "";
-            };
-        } else if ("uk".equals(lang)) {
-            return switch (type) {
-                case "day" -> slavicPlural(count, "день", "дні", "днів");
-                case "hour" -> slavicPlural(count, "година", "години", "годин");
-                case "minute" -> slavicPlural(count, "хвилина", "хвилини", "хвилин");
-                case "second" -> slavicPlural(count, "секунда", "секунди", "секунд");
-                default -> "";
-            };
-        } else if ("be".equals(lang)) {
-            return switch (type) {
-                case "day" -> slavicPlural(count, "дзень", "дні", "дзён");
-                case "hour" -> slavicPlural(count, "гадзіна", "гадзіны", "гадзін");
-                case "minute" -> slavicPlural(count, "хвіліна", "хвіліны", "хвілін");
-                case "second" -> slavicPlural(count, "секунда", "секунды", "секунд");
-                default -> "";
-            };
-        } else {
-            return switch (type) {
-                case "day" -> count == 1 ? "day" : "days";
-                case "hour" -> count == 1 ? "hour" : "hours";
-                case "minute" -> count == 1 ? "minute" : "minutes";
-                case "second" -> count == 1 ? "second" : "seconds";
-                default -> "";
-            };
+        String part(int unit, long value, boolean colored) {
+            String text = normalizeSpaces(units[unit].format(value).toString());
+            if (!colored) {
+                return text;
+            }
+            String digits = normalizeSpaces(number.format(value).toString());
+            int at = text.indexOf(digits);
+            if (at < 0) {
+                return "[white]" + text + "[lightgray]";
+            }
+            return text.substring(0, at) + "[white]" + digits + "[lightgray]" + text.substring(at + digits.length());
         }
     }
 
-    private static String slavicPlural(long count, String one, String few, String many) {
-        long n = Math.abs(count);
-        long mod10 = n % 10;
-        long mod100 = n % 100;
-        if (mod10 == 1 && mod100 != 11) {
-            return one;
-        } else if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) {
-            return few;
-        } else {
-            return many;
-        }
+    /** Mindustry's font has no narrow no-break space, and CLDR uses no-break spaces in several locales. */
+    private static String normalizeSpaces(String text) {
+        return text.replace('\u202F', ' ').replace('\u00A0', ' ');
     }
 
     @Override

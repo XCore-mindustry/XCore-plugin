@@ -93,14 +93,12 @@ public class LocalizationFeaturesTest {
         assertEquals("-1m 5s", bundleEn.format(Locale.ENGLISH, "compact", Map.of("time", -65)));
 
         Bundle bundleRu = createBundleWithFtl(ftl, Locale.of("ru"));
-        assertEquals("0с", bundleRu.format(Locale.of("ru"), "compact", Map.of("time", 0)));
-        assertEquals("1м 35с", bundleRu.format(Locale.of("ru"), "compact", Map.of("time", 95)));
-        assertEquals("1ч 1м 5с", bundleRu.format(Locale.of("ru"), "compact", Map.of("time", 3665)));
-        assertEquals("1д 1ч", bundleRu.format(Locale.of("ru"), "compact", Map.of("time", 90000)));
+        assertEquals("0 с", bundleRu.format(Locale.of("ru"), "compact", Map.of("time", 0)));
+        assertEquals("1 мин 35 с", bundleRu.format(Locale.of("ru"), "compact", Map.of("time", 95)));
+        assertEquals("1 ч 1 мин 5 с", bundleRu.format(Locale.of("ru"), "compact", Map.of("time", 3665)));
+        assertEquals("1 д. 1 ч", bundleRu.format(Locale.of("ru"), "compact", Map.of("time", 90000)));
 
         Bundle bundleUk = createBundleWithFtl(ftl, Locale.of("uk"));
-        assertEquals("1хв 35с", bundleUk.format(Locale.of("uk"), "compact", Map.of("time", 95)));
-        assertEquals("1г 1хв 5с", bundleUk.format(Locale.of("uk"), "compact", Map.of("time", 3665)));
         assertEquals("1д 1г", bundleUk.format(Locale.of("uk"), "compact", Map.of("time", 90000)));
     }
 
@@ -121,15 +119,33 @@ public class LocalizationFeaturesTest {
         assertEquals("25 дней", bundleRu.format(Locale.of("ru"), "full", Map.of("time", 25 * 86400)));
 
         Bundle bundleEn = createBundleWithFtl(ftl, Locale.ENGLISH);
-        assertEquals("1 day 1 hour", bundleEn.format(Locale.ENGLISH, "full-max2", Map.of("time", 90000)));
-        assertEquals("[white]1[lightgray] day [white]1[lightgray] hour", bundleEn.format(Locale.ENGLISH, "full-colored", Map.of("time", 90000)));
+        assertEquals("1 day, 1 hour", bundleEn.format(Locale.ENGLISH, "full-max2", Map.of("time", 90000)));
+        assertEquals("[white]1[lightgray] day, [white]1[lightgray] hour", bundleEn.format(Locale.ENGLISH, "full-colored", Map.of("time", 90000)));
         assertEquals("2 days", bundleEn.format(Locale.ENGLISH, "full", Map.of("time", 2 * 86400)));
+        assertEquals("0 seconds", bundleEn.format(Locale.ENGLISH, "full", Map.of("time", 0)));
+        assertEquals("-1 minute, 5 seconds", bundleEn.format(Locale.ENGLISH, "full", Map.of("time", -65)));
 
         Bundle bundleUk = createBundleWithFtl(ftl, Locale.of("uk"));
-        assertEquals("1 день 1 година", bundleUk.format(Locale.of("uk"), "full-max2", Map.of("time", 90000)));
-        assertEquals("[white]1[lightgray] день [white]1[lightgray] година", bundleUk.format(Locale.of("uk"), "full-colored", Map.of("time", 90000)));
+        assertEquals("1 день і 1 година", bundleUk.format(Locale.of("uk"), "full-max2", Map.of("time", 90000)));
         assertEquals("2 дні", bundleUk.format(Locale.of("uk"), "full", Map.of("time", 2 * 86400)));
         assertEquals("5 днів", bundleUk.format(Locale.of("uk"), "full", Map.of("time", 5 * 86400)));
+    }
+
+    @Test
+    void testDurationFunctionUsesCldrForEveryLocale() {
+        String ftl = """
+                full = { DURATION($time, style: "full") }
+                compact = { DURATION($time) }
+                """;
+
+        Map<String, Object> args = Map.of("time", 2 * 3600 + 5 * 60);
+        assertEquals("2 Stunden, 5 Minuten", createBundleWithFtl(ftl, Locale.GERMAN).format(Locale.GERMAN, "full", args));
+        assertEquals("2 godziny i 5 minut", createBundleWithFtl(ftl, Locale.of("pl")).format(Locale.of("pl"), "full", args));
+        assertEquals("2 hodiny a 5 minut", createBundleWithFtl(ftl, Locale.of("cs")).format(Locale.of("cs"), "full", args));
+        assertEquals("2 horas y 5 minutos", createBundleWithFtl(ftl, Locale.of("es")).format(Locale.of("es"), "full", args));
+        assertEquals("2 heures et 5 minutes", createBundleWithFtl(ftl, Locale.FRENCH).format(Locale.FRENCH, "full", args),
+                "no-break spaces are replaced with plain spaces");
+        assertEquals("2h 5min", createBundleWithFtl(ftl, Locale.FRENCH).format(Locale.FRENCH, "compact", args));
     }
 
     @Test
