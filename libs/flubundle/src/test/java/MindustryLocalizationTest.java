@@ -89,6 +89,20 @@ public class MindustryLocalizationTest {
     }
 
     @Test
+    void shippedNamesContainNoBrokenCharacters() {
+        ContentNames names = ContentNames.vanilla();
+        for (String code : names.locales()) {
+            Locale locale = com.ospx.flubundle.LocaleCodes.parse(code);
+            for (String key : List.of("block.exponential-reconstructor.name", "status.electrified.name", "block.router.name")) {
+                String name = names.get(key, locale);
+                assertFalse(name.contains("\uFFFD"), code + " " + key + " = " + name);
+            }
+        }
+        assertEquals("Exponential Reconstructor", names.get("block.exponential-reconstructor.name", Locale.of("nl")),
+                "a corrupted upstream translation falls back to English");
+    }
+
+    @Test
     void teamsAndContentRenderLocalizedAsArguments() {
         Bundle bundle = bundle("""
                 captured = { $team } captured { $item }
