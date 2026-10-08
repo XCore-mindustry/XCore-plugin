@@ -1,7 +1,8 @@
 package tilelogger.event;
 
 import arc.Events;
-import com.ospx.flubundle.Bundle;
+import com.ospx.flubundle.Args;
+import com.ospx.flubundle.mindustry.Messenger;
 import io.avaje.inject.PostConstruct;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
@@ -9,7 +10,6 @@ import mindustry.Vars;
 import mindustry.gen.Player;
 import mindustry.game.EventType;
 import mindustry.world.blocks.power.PowerNode.PowerNodeBuild;
-import org.xcore.plugin.session.SessionService;
 import org.xcore.plugin.vote.VoteKick;
 import tilelogger.PlayerConfig;
 import tilelogger.Rect;
@@ -18,22 +18,17 @@ import tilelogger.service.TileLoggerService;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
-import static com.ospx.flubundle.Bundle.args;
 
 @Singleton
 public class TileLoggerEventHandler {
 
     private final TileLoggerService service;
-    private final Bundle bundle;
-    private final SessionService sessionService;
+    private final Messenger messenger;
 
     @Inject
-    public TileLoggerEventHandler(TileLoggerService service,
-                                  Bundle bundle,
-                                  SessionService sessionService) {
+    public TileLoggerEventHandler(TileLoggerService service, Messenger messenger) {
         this.service = service;
-        this.bundle = bundle;
-        this.sessionService = sessionService;
+        this.messenger = messenger;
     }
 
 
@@ -111,26 +106,16 @@ public class TileLoggerEventHandler {
                     config.rect.x1 = event.tile.x;
                     config.rect.y1 = event.tile.y;
                     config.selectState++;
-                    sendLocalized(event.player, "tilelogger-select-pos1", args());
+                    messenger.to(event.player).send("tilelogger-select-pos1");
                 }
                 case 2 -> {
                     config.rect.x2 = event.tile.x;
                     config.rect.y2 = event.tile.y;
                     config.selectState = 0;
                     config.rect.normalize();
-                    sendLocalized(event.player, "tilelogger-select-done", args("area", config.rect.area()));
+                    messenger.to(event.player).send("tilelogger-select-done", Args.of("area", config.rect.area()));
                 }
             }
         });
-    }
-
-    private void sendLocalized(Player player, String key, java.util.Map<String, Object> args) {
-        var session = sessionService.get(player.uuid());
-        if (session != null) {
-            session.locale().send(key, args);
-            return;
-        }
-
-        bundle.send(player, key, args);
     }
 }

@@ -1,5 +1,6 @@
 package tilelogger.command;
 
+import com.ospx.flubundle.Args;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import org.incendo.cloud.annotations.Argument;
@@ -10,7 +11,6 @@ import tilelogger.PlayerConfig;
 import tilelogger.PlayerDescriptor;
 import tilelogger.service.TileLoggerService;
 
-import static com.ospx.flubundle.Bundle.args;
 
 @Singleton
 public class HistoryController {
@@ -35,7 +35,7 @@ public class HistoryController {
             config.historySize = size;
         }
 
-        sender.send("commands-history-success", args("size", config.historySize));
+        sender.send("commands-history-success", Args.of("size", config.historySize));
     }
 
 
