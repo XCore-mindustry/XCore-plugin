@@ -2,6 +2,7 @@ package tilelogger;
 
 import arc.Events;
 import com.ospx.flubundle.Bundle;
+import com.ospx.flubundle.mindustry.Messenger;
 import mindustry.content.UnitTypes;
 import mindustry.game.EventType;
 import mindustry.game.Team;
@@ -35,7 +36,7 @@ class TileLoggerEventHandlerTest {
 
     @BeforeEach
     void setUp() {
-        handler = new TileLoggerEventHandler(service, Bundle.INSTANCE);
+        handler = new TileLoggerEventHandler(service, Messenger.of(Bundle.INSTANCE));
         handler.init();
     }
 

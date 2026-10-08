@@ -2,7 +2,7 @@ package tilelogger.event;
 
 import arc.Events;
 import com.ospx.flubundle.Args;
-import com.ospx.flubundle.Bundle;
+import com.ospx.flubundle.mindustry.Messenger;
 import io.avaje.inject.PostConstruct;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
@@ -23,12 +23,12 @@ import java.util.Date;
 public class TileLoggerEventHandler {
 
     private final TileLoggerService service;
-    private final Bundle bundle;
+    private final Messenger messenger;
 
     @Inject
-    public TileLoggerEventHandler(TileLoggerService service, Bundle bundle) {
+    public TileLoggerEventHandler(TileLoggerService service, Messenger messenger) {
         this.service = service;
-        this.bundle = bundle;
+        this.messenger = messenger;
     }
 
 
@@ -106,14 +106,14 @@ public class TileLoggerEventHandler {
                     config.rect.x1 = event.tile.x;
                     config.rect.y1 = event.tile.y;
                     config.selectState++;
-                    bundle.send(event.player, "tilelogger-select-pos1");
+                    messenger.to(event.player).send("tilelogger-select-pos1");
                 }
                 case 2 -> {
                     config.rect.x2 = event.tile.x;
                     config.rect.y2 = event.tile.y;
                     config.selectState = 0;
                     config.rect.normalize();
-                    bundle.send(event.player, "tilelogger-select-done", Args.of("area", config.rect.area()));
+                    messenger.to(event.player).send("tilelogger-select-done", Args.of("area", config.rect.area()));
                 }
             }
         });

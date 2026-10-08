@@ -5,6 +5,7 @@ import arc.util.Log;
 import arc.util.Nullable;
 import com.ospx.flubundle.Args;
 import com.ospx.flubundle.Bundle;
+import com.ospx.flubundle.mindustry.Messenger;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import mindustry.Vars;
@@ -45,6 +46,7 @@ public class TileLoggerService {
     private final SessionService playerSessionService;
     private final FindService findService;
     private final Bundle bundle;
+    private final Messenger messenger;
     private final Async async;
 
     private final ObjectMap<String, PlayerConfig> playerConfigs = new ObjectMap<>();
@@ -60,6 +62,7 @@ public class TileLoggerService {
         this.playerSessionService = playerSessionService;
         this.findService = findService;
         this.bundle = bundle;
+        this.messenger = Messenger.of(bundle);
         this.async = async;
     }
 
@@ -234,7 +237,7 @@ public class TileLoggerService {
             }
         }
         if (caller != null) {
-            bundle.send(caller, "tilelogger-fill-success", Args.of(
+            messenger.to(caller).send("tilelogger-fill-success", Args.of(
                     "block", block.emoji() + " " + block.name
             ));
         }
