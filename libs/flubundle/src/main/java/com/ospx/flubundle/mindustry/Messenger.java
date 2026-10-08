@@ -4,6 +4,8 @@ import com.ospx.flubundle.Bundle;
 import mindustry.game.Team;
 import mindustry.gen.Groups;
 import mindustry.gen.Player;
+import mindustry.net.NetConnection;
+import mindustry.net.Packets;
 
 import java.util.List;
 import java.util.Objects;
@@ -59,6 +61,16 @@ public final class Messenger {
     public Audience team(Team team) {
         Objects.requireNonNull(team, "team");
         return all().filter(player -> player.team() == team);
+    }
+
+    /**
+     * A connection that has not joined yet, for example one an ingress check is about to deny.
+     * Messages use the locale the bundle's {@code LocaleResolver} picks for the packet.
+     *
+     * @param connection the connection to kick, or {@code null} to only format messages
+     */
+    public ConnectionAudience connecting(NetConnection connection, Packets.ConnectPacket packet) {
+        return new ConnectionAudience(bundle, connection, packet);
     }
 
     /** Online players matching a condition. */
