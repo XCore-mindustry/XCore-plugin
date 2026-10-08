@@ -1316,6 +1316,34 @@ error-username-empty = Ім'я користувача не може бути п�
 error-username-length = Довжина імені користувача має бути від 4 до 32 символів!
 error-username-invalid-chars = Ім'я користувача може містити лише латинські літери, цифри та символ підкреслення!
 error-username-taken = Це ім'я користувача вже зайнято іншим гравцем!
+# ==============================================================================
+# Permission nodes
+# ==============================================================================
+permission-mindustry-admin = Користуватися вбудованим меню адміністратора гри та пропускати хвилі
+permission-xcore-moderation-mute = Видавати мут
+permission-xcore-moderation-unmute = Знімати мут
+permission-xcore-moderation-kick = Виганяти гравців
+permission-xcore-moderation-ban = Блокувати гравців
+permission-xcore-moderation-unban = Розблоковувати гравців
+permission-xcore-moderation-audit-others = Переглядати історію модерації інших гравців
+permission-xcore-moderation-votekick-immune = Не може бути вигнаний голосуванням
+permission-xcore-admin-tp = Телепортувати гравців
+permission-xcore-admin-broadcast = Надсилати оголошення всім
+permission-xcore-admin-kill = Знищувати юнітів і гравців
+permission-xcore-admin-heal = Лікувати юнітів і гравців
+permission-xcore-admin-set-team = Змінювати команду гравця
+permission-xcore-maps-force-rtv = Змінювати карту без голосування
+permission-xcore-maps-force-vnw = Пропускати хвилю без голосування
+permission-xcore-votes-cancel = Скасовувати поточне голосування
+permission-xcore-events-create-major = Створювати великі події
+permission-xcore-events-edit-others = Редагувати події інших гравців
+permission-xcore-events-force-vote = Запускати подію без голосування
+permission-xcore-events-stop = Зупиняти поточну подію
+permission-xcore-players-settings-others = Змінювати налаштування інших гравців
+permission-xcore-players-private-info = Бачити приватні дані гравців, наприклад їхні IP-адреси
+permission-xcore-bypass-playtime = Обходити вимоги до ігрового часу для команд
+permission-xcore-permissions-inspect = Бачити, хто має які дозволи
+permission-xcore-permissions-manage = Змінювати ролі та дозволи
 
 error-target-outranks = [scarlet]⚠ Не можна застосувати це до гравця, чия роль не нижча за вашу.
 perm-me-legacy = [accent]Ролі на цьому сервері вимкнено. Адмін: [white]{ $admin }
