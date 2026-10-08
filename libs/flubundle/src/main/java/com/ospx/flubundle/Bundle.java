@@ -1,7 +1,6 @@
 package com.ospx.flubundle;
 
 import arc.files.Fi;
-import arc.struct.ObjectMap;
 import arc.struct.Seq;
 import arc.util.Log;
 
@@ -17,6 +16,7 @@ import fluent.bundle.LRUFunctionCache;
 import fluent.bundle.resolver.Scope;
 import fluent.function.FluentFunctionFactory;
 import fluent.function.functions.DefaultFunctionFactories;
+import fluent.syntax.ast.Message;
 import fluent.syntax.parser.FTLParser;
 
 import mindustry.game.Team;
@@ -25,13 +25,18 @@ import mindustry.gen.Groups;
 import mindustry.gen.Player;
 import mindustry.mod.Mod;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
+import java.util.function.Consumer;
 
 import static mindustry.Vars.mods;
 
@@ -42,43 +47,56 @@ public class Bundle {
     public Locale defaultLocale = Locale.of("en");
     public DefaultValueFactory defaultValueFactory = new NoopDefaultValueFactory();
 
-    private final ObjectMap<Locale, FluentBundle> sources = new ObjectMap<>();
-    private final Map<String, Locale> localeAliases = new HashMap<>();
-    private final FluentFunctionRegistry.Builder registryBuilder = FluentFunctionRegistry.builder();
-    private final FluentFunctionCache functionCache = LRUFunctionCache.of();
-    private FluentFunctionRegistry functionRegistry;
-    private boolean frozen = false;
+    private static final int MAX_REPORTED_FORMAT_ERRORS = 512;
 
+    private final Map<Locale, FluentBundle> sources = new ConcurrentHashMap<>();
+    private final Map<Locale, Map<String, String>> messageOrigins = new HashMap<>();
+    private final Map<String, Locale> localeAliases = new ConcurrentHashMap<>();
+    private final FluentFunctionRegistry.Builder registryBuilder = FluentFunctionRegistry.builder();
+    private final Set<String> reportedFormatErrors = ConcurrentHashMap.newKeySet();
+    private FluentFunctionCache functionCache = LRUFunctionCache.of();
+    private FluentFunctionRegistry functionRegistry;
+    private volatile LocaleResolver localeResolver = LocaleResolver.CLIENT;
+    private volatile Consumer<FluentBundle.ErrorContext> formatErrorHandler = this::logFormatError;
+
+    /**
+     * Loads every {@code bundles/*.ftl} file shipped in the jar of the given mod or plugin.
+     */
     public void addSource(Class<? extends Mod> main) {
-        addSource(mods.getMod(main).root.child("bundles"));
+        var mod = mods.getMod(main);
+        if (mod == null) {
+            throw new IllegalStateException("Could not find mod for " + main.getName());
+        }
+        addSource(mod.root.child("bundles"), mod.name + ":");
     }
 
     public void addSource(Fi directory) {
+        addSource(directory, "");
+    }
+
+    private void addSource(Fi directory, String originPrefix) {
         directory.walk(fi -> {
             if (!fi.extEquals("ftl")) return;
 
-            var name = fi.nameWithoutExtension();
-
-            String localeCode;
-            int lastUnderscore = name.lastIndexOf('_');
-            if (lastUnderscore == -1) {
+            var localeCode = LocaleCodes.fromFileName(fi.nameWithoutExtension());
+            if (localeCode == null) {
                 Log.warn("Could not parse locale from file name: " + fi.name());
                 return;
             }
 
-            int secondLastUnderscore = name.lastIndexOf('_', lastUnderscore - 1);
-
-            if (secondLastUnderscore != -1 && lastUnderscore - secondLastUnderscore == 3) {
-                localeCode = name.substring(secondLastUnderscore + 1);
-            } else {
-                localeCode = name.substring(lastUnderscore + 1);
-            }
-
-            addSource(fi, parseLocaleCode(localeCode));
+            addSource(fi, parseLocaleCode(localeCode), originPrefix + fi.path());
         });
     }
 
     public void addSource(Fi file, Locale locale) {
+        addSource(file, locale, file.path());
+    }
+
+    /**
+     * Adds an FTL file. Messages already loaded from a different origin are overridden, and the
+     * override is logged so that key collisions between plugins are visible.
+     */
+    private synchronized void addSource(Fi file, Locale locale, String origin) {
         locale = normalizeLocale(locale);
         FluentResource resource = FTLParser.parse(file.readString());
 
@@ -89,22 +107,126 @@ public class Bundle {
             }
         }
 
+        reportOverrides(locale, origin, resource);
+
         var source = sources.get(locale);
 
         if (source == null) {
             sources.put(locale, FluentBundle.builder(locale, ensureRegistry(), functionCache)
+                    .withLogger(this::onFormatError)
                     .addResource(resource)
                     .build());
             return;
         }
 
         sources.put(locale, FluentBundle.builderFrom(source, functionCache)
+                .withLogger(this::onFormatError)
                 .addResourceOverriding(resource)
                 .build());
     }
 
+    private void reportOverrides(Locale locale, String origin, FluentResource resource) {
+        var origins = messageOrigins.computeIfAbsent(locale, l -> new HashMap<>());
+        var overridden = new ArrayList<String>();
+
+        for (var entry : resource.entries()) {
+            if (!(entry instanceof Message message)) continue;
+
+            var id = message.identifier().name();
+            var previous = origins.put(id, origin);
+            if (previous != null && !previous.equals(origin)) {
+                overridden.add(id + " (from " + previous + ")");
+            }
+        }
+
+        if (!overridden.isEmpty()) {
+            Log.warn("[FluBundle] @ overrides @ key(s) for locale @: @@", origin, overridden.size(), locale,
+                    String.join(", ", overridden.subList(0, Math.min(10, overridden.size()))),
+                    overridden.size() > 10 ? ", ..." : "");
+        }
+    }
+
     public Seq<Locale> getAvailableLocales() {
-        return sources.keys().toSeq();
+        var locales = new Seq<Locale>();
+        for (var locale : sources.keySet()) {
+            locales.add(locale);
+        }
+        return locales;
+    }
+
+    /**
+     * Installs the strategy that picks a player's locale, for example from a language the player
+     * selected in settings. Affects every player-bound call on this bundle.
+     */
+    public void setLocaleResolver(LocaleResolver localeResolver) {
+        this.localeResolver = localeResolver == null ? LocaleResolver.CLIENT : localeResolver;
+    }
+
+    public LocaleResolver getLocaleResolver() {
+        return localeResolver;
+    }
+
+    /**
+     * Sets the handler for errors that occur while rendering a message, such as a missing
+     * {@code $variable} or a failing function. By default each error is logged once.
+     */
+    public void setFormatErrorHandler(Consumer<FluentBundle.ErrorContext> formatErrorHandler) {
+        this.formatErrorHandler = formatErrorHandler == null ? context -> {} : formatErrorHandler;
+    }
+
+    /**
+     * @return whether the message exists in any loaded locale
+     */
+    public boolean has(String id) {
+        for (var bundle : sources.values()) {
+            if (bundle.message(id).isPresent()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * @return whether {@link #format(Locale, String, Map)} would find the message for this locale,
+     *         including the regional, language and default locale fallbacks
+     */
+    public boolean has(Locale locale, String id) {
+        for (var candidate : localeCandidates(locale == null ? defaultLocale : locale, true)) {
+            if (sources.get(candidate).message(id).isPresent()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * @return the message ids loaded for exactly this locale (after alias resolution)
+     */
+    public Set<String> keys(Locale locale) {
+        var bundle = sources.get(applyAlias(normalizeLocale(locale)));
+        return bundle == null ? Collections.emptySet() : Collections.unmodifiableSet(bundle.messages().keySet());
+    }
+
+    /**
+     * Returns the {@code $variables} a message expects, read from the default locale when possible.
+     * Variables of referenced messages are included.
+     *
+     * @return variable names, or an empty set if the message is unknown
+     */
+    public Set<String> variables(String id) {
+        var ordered = new ArrayList<FluentBundle>();
+        for (var candidate : localeCandidates(defaultLocale, true)) {
+            ordered.add(sources.get(candidate));
+        }
+        ordered.addAll(sources.values());
+
+        for (var bundle : ordered) {
+            var message = bundle.message(id);
+            if (message.isPresent()) {
+                return MessageVariables.of(message.get(), key -> bundle.message(key).orElse(null));
+            }
+        }
+        return Collections.emptySet();
     }
 
     public Locale getDefaultLocale() {
@@ -196,8 +318,36 @@ public class Bundle {
         return new BundleContext(player, localizer(localeSupplier));
     }
 
+    public String format(Locale locale, String id) {
+        return format(locale, id, Collections.emptyMap(), defaultValueFactory);
+    }
+
     public String format(Locale locale, String id, Map<String, Object> args) {
         return format(locale, id, args, defaultValueFactory);
+    }
+
+    /**
+     * Formats a message attribute ({@code id.attribute = ...}) using the same locale fallback
+     * chain as {@link #format(Locale, String, Map)}.
+     */
+    public String formatAttribute(Locale locale, String id, String attribute, Map<String, Object> args) {
+        ensureRegistry();
+        Map<String, Object> safeArgs = args == null ? Collections.emptyMap() : args;
+        var requestedLocale = locale == null ? defaultLocale : locale;
+
+        for (var candidate : localeCandidates(requestedLocale, false)) {
+            var bundle = sources.get(candidate);
+            if (bundle == null) {
+                continue;
+            }
+
+            var message = bundle.message(id);
+            if (message.isPresent() && message.get().hasAttribute(attribute)) {
+                return bundle.format(id, attribute, safeArgs);
+            }
+        }
+
+        return defaultValueFactory.getDefaultValue(id + "." + attribute, safeArgs, normalizeLocale(requestedLocale));
     }
 
     public String format(Locale locale, String id, String defaultValue, Map<String, Object> args) {
@@ -244,12 +394,25 @@ public class Bundle {
         return defaultValue.getDefaultValue(id, safeArgs, requestedLocale);
     }
 
+    /**
+     * Resolves the locale a player receives messages in: the {@link LocaleResolver} choice if any,
+     * otherwise the client locale, narrowed to a supported locale.
+     */
     public Locale locale(Player player) {
-        return player == null ? resolveLocale((Locale) null) : resolveLocale(player.locale);
+        if (player == null) {
+            return resolveLocale((Locale) null);
+        }
+
+        var requested = localeResolver.resolve(player);
+        return requested != null ? resolveLocale(requested) : resolveLocale(player.locale);
     }
 
     public Locale locale(String code) {
         return resolveLocale(code);
+    }
+
+    public void send(Player player, String id) {
+        send(player, id, Collections.emptyMap(), defaultValueFactory);
     }
 
     public void send(Player player, String id, Map<String, Object> args) {
@@ -274,6 +437,10 @@ public class Bundle {
 
     public void setHud(Player player, String id, Map<String, Object> args, DefaultValueFactory defaultValue) {
         Call.setHudText(player.con, format(locale(player), id, args, defaultValue));
+    }
+
+    public void announce(Player player, String id) {
+        announce(player, id, Collections.emptyMap(), defaultValueFactory);
     }
 
     public void announce(Player player, String id, Map<String, Object> args) {
@@ -323,7 +490,7 @@ public class Bundle {
     }
 
     public void send(String id, Map<String, Object> args, DefaultValueFactory defaultValue) {
-        Groups.player.each(p -> send(p, id, args, defaultValue));
+        broadcast(id, args, defaultValue, Player::sendMessage);
     }
 
     public void infoMessage(String id, Map<String, Object> args) {
@@ -331,7 +498,7 @@ public class Bundle {
     }
 
     public void infoMessage(String id, Map<String, Object> args, DefaultValueFactory defaultValue) {
-        Groups.player.each(p -> infoMessage(p, id, args, defaultValue));
+        broadcast(id, args, defaultValue, (p, text) -> Call.infoMessage(p.con, text));
     }
 
     public void setHud(String id, Map<String, Object> args) {
@@ -339,7 +506,7 @@ public class Bundle {
     }
 
     public void setHud(String id, Map<String, Object> args, DefaultValueFactory defaultValue) {
-        Groups.player.each(p -> setHud(p, id, args, defaultValue));
+        broadcast(id, args, defaultValue, (p, text) -> Call.setHudText(p.con, text));
     }
 
     public void announce(String id, Map<String, Object> args) {
@@ -347,7 +514,7 @@ public class Bundle {
     }
 
     public void announce(String id, Map<String, Object> args, DefaultValueFactory defaultValue) {
-        Groups.player.each(p -> announce(p, id, args, defaultValue));
+        broadcast(id, args, defaultValue, (p, text) -> Call.announce(p.con, text));
     }
 
     public void toast(int icon, String id, Map<String, Object> args) {
@@ -355,7 +522,7 @@ public class Bundle {
     }
 
     public void toast(int icon, String id, Map<String, Object> args, DefaultValueFactory defaultValue) {
-        Groups.player.each(p -> toast(p, icon, id, args, defaultValue));
+        broadcast(id, args, defaultValue, (p, text) -> Call.warningToast(p.con, icon, text));
     }
 
     public void label(float duration, float x, float y, String id, Map<String, Object> args) {
@@ -363,7 +530,7 @@ public class Bundle {
     }
 
     public void label(float duration, float x, float y, String id, Map<String, Object> args, DefaultValueFactory defaultValue) {
-        Groups.player.each(p -> label(p, duration, x, y, id, args, defaultValue));
+        broadcast(id, args, defaultValue, (p, text) -> Call.label(p.con, text, duration, x, y));
     }
 
     public void popup(float duration, int align, int top, int left, int bottom, int right,
@@ -373,7 +540,18 @@ public class Bundle {
 
     public void popup(float duration, int align, int top, int left, int bottom, int right,
                       String id, Map<String, Object> args, DefaultValueFactory defaultValue) {
-        Groups.player.each(p -> popup(p, duration, align, top, left, bottom, right, id, args, defaultValue));
+        broadcast(id, args, defaultValue,
+                (p, text) -> Call.infoPopup(p.con, text, duration, align, top, left, bottom, right));
+    }
+
+    /**
+     * Delivers a message to every online player, formatting it once per locale.
+     */
+    private void broadcast(String id, Map<String, Object> args, DefaultValueFactory defaultValue,
+                           BiConsumer<Player, String> delivery) {
+        var formatted = new HashMap<Locale, String>();
+        Groups.player.each(p -> delivery.accept(p,
+                formatted.computeIfAbsent(locale(p), locale -> format(locale, id, args, defaultValue))));
     }
 
     public static Map<String, Object> args(Object... values) {
@@ -425,40 +603,68 @@ public class Bundle {
 
     private synchronized FluentFunctionRegistry ensureRegistry() {
         if (functionRegistry == null) {
-            frozen = true;
             functionRegistry = registryBuilder.build();
         }
         return functionRegistry;
     }
 
-    private synchronized void checkNotFrozen() {
-        if (frozen) {
-            throw new IllegalStateException("Functions and formatters must be registered before adding bundle sources or formatting.");
+    /**
+     * Rebuilds the registry and every loaded bundle after a registration, so that functions and
+     * formatters can be registered at any time, including by plugins loaded later.
+     */
+    private void registryChanged() {
+        if (functionRegistry == null) {
+            return;
         }
+
+        functionRegistry = registryBuilder.build();
+        functionCache = LRUFunctionCache.of();
+        sources.replaceAll((locale, bundle) -> FluentBundle.builderFrom(bundle, functionCache)
+                .withRegistry(functionRegistry)
+                .withLogger(this::onFormatError)
+                .build());
     }
 
     public synchronized Bundle registerFunction(FluentFunctionFactory<?> factory) {
-        checkNotFrozen();
         registryBuilder.addFactory(factory);
+        registryChanged();
         return this;
     }
 
     public synchronized Bundle registerFunctions(Collection<FluentFunctionFactory<?>> factories) {
-        checkNotFrozen();
         registryBuilder.addFactories(factories);
+        registryChanged();
         return this;
     }
 
     public synchronized <T> Bundle registerFormatterExact(Class<T> type, BiFunction<T, Scope, String> formatter) {
-        checkNotFrozen();
         registryBuilder.addDefaultFormatterExact(type, formatter);
+        registryChanged();
         return this;
     }
 
     public synchronized <T> Bundle registerFormatter(Class<T> supertype, BiFunction<T, Scope, String> formatter) {
-        checkNotFrozen();
         registryBuilder.addDefaultFormatter(supertype, formatter);
+        registryChanged();
         return this;
+    }
+
+    private void onFormatError(FluentBundle.ErrorContext context) {
+        formatErrorHandler.accept(context);
+    }
+
+    private void logFormatError(FluentBundle.ErrorContext context) {
+        var key = context.locale() + "/" + context.entryName();
+        if (reportedFormatErrors.size() >= MAX_REPORTED_FORMAT_ERRORS || !reportedFormatErrors.add(key)) {
+            return;
+        }
+
+        var messages = new ArrayList<String>();
+        for (var exception : context.exceptions()) {
+            messages.add(exception.getMessage());
+        }
+        Log.warn("[FluBundle] Error formatting '@' for locale @: @", context.entryName(), context.locale(),
+                String.join("; ", messages));
     }
 
     public Bundle() {
@@ -520,8 +726,7 @@ public class Bundle {
     }
 
     private Locale parseLocaleCodeOrNull(String code) {
-        var normalizedCode = normalizeLocaleCode(code);
-        return normalizedCode == null ? null : parseLocaleCode(normalizedCode);
+        return LocaleCodes.parse(code);
     }
 
     private Locale parseLocaleCode(String code) {
@@ -535,43 +740,10 @@ public class Bundle {
     }
 
     private String normalizeLocaleCode(Locale locale) {
-        if (locale == null) {
-            return null;
-        }
-
-        var language = locale.getLanguage();
-        if (language == null || language.isBlank()) {
-            return null;
-        }
-
-        var country = locale.getCountry();
-        if (country == null || country.isBlank()) {
-            return language.toLowerCase(Locale.ROOT);
-        }
-
-        return language.toLowerCase(Locale.ROOT) + "_" + country.toUpperCase(Locale.ROOT);
+        return LocaleCodes.normalize(locale);
     }
 
     private String normalizeLocaleCode(String code) {
-        if (code == null) {
-            return null;
-        }
-
-        var normalized = code.trim();
-        if (normalized.isEmpty()) {
-            return null;
-        }
-
-        normalized = normalized.replace('-', '_');
-        var codes = normalized.split("_");
-        if (codes.length == 0 || codes[0].isBlank()) {
-            return null;
-        }
-
-        if (codes.length == 1 || codes[1].isBlank()) {
-            return codes[0].toLowerCase(Locale.ROOT);
-        }
-
-        return codes[0].toLowerCase(Locale.ROOT) + "_" + codes[1].toUpperCase(Locale.ROOT);
+        return LocaleCodes.normalize(code);
     }
 }

@@ -146,8 +146,11 @@ public class LocalizationFeaturesTest {
 
     record CustomVal(String val) {}
 
+
+    record OtherVal(int val) {}
+
     @Test
-    void testRegistrationLifecycleFrozenAfterSourceAdded() {
+    void testFormatterRegisteredAfterSourceAddedApplies() {
         Bundle bundle = new Bundle();
         bundle.registerFormatterExact(CustomVal.class, (item, scope) -> "CUSTOM:" + item.val());
 
@@ -157,17 +160,23 @@ public class LocalizationFeaturesTest {
 
         assertEquals("Value: CUSTOM:hello", bundle.format(Locale.ENGLISH, "key", Map.of("val", new CustomVal("hello"))));
 
-        assertThrows(IllegalStateException.class, () ->
-                bundle.registerFormatterExact(Long.class, (val, scope) -> "LONG:" + val));
+        bundle.registerFormatterExact(OtherVal.class, (val, scope) -> "OTHER:" + val.val());
+
+        assertEquals("Value: OTHER:5", bundle.format(Locale.ENGLISH, "key", Map.of("val", new OtherVal(5))));
+        assertEquals("Value: CUSTOM:hello", bundle.format(Locale.ENGLISH, "key", Map.of("val", new CustomVal("hello"))));
     }
 
     @Test
-    void testRegistrationLifecycleFrozenAfterFormat() {
+    void testFormatterRegisteredAfterFormatApplies() {
         Bundle bundle = new Bundle();
         bundle.format(Locale.ENGLISH, "any-key", Map.of());
 
-        assertThrows(IllegalStateException.class, () ->
-                bundle.registerFormatterExact(Double.class, (val, scope) -> "D:" + val));
+        bundle.registerFormatterExact(OtherVal.class, (val, scope) -> "D:" + val.val());
+
+        Fi temp = Fi.tempFile("late_format_test.ftl");
+        temp.writeString("key = { $val }\n");
+        bundle.addSource(temp, Locale.ENGLISH);
+        assertEquals("D:7", bundle.format(Locale.ENGLISH, "key", Map.of("val", new OtherVal(7))));
     }
 
     @Test
