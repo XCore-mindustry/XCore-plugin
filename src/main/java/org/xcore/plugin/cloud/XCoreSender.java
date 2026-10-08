@@ -114,39 +114,29 @@ public class XCoreSender {
     }
 
     public void send(String key, Map<String, Object> args) {
-        if (isPlayer()) {
-            var session = sessionService.get().get(player());
-            if (session == null) {
-                handle.sendMessage(bundle.format(locale(), key, args));
-                return;
-            }
-            session.locale().send(key, args);
-        } else {
-            handle.sendMessage(bundle.format(locale(), key, args));
-        }
+        handle.sendMessage(format(key, args));
     }
 
     public void send(String key) {
         send(key, args());
     }
 
+    /**
+     * The sender's locale: the session's language for a connected player, otherwise the
+     * bundle's choice for the player (or the default locale for the console).
+     */
     public Locale locale() {
-        if (isPlayer()) {
-            var session = sessionService.get().get(player());
-            if (session != null) {
-                return session.locale().localizer().locale();
-            }
-            return bundle.locale(player());
+        Session s = session();
+        if (s != null) {
+            return s.locale().getLocale();
         }
-        return bundle.getDefaultLocale();
+        return isPlayer() ? bundle.locale(player()) : bundle.getDefaultLocale();
     }
 
     public String format(String key, Map<String, Object> args) {
-        if (isPlayer()) {
-            var session = sessionService.get().get(player());
-            if (session != null) {
-                return session.locale().format(key, args);
-            }
+        Session s = session();
+        if (s != null) {
+            return s.locale().format(key, args);
         }
         return bundle.format(locale(), key, args);
     }
