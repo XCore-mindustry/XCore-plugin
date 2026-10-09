@@ -90,6 +90,17 @@ public class MatchHistoryMenu {
      * @param ladderId the tab to open on; {@code null} for the mode this server hosts
      */
     public void open(Session session, @Nullable String ladderId) {
+        open(session, ladderId, null);
+    }
+
+    /**
+     * {@link #open(Session, String)} from another menu.
+     *
+     * @param back reopens the menu the history was opened from. It becomes the history's way back
+     *             only once the history is on screen: a load that fails or is overtaken by
+     *             another menu leaves no way back to a menu that is not behind it.
+     */
+    public void open(Session session, @Nullable String ladderId, @Nullable Runnable back) {
         if (session == null || session.player == null || session.data == null) return;
         session.clear();
 
@@ -107,6 +118,9 @@ public class MatchHistoryMenu {
                     session.locale().send("match-history-load-failed");
                 }
                 return;
+            }
+            if (back != null) {
+                session.pushHistory(back);
             }
             menuService.openUi(session, controller, controller.model(data), true);
         });

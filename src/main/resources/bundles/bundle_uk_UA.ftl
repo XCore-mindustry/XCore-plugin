@@ -1380,6 +1380,7 @@ match-history-outcome-uncounted = [lightgray]Не зараховано[]
 match-history-lineup = { $own } на { $other }
 match-history-team-place = { $place } місце з { $teams } команд
 match-history-place = #{ $place } з { $players }
+match-history-counted = Зараховано: { $reason }
 match-history-not-counted = Не зараховано: { $reason }
 match-history-counted-share = Зараховано { $percent }% матчу
 match-history-reason-winner = перемога

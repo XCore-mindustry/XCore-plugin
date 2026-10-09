@@ -215,11 +215,11 @@ public final class Ladder {
      * ledger would let be counted twice.
      */
     private void recordMatch(int season, MatchSettlement settlement, Map<String, LadderStanding> standings) {
-        MatchReport report = settlement.report();
-        if (report == null) {
+        if (settlement.report() == null) {
             return;
         }
         try {
+            MatchReport report = settlement.report().get();
             List<MatchParticipant> participants = report.participants().stream()
                     .map(participant -> {
                         LadderStanding standing = standings.get(participant.uuid());

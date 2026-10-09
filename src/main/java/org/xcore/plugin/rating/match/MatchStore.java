@@ -30,7 +30,9 @@ public interface MatchStore {
     Optional<Instant> firstRecorded(String ladderId);
 
     /**
-     * Moves every match of {@code sourceUuid} to {@code targetUuid}.
+     * Moves every match of {@code sourceUuid} to {@code targetUuid}. Where both accounts took part
+     * in the same match, the target keeps its own entry and the source's is dropped, so no match
+     * ever names one player twice.
      *
      * @param session transaction to join, or {@code null} to run without one
      * @return number of matches changed

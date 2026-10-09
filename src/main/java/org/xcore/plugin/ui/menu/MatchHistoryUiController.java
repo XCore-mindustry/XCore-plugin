@@ -106,7 +106,7 @@ public class MatchHistoryUiController implements UiController<MatchHistoryUiCont
      * What is read once per ladder rather than per page.
      *
      * @param progress     the owner's standing, {@code null} when it could not be read
-     * @param historyStart when the ladder's history begins, {@code null} while it holds nothing
+     * @param historyStart when the ladder's history begins; read only for an empty first page, {@code null} otherwise
      * @param recent       the owner's latest matches, for the form line
      */
     public record Summary(long total, @Nullable LadderProgress progress, @Nullable Instant historyStart,
@@ -226,7 +226,9 @@ public class MatchHistoryUiController implements UiController<MatchHistoryUiCont
                 // The header goes without the standing; the matches are what was asked for.
                 Log.err("Failed to read the standing of " + uuid + " on ladder " + ladder.id(), e);
             }
-            summary = new Summary(ladder.matchCount(uuid), progress, ladder.historyStart().orElse(null),
+            // The start of the history is only shown in place of an empty list.
+            Instant start = page.matches().isEmpty() ? ladder.historyStart().orElse(null) : null;
+            summary = new Summary(ladder.matchCount(uuid), progress, start,
                     ladder.currentSeason(), query.page() == 1 ? page.matches() : List.of());
         }
         return new Data(query, page, summary);

@@ -10,6 +10,7 @@ import java.time.Instant;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.Objects;
+import java.util.function.Supplier;
 
 /**
  * A finished match as a mode hands it to the ladder: the rating changes it already
@@ -20,7 +21,8 @@ import java.util.Objects;
  * @param skipReason       non-null for an unrated match, which is recorded but changes nothing
  * @param endedAt          when the match ended, which decides the season it counts towards;
  *                         {@code null} means the moment it is settled
- * @param report           what the match history keeps of the match; {@code null} keeps nothing
+ * @param report           what the match history keeps of the match, built only once the ladder
+ *                         has claimed the match, so a duplicate never pays for it; {@code null} keeps nothing
  */
 public record MatchSettlement(
         String matchId,
@@ -29,7 +31,7 @@ public record MatchSettlement(
         List<StandingMutation> mutations,
         @Nullable String skipReason,
         @Nullable Instant endedAt,
-        @Nullable MatchReport report
+        @Nullable Supplier<MatchReport> report
 ) {
     public MatchSettlement {
         if (matchId == null || matchId.isBlank()) throw new IllegalArgumentException("matchId must not be blank");
@@ -74,6 +76,15 @@ public record MatchSettlement(
      * hash alone: it describes the match, it does not decide it.
      */
     public MatchSettlement withReport(MatchReport report) {
+        Objects.requireNonNull(report, "report");
+        return withReport(() -> report);
+    }
+
+    /**
+     * {@link #withReport(MatchReport)} for a report that costs reads to build (names, ratings):
+     * the ladder asks for it only after claiming the match, on the thread that settles it.
+     */
+    public MatchSettlement withReport(Supplier<MatchReport> report) {
         return new MatchSettlement(matchId, algorithmVersion, resultHash, mutations, skipReason, endedAt,
                 Objects.requireNonNull(report, "report"));
     }

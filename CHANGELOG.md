@@ -22,6 +22,7 @@ All notable changes to this project will be documented in this file.
 - `rating_matches` collection: `Ladder.settle` records a match once when the settlement carries a `MatchReport` (`MatchSettlement.withReport`), rated or not, with the ratings the standings were left at. A failure to record is logged and does not affect the settlement. Account merges move the matches along.
 - `MatchPresenter` / `MatchPresenters`: a mode words its own outcomes, reasons and figures in the history; `StandardMatchPresenter` covers team and free-for-all ladders.
 - MiniPvP records its matches, including unrated ones (too few players) with the reason; matches shorter than the minimum play time are still not recorded. The end-of-match chat message points to `/matches`.
+- Match history texts in every bundle (en, ru, uk, be, cs, de, es, fr, pl).
 - Test that every translated message renders without errors the English message does not have.
 - Test that every translation uses the same `$variables` as the English bundle.
 

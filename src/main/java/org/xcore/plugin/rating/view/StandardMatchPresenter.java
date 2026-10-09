@@ -76,11 +76,12 @@ public class StandardMatchPresenter implements MatchPresenter {
         if (!player.counted()) {
             return t(local, "match-history-not-counted", args("reason", reasonText(player, local)));
         }
+        // A share is worth saying only where the mode counted part of the match.
         Double share = player.participation();
-        if (share != null) {
+        if (share != null && share > 0.0 && share < 1.0) {
             return t(local, "match-history-counted-share", args("percent", (int) Math.round(share * 100)));
         }
-        return reasonText(player, local);
+        return t(local, "match-history-counted", args("reason", reasonText(player, local)));
     }
 
     /** The participant's reason code in words. */

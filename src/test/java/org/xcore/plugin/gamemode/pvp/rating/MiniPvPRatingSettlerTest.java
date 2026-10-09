@@ -175,28 +175,30 @@ class MiniPvPRatingSettlerTest {
         MatchRecord match = matches.all().getFirst();
         assertThat(match.ladder()).isEqualTo(MiniPvPLadder.LADDER_ID);
         assertThat(match.rated()).isTrue();
-        assertThat(match.players()).isEqualTo(5);
-        assertThat(match.teamSizes()).containsEntry(Team.sharded.id, 2).containsEntry(Team.crux.id, 3);
+        // The latecomer changed nothing, so the line-up is the 2 v 2 that was rated.
+        assertThat(match.participants()).hasSize(5);
+        assertThat(match.players()).isEqualTo(4);
+        assertThat(match.teamSizes()).containsEntry(Team.sharded.id, 2).containsEntry(Team.crux.id, 2);
 
         MatchParticipant winner = match.participant("p1").orElseThrow();
         assertThat(winner.name()).isEqualTo("[#ff8800]Winner 1");
         assertThat(winner.team()).isEqualTo(Team.sharded.id);
         assertThat(winner.win()).isTrue();
         assertThat(winner.counted()).isTrue();
-        assertThat(winner.reason()).isEqualTo(MiniPvPRatingSettler.REASON_WINNER);
+        assertThat(winner.reason()).isEqualTo(MiniPvPMatchSnapshot.REASON_WINNER);
         assertThat(winner.ratingBefore()).isEqualTo(1000);
         assertThat(winner.ratingAfter()).isEqualTo(ladder.rating("p1"));
         assertThat(winner.delta()).isEqualTo(winner.ratingAfter() - winner.ratingBefore());
         assertThat(winner.participation()).isEqualTo(1.0);
 
         MatchParticipant loser = match.participant("p3").orElseThrow();
-        assertThat(loser.reason()).isEqualTo(MiniPvPRatingSettler.REASON_DEFEATED);
+        assertThat(loser.reason()).isEqualTo(MiniPvPMatchSnapshot.REASON_DEFEATED);
         assertThat(loser.name()).isEqualTo("Loser 1");
         assertThat(loser.delta()).isNegative();
 
         MatchParticipant latecomer = match.participant("late").orElseThrow();
         assertThat(latecomer.counted()).isFalse();
-        assertThat(latecomer.reason()).isEqualTo(MiniPvPRatingSettler.REASON_LATE_JOIN);
+        assertThat(latecomer.reason()).isEqualTo(MiniPvPMatchSnapshot.REASON_LATE_JOIN);
         assertThat(latecomer.delta()).isZero();
 
         verify(sessionService.get("p1").locale()).send(eq("pvp-match-settlement-details"), anyMap());

@@ -142,4 +142,39 @@ class LadderMatchHistoryTest {
         assertThat(duel.matchCount("winner")).isZero();
         assertThat(duel.matchCount("main")).isEqualTo(1);
     }
+
+    @Test
+    @DisplayName("the report is built only for the settlement that claims the match")
+    void report_isBuiltOnlyWhenClaimed() {
+        java.util.concurrent.atomic.AtomicInteger built = new java.util.concurrent.atomic.AtomicInteger();
+        MatchSettlement settlement = MatchSettlement.rated("m6", "v1", MatchSettlement.hash("m6"), List.of(
+                        new StandingMutation("winner", 16, true),
+                        new StandingMutation("loser", -16, false)))
+                .withReport(() -> {
+                    built.incrementAndGet();
+                    return report(MatchParticipant.counted("winner", "Winner", 1, 1, true, 1000, 16, "winner"),
+                            MatchParticipant.counted("loser", "Loser", 2, 2, false, 1000, -16, "defeated"));
+                });
+
+        ladder.settle(settlement);
+        ladder.settle(settlement);
+
+        assertThat(built).hasValue(1);
+        assertThat(matches.all()).hasSize(1);
+    }
+
+    @Test
+    @DisplayName("standings merged outside a transaction stay merged when the history fails to follow")
+    void mergePlayer_survivesHistoryFailure() {
+        MatchStore broken = spy(new InMemoryMatchStore());
+        doThrow(new IllegalStateException("history is down")).when(broken).reassignPlayer(any(), any(), any());
+        LadderService service = new LadderService(store, ledger, LadderSeasons.single(), broken);
+        Ladder duel = service.register(new LadderDefinition("duel", "duel-name", POLICY));
+        duel.settle(rated("m7"));
+
+        int merged = service.mergePlayer(null, "winner", "main");
+
+        assertThat(merged).isEqualTo(1);
+        assertThat(store.find("duel", Ladder.FIRST_SEASON, "main")).isPresent();
+    }
 }

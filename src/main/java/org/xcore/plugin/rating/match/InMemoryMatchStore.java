@@ -70,11 +70,16 @@ public final class InMemoryMatchStore implements MatchStore {
             if (match.participant(sourceUuid).isEmpty()) {
                 continue;
             }
+            boolean targetPlayed = match.participant(targetUuid).isPresent();
             List<MatchParticipant> moved = new ArrayList<>();
             for (MatchParticipant p : match.participants()) {
-                moved.add(p.uuid().equals(sourceUuid) ? new MatchParticipant(targetUuid, p.name(), p.team(),
-                        p.placement(), p.win(), p.ratingBefore(), p.delta(), p.ratingAfter(), p.counted(),
-                        p.reason(), p.participation(), p.extra()) : p);
+                if (!p.uuid().equals(sourceUuid)) {
+                    moved.add(p);
+                } else if (!targetPlayed) {
+                    moved.add(new MatchParticipant(targetUuid, p.name(), p.team(), p.placement(), p.win(),
+                            p.ratingBefore(), p.delta(), p.ratingAfter(), p.counted(), p.reason(),
+                            p.participation(), p.extra()));
+                }
             }
             entry.setValue(match.withParticipants(moved));
             changed++;

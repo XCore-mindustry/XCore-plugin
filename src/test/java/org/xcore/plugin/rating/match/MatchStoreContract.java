@@ -129,4 +129,39 @@ abstract class MatchStoreContract {
         assertThat(moved.name()).isEqualTo("Player old");
         assertThat(moved.delta()).isEqualTo(16);
     }
+
+    @Test
+    @DisplayName("where both merged accounts played the same match, the target keeps its own entry only")
+    void reassignPlayer_doesNotDuplicate() {
+        store().record(match("duel", "m1", T0, "old", "main", "x"));
+
+        store().reassignPlayer(null, "old", "main");
+
+        MatchRecord match = store().find("duel", "m1").orElseThrow();
+        assertThat(match.participants()).extracting(MatchParticipant::uuid).containsExactly("main", "x");
+        assertThat(match.participant("main").orElseThrow().name()).isEqualTo("Player main");
+        assertThat(store().count("duel", "main")).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("line-ups count the players the match counted for, or everyone when it counted for nobody")
+    void lineup_countsCountedPlayers() {
+        List<MatchParticipant> rated = List.of(
+                MatchParticipant.counted("a", "A", 1, 1, true, 1000, 10, "winner"),
+                MatchParticipant.counted("b", "B", 2, 2, false, 1000, -10, "defeated"),
+                MatchParticipant.uncounted("late", "Late", 2, 2, false, 1000, "late_join"));
+        MatchRecord match = MatchRecord.of("duel", 1, "m1", "v1", null,
+                new MatchReport(T0.minusSeconds(60), T0, null, null, rated));
+        assertThat(match.players()).isEqualTo(2);
+        assertThat(match.teamSizes()).containsExactlyInAnyOrderEntriesOf(Map.of(1, 1, 2, 1));
+        assertThat(match.participants()).hasSize(3);
+
+        List<MatchParticipant> unrated = List.of(
+                MatchParticipant.uncounted("a", "A", 1, 1, true, 1000, "match_unrated"),
+                MatchParticipant.uncounted("b", "B", 1, 1, true, 1000, "match_unrated"));
+        MatchRecord nobody = MatchRecord.of("duel", 1, "m2", "v1", "not_enough_players",
+                new MatchReport(T0.minusSeconds(60), T0, null, null, unrated));
+        assertThat(nobody.players()).isEqualTo(2);
+        assertThat(nobody.teamSizes()).containsExactlyEntriesOf(Map.of(1, 2));
+    }
 }

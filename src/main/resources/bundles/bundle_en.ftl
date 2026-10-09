@@ -1379,6 +1379,7 @@ match-history-outcome-uncounted = [lightgray]Not counted[]
 match-history-lineup = { $own } v { $other }
 match-history-team-place = #{ $place } of { $teams } teams
 match-history-place = #{ $place } of { $players }
+match-history-counted = Counted: { $reason }
 match-history-not-counted = Not counted: { $reason }
 match-history-counted-share = Counted for { $percent }% of the match
 match-history-reason-winner = won

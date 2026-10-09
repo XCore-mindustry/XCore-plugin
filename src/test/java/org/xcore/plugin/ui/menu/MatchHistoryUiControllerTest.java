@@ -220,7 +220,7 @@ class MatchHistoryUiControllerTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"ru", "uk", "en"})
+    @ValueSource(strings = {"ru", "uk", "en", "be", "cs", "de", "es", "fr", "pl"})
     @DisplayName("a full page of matches fits every screen, and no button carries a player's UUID")
     void list_isLaidOutForEveryScreen(String language) {
         session.localization = LayoutAssert.localization(language);
@@ -242,12 +242,12 @@ class MatchHistoryUiControllerTest {
         String text = LayoutAssert.allText(rendered);
         assertThat(text).doesNotContain("match-history-", "season-title");
         // The first season's matches sit under a band that names it.
-        assertThat(text).contains(language.equals("en") ? "Season 1" : "Сезон 1");
+        assertThat(text).contains(session.localization.t("season-title", Map.of("number", 1)));
         assertThat(LayoutAssert.dsl(rendered)).doesNotContain("uuid");
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"ru", "uk", "en"})
+    @ValueSource(strings = {"ru", "uk", "en", "be", "cs", "de", "es", "fr", "pl"})
     @DisplayName("a two-team match fits every screen, with the viewer's result and both teams")
     void teamMatch_isLaidOutForEveryScreen(String language) {
         session.localization = LayoutAssert.localization(language);
@@ -269,12 +269,12 @@ class MatchHistoryUiControllerTest {
         LayoutAssert.assertFitsPacket(rendered, "a two-team match in " + language);
         String text = LayoutAssert.allText(rendered);
         assertThat(text).doesNotContain("match-history-", "season-title");
-        assertThat(text).contains("73%");
+        assertThat(text).containsPattern("73\\s?%");
         assertThat(LayoutAssert.dsl(rendered)).doesNotContain("uuid");
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"ru", "uk", "en"})
+    @ValueSource(strings = {"ru", "uk", "en", "be", "cs", "de", "es", "fr", "pl"})
     @DisplayName("a round of 24 is shown a page of participants at a time and still fits")
     void bigRound_isPaged(String language) {
         session.localization = LayoutAssert.localization(language);
@@ -453,5 +453,38 @@ class MatchHistoryUiControllerTest {
 
     private static MenuResult result(String action) {
         return new MenuResult(action);
+    }
+
+    @Test
+    @DisplayName("the way back is kept only once the history is on screen")
+    void open_pushesBackOnlyWhenShown() {
+        crowdedHistory();
+        Runnable back = () -> { };
+
+        menu.open(session, null, back);
+        // Something else opened while the matches were loading.
+        session.nextUiVersion();
+        while (!mainThread.isEmpty()) {
+            mainThread.poll().run();
+        }
+        assertThat(session.hasHistory()).isFalse();
+
+        menu.open(session, null, back);
+        while (!mainThread.isEmpty()) {
+            mainThread.poll().run();
+        }
+        assertThat(session.popHistory()).isSameAs(back);
+    }
+
+    @Test
+    @DisplayName("a match that counted in full says why, a part of one says how much")
+    void reason_sharesOnlyPartOfAMatch() {
+        StandardMatchPresenter presenter = new StandardMatchPresenter();
+        MatchRecord match = teamMatch("m", NOW, 2, true, true);
+        MatchParticipant full = match.participants().get(1);
+        MatchParticipant part = match.participants().get(0);
+
+        assertThat(presenter.reason(match, full, null)).isEqualTo("match-history-counted");
+        assertThat(presenter.reason(match, part, null)).isEqualTo("match-history-counted-share");
     }
 }

@@ -1,5 +1,6 @@
 package org.xcore.plugin.rating.ladder;
 
+import arc.util.Log;
 import com.mongodb.client.ClientSession;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
@@ -86,7 +87,19 @@ public class LadderService {
      */
     public int mergePlayer(@Nullable ClientSession session, String sourceUuid, String targetUuid) {
         int merged = store.mergePlayer(session, sourceUuid, targetUuid);
-        matches.reassignPlayer(session, sourceUuid, targetUuid);
+        if (session != null) {
+            // Within a transaction the merge stays all or nothing, the history included.
+            matches.reassignPlayer(session, sourceUuid, targetUuid);
+            return merged;
+        }
+        try {
+            matches.reassignPlayer(null, sourceUuid, targetUuid);
+        } catch (RuntimeException e) {
+            // The standings are merged already: a history that failed to follow must not report
+            // the merge as failed, nor keep the callers from refreshing what they cached.
+            Log.err("Merged the standings of " + sourceUuid + " into " + targetUuid
+                    + " but failed to move their match history", e);
+        }
         return merged;
     }
 

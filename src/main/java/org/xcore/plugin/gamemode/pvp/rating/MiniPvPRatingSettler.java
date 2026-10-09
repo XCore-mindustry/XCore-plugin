@@ -36,11 +36,7 @@ import static com.ospx.flubundle.Bundle.args;
 public class MiniPvPRatingSettler {
     /** Why an unrated match changed nobody's rating. */
     public static final String SKIP_NOT_ENOUGH_PLAYERS = "not_enough_players";
-    /** Why a match did or did not change one participant's rating; the match history words them. */
-    public static final String REASON_WINNER = "winner";
-    public static final String REASON_DEFEATED = "defeated";
-    public static final String REASON_SHORT_PLAY = "short_play";
-    public static final String REASON_LATE_JOIN = "late_join";
+    /** Every participant's reason in an unrated match; the others come with the snapshot. */
     public static final String REASON_MATCH_UNRATED = "match_unrated";
 
     private final MiniPvPMatchTracker matchTracker;
@@ -145,19 +141,23 @@ public class MiniPvPRatingSettler {
     private SettlementResult recordUnrated(MiniPvPMatchSnapshot match, Map<String, String> names, String map) {
         Instant endedAt = Instant.ofEpochMilli(match.endedAt());
         int season = ladder.seasonAt(endedAt);
-        List<MatchParticipant> participants = new ArrayList<>();
-        for (MiniPvPMatchSnapshot.TeamResult team : match.teams()) {
-            for (MiniPvPMatchSnapshot.Member member : team.members()) {
-                participants.add(MatchParticipant.uncounted(member.uuid(), names.getOrDefault(member.uuid(), ""),
-                                team.teamId(), team.placement(), team.placement() == 1,
-                                ladder.rating(season, member.uuid()), REASON_MATCH_UNRATED)
-                        .withParticipation(member.participation()));
-            }
-        }
+        // Built only if the ladder claims the match: the ratings are reads a duplicate need not pay for.
         return ladder.settle(season, MatchSettlement.unrated(
                         match.matchId(), TeamEloCalculator.ALGORITHM_VERSION, match.resultHash(), SKIP_NOT_ENOUGH_PLAYERS)
                 .withEndedAt(endedAt)
-                .withReport(report(match, map, participants)));
+                .withReport(() -> {
+                    List<MatchParticipant> participants = new ArrayList<>();
+                    for (MiniPvPMatchSnapshot.TeamResult team : match.teams()) {
+                        for (MiniPvPMatchSnapshot.Member member : team.members()) {
+                            participants.add(MatchParticipant.uncounted(member.uuid(),
+                                            names.getOrDefault(member.uuid(), ""), team.teamId(), team.placement(),
+                                            team.placement() == 1, ladder.rating(season, member.uuid()),
+                                            REASON_MATCH_UNRATED)
+                                    .withParticipation(member.participation()));
+                        }
+                    }
+                    return report(match, map, participants);
+                }));
     }
 
     private Settlement settleMatch(MiniPvPMatchSnapshot match, Map<String, String> names, String map) {
@@ -170,8 +170,12 @@ public class MiniPvPRatingSettler {
         List<StandingMutation> mutations = calculation.deltas().stream()
                 .map(delta -> new StandingMutation(delta.uuid(), delta.delta(), delta.placement() == 1))
                 .toList();
+        Map<String, String> reasons = new HashMap<>();
+        for (MiniPvPMatchSnapshot.TeamResult team : match.teams()) {
+            team.members().forEach(member -> reasons.put(member.uuid(), member.reason()));
+        }
         List<MatchParticipant> participants = calculation.deltas().stream()
-                .map(delta -> participant(delta, names.getOrDefault(delta.uuid(), "")))
+                .map(delta -> participant(delta, names.getOrDefault(delta.uuid(), ""), reasons.get(delta.uuid())))
                 .toList();
         SettlementResult result = ladder.settle(season, MatchSettlement.rated(
                         match.matchId(), calculation.algorithmVersion(), match.resultHash(), mutations)
@@ -189,16 +193,20 @@ public class MiniPvPRatingSettler {
                 null, map, participants);
     }
 
-    /** A participant of a rated match, with the reason the snapshot's participation rules give. */
-    static MatchParticipant participant(TeamEloCalculator.PlayerRatingDelta delta, String name) {
+    /**
+     * A participant of a rated match.
+     *
+     * @param reason the reason the snapshot gave together with the participation
+     */
+    static MatchParticipant participant(TeamEloCalculator.PlayerRatingDelta delta, String name, String reason) {
         boolean won = delta.placement() == 1;
         if (delta.participation() <= 0.0) {
             return MatchParticipant.uncounted(delta.uuid(), name, delta.teamId(), delta.placement(), won,
-                            delta.oldRating(), won ? REASON_SHORT_PLAY : REASON_LATE_JOIN)
+                            delta.oldRating(), reason)
                     .withParticipation(0.0);
         }
         return MatchParticipant.counted(delta.uuid(), name, delta.teamId(), delta.placement(), won,
-                        delta.oldRating(), delta.delta(), won ? REASON_WINNER : REASON_DEFEATED)
+                        delta.oldRating(), delta.delta(), reason)
                 .withParticipation(delta.participation());
     }
 

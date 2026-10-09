@@ -14,9 +14,19 @@ import java.util.stream.Collectors;
  * settlement can run off it.
  */
 public record MiniPvPMatchSnapshot(String matchId, long startedAt, long endedAt, List<TeamResult> teams) {
+    /** Why the match did or did not change one participant's rating; the match history words them. */
+    public static final String REASON_WINNER = "winner";
+    public static final String REASON_DEFEATED = "defeated";
+    /** On the winning side for less than half of the match. */
+    public static final String REASON_SHORT_PLAY = "short_play";
+    /** Joined a side that had already lost, at the very end. */
+    public static final String REASON_LATE_JOIN = "late_join";
 
-    /** @param participation share of the match that counts for rating, 0.0 for an exempt player */
-    public record Member(String uuid, double participation) {
+    /**
+     * @param participation share of the match that counts for rating, 0.0 for an exempt player
+     * @param reason        why that share was given, decided together with it
+     */
+    public record Member(String uuid, double participation, String reason) {
     }
 
     public record TeamResult(int teamId, int placement, List<Member> members) {

@@ -26,6 +26,7 @@ import java.util.Optional;
 import static com.mongodb.client.model.Filters.and;
 import static com.mongodb.client.model.Filters.eq;
 import static com.mongodb.client.model.Filters.lt;
+import static com.mongodb.client.model.Filters.ne;
 import static com.mongodb.client.model.Filters.or;
 import static com.mongodb.client.model.Sorts.ascending;
 import static com.mongodb.client.model.Sorts.descending;
@@ -116,12 +117,19 @@ public class MongoMatchStore implements MatchStore {
         if (sourceUuid == null || sourceUuid.isBlank() || targetUuid == null || targetUuid.isBlank()) {
             throw new IllegalArgumentException("UUID must not be blank");
         }
-        Bson filter = eq("participants.uuid", sourceUuid);
-        Bson update = Updates.set("participants.$[elem].uuid", targetUuid);
+        // Matches both accounts played: the target's own entry stays.
+        Bson both = and(eq("participants.uuid", sourceUuid), eq("participants.uuid", targetUuid));
+        Bson drop = Updates.pull("participants", new Document("uuid", sourceUuid));
+        // Matches only the source played: the entry changes hands.
+        Bson sourceOnly = and(eq("participants.uuid", sourceUuid), ne("participants.uuid", targetUuid));
+        Bson move = Updates.set("participants.$[elem].uuid", targetUuid);
         var options = new UpdateOptions().arrayFilters(List.of(Filters.eq("elem.uuid", sourceUuid)));
-        return session != null
-                ? collection.updateMany(session, filter, update, options).getModifiedCount()
-                : collection.updateMany(filter, update, options).getModifiedCount();
+        if (session != null) {
+            return collection.updateMany(session, both, drop).getModifiedCount()
+                    + collection.updateMany(session, sourceOnly, move, options).getModifiedCount();
+        }
+        return collection.updateMany(both, drop).getModifiedCount()
+                + collection.updateMany(sourceOnly, move, options).getModifiedCount();
     }
 
     /**

@@ -210,8 +210,7 @@ public class PlayerMenu extends Menu {
                             ProfileDetails cached) {
         MatchHistoryMenu menu = matchHistory != null ? matchHistory.get() : null;
         if (menu == null || session == null || session.data == null || !session.data.uuid.equals(self.uuid)) return;
-        session.pushHistory(() -> openProfileUi(session, self, returnTab, cached));
-        menu.open(session, null);
+        menu.open(session, null, () -> openProfileUi(session, self, returnTab, cached));
     }
 
     public void players(String uuid, int page) {
