@@ -1,8 +1,14 @@
 package org.xcore.plugin.rating.ladder;
 
+import arc.util.Log;
 import org.jspecify.annotations.Nullable;
 import org.xcore.plugin.integration.idempotency.LedgerClaim;
 import org.xcore.plugin.integration.idempotency.PluginIdempotencyLedger;
+import org.xcore.plugin.rating.match.MatchPage;
+import org.xcore.plugin.rating.match.MatchParticipant;
+import org.xcore.plugin.rating.match.MatchRecord;
+import org.xcore.plugin.rating.match.MatchReport;
+import org.xcore.plugin.rating.match.MatchStore;
 
 import java.time.Instant;
 import java.util.LinkedHashMap;
@@ -28,14 +34,17 @@ public final class Ladder {
     private final LadderStore store;
     private final PluginIdempotencyLedger ledger;
     private final LadderSeasons seasons;
+    private final MatchStore matches;
     /** Standings of one season only; season {@code 0} marks the cache as not yet loaded. */
     private volatile SeasonCache cache = new SeasonCache(0, new ConcurrentHashMap<>());
 
-    Ladder(LadderDefinition definition, LadderStore store, PluginIdempotencyLedger ledger, LadderSeasons seasons) {
+    Ladder(LadderDefinition definition, LadderStore store, PluginIdempotencyLedger ledger, LadderSeasons seasons,
+           MatchStore matches) {
         this.definition = Objects.requireNonNull(definition, "definition");
         this.store = Objects.requireNonNull(store, "store");
         this.ledger = Objects.requireNonNull(ledger, "ledger");
         this.seasons = Objects.requireNonNull(seasons, "seasons");
+        this.matches = Objects.requireNonNull(matches, "matches");
     }
 
     public LadderDefinition definition() {
@@ -122,7 +131,8 @@ public final class Ladder {
 
     /**
      * Records a finished match exactly once, across retries and server restarts. Blocking.
-     * The match counts towards the season that was running when it ended.
+     * The match counts towards the season that was running when it ended. A settlement that
+     * carries a {@link MatchReport} also goes into the match history, rated or not.
      *
      * @throws IllegalStateException when the match was already settled with a different result
      */
@@ -149,13 +159,14 @@ public final class Ladder {
             return SettlementResult.duplicate(operationId, claim.entry().status().toLowerCase());
         }
         if (!settlement.rated()) {
+            if (settlement.report() != null) {
+                recordMatch(resolved != null ? resolved : seasonOf(settlement), settlement, Map.of());
+            }
             ledger.markSkipped(operationId, settlement.skipReason());
             return SettlementResult.skipped(operationId, settlement.skipReason());
         }
 
-        int season = resolved != null
-                ? resolved
-                : seasons.at(id(), settlement.endedAt() != null ? settlement.endedAt() : Instant.now());
+        int season = resolved != null ? resolved : seasonOf(settlement);
         // A match that ended just before a rollover settles into the season that is closing,
         // which the cache no longer holds.
         SeasonCache current = currentCache();
@@ -186,10 +197,61 @@ public final class Ladder {
         if (changed) {
             seasons.matchSettled(id(), season);
         }
+        recordMatch(season, settlement, standings);
         if (!ledger.markCompleted(operationId, settlement.resultHash())) {
             throw new IllegalStateException("Rating settlement was applied but ledger completion failed: " + operationId);
         }
         return SettlementResult.applied(operationId, standings);
+    }
+
+    private int seasonOf(MatchSettlement settlement) {
+        return seasons.at(id(), settlement.endedAt() != null ? settlement.endedAt() : Instant.now());
+    }
+
+    /**
+     * Puts the settled match into the history, with the ratings the standings were actually
+     * left at. The history is a record of the rating, not a part of it: a failure here is
+     * logged and the settlement completes, since a missing line is better than a match the
+     * ledger would let be counted twice.
+     */
+    private void recordMatch(int season, MatchSettlement settlement, Map<String, LadderStanding> standings) {
+        if (settlement.report() == null) {
+            return;
+        }
+        try {
+            MatchReport report = settlement.report().get();
+            List<MatchParticipant> participants = report.participants().stream()
+                    .map(participant -> {
+                        LadderStanding standing = standings.get(participant.uuid());
+                        return standing != null ? participant.withRatingAfter(standing.rating()) : participant;
+                    })
+                    .toList();
+            matches.record(MatchRecord.of(id(), season, settlement.matchId(), settlement.algorithmVersion(),
+                    settlement.skipReason(), new MatchReport(report.startedAt(), report.endedAt(), report.finish(),
+                            report.map(), participants)));
+        } catch (RuntimeException e) {
+            Log.err("Failed to record match " + settlement.matchId() + " of ladder " + id() + " in the history", e);
+        }
+    }
+
+    /** Blocking. The player's matches on this ladder, newest first, each with the player's own entry only. */
+    public MatchPage matches(String uuid, int limit, @Nullable String cursor) {
+        return matches.page(id(), uuid, limit, cursor);
+    }
+
+    /** Blocking. Number of the player's matches in the history. */
+    public long matchCount(String uuid) {
+        return matches.count(id(), uuid);
+    }
+
+    /** Blocking. A whole match of this ladder, with every participant. */
+    public Optional<MatchRecord> match(String matchId) {
+        return matches.find(id(), matchId);
+    }
+
+    /** Blocking. When the history of this ladder starts; empty while it holds no match. */
+    public Optional<Instant> historyStart() {
+        return matches.firstRecorded(id());
     }
 
     /** Blocking. */

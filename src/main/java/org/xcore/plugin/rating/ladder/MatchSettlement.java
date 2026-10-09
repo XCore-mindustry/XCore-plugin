@@ -1,6 +1,7 @@
 package org.xcore.plugin.rating.ladder;
 
 import org.jspecify.annotations.Nullable;
+import org.xcore.plugin.rating.match.MatchReport;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -9,6 +10,7 @@ import java.time.Instant;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.Objects;
+import java.util.function.Supplier;
 
 /**
  * A finished match as a mode hands it to the ladder: the rating changes it already
@@ -19,6 +21,8 @@ import java.util.Objects;
  * @param skipReason       non-null for an unrated match, which is recorded but changes nothing
  * @param endedAt          when the match ended, which decides the season it counts towards;
  *                         {@code null} means the moment it is settled
+ * @param report           what the match history keeps of the match, built only once the ladder
+ *                         has claimed the match, so a duplicate never pays for it; {@code null} keeps nothing
  */
 public record MatchSettlement(
         String matchId,
@@ -26,7 +30,8 @@ public record MatchSettlement(
         String resultHash,
         List<StandingMutation> mutations,
         @Nullable String skipReason,
-        @Nullable Instant endedAt
+        @Nullable Instant endedAt,
+        @Nullable Supplier<MatchReport> report
 ) {
     public MatchSettlement {
         if (matchId == null || matchId.isBlank()) throw new IllegalArgumentException("matchId must not be blank");
@@ -46,19 +51,42 @@ public record MatchSettlement(
         }
     }
 
+    public MatchSettlement(String matchId, String algorithmVersion, String resultHash, List<StandingMutation> mutations,
+                           @Nullable String skipReason, @Nullable Instant endedAt) {
+        this(matchId, algorithmVersion, resultHash, mutations, skipReason, endedAt, null);
+    }
+
     public static MatchSettlement rated(String matchId, String algorithmVersion, String resultHash,
                                         List<StandingMutation> mutations) {
-        return new MatchSettlement(matchId, algorithmVersion, resultHash, mutations, null, null);
+        return new MatchSettlement(matchId, algorithmVersion, resultHash, mutations, null, null, null);
     }
 
     public static MatchSettlement unrated(String matchId, String algorithmVersion, String resultHash, String reason) {
         if (reason == null || reason.isBlank()) throw new IllegalArgumentException("reason must not be blank");
-        return new MatchSettlement(matchId, algorithmVersion, resultHash, List.of(), reason, null);
+        return new MatchSettlement(matchId, algorithmVersion, resultHash, List.of(), reason, null, null);
     }
 
     public MatchSettlement withEndedAt(Instant endedAt) {
         return new MatchSettlement(matchId, algorithmVersion, resultHash, mutations, skipReason,
-                Objects.requireNonNull(endedAt, "endedAt"));
+                Objects.requireNonNull(endedAt, "endedAt"), report);
+    }
+
+    /**
+     * This settlement with the match as the history is to keep it. The report leaves the result
+     * hash alone: it describes the match, it does not decide it.
+     */
+    public MatchSettlement withReport(MatchReport report) {
+        Objects.requireNonNull(report, "report");
+        return withReport(() -> report);
+    }
+
+    /**
+     * {@link #withReport(MatchReport)} for a report that costs reads to build (names, ratings):
+     * the ladder asks for it only after claiming the match, on the thread that settles it.
+     */
+    public MatchSettlement withReport(Supplier<MatchReport> report) {
+        return new MatchSettlement(matchId, algorithmVersion, resultHash, mutations, skipReason, endedAt,
+                Objects.requireNonNull(report, "report"));
     }
 
     public boolean rated() {
