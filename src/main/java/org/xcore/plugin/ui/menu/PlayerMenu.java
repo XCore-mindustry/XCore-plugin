@@ -3,6 +3,7 @@ package org.xcore.plugin.ui.menu;
 import com.ospx.flubundle.Bundle;
 import io.avaje.inject.PostConstruct;
 import jakarta.inject.Inject;
+import jakarta.inject.Provider;
 import jakarta.inject.Singleton;
 import org.xcore.plugin.permission.TargetHierarchy;
 import org.xcore.plugin.concurrent.Async;
@@ -34,6 +35,7 @@ public class PlayerMenu extends Menu {
     private final Async async;
     private final AuditHistoryMenu auditHistoryMenu;
     private final ProfileSectionRegistry profileSections;
+    private final Provider<MatchHistoryMenu> matchHistory;
 
     @Inject
     public PlayerMenu(TomlSecretsConfig secretsConfig,
@@ -47,8 +49,10 @@ public class PlayerMenu extends Menu {
                       MenuService menuService,
                       Async async,
                       ProfileSectionRegistry profileSections,
-                      TargetHierarchy hierarchy) {
+                      TargetHierarchy hierarchy,
+                      Provider<MatchHistoryMenu> matchHistory) {
         super(secretsConfig, sessionService);
+        this.matchHistory = matchHistory;
         this.hierarchy = hierarchy;
         this.profileSections = profileSections;
         this.bundle = bundle;
@@ -74,6 +78,22 @@ public class PlayerMenu extends Menu {
                       ProfileSectionRegistry profileSections) {
         this(secretsConfig, sessionService, gameDataRepository, playerDataRepository, bundle, playerDisplayService,
                 profileSettings, auditHistoryMenu, menuService, async, profileSections, TargetHierarchy.none());
+    }
+
+    public PlayerMenu(TomlSecretsConfig secretsConfig,
+                      SessionService sessionService,
+                      GameDataRepository gameDataRepository,
+                      PlayerDataRepository playerDataRepository,
+                      Bundle bundle,
+                      PlayerDisplayService playerDisplayService,
+                      PlayerProfileSettingsService profileSettings,
+                      AuditHistoryMenu auditHistoryMenu,
+                      MenuService menuService,
+                      Async async,
+                      ProfileSectionRegistry profileSections,
+                      TargetHierarchy hierarchy) {
+        this(secretsConfig, sessionService, gameDataRepository, playerDataRepository, bundle, playerDisplayService,
+                profileSettings, auditHistoryMenu, menuService, async, profileSections, hierarchy, () -> null);
     }
 
     public PlayerMenu(TomlSecretsConfig secretsConfig,
@@ -175,6 +195,23 @@ public class PlayerMenu extends Menu {
                 : null;
         return new ProfileDetails(stats, hexedTop,
                 profileSections != null ? profileSections.load(target) : java.util.List.of());
+    }
+
+    /** Whether the profile can offer the viewer's own match history. */
+    public boolean hasMatchHistory() {
+        return matchHistory != null && matchHistory.get() != null;
+    }
+
+    /**
+     * Opens the viewer's own match history from their profile; its back button returns to the
+     * profile as it was.
+     */
+    public void openMatches(Session session, PlayerData self, PlayerProfileUiController.Tab returnTab,
+                            ProfileDetails cached) {
+        MatchHistoryMenu menu = matchHistory != null ? matchHistory.get() : null;
+        if (menu == null || session == null || session.data == null || !session.data.uuid.equals(self.uuid)) return;
+        session.pushHistory(() -> openProfileUi(session, self, returnTab, cached));
+        menu.open(session, null);
     }
 
     public void players(String uuid, int page) {

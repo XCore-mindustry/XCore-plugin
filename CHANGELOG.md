@@ -18,6 +18,10 @@ All notable changes to this project will be documented in this file.
 - Complete translations for Belarusian, Czech, German, Spanish, French and Polish (previously 9–174 of 905 keys), and the remaining Ukrainian permission names. Belarusian, Czech, German, Spanish, French and Polish bundles now follow the English file's order and section headers.
 
 ### Added
+- Match history: `/matches` and a "Matches" button on the player's own `/stats` profile list their rated matches per ladder (result, rating before and after, map, time) and open a match with every participant, their rating change and why it did or did not count. Players see only their own history for now.
+- `rating_matches` collection: `Ladder.settle` records a match once when the settlement carries a `MatchReport` (`MatchSettlement.withReport`), rated or not, with the ratings the standings were left at. A failure to record is logged and does not affect the settlement. Account merges move the matches along.
+- `MatchPresenter` / `MatchPresenters`: a mode words its own outcomes, reasons and figures in the history; `StandardMatchPresenter` covers team and free-for-all ladders.
+- MiniPvP records its matches, including unrated ones (too few players) with the reason; matches shorter than the minimum play time are still not recorded. The end-of-match chat message points to `/matches`.
 - Test that every translated message renders without errors the English message does not have.
 - Test that every translation uses the same `$variables` as the English bundle.
 
