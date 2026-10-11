@@ -11,8 +11,8 @@ cloud-mindustry = "0.4.0-SNAPSHOT"
 mongodb = "5.13.0"
 gson = "2.14.0"
 jbcrypt = "0.4"
-netty = "4.1.139.Final"
-lettuce = "6.8.2.RELEASE"
+netty = "4.2.19.Final"
+lettuce = "7.8.0.RELEASE"
 jackson = "2.22.3"
 avaje = "12.7"
 flubundle = "2.1.0"
@@ -34,6 +34,7 @@ mongodb-sync = { module = "org.mongodb:mongodb-driver-sync", version.ref = "mong
 mongodb-reactive = { module = "org.mongodb:mongodb-driver-reactivestreams", version.ref = "mongodb" }
 gson = { module = "com.google.code.gson:gson", version.ref = "gson" }
 jbcrypt = { module = "org.mindrot:jbcrypt", version.ref = "jbcrypt" }
+netty-bom = { module = "io.netty:netty-bom", version.ref = "netty" }
 netty-epoll = { module = "io.netty:netty-transport-native-epoll", version.ref = "netty" }
 lettuce = { module = "io.lettuce:lettuce-core", version.ref = "lettuce" }
 jackson-dataformat-toml = { module = "com.fasterxml.jackson.dataformat:jackson-dataformat-toml", version.ref = "jackson" }

@@ -79,6 +79,7 @@ dependencies {
     implementation(libs.gson)
     implementation(libs.jackson.dataformat.toml)
     implementation(libs.jbcrypt)
+    implementation(platform(libs.netty.bom))
     implementation(libs.lettuce)
     implementation(variantOf(libs.netty.epoll) { classifier("linux-x86_64") })
     implementation(libs.avaje.inject)
