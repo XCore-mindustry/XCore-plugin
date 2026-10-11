@@ -1,8 +1,8 @@
 [versions]
 java = "25"
 mindustry = "v160"
-junit = "5.12.1"
-assertj = "3.27.3"
+junit = "6.1.3"
+assertj = "3.27.7"
 
 [libraries]
 mindustry-core = { module = "com.github.Anuken.Mindustry:core", version.ref = "mindustry" }
