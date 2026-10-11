@@ -2,7 +2,7 @@
 java = "25"
 mindustry = "v160"
 avaje = "12.7"
-cloud = "0.2.0-SNAPSHOT"
+cloud = "0.4.0-SNAPSHOT"
 shadow = "9.6.1"
 toxopid = "4.2.0"
 xcore-plugin = "5.0.0-SNAPSHOT"
