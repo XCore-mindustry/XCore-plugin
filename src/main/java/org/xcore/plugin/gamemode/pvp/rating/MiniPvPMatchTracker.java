@@ -154,24 +154,30 @@ public class MiniPvPMatchTracker {
             boolean presentAtStart = (p.joinTime() - startedAt <= 20_000L);
 
             double effectiveParticipation;
+            String reason;
             if (!isWinner) {
                 // On losing team:
                 // If player was present at the match start, played >= 25% of the round, or stayed for >= 15s:
                 // Full loss penalty (strictly prevents disconnect-dodging right before core destruction!)
                 if (presentAtStart || rawParticipation >= 0.25 || activePlayTimeMs >= 15_000L) {
                     effectiveParticipation = 1.0;
+                    reason = MiniPvPMatchSnapshot.REASON_DEFEATED;
                 } else {
                     // Truly joined at the very end on an already defeated team: exempt
                     effectiveParticipation = 0.0;
+                    reason = MiniPvPMatchSnapshot.REASON_LATE_JOIN;
                 }
             } else {
                 // On winning team:
                 // Must have stayed for >= 50% of the match to gain rating (no free carry gain for late joiners)
                 effectiveParticipation = rawParticipation >= 0.5 ? rawParticipation : 0.0;
+                reason = effectiveParticipation > 0.0
+                        ? MiniPvPMatchSnapshot.REASON_WINNER
+                        : MiniPvPMatchSnapshot.REASON_SHORT_PLAY;
             }
 
             membersByTeam.computeIfAbsent(p.teamId(), k -> new ArrayList<>())
-                    .add(new MiniPvPMatchSnapshot.Member(p.uuid(), effectiveParticipation));
+                    .add(new MiniPvPMatchSnapshot.Member(p.uuid(), effectiveParticipation, reason));
         }
 
         List<MiniPvPMatchSnapshot.TeamResult> teams = new ArrayList<>();

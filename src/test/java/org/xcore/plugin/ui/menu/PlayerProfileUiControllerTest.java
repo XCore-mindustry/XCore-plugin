@@ -157,6 +157,33 @@ class PlayerProfileUiControllerTest {
     }
 
     @Test
+    @DisplayName("a player's own profile offers their match history; someone else's does not")
+    void matchesButton_onOwnProfileOnly() {
+        Session session = createTestSession("uuid-1", false);
+        PlayerMenu playerMenu = mock(PlayerMenu.class);
+        when(playerMenu.hasMatchHistory()).thenReturn(true);
+        PlayerProfileUiController own = new PlayerProfileUiController(
+                playerMenu, null, null, null, session, session.data);
+        PlayerProfileUiController.ProfileModel ownModel = own.createInitialModel(
+                PlayerProfileUiController.Tab.STATS, null);
+
+        assertThat(LayoutAssert.actions(own.render(ownModel))).contains("action:matches");
+        own.update(ownModel, own.parseEvent(new MenuResult("action:matches")), null);
+        verify(playerMenu).openMatches(eq(session), eq(session.data), eq(PlayerProfileUiController.Tab.STATS), any());
+
+        PlayerData other = new PlayerData("uuid-2", true);
+        other.nickname = "Other";
+        PlayerProfileUiController foreign = new PlayerProfileUiController(
+                playerMenu, null, null, null, session, other);
+        PlayerProfileUiController.ProfileModel foreignModel = foreign.createInitialModel(
+                PlayerProfileUiController.Tab.STATS, null);
+
+        assertThat(LayoutAssert.actions(foreign.render(foreignModel))).doesNotContain("action:matches");
+        foreign.update(foreignModel, new PlayerProfileUiController.ProfileEvent.OpenMatches(), null);
+        verify(playerMenu, times(1)).openMatches(any(), any(), any(), any());
+    }
+
+    @Test
     @DisplayName("update SelectTab changes active tab")
     void update_selectTab_changesTab() {
         Session session = createTestSession("uuid-1", false);

@@ -12,6 +12,8 @@ import org.xcore.plugin.rating.ladder.LadderDefinition;
 import org.xcore.plugin.rating.ladder.LadderService;
 import org.xcore.plugin.rating.season.SeasonAnnouncer;
 import org.xcore.plugin.rating.view.LadderViews;
+import org.xcore.plugin.rating.view.MatchPresenters;
+import org.xcore.plugin.rating.view.StandardMatchPresenter;
 
 import java.util.Optional;
 
@@ -26,13 +28,23 @@ public class MiniPvPLadder {
 
     private final Ladder ladder;
 
-    @Inject
     public MiniPvPLadder(LadderService ladders,
                          TopCategoryRegistry topCategories,
                          ProfileSectionRegistry profileSections,
                          LadderViews views,
                          SeasonAnnouncer seasonAnnouncer,
                          TomlXcoreConfig config) {
+        this(ladders, topCategories, profileSections, views, seasonAnnouncer, config, new MatchPresenters());
+    }
+
+    @Inject
+    public MiniPvPLadder(LadderService ladders,
+                         TopCategoryRegistry topCategories,
+                         ProfileSectionRegistry profileSections,
+                         LadderViews views,
+                         SeasonAnnouncer seasonAnnouncer,
+                         TomlXcoreConfig config,
+                         MatchPresenters matchPresenters) {
         this.ladder = ladders.register(
                 new LadderDefinition(LADDER_ID, "top-menu-category-mini-pvp", RatingPolicy.teamEloV1()));
 
@@ -43,6 +55,8 @@ public class MiniPvPLadder {
                 .withDetail((target, local) -> target.legacyPvpRating > 0
                         ? Optional.of(local.t("player-stats-legacy-pvp-rating") + " [gray]" + target.legacyPvpRating + "[]")
                         : Optional.empty()));
+        // Team, side and line-up are all the standard presenter needs for a MiniPvP match.
+        matchPresenters.register(LADDER_ID, new StandardMatchPresenter(Iconc.modePvp));
         if (hostsMode) {
             topCategories.setDefaultCategory(TOP_CATEGORY_ID);
             seasonAnnouncer.follow(ladder.definition());

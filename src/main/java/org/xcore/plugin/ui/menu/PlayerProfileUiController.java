@@ -237,6 +237,8 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
         record OpenSettings() implements ProfileEvent {}
         record OpenAuditHistory() implements ProfileEvent {}
         record OpenAuditActions() implements ProfileEvent {}
+        /** The viewer's own match history; offered on their own profile only. */
+        record OpenMatches() implements ProfileEvent {}
         record Close() implements ProfileEvent {}
     }
 
@@ -570,6 +572,15 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
                 yield UpdateResult.close(model);
             }
 
+            case ProfileEvent.OpenMatches() -> {
+                PlayerData target = resolveCurrentTarget(model);
+                if (!model.isSelf() || target == null || playerMenu == null || session == null) {
+                    yield UpdateResult.of(model);
+                }
+                playerMenu.openMatches(session, target, model.tab(), model.details());
+                yield UpdateResult.close(model);
+            }
+
             case ProfileEvent.Close() -> UpdateResult.close(model);
         };
     }
@@ -598,6 +609,7 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
         if ("action:settings".equals(res)) return new ProfileEvent.OpenSettings();
         if ("action:audit_history".equals(res)) return new ProfileEvent.OpenAuditHistory();
         if ("action:audit_actions".equals(res)) return new ProfileEvent.OpenAuditActions();
+        if ("action:matches".equals(res)) return new ProfileEvent.OpenMatches();
         if ("action:back_to_players".equals(res)) return new ProfileEvent.BackToPlayers();
 
         if ("action:tab:overview".equals(res)) return new ProfileEvent.SelectTab(Tab.OVERVIEW);
@@ -707,6 +719,10 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
             actions.add(new Kit.Action("[lightgray]" + Iconc.left + "[] " + t(local, "back"), "action:back_to_players"));
         }
         if (model.tab() != Tab.PLAYERS) {
+            if (model.isSelf() && playerMenu != null && playerMenu.hasMatchHistory()) {
+                actions.add(new Kit.Action("[accent]" + Iconc.list + "[] " + t(local, "player-stats-btn-matches"),
+                        "action:matches"));
+            }
             if (model.isSelf() || model.isViewerAdmin()) {
                 actions.add(new Kit.Action("[accent]" + Iconc.settings + "[] " + t(local, "player-stats-btn-settings"),
                         "action:settings"));

@@ -25,7 +25,11 @@ import org.xcore.plugin.rating.ladder.InMemoryLadderStore;
 import org.xcore.plugin.rating.ladder.Ladder;
 import org.xcore.plugin.rating.ladder.LadderService;
 import org.xcore.plugin.rating.season.SeasonAnnouncer;
+import org.xcore.plugin.rating.ladder.LadderSeasons;
 import org.xcore.plugin.rating.ladder.LadderStanding;
+import org.xcore.plugin.rating.match.InMemoryMatchStore;
+import org.xcore.plugin.rating.match.MatchParticipant;
+import org.xcore.plugin.rating.match.MatchRecord;
 import org.xcore.plugin.service.GameDataService;
 import org.xcore.plugin.session.Session;
 import org.xcore.plugin.session.SessionService;
@@ -43,6 +47,7 @@ import static org.mockito.Mockito.*;
 class MiniPvPRatingSettlerTest {
     private MiniPvPMatchTracker tracker;
     private InMemoryLadderStore store;
+    private InMemoryMatchStore matches;
     private Ladder ladder;
     private SessionService sessionService;
     private PlayerDataRepository playerRepo;
@@ -55,6 +60,7 @@ class MiniPvPRatingSettlerTest {
         tracker = new MiniPvPMatchTracker();
         tracker.startMatch(null);
         store = new InMemoryLadderStore();
+        matches = new InMemoryMatchStore();
         sessionService = mock(SessionService.class);
         playerRepo = mock(PlayerDataRepository.class);
         displayRefresh = mock(PlayerDisplayRefreshService.class);
@@ -64,7 +70,7 @@ class MiniPvPRatingSettlerTest {
         config.server.name = "mini-pvp";
         SeasonSchedule schedule = SeasonSchedule.from(new TomlSecretsConfig().rating.seasons);
         MiniPvPLadder miniPvPLadder = new MiniPvPLadder(
-                new LadderService(store, new InMemoryIdempotencyLedger()),
+                new LadderService(store, new InMemoryIdempotencyLedger(), LadderSeasons.single(), matches),
                 new TopCategoryRegistry(), new ProfileSectionRegistry(),
                 new LadderViews(new InMemorySeasonStore(), new SeasonResolver(), schedule, playerRepo,
                         new InMemoryPrizeGrantRepository()),
@@ -111,6 +117,8 @@ class MiniPvPRatingSettlerTest {
         assertThat(settler.isSettled()).isFalse();
         assertThat(ladder.count()).isZero();
         verifyNoInteractions(gameDataService);
+        // Too short to be a match at all: not even the history keeps it.
+        assertThat(matches.all()).isEmpty();
     }
 
     @Test
@@ -140,6 +148,60 @@ class MiniPvPRatingSettlerTest {
         assertThat(settler.isSettled()).isFalse();
         assertThat(ladder.count()).isZero();
         verifyNoInteractions(gameDataService);
+
+        // The history keeps it, so the players can see why it gave no rating.
+        assertThat(matches.all()).singleElement().satisfies(match -> {
+            assertThat(match.rated()).isFalse();
+            assertThat(match.skipReason()).isEqualTo(MiniPvPRatingSettler.SKIP_NOT_ENOUGH_PLAYERS);
+            assertThat(match.participants()).allSatisfy(p -> {
+                assertThat(p.counted()).isFalse();
+                assertThat(p.reason()).isEqualTo(MiniPvPRatingSettler.REASON_MATCH_UNRATED);
+                assertThat(p.delta()).isZero();
+            });
+            assertThat(match.participant("alt").orElseThrow().name()).isEqualTo("Late opponent");
+        });
+    }
+
+    @Test
+    @DisplayName("a rated match goes into the history with sides, reasons and the deltas the players were told")
+    void settle_recordsHistory() {
+        twoTeamsOfTwo(120_000L);
+        long late = System.currentTimeMillis() - 1000L;
+        tracker.trackParticipant(new MiniPvPMatchTracker.ParticipantInfo("late", "Latecomer", Team.crux.id, late, 0L));
+        onlinePlayer("p1", "[#ff8800]Winner 1");
+
+        assertThat(settler.settle(Team.sharded).join()).isTrue();
+
+        MatchRecord match = matches.all().getFirst();
+        assertThat(match.ladder()).isEqualTo(MiniPvPLadder.LADDER_ID);
+        assertThat(match.rated()).isTrue();
+        // The latecomer changed nothing, so the line-up is the 2 v 2 that was rated.
+        assertThat(match.participants()).hasSize(5);
+        assertThat(match.players()).isEqualTo(4);
+        assertThat(match.teamSizes()).containsEntry(Team.sharded.id, 2).containsEntry(Team.crux.id, 2);
+
+        MatchParticipant winner = match.participant("p1").orElseThrow();
+        assertThat(winner.name()).isEqualTo("[#ff8800]Winner 1");
+        assertThat(winner.team()).isEqualTo(Team.sharded.id);
+        assertThat(winner.win()).isTrue();
+        assertThat(winner.counted()).isTrue();
+        assertThat(winner.reason()).isEqualTo(MiniPvPMatchSnapshot.REASON_WINNER);
+        assertThat(winner.ratingBefore()).isEqualTo(1000);
+        assertThat(winner.ratingAfter()).isEqualTo(ladder.rating("p1"));
+        assertThat(winner.delta()).isEqualTo(winner.ratingAfter() - winner.ratingBefore());
+        assertThat(winner.participation()).isEqualTo(1.0);
+
+        MatchParticipant loser = match.participant("p3").orElseThrow();
+        assertThat(loser.reason()).isEqualTo(MiniPvPMatchSnapshot.REASON_DEFEATED);
+        assertThat(loser.name()).isEqualTo("Loser 1");
+        assertThat(loser.delta()).isNegative();
+
+        MatchParticipant latecomer = match.participant("late").orElseThrow();
+        assertThat(latecomer.counted()).isFalse();
+        assertThat(latecomer.reason()).isEqualTo(MiniPvPMatchSnapshot.REASON_LATE_JOIN);
+        assertThat(latecomer.delta()).isZero();
+
+        verify(sessionService.get("p1").locale()).send(eq("pvp-match-settlement-details"), anyMap());
     }
 
     @Test
