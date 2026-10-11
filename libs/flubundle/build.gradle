@@ -65,7 +65,7 @@ dependencies {
 
     api "net.xyzsd.fluent:fluent-base:2.0.2-xcore"
     // DURATION formats units with CLDR data; same version fluent-base uses for plural rules.
-    implementation "com.ibm.icu:icu4j:78.1"
+    implementation "com.ibm.icu:icu4j:78.3"
 
     testImplementation platform('org.junit:junit-bom:6.1.3')
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
