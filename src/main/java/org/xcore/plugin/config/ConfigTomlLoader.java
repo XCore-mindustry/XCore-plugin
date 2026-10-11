@@ -1,7 +1,8 @@
 package org.xcore.plugin.config;
 
 import arc.files.Fi;
-import com.fasterxml.jackson.dataformat.toml.TomlMapper;
+import tools.jackson.core.JacksonException;
+import tools.jackson.dataformat.toml.TomlMapper;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -149,7 +150,7 @@ public final class ConfigTomlLoader {
                 content = quoteBareDiscordChannelId(content);
             }
             return mapper.readValue(content, type);
-        } catch (IOException e) {
+        } catch (IOException | JacksonException e) {
             throw new IllegalStateException(
                     "Failed to read TOML from " + file.absolutePath() + ": " + e.getMessage(), e);
         }

@@ -1,9 +1,9 @@
 package org.xcore.plugin.permission.role;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.dataformat.toml.TomlMapper;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.dataformat.toml.TomlMapper;
 
-import java.io.IOException;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
@@ -39,7 +39,7 @@ public final class PermissionModelLoader {
         JsonNode root;
         try {
             root = new TomlMapper().readTree(toml);
-        } catch (IOException e) {
+        } catch (JacksonException e) {
             throw new PermissionConfigException("permissions.toml is not valid TOML: " + e.getMessage(), e);
         }
         if (root == null || !root.isObject()) {
@@ -191,10 +191,10 @@ public final class PermissionModelLoader {
         }
         List<String> values = new ArrayList<>();
         for (JsonNode item : node) {
-            if (!item.isTextual() || item.textValue().isBlank()) {
+            if (!item.isString() || item.stringValue().isBlank()) {
                 throw new PermissionConfigException(where + " must be an array of strings");
             }
-            values.add(item.textValue().strip());
+            values.add(item.stringValue().strip());
         }
         return values;
     }
@@ -203,10 +203,10 @@ public final class PermissionModelLoader {
         if (node == null) {
             return null;
         }
-        if (!node.isTextual()) {
+        if (!node.isString()) {
             throw new PermissionConfigException(where + " must be a string");
         }
-        return node.textValue().strip();
+        return node.stringValue().strip();
     }
 
     private static void requireKnownKeys(JsonNode node, Set<String> known, String where) {

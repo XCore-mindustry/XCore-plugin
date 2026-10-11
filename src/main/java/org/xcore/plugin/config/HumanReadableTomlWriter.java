@@ -1,8 +1,10 @@
 package org.xcore.plugin.config;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.PropertyNamingStrategies;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.MapperFeature;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.PropertyNamingStrategies;
+import tools.jackson.databind.json.JsonMapper;
 
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -19,8 +21,12 @@ import java.util.Objects;
  * {@code [transport.redis]}.</p>
  */
 public final class HumanReadableTomlWriter {
-    private static final ObjectMapper MAP_MAPPER = new ObjectMapper()
-            .setPropertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE);
+    private static final ObjectMapper MAP_MAPPER = JsonMapper.builder()
+            .propertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE)
+            // Jackson 3 sorts properties alphabetically by default; sections and
+            // keys must keep the declaration order of the config DTOs.
+            .disable(MapperFeature.SORT_PROPERTIES_ALPHABETICALLY)
+            .build();
 
     private static final TypeReference<LinkedHashMap<String, Object>> MAP_TYPE = new TypeReference<>() {
     };
