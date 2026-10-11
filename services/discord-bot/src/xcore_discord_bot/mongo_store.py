@@ -7,9 +7,9 @@ from datetime import UTC, datetime
 from typing import Any
 
 from bson.errors import InvalidBSON
-from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
 from pydantic import BaseModel, ConfigDict
-from pymongo import DESCENDING
+from pymongo import DESCENDING, AsyncMongoClient
+from pymongo.asynchronous.database import AsyncDatabase
 from pymongo.errors import PyMongoError
 
 from .dto import (
@@ -140,14 +140,14 @@ class AuditDoc(_MongoDoc):
 class MongoStore:
     def __init__(self, settings: Settings) -> None:
         self._settings = settings
-        self._client: AsyncIOMotorClient | None = None
-        self._db: AsyncIOMotorDatabase | None = None
+        self._client: AsyncMongoClient | None = None
+        self._db: AsyncDatabase | None = None
 
     async def connect(self) -> None:
         if self._db is not None:
             return
 
-        self._client = AsyncIOMotorClient(
+        self._client = AsyncMongoClient(
             self._settings.mongo_uri,
             datetime_conversion="DATETIME_AUTO",
         )
@@ -156,7 +156,7 @@ class MongoStore:
 
     async def close(self) -> None:
         if self._client is not None:
-            self._client.close()
+            await self._client.close()
         self._client = None
         self._db = None
 
@@ -256,7 +256,7 @@ class MongoStore:
         # A PID as it is typed in the game: 12, -12, #12 or #-12.
         typed_pid = normalized.removeprefix("#")
         if re.fullmatch(r"-?\d+|-", typed_pid):
-            rows = await players.aggregate(
+            pid_cursor = await players.aggregate(
                 [
                     {
                         "$match": {
@@ -272,7 +272,8 @@ class MongoStore:
                     {"$limit": limit},
                     {"$project": {"_id": 0, "pid": 1, "nickname": 1, "username": 1}},
                 ]
-            ).to_list(length=limit)
+            )
+            rows = await pid_cursor.to_list(length=limit)
         else:
             # A name as it is typed in the game: part of a nickname, or a @username.
             typed_username = re.escape(normalized.removeprefix("@"))
@@ -326,7 +327,7 @@ class MongoStore:
             logger.warning(
                 "Encountered out-of-range BSON datetime in bans; retrying without expire_date"
             )
-            rows = await bans.aggregate(
+            fallback_cursor = await bans.aggregate(
                 [
                     {"$match": query},
                     {"$sort": {"_id": -1}},
@@ -350,7 +351,8 @@ class MongoStore:
                         }
                     },
                 ]
-            ).to_list(length=limit)
+            )
+            rows = await fallback_cursor.to_list(length=limit)
 
         sanitized: list[BanRecord] = []
         for row in rows:
@@ -728,11 +730,11 @@ class MongoStore:
         return datetime.now(UTC)
 
     @property
-    def database(self) -> AsyncIOMotorDatabase:
+    def database(self) -> AsyncDatabase:
         """The connected database, for stores that read collections this one does not own."""
         return self._db_required()
 
-    def _db_required(self) -> AsyncIOMotorDatabase:
+    def _db_required(self) -> AsyncDatabase:
         if self._db is None:
             raise RuntimeError("MongoStore is not connected")
         return self._db

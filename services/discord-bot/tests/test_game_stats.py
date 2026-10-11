@@ -49,7 +49,7 @@ class _Games:
         self.rows = rows
         self.pipelines: list[list[dict[str, Any]]] = []
 
-    def aggregate(self, pipeline: list[dict[str, Any]]):
+    async def aggregate(self, pipeline: list[dict[str, Any]]):
         self.pipelines.append(pipeline)
 
         async def generate():
