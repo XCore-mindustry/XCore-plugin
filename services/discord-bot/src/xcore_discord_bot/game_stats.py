@@ -136,5 +136,5 @@ class GameStatsStore:
     async def overview(self, uuid: str) -> GameStats:
         if not uuid:
             return GameStats()
-        cursor = self._store.database[GAMES].aggregate(_pipeline(uuid))
+        cursor = await self._store.database[GAMES].aggregate(_pipeline(uuid))
         return game_stats_from_rows([row async for row in cursor])
