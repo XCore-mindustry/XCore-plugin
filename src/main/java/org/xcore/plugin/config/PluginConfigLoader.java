@@ -1,13 +1,13 @@
 package org.xcore.plugin.config;
 
 import arc.files.Fi;
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.PropertyNamingStrategies;
-import com.fasterxml.jackson.dataformat.toml.TomlMapper;
 import mindustry.Vars;
 import org.xcore.plugin.common.PLog;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.DeserializationFeature;
+import tools.jackson.databind.PropertyNamingStrategies;
+import tools.jackson.dataformat.toml.TomlMapper;
 
-import java.io.IOException;
 import java.util.function.Supplier;
 
 /**
@@ -67,7 +67,7 @@ public final class PluginConfigLoader<T> {
                 normalizing.normalize();
             }
             return config;
-        } catch (IOException e) {
+        } catch (JacksonException e) {
             throw new IllegalStateException("Failed to read " + file.absolutePath() + ": " + e.getMessage(), e);
         }
     }
@@ -78,8 +78,8 @@ public final class PluginConfigLoader<T> {
      */
     public static TomlMapper lenientTomlMapper() {
         return TomlMapper.builder()
-                // FAIL_ON_UNKNOWN_PROPERTIES is on by default; stale or future
-                // sections must never prevent a server from booting.
+                // Kept explicit rather than relying on the mapper default: stale
+                // or future sections must never prevent a server from booting.
                 .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
                 .propertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE)
                 .build();

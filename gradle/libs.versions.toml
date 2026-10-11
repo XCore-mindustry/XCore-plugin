@@ -13,7 +13,7 @@ gson = "2.14.0"
 jbcrypt = "0.4"
 netty = "4.2.19.Final"
 lettuce = "7.8.0.RELEASE"
-jackson = "2.22.3"
+jackson = "3.2.3"
 avaje = "12.7"
 flubundle = "2.1.0"
 xcore-ui = "0.1.0-SNAPSHOT"
@@ -37,7 +37,7 @@ jbcrypt = { module = "org.mindrot:jbcrypt", version.ref = "jbcrypt" }
 netty-bom = { module = "io.netty:netty-bom", version.ref = "netty" }
 netty-epoll = { module = "io.netty:netty-transport-native-epoll", version.ref = "netty" }
 lettuce = { module = "io.lettuce:lettuce-core", version.ref = "lettuce" }
-jackson-dataformat-toml = { module = "com.fasterxml.jackson.dataformat:jackson-dataformat-toml", version.ref = "jackson" }
+jackson-dataformat-toml = { module = "tools.jackson.dataformat:jackson-dataformat-toml", version.ref = "jackson" }
 avaje-inject = { module = "io.avaje:avaje-inject", version.ref = "avaje" }
 avaje-inject-generator = { module = "io.avaje:avaje-inject-generator", version.ref = "avaje" }
 avaje-inject-test = { module = "io.avaje:avaje-inject-test", version.ref = "avaje" }
