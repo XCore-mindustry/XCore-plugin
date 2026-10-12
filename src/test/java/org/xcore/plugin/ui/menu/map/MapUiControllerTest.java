@@ -57,10 +57,6 @@ class MapUiControllerTest {
 
         mapService = mock(MapService.class);
         mapDataRepository = mock(MapDataRepository.class);
-        when(mapDataRepository.enrichDiscordUploadAsync(any())).thenAnswer(call ->
-                java.util.concurrent.CompletableFuture.completedFuture(call.getArgument(0)));
-        when(mapDataRepository.enrichDiscordUploadAsync(any(), anyString())).thenAnswer(call ->
-                java.util.concurrent.CompletableFuture.completedFuture(call.getArgument(0)));
         previewService = mock(MapPreviewService.class);
         observerService = mock(MapVoteObserverService.class);
 
@@ -370,6 +366,9 @@ class MapUiControllerTest {
         data.discordUpload = new org.xcore.plugin.model.MapDiscordUpload(
                 "123456789012345678", "[scarlet]Reviewer\n" + "R".repeat(100), 1791806400000L,
                 "234567890123456789", "Mapper");
+        var installed = new mindustry.maps.Map(new arc.files.Fi("map-1"), 10, 10, arc.struct.StringMap.of("name", "Desert Crossing", "author", "Anuke"), true);
+        when(mapService.findMapByFileName("map-1")).thenReturn(installed);
+        when(mapService.discordUploadFor(installed)).thenReturn(data.discordUpload);
         var model = createTestDetailsModel("map-1").withResolvedDetails(data);
         for (String language : LayoutAssert.LANGUAGES) {
             session.localization = LayoutAssert.localization(language);

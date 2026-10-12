@@ -277,6 +277,7 @@ final class MapFlows {
                     session.locale().t("commands-map-title"),
                     session.locale().t("commands-map-content", args(
                             "name", mapData.name, "author", mapData.author, "description", desc,
+                            "authorLabel", session.locale().t(mapService.discordUploadFor(mindustryMap) == null ? "map-ui-by" : "map-upload-file-author", args("author", mapData.author)),
                             "width", (mindustryMap == null) ? "?" : mindustryMap.width,
                             "height", (mindustryMap == null) ? "?" : mindustryMap.height,
                             "reputation", mapData.reputation, "popularity", String.format("%.1f", mapData.popularity),
@@ -284,16 +285,14 @@ final class MapFlows {
                             "playedYear", mapData.playedTimesYear, "lastPlayed", last,
                             "like", mapData.like, "dislike", mapData.dislike,
                             "min", minDuration, "avg", averageDuration, "max", maxDuration
-                    )) + attribution(session, mapData, mindustryMap),
+                    )) + attribution(session, mapService.discordUploadFor(mindustryMap)),
                     grid.build()
             );
         }
     }
 
-    private static String attribution(Session session, MapData data, Map installed) {
-        var upload = org.xcore.plugin.ui.menu.map.MapUploadText.forFile(
-                data, installed == null || installed.file == null ? null : installed.file.name());
-        return upload == null ? "" : "\n\n" + org.xcore.plugin.ui.menu.map.MapUploadText.format(session.locale(), upload);
+    private static String attribution(Session session, org.xcore.plugin.model.MapDiscordUpload upload) {
+        return upload == null ? "" : "\n\n" + org.xcore.plugin.ui.menu.map.MapUploadText.format(session.locale(), upload, session.has(PermissionNodes.MAPS_FORCE_RTV));
     }
 
     static final class MapsState {

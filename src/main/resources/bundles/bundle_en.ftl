@@ -334,7 +334,7 @@ commands-map-description = Statistics of a specific map.
 commands-map-title = [orange]{ -xcore } — Map
 commands-map-content =
     [gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
-    [white]{ $name }[] [gray]by [sky]{ $author }[]
+    [white]{ $name }[] [sky]{ $authorLabel }[]
     [lightgray]{ $description }[]
     [gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
     { "" }
@@ -1337,3 +1337,5 @@ map-upload-file-author = File author: { $author }
 map-upload-creator = Declared creator: { $person }
 map-upload-submitter = Added via Discord: { $person }
 map-upload-date = Uploaded: [lightgray]{ $date }[] (UTC)
+
+map-upload-current-creator = [accent]{ $map }[] — { $creator }

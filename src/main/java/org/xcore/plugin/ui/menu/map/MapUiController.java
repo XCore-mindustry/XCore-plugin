@@ -376,7 +376,7 @@ public class MapUiController implements UiController<MapUiModel, MapUiEvent> {
         float width = screen.width();
         float text = width - 2f * MARGIN;
         return Kit.window(window -> {
-            String authorKey = MapUploadText.forFile(model.resolvedDetails(), model.selectedMapId()) != null
+            String authorKey = mapService.discordUploadFor(findMindustryMap(model.selectedMapId(), model.resolvedDetails())) != null
                     ? "map-upload-file-author" : "map-ui-by";
             String author = Strings.stripColors(t(session, authorKey, args("author", Strings.stripColors(model.mapAuthor()))));
             String mode = Strings.stripColors(t(session, "map-ui-mode", args("mode", model.gamemodeName())));
@@ -432,9 +432,9 @@ public class MapUiController implements UiController<MapUiModel, MapUiEvent> {
                     t(session, "map-ui-total-plays", args("played", model.playedTimes(), "playedYear", model.playedTimesYear())),
                     t(session, "map-ui-last-played", args("lastPlayed", model.lastPlayedFormatted())),
                     description), inner)).row();
-            if (MapUploadText.forFile(model.resolvedDetails(), model.selectedMapId()) != null) {
+            if (mapService.discordUploadFor(findMindustryMap(model.selectedMapId(), model.resolvedDetails())) != null) {
                 content.add(Kit.text(TextWidth.breakWords(
-                        MapUploadText.format(session.locale(), MapUploadText.forFile(model.resolvedDetails(), model.selectedMapId())), inner), inner)).row();
+                        MapUploadText.format(session.locale(), mapService.discordUploadFor(findMindustryMap(model.selectedMapId(), model.resolvedDetails())), model.isAdmin()), inner), inner)).row();
             }
         });
     }
@@ -918,8 +918,7 @@ public class MapUiController implements UiController<MapUiModel, MapUiEvent> {
             return java.util.concurrent.CompletableFuture.completedFuture(null);
         }
         if (org.bson.types.ObjectId.isValid(mapId)) {
-            return mapDataRepository.findByIdAsync(new org.bson.types.ObjectId(mapId))
-                    .thenCompose(mapDataRepository::enrichDiscordUploadAsync);
+            return mapDataRepository.findByIdAsync(new org.bson.types.ObjectId(mapId));
         }
 
         Map mindustryMap = findMindustryMap(mapId);
@@ -947,7 +946,7 @@ public class MapUiController implements UiController<MapUiModel, MapUiEvent> {
                                     });
                         }
                         return data;
-                    }).thenCompose(data -> mapDataRepository.enrichDiscordUploadAsync(data, fileName));
+                    });
         }
         return java.util.concurrent.CompletableFuture.completedFuture(null);
     }

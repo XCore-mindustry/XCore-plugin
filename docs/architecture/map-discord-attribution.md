@@ -1,115 +1,113 @@
 # Discord map submission attribution
 
-A map's file author and Discord submission are independent. `author` remains the value
-embedded in `.msav`, used by existing map identity and game statistics. An uploader's
-choice of creator is a declaration, not verified authorship.
+File author, declared creator and uploader are independent. The author embedded in
+`.msav` keeps its existing role in statistics; selecting a Discord creator is a
+reviewer's declaration, not verified authorship.
 
-`/map upload` records the interaction user's Discord ID and display name automatically.
-The optional `creator` user selector applies to every attached file (up to three). Maps
-by different creators should be sent separately. Omission does not infer the uploader
-as creator. Names are snapshots at submission time; IDs remain usable after a rename,
-leaving the guild, or removal of a local game-account link. No Discord membership
-lookup or game-account linking is required to render either interface.
+`/map upload` snapshots the interaction user's ID, display name and handle. Optional
+`creator` is the default for all attachments; `creator1`, `creator2`, `creator3`
+override it by original attachment position, even when another attachment is skipped.
+An omitted creator is not inferred from the uploader. Names and handles are snapshots;
+IDs remain the stable reference after renaming or leaving Discord.
 
-The protocol adds optional `discordUpload` to each `MapFileSourceV1` and `MapEntryV1`:
+Protocol 0.14.0 adds optional `uploadedByHandle`/`creatorHandle` to `discordUpload`:
 
 ```json
 {
   "uploadedBy": {"discordId": "123456789012345678", "discordUsername": "Reviewer"},
+  "uploadedByHandle": "reviewer",
   "uploadedAt": 1791806400000,
-  "creator": {"discordId": "234567890123456789", "discordUsername": "Mapper"}
+  "creator": {"discordId": "234567890123456789", "discordUsername": "Mapper"},
+  "creatorHandle": "mapper"
 }
 ```
 
-`uploadedAt` is Unix epoch milliseconds. `creator` is omitted when unspecified;
-`discordUpload` is omitted for old or non-Discord submissions. The same submission
-snapshot accompanies all attached files, while each has its own file author.
+`uploadedAt` is Unix epoch milliseconds. Attribution remains optional in files and
+map entries. Python generated models enforce schema minima, minimum lengths, patterns
+and minimum array sizes, including direct constructors.
 
-After downloads finish, the server reloads the map registry on the game thread. Only
-successfully written files present in that registry are attributed. It captures their
-names, file names, authors and current game mode before dispatching storage work.
-The `maps` document stores an optional `discord_upload` POJO and the SHA-256 of the exact
-bytes. Original `.msav` bytes and embedded tags are unchanged. File-name lookup takes
-precedence over legacy display-name aliases, and an alias match for a different file
-cannot expose that file's Discord submission in the Discord map list.
+## Storage and identity
 
-Installation writes are serialized per exact filename on the HTTP workers. Each
-successful write gets an installation token; late batches and queued metadata work
-must still match that token, even when a newer submission used identical map bytes.
-Database writes for one file run in order, while other files remain independent.
-Failed storage writes do not block their successors.
+`map_uploads` holds the latest installation per exact `(server, fileName)`; its `_id`
+is an injective length-prefixed server/filename key. Each row contains the SHA-256 of
+the downloaded bytes and optional attribution. `map_upload_history` stores advisory
+append-only snapshots, including removals. A history insert failure is logged without
+claiming that an acknowledged current record was lost.
 
-Submission updates write only metadata, preserving concurrent ratings and telemetry.
-A first submission creates the map record for the current game mode. Attribution updates
-apply to every existing statistics partition of the file; reads and newly created game-mode
-records can inherit attribution from another partition without inheriting its statistics.
-Reupload replaces the latest submission, including clearing an omitted creator. Loading the same file
-through a legacy command without attribution clears its previous Discord attribution.
-Failed downloads are not attributed. Duplicate file names in one transport batch use
-the first source. Existing records have no fabricated history or automatic backfill.
-Consolidation into `MapEntity` retains the most recent non-null submission. Write
-lookups and updates use exact physical filenames, keeping case-only filenames
-distinct. Case-insensitive aliases remain a read convenience only when unambiguous.
-Both game interfaces verify the installed filename before displaying attribution;
-statistics resolved through another filename's display alias cannot expose its
-submitter or creator.
+Attribution writes never rename or overwrite documents in the statistics collection
+`maps`. After a successful installation, the existing `findOrCreate` path runs on a
+storage worker to keep voting available for fresh maps. Existing filename/name/author
+lookup behavior remains unchanged, including the
+legacy fallback when a renamed file has the same name and author. No automatic merging
+based only on display names is introduced. Other servers and game-mode statistics cannot
+be modified by attribution writes.
 
-The existing `maps` collection partitions records by file name and game mode. This
-change keeps statistics partitioned while treating submission attribution as file-level
-metadata: it does not add a submission audit log or establish new map identity rules.
-Database failures are logged and do not invent attribution;
-the map can still be available while metadata persistence has failed.
+Attribution is shown only when the server, exact filename and current installed SHA-256
+match. A separate in-memory cache is populated on storage workers after the identity
+catalog hashes the installed files. Both game menus and Discord read this same cache;
+a statistics alias cannot hide the installed file's attribution or expose an alias's.
+Catalog generations and cache revisions discard obsolete asynchronous reads. A reload
+clears the old cache first. Server load, upload and removal rebuild it. World load refreshes attribution without
+clearing the verified cache or hashing unchanged files. File changes must go through
+a catalog rebuild (plugin upload/removal paths do this automatically). Refreshes are
+blocked while hashing is in flight, so old hashes cannot repopulate a cleared cache.
+No new Mongo query is added to synchronous `findOrCreate` calls on the game thread.
 
-In the reactive `/map` dialog, the file author is identified in the header and the
-submission appears below the map description. It includes the declared creator when
-present, the submitter, their stored IDs, and the upload date in UTC. The legacy menu
-shows the same attribution block. Labels exist in all nine bundles. Long names are
-sanitized and wrapped for small screens.
+For transition from 0.13.0, a missing installation row permits read-only lookup of legacy
+`maps.discord_upload` by exact filename **and matching content hash**. Legacy rows do not
+have server provenance; identical bytes may reuse their attribution until a scoped row
+is written. A scoped row, including a removal tombstone or an upload without attribution,
+suppresses this fallback. Replacing a file manually with different bytes never matches
+an old submission. No history is invented for old records.
 
-Discord `/map list` retains its sorting controls and shows file author, declared
-creator, submitter and upload date. Stored names link to Discord profiles without
-sending mentions. Markdown and mention characters are escaped. Pages contain at most
-15 entries and are packed to keep descriptions below Discord's 4096-character limit.
-The upload response says "Queued", because the command enqueues work and does not
-acknowledge successful installation.
+## Upload processing and confirmation
 
-## Validation and release
+The bot uses `maps.upload.request`/`maps.upload.response`. The legacy `maps.load.command`
+remains supported. Up to three files are downloaded in parallel, with a 30-second HTTP
+timeout. Fixed worker-side lock stripes serialize writes of the same physical filename
+without blocking the game thread or doing I/O inside `ConcurrentHashMap.compute`.
 
-Consumers pin protocol 0.13.0. The bot uses the annotated `v0.13.0` tag and `uv.lock`
-locks its peeled commit; the plugin uses `org.xcore:xcore-protocol-java:0.13.0`.
-Publish that protocol release before deploying either consumer. No database migration
-or backfill is required.
+Every write gets a distinct installation token, including identical bytes. Delayed
+batches and queued metadata writes must still match their token. Persistence is ordered
+per file; failures do not block successors. Tokens are retired once all batches using
+a filename finish, preventing unbounded growth. Unsafe and duplicate transport filenames
+are rejected. Failed downloads are not attributed. A missing registry entry is reported
+as an invalid map. Removal writes an unconditional scoped tombstone in the same persistence queue; a
+concurrent download cannot cancel it. A subsequently accepted upload is queued later.
 
-Rollout order:
+The response reports each file as `installed`, `download_failed`, `invalid_map`,
+`superseded`, `metadata_failed` or `rejected`. `metadata_failed` explicitly means the map
+was installed but attribution was not saved. Confirmation waits for catalog refresh so
+an immediate `/map list` can see the result. Corrupt stored attribution is omitted per
+map rather than breaking the entire list. A client timeout says the result is unconfirmed;
+it does not claim installation failed or automatically retry a potentially applied action.
 
-1. Publish `xcore-protocol` 0.13.0 and verify the Java artifact and Python package.
-2. Pause the Discord bot's map commands while upgrading the map servers.
-3. Deploy the updated plugin, then restart the updated bot; its normal slash-command
-   sync publishes the optional `creator` parameter.
-4. Upload a test map and check attribution with `/map` and Discord `/map list`.
+## Presentation
 
-Older strict decoders reject the new fields, while 0.13.0 decoders accept old payloads.
-Coordinate the server and bot rollout instead of running the new uploader against an
-old server. Stored map attribution does not require rollback of a database migration.
+Discord lists use a compact attribution line with profile links and a legend for creator
+and uploader. Link-label brackets, parentheses and existing Markdown escapes are handled
+without letting a saved name insert a URL. Mentions are disabled in upload messages.
+Pages retain sorting, at most 15 entries, and a 3800-character description budget below
+Discord's 4096 limit. `/map list creator:@user` filters by stable declared-creator ID.
 
-Normal validation after the release (or after installing the release artifact in Maven
-Local and preparing the exact tagged Git revision for the bot):
+Both game interfaces distinguish the file author and show declared creator, uploader and
+UTC date. Display names and handles are sanitized; IDs are shown to administrators.
+The declared creator of the next map appears in the game-over menu and is announced after
+world load. All nine locales share the labels. A previous upload's display name/handle is
+not fetched from Discord at render time.
 
-```sh
-# xcore-protocol
-uv run python -m generators check
-uv run pytest
-./gradlew build validateRelease -PxcorePublishVersion=0.13.0
+## Release and rollout
 
-# XCore-discord-bot
-uv sync --locked --all-groups
-uv run pytest
-uv run ruff check .
+Both consumers require protocol 0.14.0. Publish the protocol first, pause bot map commands,
+upgrade servers, then restart the bot so its normal slash-command sync exposes the new
+options. Verify a partial upload, an omitted creator, a repeated upload and both map UIs.
+Older strict decoders reject the optional handle fields and lack the upload RPC; deploy
+server and bot together. Collections are additive and require no destructive migration.
+A rollback reads legacy statistics unchanged; it cannot display new scoped attribution.
 
-# XCore-plugin
-./gradlew validateCi
-```
-
-For further development against an unpublished sibling protocol checkout, the optional
-`gradle/local-protocol.init.gradle` init script remains available. Release validation
-and ordinary builds do not depend on it.
+Validation: protocol generation/fixtures/Java-Python compatibility; real Mongo POJO codec
+round-trip; server/name/hash isolation; alias statistics and both menus; ordered/stale
+uploads, partial RPC results and cache generations; Discord label injection, creator
+positions/filtering, pagination and timeout handling. For unpublished protocol changes,
+use `gradle/local-protocol.init.gradle` and the sibling Python generated sources; release
+builds use the published dependency and exact Git tag.

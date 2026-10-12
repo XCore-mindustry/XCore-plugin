@@ -340,7 +340,7 @@ commands-map-description = Статыстыка канкрэтнай карты.
 commands-map-title = [orange]{ -xcore } — Карта
 commands-map-content =
     [gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
-    [white]{ $name }[] [gray]аўтар [sky]{ $author }[]
+    [white]{ $name }[] [sky]{ $authorLabel }[]
     [lightgray]{ $description }[]
     [gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
     { "" }
@@ -1361,3 +1361,5 @@ map-upload-file-author = Аўтар з файла: { $author }
 map-upload-creator = Указаны аўтар: { $person }
 map-upload-submitter = Дадаў праз Discord: { $person }
 map-upload-date = Загружана: [lightgray]{ $date }[] (UTC)
+
+map-upload-current-creator = [accent]{ $map }[] — { $creator }

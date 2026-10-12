@@ -184,6 +184,10 @@ public class MapMenu extends Menu {
     }
 
     public void showGameOverMenu(MapData current, MapData next, Team winner) {
+        showGameOverMenu(current, next, winner, next == null ? null : mapService.findPersistedMap(next));
+    }
+
+    public void showGameOverMenu(MapData current, MapData next, Team winner, mindustry.maps.Map nextMap) {
         String nextName = next != null ? next.name : "Unknown";
         String nextAuthor = next != null ? next.author : "Unknown";
         String currentId = current != null && current.id != null ? current.id.toString() : null;
@@ -203,12 +207,13 @@ public class MapMenu extends Menu {
                     ? session.locale().t("map-vote-dislike-selected")
                     : session.locale().t("map-vote-dislike");
 
+            String creator = org.xcore.plugin.ui.menu.map.MapUploadText.creator(session.locale(), mapService.discordUploadFor(nextMap));
             var builder = session.builder().title("map-vote-title")
-                    .content("map-vote-content", args(
+                    .rawContent(session.locale().t("map-vote-content", args(
                             "mapName", nextName,
                             "author", nextAuthor,
                             "seconds", 10
-                    ));
+                    )) + (creator.isBlank() ? "" : "\n\n" + creator));
 
             if (current != null) {
                 builder.addButtonText(likeButtonText, () -> mapService.handleReputation(player, true, current))

@@ -337,7 +337,7 @@ commands-map-description = Statistiky konkrétní mapy.
 commands-map-title = [orange]{ -xcore } — Mapa
 commands-map-content =
     [gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
-    [white]{ $name }[] [gray]autor [sky]{ $author }[]
+    [white]{ $name }[] [sky]{ $authorLabel }[]
     [lightgray]{ $description }[]
     [gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
     { "" }
@@ -1349,3 +1349,5 @@ map-upload-file-author = Autor v souboru: { $author }
 map-upload-creator = Uvedený autor: { $person }
 map-upload-submitter = Přidal přes Discord: { $person }
 map-upload-date = Nahráno: [lightgray]{ $date }[] (UTC)
+
+map-upload-current-creator = [accent]{ $map }[] — { $creator }

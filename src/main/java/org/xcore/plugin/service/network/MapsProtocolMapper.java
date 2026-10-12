@@ -20,12 +20,6 @@ public final class MapsProtocolMapper {
         return new MapsRemoveResponseV1(server, result);
     }
 
-    public static MapEntryV1 toMapEntry(Map map, String currentGameMode, MapData persistedMap) {
-        var upload = persistedMap != null && map.file != null
-                && map.file.name().equalsIgnoreCase(persistedMap.fileName) ? persistedMap.discordUpload : null;
-        return toMapEntry(map, currentGameMode, persistedMap, upload);
-    }
-
     public static MapEntryV1 toMapEntry(Map map, String currentGameMode, MapData persistedMap,
                                       org.xcore.plugin.model.MapDiscordUpload upload) {
         String fileName = map.file == null || map.file.name() == null || map.file.name().isBlank()
@@ -47,8 +41,17 @@ public final class MapsProtocolMapper {
                 persistedMap == null ? null : persistedMap.popularity,
                 persistedMap == null ? null : persistedMap.interest,
                 persistedMap == null ? currentGameMode : persistedMap.gameMode,
-                upload == null ? null : upload.toProtocol()
+                safeUpload(upload)
         );
+    }
+
+    private static org.xcore.protocol.generated.shared.MapDiscordUploadV1 safeUpload(org.xcore.plugin.model.MapDiscordUpload upload) {
+        if (upload == null) return null;
+        try { return upload.toProtocol(); }
+        catch (RuntimeException corrupt) {
+            org.xcore.plugin.common.PLog.warn("Ignoring corrupt map attribution: @", corrupt.toString());
+            return null;
+        }
     }
 
     private static Integer toFileSizeBytes(Long fileSizeBytes) {
