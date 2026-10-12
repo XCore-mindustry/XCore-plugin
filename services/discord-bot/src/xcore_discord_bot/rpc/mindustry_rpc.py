@@ -5,6 +5,7 @@ import uuid
 from collections.abc import Awaitable, Callable
 from typing import Any, TypeVar
 
+from xcore_protocol.generated.maps import MapsUploadResponseV1
 from xcore_protocol.generated.rating import (
     RatingAccountsMergeResponseV1,
     RatingPrizeGrantUpdateResponseV1,
@@ -269,6 +270,13 @@ class MindustryRpcClient:
             server=server,
             file_name=file_name,
             timeout_ms=timeout_ms,
+        )
+
+    async def rpc_upload_maps(
+        self, *, server: str, files: list[dict[str, object]], timeout_ms: int
+    ) -> MapsUploadResponseV1:
+        return await self._bus.rpc_upload_maps(
+            server=server, files=files, timeout_ms=timeout_ms
         )
 
     async def publish_maps_load(

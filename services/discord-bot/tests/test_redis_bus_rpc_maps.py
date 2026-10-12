@@ -188,3 +188,73 @@ async def test_upload_metadata_roundtrips_through_outbound_and_list_normalizatio
     assert result["uploaded_by_discord_id"] == upload["uploadedBy"]["discordId"]
     assert result["creator_name"] == "Creator"
     assert result["uploaded_at"] == str(upload["uploadedAt"])
+
+
+@pytest.mark.asyncio
+async def test_upload_rpc_uses_canonical_request_and_matches_result_files() -> None:
+    from unittest.mock import AsyncMock
+
+    settings = SimpleNamespace(
+        redis_url="redis://127.0.0.1:6379",
+        redis_group_prefix="xcore:cg",
+        redis_consumer_name="discord-bot",
+    )
+    bus = RedisBus(settings)
+    response = {
+        "messageType": "maps.upload.response",
+        "messageVersion": 1,
+        "server": "mini-pvp",
+        "results": [{"fileName": "arena.msav", "status": "installed"}],
+    }
+    bus._rpc_request = AsyncMock(return_value={"payload_json": json.dumps(response)})
+    files = [
+        {
+            "filename": "arena.msav",
+            "url": "https://example/arena",
+            "discordUpload": {
+                "uploadedBy": {"discordId": "123"},
+                "uploadedAt": 1,
+                "uploadedByHandle": "reviewer",
+            },
+        }
+    ]
+    result = await bus.rpc_upload_maps(
+        server="mini-pvp", files=files, timeout_ms=120000
+    )
+    assert result.results[0].status.value == "installed"
+    payload = bus._rpc_request.call_args.kwargs["payload"]
+    assert payload["messageType"] == "maps.upload.request"
+    assert payload["files"][0]["discordUpload"]["uploadedByHandle"] == "reviewer"
+    response["results"][0]["fileName"] = "other.msav"
+    bus._rpc_request.return_value = {"payload_json": json.dumps(response)}
+    with pytest.raises(ValueError, match="does not match"):
+        await bus.rpc_upload_maps(server="mini-pvp", files=files, timeout_ms=120000)
+
+
+@pytest.mark.asyncio
+async def test_upload_response_cannot_add_or_omit_requested_files() -> None:
+    from unittest.mock import AsyncMock
+
+    settings = SimpleNamespace(
+        redis_url="redis://127.0.0.1:6379",
+        redis_group_prefix="xcore:cg",
+        redis_consumer_name="discord-bot",
+    )
+    bus = RedisBus(settings)
+    response = {
+        "messageType": "maps.upload.response",
+        "messageVersion": 1,
+        "server": "mini-pvp",
+        "results": [{"fileName": "arena.msav", "status": "installed"}],
+    }
+    bus._rpc_request = AsyncMock(return_value={"payload_json": json.dumps(response)})
+    files = [
+        {"filename": "arena.msav", "url": "https://example/arena"},
+        {"filename": "second.msav", "url": "https://example/second"},
+    ]
+    with pytest.raises(ValueError, match="does not match"):
+        await bus.rpc_upload_maps(server="mini-pvp", files=files, timeout_ms=120000)
+    response["results"].append({"fileName": "arena.msav", "status": "installed"})
+    bus._rpc_request.return_value = {"payload_json": json.dumps(response)}
+    with pytest.raises(ValueError, match="does not match"):
+        await bus.rpc_upload_maps(server="mini-pvp", files=files[:1], timeout_ms=120000)

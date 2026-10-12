@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from xcore_protocol.generated.maps import MapsUploadResponseV1
+
 from ..rpc.mindustry_rpc import MindustryRpcClient
 
 
@@ -20,6 +22,13 @@ class MapService:
             server=server,
             file_name=file_name,
             timeout_ms=timeout_ms,
+        )
+
+    async def rpc_upload_maps(
+        self, *, server: str, files: list[dict[str, object]], timeout_ms: int
+    ) -> MapsUploadResponseV1:
+        return await self._rpc.rpc_upload_maps(
+            server=server, files=files, timeout_ms=timeout_ms
         )
 
     async def publish_maps_load(

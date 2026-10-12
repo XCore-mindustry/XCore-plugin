@@ -40,10 +40,14 @@ class MapsCog(commands.Cog):
         self.bot = bot
 
     @map_group.command(name="list", description="List maps on a server")
-    @app_commands.describe(server="Server name")
+    @app_commands.describe(
+        server="Server name", creator="Only maps by this declared creator"
+    )
     @app_commands.autocomplete(server=_autocomplete_server_for_command)
-    async def cmd_maps(self, interaction: Interaction, server: str) -> None:
-        await handlers_misc.cmd_maps(self.bot, interaction, server)
+    async def cmd_maps(
+        self, interaction: Interaction, server: str, creator: discord.User | None = None
+    ) -> None:
+        await handlers_misc.cmd_maps(self.bot, interaction, server, creator=creator)
 
     @map_group.command(
         name="remove",
@@ -72,7 +76,10 @@ class MapsCog(commands.Cog):
         file1="Map file (.msav)",
         file2="Second .msav file (optional)",
         file3="Third .msav file (optional)",
-        creator="Map creator on Discord (optional; applies to all attached maps)",
+        creator="Default creator for all files (optional)",
+        creator1="Creator of file1 (overrides the default)",
+        creator2="Creator of file2 (overrides the default)",
+        creator3="Creator of file3 (overrides the default)",
     )
     @app_commands.autocomplete(server=_autocomplete_server_for_command)
     @map_reviewer_check()
@@ -84,6 +91,9 @@ class MapsCog(commands.Cog):
         file2: discord.Attachment | None = None,
         file3: discord.Attachment | None = None,
         creator: discord.User | None = None,
+        creator1: discord.User | None = None,
+        creator2: discord.User | None = None,
+        creator3: discord.User | None = None,
     ) -> None:
         await handlers_misc.cmd_upload_map(
             self.bot,
@@ -91,4 +101,5 @@ class MapsCog(commands.Cog):
             server,
             [file1, file2, file3],
             creator=creator,
+            creators=[creator1, creator2, creator3],
         )

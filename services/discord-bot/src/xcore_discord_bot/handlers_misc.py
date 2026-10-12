@@ -23,8 +23,10 @@ from .presentation import (
     format_minutes,
     format_size,
 )
+from .protocol_outbound import build_maps_upload_request
 from .rating_store import Placing
-from .retry import retry_read_rpc
+from .redis_bus import RpcError
+from .retry import TRANSIENT_EXCEPTIONS, retry_read_rpc
 from .server_views import MapsListView, ServersView
 from .stats_embed import StaffNotes, StatsView, build_stats_embed, player_name
 from .utils.mindustry_colors import strip_mindustry_colors
@@ -104,7 +106,10 @@ def _map_text(value: str, limit: int = 80, *, inline_code: bool = False) -> str:
 
 def _map_contributor(item: dict[str, str], prefix: str) -> str:
     discord_id = item.get(f"{prefix}_discord_id", "")
-    name = _map_text(item.get(f"{prefix}_name", "") or discord_id)
+    name = _map_text(
+        item.get(f"{prefix}_name", "") or item.get(f"{prefix}_handle", "") or discord_id
+    )
+    name = re.sub(r"([\[\]()])", r"\\\1", name)
     if discord_id.isascii() and discord_id.isdigit():
         return f"[{name}](https://discord.com/users/{discord_id})"
     return name
@@ -128,9 +133,11 @@ def _map_list_row(item: dict[str, str]) -> str:
     row = f"• {name} — {author_label} `{author}`"
     row += f"\n  `{file_name}`{details}" if file_name else details
     if uploaded:
+        credits = []
         if item.get("creator_discord_id"):
-            row += f"\n  Declared creator: {_map_contributor(item, 'creator')}"
-        row += f"\n  Added via Discord: {_map_contributor(item, 'uploaded_by')}"
+            credits.append(f"🎨 {_map_contributor(item, 'creator')}")
+        credits.append(f"⬆ {_map_contributor(item, 'uploaded_by')}")
+        row += "\n  " + " • ".join(credits)
         uploaded_at = item.get("uploaded_at", "")
         if uploaded_at.isascii() and uploaded_at.isdigit():
             row += f" • <t:{int(uploaded_at) // 1000}:d>"
@@ -142,11 +149,12 @@ def _map_list_pages(maps: list[dict[str, str]], sort_mode: str) -> list[list[str
     length = 0
     for item in _sort_maps(maps, sort_mode):
         row = _map_list_row(item)
-        if pages[-1] and (len(pages[-1]) >= 15 or length + len(row) + 1 > 3800):
+        row_length = len(row.encode("utf-16-le")) // 2
+        if pages[-1] and (len(pages[-1]) >= 15 or length + row_length + 1 > 3800):
             pages.append([])
             length = 0
         pages[-1].append(row)
-        length += len(row) + 1
+        length += row_length + 1
     return pages
 
 
@@ -522,6 +530,7 @@ async def cmd_maps(
     bot: XCoreDiscordBot,
     interaction: Interaction,
     server: str,
+    creator: discord.abc.User | None = None,
 ) -> None:
     await interaction.response.defer()
     try:
@@ -530,8 +539,15 @@ async def cmd_maps(
         await interaction.followup.send("No response from target server (timeout).")
         return
 
+    if creator is not None:
+        maps = [
+            item for item in maps if item.get("creator_discord_id") == str(creator.id)
+        ]
     if not maps:
-        await interaction.followup.send(f"No maps found on server `{server}`")
+        await interaction.followup.send(
+            f"No maps found on server `{server}`"
+            + (" for this creator." if creator else "")
+        )
         return
 
     default_sort_mode = "reputation"
@@ -548,6 +564,11 @@ async def cmd_maps(
             text=(
                 f"Sort: {sort_mode} • Page {page + 1}/{len(pages)} "
                 f"• total maps: {len(maps)} • entries on page: {len(chunk)}"
+                + (
+                    " • 🎨 declared creator • ⬆ added via Discord"
+                    if any(item.get("uploaded_by_discord_id") for item in maps)
+                    else ""
+                )
             )
         )
         return embed, page + 1 < len(pages)
@@ -639,50 +660,101 @@ async def cmd_upload_map(
     server: str,
     attachments: list[discord.Attachment | None],
     creator: discord.abc.User | None = None,
+    creators: list[discord.abc.User | None] | None = None,
 ) -> None:
-    files = [
-        {"url": att.url, "filename": att.filename}
-        for att in attachments
-        if att is not None and att.filename.lower().endswith(".msav")
-    ]
+    def identity(user: discord.abc.User) -> dict[str, str]:
+        return {
+            "discordId": str(user.id),
+            "discordUsername": user.display_name or user.name,
+        }
+
+    files: list[dict[str, object]] = []
+    uploaded_at = int(time.time() * 1000)
+    for index, attachment in enumerate(attachments):
+        if attachment is None or not attachment.filename.lower().endswith(".msav"):
+            continue
+        selected_creator = (
+            creators[index]
+            if creators and index < len(creators) and creators[index] is not None
+            else creator
+        )
+        upload: dict[str, object] = {
+            "uploadedBy": identity(interaction.user),
+            "uploadedAt": uploaded_at,
+        }
+        if handle := getattr(interaction.user, "name", None):
+            upload["uploadedByHandle"] = handle
+        if selected_creator is not None:
+            upload["creator"] = identity(selected_creator)
+            if handle := getattr(selected_creator, "name", None):
+                upload["creatorHandle"] = handle
+        files.append(
+            {
+                "url": attachment.url,
+                "filename": attachment.filename,
+                "discordUpload": upload,
+            }
+        )
 
     if not files:
         await interaction.response.send_message(
             "No valid .msav files attached.", ephemeral=True
         )
         return
-
+    if len({item["filename"] for item in files}) != len(files):
+        await interaction.response.send_message(
+            "Each attachment must have a different filename.", ephemeral=True
+        )
+        return
+    try:
+        build_maps_upload_request(server, files)
+    except (ValueError, TypeError):
+        await interaction.response.send_message(
+            "The upload details are invalid; nothing was sent to the server.",
+            ephemeral=True,
+        )
+        return
     if not await bot._claim_mutation(
-        interaction,
-        operation="upload-map",
-        scope=f"{server}:{len(files)}",
+        interaction, operation="upload-map", scope=f"{server}:{len(files)}"
     ):
         return
 
-    upload = {
-        "uploadedBy": {
-            "discordId": str(interaction.user.id),
-            "discordUsername": interaction.user.display_name,
-        },
-        "uploadedAt": int(time.time() * 1000),
-    }
-    if creator is not None:
-        upload["creator"] = {
-            "discordId": str(creator.id),
-            "discordUsername": creator.display_name,
-        }
-    for item in files:
-        item["discordUpload"] = upload
-
-    await bot.publish_maps_load(server=server, files=files)
     await interaction.response.send_message(
-        f"Queued {len(files)} map(s) for upload to `{server}`: "
-        + ", ".join(item["filename"] for item in files)
-        + (
-            f"\nDeclared creator: <@{creator.id}> (all attached maps)."
-            if creator
-            else ""
-        )
-        + "\nThe author recorded in each map file is preserved.",
+        f"Uploading {len(files)} map(s) to `{_map_text(server, inline_code=True)}`…",
         allowed_mentions=discord.AllowedMentions.none(),
     )
+    bot._map_cache.pop(server, None)
+    try:
+        response = await bot.rpc_upload_maps(
+            server=server, files=files, timeout_ms=120_000
+        )
+    except TimeoutError:
+        await interaction.edit_original_response(
+            content="The server has not confirmed the result yet. Some files may already be installed; check /map list before retrying.",
+            allowed_mentions=discord.AllowedMentions.none(),
+        )
+        return
+    except (RpcError, *TRANSIENT_EXCEPTIONS, ValueError, TypeError):
+        logger.exception("Map upload confirmation failed for %s", server)
+        await interaction.edit_original_response(
+            content="Could not confirm the upload result. Check /map list before retrying.",
+            allowed_mentions=discord.AllowedMentions.none(),
+        )
+        return
+    labels = {
+        "installed": "✅ Installed; attribution saved",
+        "download_failed": "❌ Download or file write failed",
+        "invalid_map": "❌ Invalid map file",
+        "superseded": "⚠️ Replaced by a newer upload",
+        "metadata_failed": "⚠️ Installed; attribution was not saved",
+        "rejected": "❌ Rejected filename",
+    }
+    rows = [f"Maps on `{_map_text(server, inline_code=True)}`:"]
+    for result in response.results:
+        rows.append(
+            f"{labels[result.status.value]} — `{_map_text(result.fileName, 100, inline_code=True)}`"
+        )
+    await interaction.edit_original_response(
+        content="\n".join(rows), allowed_mentions=discord.AllowedMentions.none()
+    )
+    bot._map_cache.pop(server, None)
