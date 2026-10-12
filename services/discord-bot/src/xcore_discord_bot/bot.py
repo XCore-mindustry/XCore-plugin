@@ -12,6 +12,7 @@ import discord
 from discord import Interaction, app_commands
 from discord.abc import Messageable
 from discord.ext import commands
+from xcore_protocol.generated.maps import MapsUploadResponseV1
 from xcore_protocol.generated.shared import ActorRefV1ActorType
 
 from .cogs import AdminCog, InfoCog, LinkingCog, MapsCog, SeasonsCog, SubnetCog
@@ -260,6 +261,13 @@ class XCoreDiscordBot(commands.Bot):
             server=server,
             file_name=file_name,
             timeout_ms=timeout_ms,
+        )
+
+    async def rpc_upload_maps(
+        self, *, server: str, files: list[dict[str, object]], timeout_ms: int
+    ) -> MapsUploadResponseV1:
+        return await self._bus.rpc_upload_maps(
+            server=server, files=files, timeout_ms=timeout_ms
         )
 
     async def publish_maps_load(
@@ -1015,7 +1023,7 @@ class XCoreDiscordBot(commands.Bot):
                     return
 
         target_server = server_registry.get_server_for_channel(message.channel.id)
-        if target_server is None:
+        if target_server is None or not message.content:
             return
 
         await self._bus.publish_discord_message(

@@ -16,6 +16,8 @@ from xcore_protocol.generated.maps import (
     MapsListResponseV1,
     MapsRemoveRequestV1,
     MapsRemoveResponseV1,
+    MapsUploadRequestV1,
+    MapsUploadResponseV1,
 )
 from xcore_protocol.generated.rating import (
     RatingAccountsMergeResponseV1,
@@ -80,6 +82,7 @@ from .protocol_outbound import (
     build_maps_list_request,
     build_maps_load_command,
     build_maps_remove_request,
+    build_maps_upload_request,
     build_moderation_kick_banned_command,
     build_moderation_pardon_command,
     build_player_active_badge_changed_command,
@@ -1197,6 +1200,8 @@ class RedisBus:
                     "uploaded_by_name": entry.discordUpload.uploadedBy.discordUsername
                     or "",
                     "uploaded_at": str(entry.discordUpload.uploadedAt),
+                    "uploaded_by_handle": entry.discordUpload.uploadedByHandle or "",
+                    "creator_handle": entry.discordUpload.creatorHandle or "",
                     "creator_discord_id": entry.discordUpload.creator.discordId
                     if entry.discordUpload.creator
                     else "",
@@ -1208,6 +1213,28 @@ class RedisBus:
                 else {}
             ),
         }
+
+    async def rpc_upload_maps(
+        self, *, server: str, files: list[dict[str, object]], timeout_ms: int
+    ) -> MapsUploadResponseV1:
+        body = await self._rpc_request(
+            server=server,
+            rpc_type=MapsUploadRequestV1.MESSAGE_TYPE,
+            payload=build_maps_upload_request(server, files).to_payload(),
+            timeout_ms=timeout_ms,
+        )
+        response = MapsUploadResponseV1.from_payload(
+            json.loads(body.get("payload_json", "{}"))
+        )
+        expected = [item.get("fileName", item.get("filename")) for item in files]
+        if (
+            response.server != server
+            or [result.fileName for result in response.results] != expected
+        ):
+            raise ValueError(
+                "Map upload response does not match the requested files/server"
+            )
+        return response
 
     async def rpc_remove_map(self, server: str, file_name: str, timeout_ms: int) -> str:
         body = await self._rpc_request(
@@ -1291,7 +1318,9 @@ class RedisBus:
                         # Only an explicit refusal is final; anything else, such as the
                         # plugin's FAILED for a storage error, is worth another try.
                         error_type = (
-                            RpcRejected if error_code == REJECTED_ERROR_CODE else RpcFailed
+                            RpcRejected
+                            if error_code == REJECTED_ERROR_CODE
+                            else RpcFailed
                         )
                         raise error_type(rpc_type, error_code, error_message)
                     return body

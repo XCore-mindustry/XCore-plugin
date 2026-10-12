@@ -47,6 +47,9 @@ class _Interaction:
     user: Any
     response: _InteractionResponse = field(default_factory=_InteractionResponse)
 
+    async def edit_original_response(self, *, content: str, **kwargs) -> None:
+        self.response.replies.append(content)
+
     @property
     def replies(self) -> list[str]:
         return self.response.replies
@@ -64,8 +67,23 @@ class _Bus:
     async def claim_idempotency(self, key: str, ttl_seconds: int = 600) -> bool:
         return self.claimed
 
-    async def publish_maps_load(self, server: str, files: list[dict[str, str]]) -> None:
+    async def rpc_upload_maps(
+        self, *, server: str, files: list[dict[str, object]], timeout_ms: int
+    ):
+        from xcore_protocol.generated.maps import MapsUploadResponseV1
+
         self.maps_calls.append((server, files))
+        return MapsUploadResponseV1.from_payload(
+            {
+                "messageType": "maps.upload.response",
+                "messageVersion": 1,
+                "server": server,
+                "results": [
+                    {"fileName": item["filename"], "status": "installed"}
+                    for item in files
+                ],
+            }
+        )
 
 
 class _Settings:
@@ -77,6 +95,7 @@ async def test_upload_map_requires_valid_msav_files() -> None:
     bot = object.__new__(XCoreDiscordBot)
     bot._settings = _Settings()
     bot._bus = _Bus()
+    bot._map_cache = {}
 
     interaction = _Interaction(
         id=10,
@@ -100,6 +119,7 @@ async def test_upload_map_publishes_msav_files() -> None:
     bot = object.__new__(XCoreDiscordBot)
     bot._settings = _Settings()
     bot._bus = _Bus()
+    bot._map_cache = {}
 
     interaction = _Interaction(
         id=20,
@@ -117,7 +137,8 @@ async def test_upload_map_publishes_msav_files() -> None:
     server, files = bot._bus.maps_calls[0]
     assert server == "mini-pvp"
     assert [item["filename"] for item in files] == ["one.msav", "two.MSAV"]
-    assert any("Queued 2 map" in reply for reply in interaction.replies)
+    assert any("Uploading 2 map" in reply for reply in interaction.replies)
+    assert "✅ Installed; attribution saved" in interaction.replies[-1]
 
     for item in files:
         assert item["discordUpload"]["uploadedBy"] == {
@@ -133,6 +154,7 @@ async def test_upload_map_records_selected_creator_for_all_files() -> None:
     bot = object.__new__(XCoreDiscordBot)
     bot._settings = _Settings()
     bot._bus = _Bus()
+    bot._map_cache = {}
     interaction = _Interaction(id=30, user=_Member(roles=[_Role(200)]))
     creator = _Member(roles=[], display_name="Mapper", id=234567890123456789)
     await cmd_upload_map(
@@ -151,4 +173,155 @@ async def test_upload_map_records_selected_creator_for_all_files() -> None:
         == {"discordId": str(creator.id), "discordUsername": "Mapper"}
         for item in files
     )
-    assert "Declared creator" in interaction.replies[0]
+    assert "✅ Installed; attribution saved" in interaction.replies[-1]
+
+
+@pytest.mark.asyncio
+async def test_upload_creator_overrides_follow_original_attachment_positions() -> None:
+    bot = object.__new__(XCoreDiscordBot)
+    bot._settings = _Settings()
+    bot._bus = _Bus()
+    bot._map_cache = {}
+    interaction = _Interaction(id=40, user=_Member(roles=[_Role(200)]))
+    default = _Member([], "Default", 111)
+    override = _Member([], "Override", 222)
+    await cmd_upload_map(
+        bot,
+        interaction,
+        "mini-pvp",
+        [
+            _Attachment("one.msav", "https://example/one"),
+            _Attachment("skip.txt", "https://example/skip"),
+            _Attachment("three.msav", "https://example/three"),
+        ],
+        creator=default,
+        creators=[None, None, override],
+    )
+    files = bot._bus.maps_calls[0][1]
+    assert [item["discordUpload"]["creator"]["discordId"] for item in files] == [
+        "111",
+        "222",
+    ]
+
+
+@pytest.mark.asyncio
+async def test_upload_timeout_reports_uncertainty_without_claiming_failure_or_retrying() -> (
+    None
+):
+    from unittest.mock import AsyncMock
+
+    bot = object.__new__(XCoreDiscordBot)
+    bot._settings = _Settings()
+    bot._bus = _Bus()
+    bot._map_cache = {}
+    bot.rpc_upload_maps = AsyncMock(side_effect=TimeoutError)
+    interaction = _Interaction(id=50, user=_Member(roles=[_Role(200)]))
+    await cmd_upload_map(
+        bot,
+        interaction,
+        "mini-pvp",
+        [_Attachment("arena.msav", "https://example/arena")],
+    )
+    assert "Some files may already be installed" in interaction.replies[-1]
+    assert bot.rpc_upload_maps.await_count == 1
+
+
+@pytest.mark.asyncio
+async def test_upload_formats_partial_result_and_disables_mentions() -> None:
+    from unittest.mock import AsyncMock
+
+    from xcore_protocol.generated.maps import MapsUploadResponseV1
+
+    bot = object.__new__(XCoreDiscordBot)
+    bot._settings = _Settings()
+    bot._bus = _Bus()
+    bot._map_cache = {"mini-pvp": (0, [])}
+    bot.rpc_upload_maps = AsyncMock(
+        return_value=MapsUploadResponseV1.from_payload(
+            {
+                "messageType": "maps.upload.response",
+                "messageVersion": 1,
+                "server": "mini-pvp",
+                "results": [
+                    {"fileName": "ok.msav", "status": "installed"},
+                    {"fileName": "bad.msav", "status": "invalid_map"},
+                ],
+            }
+        )
+    )
+    interaction = _Interaction(id=60, user=_Member(roles=[_Role(200)]))
+    interaction.edit_original_response = AsyncMock()
+    await cmd_upload_map(
+        bot,
+        interaction,
+        "mini-pvp",
+        [
+            _Attachment("ok.msav", "https://example/ok"),
+            _Attachment("bad.msav", "https://example/bad"),
+        ],
+    )
+    call = interaction.edit_original_response.call_args.kwargs
+    assert "✅ Installed" in call["content"] and "❌ Invalid map" in call["content"]
+    assert not call["allowed_mentions"].everyone and not call["allowed_mentions"].users
+    assert "mini-pvp" not in bot._map_cache
+
+
+@pytest.mark.asyncio
+async def test_malformed_response_invalidates_cached_map_list_and_finishes_message() -> (
+    None
+):
+    from unittest.mock import AsyncMock
+
+    bot = object.__new__(XCoreDiscordBot)
+    bot._settings = _Settings()
+    bot._bus = _Bus()
+    bot._map_cache = {"mini-pvp": (0, [])}
+    bot.rpc_upload_maps = AsyncMock(side_effect=TypeError("results must be a list"))
+    interaction = _Interaction(id=70, user=_Member(roles=[_Role(200)]))
+    await cmd_upload_map(
+        bot,
+        interaction,
+        "mini-pvp",
+        [_Attachment("arena.msav", "https://example/arena")],
+    )
+    assert "Could not confirm" in interaction.replies[-1]
+    assert "mini-pvp" not in bot._map_cache
+
+
+@pytest.mark.asyncio
+async def test_invalid_upload_is_rejected_before_rpc_or_uploading_message() -> None:
+    bot = object.__new__(XCoreDiscordBot)
+    bot._settings = _Settings()
+    bot._bus = _Bus()
+    bot._map_cache = {}
+    interaction = _Interaction(id=80, user=_Member(roles=[_Role(200)]))
+    await cmd_upload_map(
+        bot,
+        interaction,
+        "mini-pvp",
+        [_Attachment("../arena.msav", "https://example/arena")],
+    )
+    assert "nothing was sent" in interaction.ephemeral_replies[-1]
+    assert bot._bus.maps_calls == []
+    assert not interaction.replies
+
+
+@pytest.mark.asyncio
+async def test_attachment_only_discord_message_is_not_published_as_empty_chat(
+    monkeypatch,
+) -> None:
+    from types import SimpleNamespace
+    from unittest.mock import AsyncMock
+
+    from xcore_discord_bot.registry import server_registry
+
+    bot = object.__new__(XCoreDiscordBot)
+    bot._bus = SimpleNamespace(publish_discord_message=AsyncMock())
+    monkeypatch.setattr(
+        server_registry, "get_server_for_channel", lambda channel: "mini-pvp"
+    )
+    message = SimpleNamespace(
+        author=SimpleNamespace(bot=False), channel=SimpleNamespace(id=1), content=""
+    )
+    await bot.on_message(message)
+    bot._bus.publish_discord_message.assert_not_awaited()

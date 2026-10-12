@@ -223,14 +223,8 @@ async def test_maps_show_distinct_file_author_creator_and_submitter() -> None:
     await cmd_maps(bot, interaction, "mini-pvp")
     description = interaction.followup.messages[0]["embed"].description
     assert "file author `File Mapper`" in description
-    assert (
-        "Declared creator: [Creator](https://discord.com/users/234567890123456789)"
-        in description
-    )
-    assert (
-        "Added via Discord: [Reviewer](https://discord.com/users/123456789012345678)"
-        in description
-    )
+    assert "🎨 [Creator](https://discord.com/users/234567890123456789)" in description
+    assert "⬆ [Reviewer](https://discord.com/users/123456789012345678)" in description
     assert "<t:1791806400:d>" in description
 
 
@@ -269,3 +263,68 @@ def test_map_inline_code_preserves_filename_punctuation_without_color_markup() -
     assert "`arena_v2.msav`" in row
     assert "`Map_Maker`" in row
     assert "[green]" not in row and "[blue]" not in row
+
+
+@pytest.mark.parametrize(
+    "name", ["x](https://evil.example) [y", "[Name", "a\\](https://evil.example)"]
+)
+def test_contributor_name_cannot_escape_profile_link(name: str) -> None:
+    from xcore_discord_bot.handlers_misc import _map_contributor
+
+    text = _map_contributor(
+        {"creator_discord_id": "123456789012345678", "creator_name": name}, "creator"
+    )
+    assert text.count("](https://discord.com/users/") == 1
+    assert "](https://evil.example)" not in text
+    assert "\\]" in text or "\\[" in text
+
+
+@pytest.mark.asyncio
+async def test_creator_filter_only_keeps_maps_declared_by_selected_user() -> None:
+    from types import SimpleNamespace
+
+    bot = _MapsBot(
+        maps=[
+            {
+                "name": "Matching",
+                "file_name": "one.msav",
+                "author": "A",
+                "creator_discord_id": "111",
+            },
+            {
+                "name": "Other",
+                "file_name": "two.msav",
+                "author": "A",
+                "creator_discord_id": "222",
+            },
+            {"name": "Legacy", "file_name": "three.msav", "author": "A"},
+        ]
+    )
+    interaction = _Interaction()
+    await cmd_maps(bot, interaction, "mini-pvp", creator=SimpleNamespace(id=111))
+    description = interaction.followup.messages[0]["embed"].description
+    assert (
+        "Matching" in description
+        and "Other" not in description
+        and "Legacy" not in description
+    )
+
+
+def test_map_pages_budget_astral_unicode_as_utf16_units() -> None:
+    from xcore_discord_bot.handlers_misc import _map_list_pages
+
+    maps = [
+        {
+            "name": "🎨" * 80,
+            "file_name": "a.msav",
+            "author": "🎨" * 80,
+            "uploaded_by_discord_id": "123",
+            "uploaded_by_name": "🎨" * 80,
+            "creator_discord_id": "234",
+            "creator_name": "🎨" * 80,
+        }
+        for _ in range(40)
+    ]
+    pages = _map_list_pages(maps, "name")
+    assert sum(map(len, pages)) == len(maps)
+    assert all(len("\n".join(page).encode("utf-16-le")) // 2 <= 3800 for page in pages)

@@ -19,6 +19,7 @@ from xcore_protocol.generated.maps import (
     MapsListRequestV1,
     MapsLoadCommandV1,
     MapsRemoveRequestV1,
+    MapsUploadRequestV1,
 )
 from xcore_protocol.generated.moderation import (
     ModerationKickBannedCommandV1,
@@ -302,6 +303,14 @@ def build_maps_load_command(
     )
 
 
+def build_maps_upload_request(
+    server: str, files: list[dict[str, object]]
+) -> MapsUploadRequestV1:
+    return MapsUploadRequestV1(
+        server=server, files=build_maps_load_command(server, files).files
+    )
+
+
 def build_maps_list_request(
     server: str,
 ) -> MapsListRequestV1:
@@ -430,4 +439,3 @@ def build_prize_delivered_request(
         actor=_discord_actor(discord_id, actor_name),
         note=note or None,
     )
-

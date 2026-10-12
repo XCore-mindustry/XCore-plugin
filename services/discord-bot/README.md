@@ -15,9 +15,9 @@ Standalone Discord bot for XCore transport migration.
 - Game chat → Discord bridge:
   - consumes `xcore:evt:chat:message` via consumer group
 - Slash commands over streams:
-  - `/map list <server>` → `maps.list`
+  - `/map list <server> [creator]` → `maps.list`
   - `/map remove <server> <map>` → `maps.remove`
-  - `/map upload <server> <file1> [file2] [file3] [creator]` (+ `.msav` attachments) → `maps.load`
+  - `/map upload <server> <file1> [file2] [file3] [creator] [creator1] [creator2] [creator3]` → per-file confirmed upload results; individual creators override the shared default
     The uploader is recorded automatically; `creator` selects a Discord user for every attached map.
     File authors stay separate, and `/map list` shows attribution with profile links and upload dates.
   - `/subnet list|check|allow|deny|remove|reload|import|sweep <server>` (general admin; protocol 0.6.0)
