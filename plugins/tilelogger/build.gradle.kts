@@ -53,6 +53,7 @@ dependencies {
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
     testImplementation(libs.flubundle)
     testImplementation(libs.xcore.plugin)
+    testImplementation(libs.avaje.inject)
     testImplementation("org.assertj:assertj-core:3.27.7")
     testImplementation("org.mockito:mockito-core:5.24.0")
     testImplementation("org.mockito:mockito-junit-jupiter:5.24.0")
@@ -84,6 +85,9 @@ tasks.named<Jar>("jar") {
 fun ShadowJar.applyCommonSettings() {
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
     mergeServiceFiles()
+    filesMatching("META-INF/services/**") {
+        duplicatesStrategy = DuplicatesStrategy.INCLUDE
+    }
     isReproducibleFileOrder = true
     isPreserveFileTimestamps = false
     from(rootDir) { include("plugin.json") }
