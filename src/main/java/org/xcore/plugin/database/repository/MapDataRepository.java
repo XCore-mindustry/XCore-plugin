@@ -187,7 +187,8 @@ public class MapDataRepository extends DataRepository<MapData> {
     public boolean recordDiscordUpload(String name, String fileName, String author, String gameMode,
                                        String contentHash, org.xcore.plugin.model.MapDiscordUpload upload) {
         if (isReadOnly()) return false;
-        MapData data = findByFileName(fileName, gameMode).orElse(null);
+        // Writes use exact physical names. Case-insensitive read aliases must not join distinct files.
+        MapData data = collection.find(and(eq("file_name", fileName), eq("game_mode", gameMode))).first();
         if (data == null) {
             data = new MapData(name, fileName, author, gameMode);
             data.contentHash = contentHash;
@@ -220,6 +221,15 @@ public class MapDataRepository extends DataRepository<MapData> {
 
     /** Enrich an in-memory read result without creating or changing a persistent map identity. */
     public java.util.concurrent.CompletionStage<MapData> enrichDiscordUploadAsync(MapData data) {
+        return enrichDiscordUploadAsync(data, data == null ? null : data.fileName);
+    }
+
+    public java.util.concurrent.CompletionStage<MapData> enrichDiscordUploadAsync(MapData data, String installedFileName) {
+        if (data != null && !java.util.Objects.equals(data.fileName, installedFileName)) {
+            // The statistics lookup may use an old display alias; its attribution is not proof for this file.
+            data.discordUpload = null;
+            return java.util.concurrent.CompletableFuture.completedFuture(data);
+        }
         if (data == null || data.discordUpload != null || data.fileName == null) {
             return java.util.concurrent.CompletableFuture.completedFuture(data);
         }

@@ -3,6 +3,7 @@ package org.xcore.plugin.ui.menu.map;
 import arc.util.Strings;
 import org.xcore.plugin.localization.Localization;
 import org.xcore.plugin.model.MapDiscordUpload;
+import org.xcore.plugin.model.MapData;
 
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -14,6 +15,11 @@ import static com.ospx.flubundle.Bundle.args;
 /** The same submission attribution in the reactive dialog and legacy /map menu. */
 public final class MapUploadText {
     private MapUploadText() {}
+
+    public static MapDiscordUpload forFile(MapData data, String installedFileName) {
+        return data != null && installedFileName != null && installedFileName.equals(data.fileName)
+                ? data.discordUpload : null;
+    }
 
     public static String format(Localization locale, MapDiscordUpload upload) {
         if (upload == null) return "";

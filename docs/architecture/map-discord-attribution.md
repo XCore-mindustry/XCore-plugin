@@ -33,6 +33,12 @@ bytes. Original `.msav` bytes and embedded tags are unchanged. File-name lookup 
 precedence over legacy display-name aliases, and an alias match for a different file
 cannot expose that file's Discord submission in the Discord map list.
 
+Installation writes are serialized per exact filename on the HTTP workers. Each
+successful write gets an installation token; late batches and queued metadata work
+must still match that token, even when a newer submission used identical map bytes.
+Database writes for one file run in order, while other files remain independent.
+Failed storage writes do not block their successors.
+
 Submission updates write only metadata, preserving concurrent ratings and telemetry.
 A first submission creates the map record for the current game mode. Attribution updates
 apply to every existing statistics partition of the file; reads and newly created game-mode
@@ -41,7 +47,12 @@ Reupload replaces the latest submission, including clearing an omitted creator. 
 through a legacy command without attribution clears its previous Discord attribution.
 Failed downloads are not attributed. Duplicate file names in one transport batch use
 the first source. Existing records have no fabricated history or automatic backfill.
-Consolidation into `MapEntity` retains the most recent non-null submission.
+Consolidation into `MapEntity` retains the most recent non-null submission. Write
+lookups and updates use exact physical filenames, keeping case-only filenames
+distinct. Case-insensitive aliases remain a read convenience only when unambiguous.
+Both game interfaces verify the installed filename before displaying attribution;
+statistics resolved through another filename's display alias cannot expose its
+submitter or creator.
 
 The existing `maps` collection partitions records by file name and game mode. This
 change keeps statistics partitioned while treating submission attribution as file-level

@@ -59,6 +59,8 @@ class MapUiControllerTest {
         mapDataRepository = mock(MapDataRepository.class);
         when(mapDataRepository.enrichDiscordUploadAsync(any())).thenAnswer(call ->
                 java.util.concurrent.CompletableFuture.completedFuture(call.getArgument(0)));
+        when(mapDataRepository.enrichDiscordUploadAsync(any(), anyString())).thenAnswer(call ->
+                java.util.concurrent.CompletableFuture.completedFuture(call.getArgument(0)));
         previewService = mock(MapPreviewService.class);
         observerService = mock(MapVoteObserverService.class);
 
@@ -349,6 +351,17 @@ class MapUiControllerTest {
         assertThat(text).contains("Лайк (14)", "Дизлайк (2)", "Голосовать за эту карту", "К списку карт");
         // None of the menu's own texts is cut on the smallest screen.
         assertThat(text).doesNotContain("…");
+    }
+
+    @Test
+    void selectedFileNeverDisplaysAnotherAliasRecordsAttribution() {
+        session.localization = LayoutAssert.localization("ru");
+        var alias = new MapData("Arena", "other.msav", "Anuke", "survival");
+        alias.discordUpload = new org.xcore.plugin.model.MapDiscordUpload("123", "Foreign Reviewer", 1791806400000L, "234", "Foreign Creator");
+        var controller = new MapUiController(mapService, mapDataRepository, previewService, observerService, session);
+        var model = createTestDetailsModel("arena.msav").withResolvedDetails(alias);
+        String text = LayoutAssert.allText(controller.window(model, Screen.WIDE));
+        assertThat(text).doesNotContain("Foreign Reviewer", "Foreign Creator", "Добавил через Discord:", "Указанный автор:");
     }
 
     @Test

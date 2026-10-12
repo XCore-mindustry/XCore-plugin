@@ -24,6 +24,50 @@ import static org.mockito.Mockito.*;
 class MapDiscordUploadPersistenceTest {
     @Test
     @SuppressWarnings("unchecked")
+    void submissionWritesUseExactNamesAndDoNotMergeCaseOnlyFiles() {
+        var database = mock(MongoDatabase.class);
+        MongoCollection<MapData> collection = mock(MongoCollection.class);
+        when(database.getCollection("maps", MapData.class)).thenReturn(collection);
+        FindIterable<MapData> exactQuery = mock(FindIterable.class);
+        when(collection.find(any(Bson.class))).thenReturn(exactQuery);
+        when(collection.updateMany(any(Bson.class), any(Bson.class))).thenReturn(UpdateResult.acknowledged(1, 1L, null));
+        var repository = new MapDataRepository(database, new TomlSecretsConfig());
+        var upload = new MapDiscordUpload("123", "Reviewer", 1791806400000L, null, null);
+        assertThat(repository.recordDiscordUpload("Arena", "arena.msav", "Author", "pvp", "new hash", upload)).isTrue();
+        var lookup = ArgumentCaptor.forClass(Bson.class);
+        verify(collection).find(lookup.capture());
+        String filter = lookup.getValue().toBsonDocument(Document.class, MongoClientSettings.getDefaultCodecRegistry()).toJson();
+        assertThat(filter).contains("arena.msav").doesNotContain("regularExpression");
+        var inserted = ArgumentCaptor.forClass(MapData.class);
+        verify(collection).insertOne(inserted.capture());
+        assertThat(inserted.getValue().fileName).isEqualTo("arena.msav");
+        assertThat(inserted.getValue().discordUpload).isEqualTo(upload);
+        var target = ArgumentCaptor.forClass(Bson.class);
+        verify(collection).updateMany(target.capture(), any(Bson.class));
+        assertThat(target.getValue().toBsonDocument(Document.class, MongoClientSettings.getDefaultCodecRegistry()))
+                .isEqualTo(BsonDocument.parse("{file_name: 'arena.msav'}"));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void attributionFromADifferentAliasIsDroppedWithoutChangingStatisticsOrStorage() {
+        var database = mock(MongoDatabase.class);
+        MongoCollection<MapData> collection = mock(MongoCollection.class);
+        when(database.getCollection("maps", MapData.class)).thenReturn(collection);
+        var repository = new MapDataRepository(database, new TomlSecretsConfig());
+        clearInvocations(collection);
+        var alias = new MapData("Arena", "other.msav", "Author", "pvp");
+        alias.like = 42;
+        alias.discordUpload = new MapDiscordUpload("123", "Other Reviewer", 1791806400000L, null, null);
+        var result = repository.enrichDiscordUploadAsync(alias, "arena.msav").toCompletableFuture().join();
+        assertThat(result.discordUpload).isNull();
+        assertThat(result.like).isEqualTo(42);
+        assertThat(result.fileName).isEqualTo("other.msav");
+        verifyNoInteractions(collection);
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
     void anotherGameModeInheritsAttributionWithoutUsingThatModesStatistics() {
         var database = mock(MongoDatabase.class);
         MongoCollection<MapData> collection = mock(MongoCollection.class);

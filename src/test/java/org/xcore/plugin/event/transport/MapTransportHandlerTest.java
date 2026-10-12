@@ -418,6 +418,108 @@ class MapTransportHandlerTest {
         }
     }
 
+    @Test
+    @SuppressWarnings("unchecked")
+    void lateBatchCannotRestoreOlderAttributionEvenWhenTheBytesAreIdentical(@org.junit.jupiter.api.io.TempDir java.nio.file.Path directory) throws Exception {
+        var originalDirectory = Vars.customMapDirectory;
+        Vars.customMapDirectory = new Fi(directory.toFile());
+        var network = mock(NetworkService.class);
+        var config = new TomlXcoreConfig();
+        config.server.name = "mini-pvp";
+        var service = mock(MapService.class);
+        var repository = mock(MapDataRepository.class);
+        when(repository.recordDiscordUpload(anyString(), anyString(), anyString(), anyString(), anyString(), any())).thenReturn(true);
+        var registry = mock(Maps.class);
+        Vars.maps = registry;
+        Vars.state = new mindustry.core.GameState();
+        Vars.state.rules = mock(Rules.class);
+        when(Vars.state.rules.mode()).thenReturn(Gamemode.pvp);
+        var arena = realMap("Arena");
+        when(service.findMapByFileName("arena.msav")).thenReturn(arena);
+        var success = new HashMap<String, arc.func.ConsT<arc.util.Http.HttpResponse, Exception>>();
+        var errors = new HashMap<String, Cons<Throwable>>();
+        try (var http = org.mockito.Mockito.mockStatic(arc.util.Http.class)) {
+            for (String url : List.of("https://example/old.msav", "https://example/new.msav", "https://example/delayed.msav")) {
+                var request = mock(arc.util.Http.HttpRequest.class);
+                http.when(() -> arc.util.Http.get(url)).thenReturn(request);
+                when(request.error(any())).thenAnswer(call -> { errors.put(url, call.getArgument(0)); return request; });
+                doAnswer(call -> { success.put(url, call.getArgument(0)); return null; }).when(request).submit(any());
+            }
+            var handler = new MapTransportHandler(network, config, service, repository, new Async(InlineStorageExecutor.create(), Runnable::run));
+            Map<Class<?>, Cons<?>> listeners = new HashMap<>();
+            captureListeners(network, listeners);
+            handler.registerListeners();
+            var old = new org.xcore.protocol.generated.shared.MapDiscordUploadV1(
+                    new org.xcore.protocol.generated.shared.DiscordIdentityRefV1("123", "Old Sender"), 1,
+                    new org.xcore.protocol.generated.shared.DiscordIdentityRefV1("789", "Old Creator"));
+            var newer = new org.xcore.protocol.generated.shared.MapDiscordUploadV1(
+                    new org.xcore.protocol.generated.shared.DiscordIdentityRefV1("456", "New Sender"), 2, null);
+            listener(listeners, MapsLoadCommandV1.class).get(new MapsLoadCommandV1("mini-pvp", List.of(
+                    new MapFileSourceV1("https://example/old.msav", "arena.msav", old),
+                    new MapFileSourceV1("https://example/delayed.msav", "delayed.msav", old))));
+            var response = mock(arc.util.Http.HttpResponse.class);
+            when(response.getResult()).thenReturn(new byte[]{97, 98, 99});
+            success.get("https://example/old.msav").get(response);
+            listener(listeners, MapsLoadCommandV1.class).get(new MapsLoadCommandV1("mini-pvp", List.of(
+                    new MapFileSourceV1("https://example/new.msav", "arena.msav", newer))));
+            success.get("https://example/new.msav").get(response);
+            errors.get("https://example/delayed.msav").get(new java.io.IOException("404"));
+            var attribution = ArgumentCaptor.forClass(org.xcore.plugin.model.MapDiscordUpload.class);
+            verify(repository).recordDiscordUpload(anyString(), anyString(), anyString(), anyString(), anyString(), attribution.capture());
+            assertThat(attribution.getValue().uploadedByName).isEqualTo("New Sender");
+            assertThat(attribution.getValue().creatorDiscordId).isNull();
+        } finally {
+            Vars.customMapDirectory = originalDirectory;
+        }
+    }
+
+    @Test
+    void metadataWritesForOneFileAreOrderedAndOtherFilesRemainIndependent() {
+        var storageTasks = new java.util.ArrayDeque<Runnable>();
+        var storage = mock(StorageExecutor.class, org.mockito.Mockito.CALLS_REAL_METHODS);
+        doAnswer(call -> { storageTasks.add(call.getArgument(0)); return null; }).when(storage).execute(any());
+        var repository = mock(MapDataRepository.class);
+        var writes = new java.util.ArrayList<String>();
+        when(repository.recordDiscordUpload(anyString(), anyString(), anyString(), anyString(), anyString(), any()))
+                .thenAnswer(call -> { writes.add(call.getArgument(4)); return true; });
+        var handler = new MapTransportHandler(mock(NetworkService.class), new TomlXcoreConfig(), mock(MapService.class),
+                repository, new Async(storage, Runnable::run));
+        var older = handler.enqueueDiscordUpload("Arena", "arena.msav", "Author", "pvp", "old", null, () -> true);
+        var newer = handler.enqueueDiscordUpload("Arena", "arena.msav", "Author", "pvp", "new", null, () -> true);
+        var other = handler.enqueueDiscordUpload("Other", "other.msav", "Author", "pvp", "other", null, () -> true);
+        assertThat(storageTasks).hasSize(2); // the second arena write has not started
+        storageTasks.remove().run();
+        assertThat(older).isCompleted();
+        assertThat(newer).isNotDone();
+        storageTasks.remove().run();
+        assertThat(other).isCompleted();
+        storageTasks.remove().run();
+        assertThat(newer).isCompleted();
+        assertThat(writes).containsExactly("old", "other", "new");
+    }
+
+    @Test
+    void staleInstallationIsSkippedAndAStorageFailureDoesNotBlockItsSuccessor() {
+        var storageTasks = new java.util.ArrayDeque<Runnable>();
+        var storage = mock(StorageExecutor.class, org.mockito.Mockito.CALLS_REAL_METHODS);
+        doAnswer(call -> { storageTasks.add(call.getArgument(0)); return null; }).when(storage).execute(any());
+        var repository = mock(MapDataRepository.class);
+        when(repository.recordDiscordUpload(anyString(), anyString(), anyString(), anyString(), anyString(), any()))
+                .thenThrow(new IllegalStateException("storage unavailable")).thenReturn(true);
+        var handler = new MapTransportHandler(mock(NetworkService.class), new TomlXcoreConfig(), mock(MapService.class),
+                repository, new Async(storage, Runnable::run));
+        handler.enqueueDiscordUpload("Arena", "arena.msav", "Author", "pvp", "stale", null, () -> false);
+        handler.enqueueDiscordUpload("Arena", "arena.msav", "Author", "pvp", "failed", null, () -> true);
+        var newest = handler.enqueueDiscordUpload("Arena", "arena.msav", "Author", "pvp", "current", null, () -> true);
+        storageTasks.remove().run();
+        verifyNoInteractions(repository);
+        storageTasks.remove().run();
+        storageTasks.remove().run();
+        assertThat(newest).isCompleted();
+        verify(repository, never()).recordDiscordUpload(anyString(), anyString(), anyString(), anyString(), org.mockito.ArgumentMatchers.eq("stale"), any());
+        verify(repository).recordDiscordUpload(anyString(), anyString(), anyString(), anyString(), org.mockito.ArgumentMatchers.eq("current"), any());
+    }
+
     private static void captureListeners(NetworkService network, Map<Class<?>, Cons<?>> listeners) {        doAnswer(invocation -> {
             listeners.put(invocation.getArgument(0), invocation.getArgument(1));
             return mock(RedisNetworkBackend.Subscription.class);

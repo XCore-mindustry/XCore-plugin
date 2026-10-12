@@ -284,11 +284,16 @@ final class MapFlows {
                             "playedYear", mapData.playedTimesYear, "lastPlayed", last,
                             "like", mapData.like, "dislike", mapData.dislike,
                             "min", minDuration, "avg", averageDuration, "max", maxDuration
-                    )) + (mapData.discordUpload == null ? "" : "\n\n"
-                            + org.xcore.plugin.ui.menu.map.MapUploadText.format(session.locale(), mapData.discordUpload)),
+                    )) + attribution(session, mapData, mindustryMap),
                     grid.build()
             );
         }
+    }
+
+    private static String attribution(Session session, MapData data, Map installed) {
+        var upload = org.xcore.plugin.ui.menu.map.MapUploadText.forFile(
+                data, installed == null || installed.file == null ? null : installed.file.name());
+        return upload == null ? "" : "\n\n" + org.xcore.plugin.ui.menu.map.MapUploadText.format(session.locale(), upload);
     }
 
     static final class MapsState {

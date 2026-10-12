@@ -39,6 +39,10 @@ public class MapTransportHandler {
     private final MapService mapService;
     private final MapDataRepository mapDataRepository;
     private final Async async;
+    private final java.util.concurrent.ConcurrentHashMap<String, DownloadedMap> installations = new java.util.concurrent.ConcurrentHashMap<>();
+    private final java.util.concurrent.atomic.AtomicLong installationSequence = new java.util.concurrent.atomic.AtomicLong();
+    /** Accessed only on the game thread; storage writes for one file never overtake one another. */
+    private final java.util.Map<String, java.util.concurrent.CompletableFuture<Void>> pendingUploads = new java.util.HashMap<>();
 
     @Inject
     public MapTransportHandler(NetworkService network,
@@ -58,6 +62,23 @@ public class MapTransportHandler {
     }
 
     private record MapMetadata(MapData data, MapDiscordUpload upload) {}
+    private record DownloadedMap(String hash, long sequence) {}
+
+    java.util.concurrent.CompletableFuture<Void> enqueueDiscordUpload(
+            String name, String fileName, String author, String mode, String hash, MapDiscordUpload upload,
+            java.util.function.BooleanSupplier stillInstalled) {
+        var previous = pendingUploads.getOrDefault(fileName, java.util.concurrent.CompletableFuture.completedFuture(null));
+        var write = previous.handle((ignored, error) -> null).thenCompose(ignored ->
+                async.supply(() -> !stillInstalled.getAsBoolean()
+                        || mapDataRepository.recordDiscordUpload(name, fileName, author, mode, hash, upload))
+                        .thenMain((saved, failure) -> {
+                            if (failure != null) Log.err("[Maps] Could not persist Discord metadata for " + fileName, failure);
+                            else if (!Boolean.TRUE.equals(saved)) Log.warn("[Maps] Discord metadata was not persisted for @", fileName);
+                        }));
+        pendingUploads.put(fileName, write);
+        write.whenComplete((ignored, error) -> async.main(() -> pendingUploads.remove(fileName, write)));
+        return write;
+    }
 
     /** Re-captures map identity after any engine maps.reload() (upload/remove paths). */
     public void onMapsReloaded() {
@@ -167,7 +188,7 @@ public class MapTransportHandler {
                 return;
             }
 
-            var downloaded = new java.util.concurrent.ConcurrentHashMap<String, String>();
+            var downloaded = new java.util.concurrent.ConcurrentHashMap<String, DownloadedMap>();
             AtomicInteger completed = new AtomicInteger();
             AtomicInteger written = new AtomicInteger();
             // Both the success and the error handler have to count, or a single 404 leaves
@@ -186,22 +207,16 @@ public class MapTransportHandler {
                     onMapsReloaded();
                     String gameMode = state.rules.mode().name();
                     for (MapFileSourceV1 source : accepted) {
-                        String hash = downloaded.get(source.fileName());
+                        DownloadedMap download = downloaded.get(source.fileName());
+                        if (download == null || !download.equals(installations.get(source.fileName()))) continue;
                         Map installed = mapService.findMapByFileName(source.fileName());
-                        if (hash == null || installed == null) continue;
-                        // Snapshot engine fields before moving the database work off-thread.
+                        if (installed == null || installed.file == null || !source.fileName().equals(installed.file.name())) continue;
+                        // Snapshot engine fields; the installation guard is safe to check on the worker.
                         String name = installed.plainName();
                         String author = installed.author();
                         MapDiscordUpload upload = MapDiscordUpload.fromProtocol(source.discordUpload());
-                        async.supply(() -> mapDataRepository.recordDiscordUpload(
-                                name, source.fileName(), author, gameMode, hash, upload)).future()
-                                .whenComplete((saved, failure) -> {
-                                    if (failure != null) {
-                                        Log.err("[Maps] Could not persist Discord metadata for " + source.fileName(), failure);
-                                    } else if (!Boolean.TRUE.equals(saved)) {
-                                        Log.warn("[Maps] Discord metadata was not persisted for @", source.fileName());
-                                    }
-                                });
+                        enqueueDiscordUpload(name, source.fileName(), author, gameMode, download.hash(), upload,
+                                () -> download.equals(installations.get(source.fileName())));
                     }
                     if (loaded == accepted.size()) {
                         info("Loaded @ maps.", loaded);
@@ -226,8 +241,14 @@ public class MapTransportHandler {
                             try {
                                 byte[] bytes = result.getResult();
                                 String hash = MapContentHash.digest(new java.io.ByteArrayInputStream(bytes)).asHex();
-                                customMapDirectory.child(safeName).writeBytes(bytes);
-                                downloaded.put(safeName, hash);
+                                // Serialize writes of the same physical file on HTTP workers. The token
+                                // also rejects late metadata from an older batch, even for identical bytes.
+                                installations.compute(safeName, (key, previous) -> {
+                                    customMapDirectory.child(safeName).writeBytes(bytes);
+                                    var download = new DownloadedMap(hash, installationSequence.incrementAndGet());
+                                    downloaded.put(safeName, download);
+                                    return download;
+                                });
                                 written.incrementAndGet();
                             } catch (Exception failure) {
                                 Log.err("Failed to save map @", file.fileName(), failure);

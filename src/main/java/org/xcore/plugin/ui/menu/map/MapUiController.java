@@ -376,7 +376,7 @@ public class MapUiController implements UiController<MapUiModel, MapUiEvent> {
         float width = screen.width();
         float text = width - 2f * MARGIN;
         return Kit.window(window -> {
-            String authorKey = model.resolvedDetails() != null && model.resolvedDetails().discordUpload != null
+            String authorKey = MapUploadText.forFile(model.resolvedDetails(), model.selectedMapId()) != null
                     ? "map-upload-file-author" : "map-ui-by";
             String author = Strings.stripColors(t(session, authorKey, args("author", Strings.stripColors(model.mapAuthor()))));
             String mode = Strings.stripColors(t(session, "map-ui-mode", args("mode", model.gamemodeName())));
@@ -432,9 +432,9 @@ public class MapUiController implements UiController<MapUiModel, MapUiEvent> {
                     t(session, "map-ui-total-plays", args("played", model.playedTimes(), "playedYear", model.playedTimesYear())),
                     t(session, "map-ui-last-played", args("lastPlayed", model.lastPlayedFormatted())),
                     description), inner)).row();
-            if (model.resolvedDetails() != null && model.resolvedDetails().discordUpload != null) {
+            if (MapUploadText.forFile(model.resolvedDetails(), model.selectedMapId()) != null) {
                 content.add(Kit.text(TextWidth.breakWords(
-                        MapUploadText.format(session.locale(), model.resolvedDetails().discordUpload), inner), inner)).row();
+                        MapUploadText.format(session.locale(), MapUploadText.forFile(model.resolvedDetails(), model.selectedMapId())), inner), inner)).row();
             }
         });
     }
@@ -947,7 +947,7 @@ public class MapUiController implements UiController<MapUiModel, MapUiEvent> {
                                     });
                         }
                         return data;
-                    }).thenCompose(mapDataRepository::enrichDiscordUploadAsync);
+                    }).thenCompose(data -> mapDataRepository.enrichDiscordUploadAsync(data, fileName));
         }
         return java.util.concurrent.CompletableFuture.completedFuture(null);
     }
