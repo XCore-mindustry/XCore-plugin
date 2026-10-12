@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:xcore:protocol:shared:types:map-discord-upload:v1",
+  "title": "MapDiscordUploadV1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "uploadedBy",
+    "uploadedAt"
+  ],
+  "properties": {
+    "uploadedBy": {
+      "$ref": "urn:xcore:protocol:shared:types:discord-identity-ref:v1"
+    },
+    "uploadedAt": {
+      "type": "integer",
+      "format": "int64",
+      "minimum": 1
+    },
+    "creator": {
+      "$ref": "urn:xcore:protocol:shared:types:discord-identity-ref:v1"
+    }
+  }
+}

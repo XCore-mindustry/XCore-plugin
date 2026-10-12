@@ -28,6 +28,13 @@ VALID_CASES = [
 ]
 
 
+VALID_CASES += [
+    (spec_root() / "messages" / "maps" / f"{name}.v1.json",
+     fixtures_root() / "valid" / "maps" / f"{name}.v1.discord-upload.json")
+    for name in ("maps.load.command", "maps.list.response")
+]
+
+
 INVALID_CASES = [
     (
         spec_root() / "messages" / "maps" / "maps.list.response.v1.json",
@@ -79,3 +86,9 @@ def test_maps_fixture_inventory_exists() -> None:
     assert maps_invalid_dir.exists()
     assert any(maps_valid_dir.iterdir())
     assert any(maps_invalid_dir.iterdir())
+
+
+def test_invalid_discord_upload_fixtures_fail() -> None:
+    schema = spec_root() / "messages" / "maps" / "maps.load.command.v1.json"
+    for suffix in ("missing-uploader", "invalid-time"):
+        assert_invalid(schema, fixtures_root() / "invalid" / "maps" / f"maps.load.command.v1.{suffix}.json")

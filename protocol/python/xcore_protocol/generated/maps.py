@@ -8,6 +8,8 @@ from enum import StrEnum
 from typing import Any, ClassVar
 
 from .shared import (
+    DiscordIdentityRefV1,
+    MapDiscordUploadV1,
     MapEntryV1,
     MapFileSourceV1,
 )

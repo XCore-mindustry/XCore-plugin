@@ -17,7 +17,8 @@ public record MapEntryV1(
         Integer reputation,
         Double popularity,
         Double interest,
-        String gameMode
+        String gameMode,
+        MapDiscordUploadV1 discordUpload
 ) implements ProtocolPayload {
     public MapEntryV1 {
         Objects.requireNonNull(name, "name must not be null");
@@ -53,6 +54,9 @@ public record MapEntryV1(
                 throw new IllegalArgumentException("gameMode must be at least 1 characters");
             }
         }
+        if (discordUpload != null) {
+            Objects.requireNonNull(discordUpload, "discordUpload must not be null");
+        }
     }
 
     @Override
@@ -87,6 +91,9 @@ public record MapEntryV1(
         }
         if (gameMode != null) {
             payload.put("gameMode", gameMode);
+        }
+        if (discordUpload != null) {
+            payload.put("discordUpload", discordUpload.toPayload());
         }
         return payload;
     }

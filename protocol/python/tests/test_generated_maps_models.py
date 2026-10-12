@@ -118,3 +118,10 @@ def test_generated_route_registry_matches_expected_messages() -> None:
     assert MAPS_ROUTES_BY_MESSAGE[("maps.remove.request", 1)].response is not None
     assert MAPS_ROUTES_BY_MESSAGE[("maps.list.request", 1)].bindings == {"server": "payload.server"}
     assert MAPS_ROUTES_BY_MESSAGE[("maps.remove.request", 1)].response.bindings == {"requester": "rpc.requester"}
+
+
+
+def test_discord_submission_fixtures_roundtrip() -> None:
+    for name, model in (("maps.load.command", MapsLoadCommandV1), ("maps.list.response", MapsListResponseV1)):
+        payload = load_json(fixtures_root() / "valid" / "maps" / f"{name}.v1.discord-upload.json")
+        assert model.from_payload(payload).to_payload() == payload

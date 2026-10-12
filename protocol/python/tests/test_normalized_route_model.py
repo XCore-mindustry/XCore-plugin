@@ -79,6 +79,8 @@ def test_generation_plan_only_uses_reachable_maps_shared_types() -> None:
     plan = load_generation_plan(family="maps")
 
     assert [schema.title for schema in plan.shared_schemas] == [
+        "DiscordIdentityRefV1",
+        "MapDiscordUploadV1",
         "MapEntryV1",
         "MapFileSourceV1",
     ]

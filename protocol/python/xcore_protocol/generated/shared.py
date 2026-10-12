@@ -215,6 +215,41 @@ class ExpirationInfoV1:
         return payload
 
 @dataclass(frozen=True, slots=True)
+class MapDiscordUploadV1:
+    uploadedBy: DiscordIdentityRefV1
+    uploadedAt: int
+    creator: DiscordIdentityRefV1 | None = None
+
+    def __post_init__(self) -> None:
+        _expect_instance(self.uploadedBy, 'uploadedBy', DiscordIdentityRefV1)
+        _expect_int(self.uploadedAt, 'uploadedAt')
+        if self.creator is not None:
+            _expect_instance(self.creator, 'creator', DiscordIdentityRefV1)
+
+    @classmethod
+    def from_payload(cls, payload: Mapping[str, Any]) -> "MapDiscordUploadV1":
+        mapping = _expect_mapping(payload, "MapDiscordUploadV1")
+        _expect_exact_keys(
+            mapping,
+            required=frozenset(('uploadedBy', 'uploadedAt')),
+            allowed=frozenset(('uploadedBy', 'uploadedAt', 'creator')),
+            model_name="MapDiscordUploadV1",
+        )
+        return cls(
+            uploadedBy=DiscordIdentityRefV1.from_payload(_expect_mapping(mapping['uploadedBy'], 'uploadedBy')),
+            uploadedAt=_expect_int(mapping['uploadedAt'], 'uploadedAt'),
+            creator=(DiscordIdentityRefV1.from_payload(_expect_mapping(mapping['creator'], 'creator')) if 'creator' in mapping else None),
+        )
+
+    def to_payload(self) -> dict[str, Any]:
+        payload: dict[str, Any] = {}
+        payload['uploadedBy'] = self.uploadedBy.to_payload()
+        payload['uploadedAt'] = self.uploadedAt
+        if self.creator is not None:
+            payload['creator'] = self.creator.to_payload()
+        return payload
+
+@dataclass(frozen=True, slots=True)
 class MapEntryV1:
     name: str
     fileName: str
@@ -228,6 +263,7 @@ class MapEntryV1:
     popularity: float | None = None
     interest: float | None = None
     gameMode: str | None = None
+    discordUpload: MapDiscordUploadV1 | None = None
 
     def __post_init__(self) -> None:
         _expect_str(self.name, 'name')
@@ -251,6 +287,8 @@ class MapEntryV1:
             _expect_number(self.interest, 'interest')
         if self.gameMode is not None:
             _expect_str(self.gameMode, 'gameMode')
+        if self.discordUpload is not None:
+            _expect_instance(self.discordUpload, 'discordUpload', MapDiscordUploadV1)
 
     @classmethod
     def from_payload(cls, payload: Mapping[str, Any]) -> "MapEntryV1":
@@ -258,7 +296,7 @@ class MapEntryV1:
         _expect_exact_keys(
             mapping,
             required=frozenset(('name', 'fileName', 'author')),
-            allowed=frozenset(('name', 'fileName', 'author', 'width', 'height', 'fileSizeBytes', 'like', 'dislike', 'reputation', 'popularity', 'interest', 'gameMode')),
+            allowed=frozenset(('name', 'fileName', 'author', 'width', 'height', 'fileSizeBytes', 'like', 'dislike', 'reputation', 'popularity', 'interest', 'gameMode', 'discordUpload')),
             model_name="MapEntryV1",
         )
         return cls(
@@ -274,6 +312,7 @@ class MapEntryV1:
             popularity=(_expect_number(mapping['popularity'], 'popularity') if 'popularity' in mapping else None),
             interest=(_expect_number(mapping['interest'], 'interest') if 'interest' in mapping else None),
             gameMode=(_expect_str(mapping['gameMode'], 'gameMode') if 'gameMode' in mapping else None),
+            discordUpload=(MapDiscordUploadV1.from_payload(_expect_mapping(mapping['discordUpload'], 'discordUpload')) if 'discordUpload' in mapping else None),
         )
 
     def to_payload(self) -> dict[str, Any]:
@@ -299,16 +338,21 @@ class MapEntryV1:
             payload['interest'] = float(self.interest)
         if self.gameMode is not None:
             payload['gameMode'] = self.gameMode
+        if self.discordUpload is not None:
+            payload['discordUpload'] = self.discordUpload.to_payload()
         return payload
 
 @dataclass(frozen=True, slots=True)
 class MapFileSourceV1:
     url: str
     fileName: str
+    discordUpload: MapDiscordUploadV1 | None = None
 
     def __post_init__(self) -> None:
         _expect_str(self.url, 'url')
         _expect_str(self.fileName, 'fileName')
+        if self.discordUpload is not None:
+            _expect_instance(self.discordUpload, 'discordUpload', MapDiscordUploadV1)
 
     @classmethod
     def from_payload(cls, payload: Mapping[str, Any]) -> "MapFileSourceV1":
@@ -316,18 +360,21 @@ class MapFileSourceV1:
         _expect_exact_keys(
             mapping,
             required=frozenset(('url', 'fileName')),
-            allowed=frozenset(('url', 'fileName')),
+            allowed=frozenset(('url', 'fileName', 'discordUpload')),
             model_name="MapFileSourceV1",
         )
         return cls(
             url=_expect_str(mapping['url'], 'url'),
             fileName=_expect_str(mapping['fileName'], 'fileName'),
+            discordUpload=(MapDiscordUploadV1.from_payload(_expect_mapping(mapping['discordUpload'], 'discordUpload')) if 'discordUpload' in mapping else None),
         )
 
     def to_payload(self) -> dict[str, Any]:
         payload: dict[str, Any] = {}
         payload['url'] = self.url
         payload['fileName'] = self.fileName
+        if self.discordUpload is not None:
+            payload['discordUpload'] = self.discordUpload.to_payload()
         return payload
 
 class MetricSampleV1Type(StrEnum):
@@ -770,6 +817,7 @@ __all__ = [
     "ActorRefV1",
     "DiscordIdentityRefV1",
     "ExpirationInfoV1",
+    "MapDiscordUploadV1",
     "MapEntryV1",
     "MapFileSourceV1",
     "MetricSampleV1",
