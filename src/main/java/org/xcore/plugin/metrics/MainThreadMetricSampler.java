@@ -1,7 +1,6 @@
 package org.xcore.plugin.metrics;
 
 import arc.Core;
-import arc.Events;
 import arc.util.Timer;
 import io.avaje.inject.PostConstruct;
 import io.avaje.inject.PreDestroy;
@@ -10,6 +9,8 @@ import mindustry.Vars;
 import mindustry.game.EventType;
 import mindustry.gen.Groups;
 import org.xcore.plugin.config.TomlXcoreConfig;
+import org.xcore.plugin.event.EventSubscriptions;
+import org.xcore.plugin.startup.ShutdownOrder;
 
 import java.util.function.IntSupplier;
 import java.util.function.LongSupplier;
@@ -27,6 +28,8 @@ public final class MainThreadMetricSampler {
     private final IntSupplier tpsSupplier;
     private final LongSupplier nowSupplier;
 
+    private final EventSubscriptions subscriptions = new EventSubscriptions();
+    private volatile boolean stopped;
     private Timer.Task playersOnlineTask;
 
     public MainThreadMetricSampler(MetricsService metricsService, TomlXcoreConfig config) {
@@ -62,27 +65,32 @@ public final class MainThreadMetricSampler {
             return;
         }
 
-        Events.on(EventType.PlayerJoin.class, ignored -> playerJoinsCounter.increment());
-        Events.on(EventType.PlayerLeave.class, ignored -> playerLeavesCounter.increment());
-        Events.on(EventType.ServerLoadEvent.class, ignored -> startPlayersOnlineSampling());
+        subscriptions.on(EventType.PlayerJoin.class, ignored -> playerJoinsCounter.increment());
+        subscriptions.on(EventType.PlayerLeave.class, ignored -> playerLeavesCounter.increment());
+        subscriptions.on(EventType.ServerLoadEvent.class, ignored -> startPlayersOnlineSampling());
     }
 
-    @PreDestroy
-    public void shutdown() {
+    @PreDestroy(priority = ShutdownOrder.STOP_PRODUCERS)
+    public synchronized void shutdown() {
+        stopped = true;
+        subscriptions.close();
         if (playersOnlineTask != null) {
             playersOnlineTask.cancel();
             playersOnlineTask = null;
         }
     }
 
-    private void startPlayersOnlineSampling() {
+    private synchronized void startPlayersOnlineSampling() {
+        if (stopped) return;
         samplePeriodicMetrics();
         if (playersOnlineTask != null) {
             playersOnlineTask.cancel();
         }
 
         float intervalSeconds = config.telemetry.sampleIntervalMs / 1000f;
-        playersOnlineTask = Timer.schedule(this::samplePeriodicMetrics, intervalSeconds, intervalSeconds);
+        playersOnlineTask = Timer.schedule(() -> {
+            if (!stopped) samplePeriodicMetrics();
+        }, intervalSeconds, intervalSeconds);
     }
 
     void samplePeriodicMetrics() {

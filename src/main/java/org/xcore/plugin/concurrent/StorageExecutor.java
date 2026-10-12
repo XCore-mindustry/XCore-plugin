@@ -9,6 +9,7 @@ import org.xcore.plugin.metrics.Gauge;
 import org.xcore.plugin.metrics.Histogram;
 import org.xcore.plugin.metrics.MetricsService;
 import org.xcore.plugin.metrics.XcoreMetrics;
+import org.xcore.plugin.startup.ShutdownOrder;
 
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
@@ -160,7 +161,7 @@ public class StorageExecutor {
         return executor.isShutdown();
     }
 
-    @PreDestroy
+    @PreDestroy(priority = ShutdownOrder.DRAIN_STORAGE)
     public void shutdown() {
         executor.shutdown();
         try {

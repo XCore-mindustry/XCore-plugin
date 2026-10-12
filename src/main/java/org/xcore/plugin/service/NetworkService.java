@@ -59,6 +59,10 @@ public class NetworkService {
         }
     }
 
+    public void unregisterReconnectHook(Runnable hook) {
+        reconnectHooks.remove(hook);
+    }
+
     @PreDestroy
     public void disconnect() {
         backend.disconnect();

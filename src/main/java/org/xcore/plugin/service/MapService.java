@@ -1,6 +1,8 @@
 package org.xcore.plugin.service;
 
-import arc.Events;
+import io.avaje.inject.PreDestroy;
+import org.xcore.plugin.event.EventSubscriptions;
+import org.xcore.plugin.startup.ShutdownOrder;
 import arc.func.Boolf;
 import arc.struct.Seq;
 import arc.util.Timer;
@@ -39,6 +41,7 @@ import static mindustry.Vars.maps;
 
 @Singleton
 public class MapService {
+    private final EventSubscriptions subscriptions = new EventSubscriptions();
     private static final int NEW_VOTE_REPUTATION_DELTA = 1;
     private static final int CHANGED_VOTE_REPUTATION_DELTA = 2;
     private static final double POPULARITY_PER_REPUTATION = 2.0;
@@ -358,7 +361,7 @@ public class MapService {
 
     /** Registers engine event triggers; safe in headless tests, no-op without a catalog. */
     public void registerCatalogTriggers() {
-        Events.on(EventType.ServerLoadEvent.class, ignored -> rebuildIdentityCatalog());
+        subscriptions.on(EventType.ServerLoadEvent.class, ignored -> rebuildIdentityCatalog());
     }
 
     /** Rebuilds the identity catalog from live engine maps; metadata is captured on the calling thread. */
@@ -430,5 +433,10 @@ public class MapService {
     }
 
     private record VoteDelta(int reputationDelta, double popularityDelta, int likeDelta, int dislikeDelta, String messageKey) {
+    }
+
+    @PreDestroy(priority = ShutdownOrder.STOP_PRODUCERS)
+    public void shutdownEventSubscriptions() {
+        subscriptions.close();
     }
 }

@@ -4,6 +4,7 @@ import arc.util.Log;
 import arc.util.Timer;
 import io.avaje.inject.PostConstruct;
 import io.avaje.inject.PreDestroy;
+import org.xcore.plugin.startup.ShutdownOrder;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import org.jspecify.annotations.Nullable;
@@ -77,6 +78,7 @@ public class SeasonLifecycleService implements LadderSeasons {
     /** Events this server knows are delivered, so the reconcile pass does not ask the ledger again. */
     private final Set<String> announced = ConcurrentHashMap.newKeySet();
     private Timer.@Nullable Task tickTask;
+    private volatile boolean stopped;
 
     @Inject
     public SeasonLifecycleService(SeasonStore store,
@@ -116,11 +118,14 @@ public class SeasonLifecycleService implements LadderSeasons {
 
     @PostConstruct
     public void start() {
-        tickTask = Timer.schedule(() -> async.run(this::tickSafely), TICK_SECONDS, TICK_SECONDS);
+        tickTask = Timer.schedule(() -> {
+            if (!stopped) async.run(this::tickSafely);
+        }, TICK_SECONDS, TICK_SECONDS);
     }
 
-    @PreDestroy
+    @PreDestroy(priority = ShutdownOrder.STOP_PRODUCERS)
     public void stop() {
+        stopped = true;
         if (tickTask != null) {
             tickTask.cancel();
             tickTask = null;

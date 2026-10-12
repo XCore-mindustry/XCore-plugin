@@ -1,6 +1,8 @@
 package org.xcore.plugin.session;
 
-import arc.Events;
+import io.avaje.inject.PreDestroy;
+import org.xcore.plugin.event.EventSubscriptions;
+import org.xcore.plugin.startup.ShutdownOrder;
 import arc.graphics.Color;
 import arc.struct.Seq;
 import io.avaje.inject.PostConstruct;
@@ -17,6 +19,7 @@ import org.xcore.plugin.service.network.RedisObserverStateStore;
 
 @Singleton
 public class ObserverService {
+    private final EventSubscriptions subscriptions = new EventSubscriptions();
 
     static final Team OBSERVER_TEAM = Team.get(255);
 
@@ -50,8 +53,8 @@ public class ObserverService {
     @PostConstruct
     public void init() {
         cleanupObserverCores();
-        Events.on(EventType.WorldLoadEvent.class, e -> cleanupObserverCores());
-        Events.on(EventType.PlayEvent.class, e -> cleanupObserverCores());
+        subscriptions.on(EventType.WorldLoadEvent.class, e -> cleanupObserverCores());
+        subscriptions.on(EventType.PlayEvent.class, e -> cleanupObserverCores());
 
         if (Vars.netServer != null && Vars.netServer.admins != null) {
             Vars.netServer.admins.addActionFilter(action -> {
@@ -62,7 +65,7 @@ public class ObserverService {
             });
         }
 
-        Events.run(EventType.Trigger.update, () -> {
+        subscriptions.run(EventType.Trigger.update, () -> {
             if (Groups.player == null || Groups.player.isEmpty()) return;
             Groups.player.each(player -> {
                 if (player != null && isObserving(player)) {
@@ -74,7 +77,7 @@ public class ObserverService {
             });
         });
 
-        Events.on(EventType.UnitChangeEvent.class, event -> {
+        subscriptions.on(EventType.UnitChangeEvent.class, event -> {
             if (event != null && event.player != null && isObserving(event.player)) {
                 event.player.clearUnit();
             }
@@ -269,5 +272,10 @@ public class ObserverService {
         if (observerStateStore != null) {
             observerStateStore.deleteAsync(playerUuid);
         }
+    }
+
+    @PreDestroy(priority = ShutdownOrder.STOP_PRODUCERS)
+    public void shutdownEventSubscriptions() {
+        subscriptions.close();
     }
 }

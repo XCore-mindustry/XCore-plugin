@@ -130,6 +130,9 @@ fun ShadowJar.applyCommonSettings() {
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
     from(generateModInfo)
     mergeServiceFiles()
+    filesMatching("META-INF/services/**") {
+        duplicatesStrategy = DuplicatesStrategy.INCLUDE
+    }
     isReproducibleFileOrder = true
     isPreserveFileTimestamps = false
 }

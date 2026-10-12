@@ -2,6 +2,9 @@ package org.xcore.plugin.service;
 
 import arc.Core;
 import arc.Events;
+import io.avaje.inject.PreDestroy;
+import org.xcore.plugin.event.EventSubscriptions;
+import org.xcore.plugin.startup.ShutdownOrder;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import mindustry.Vars;
@@ -17,6 +20,7 @@ import org.xcore.plugin.config.TomlXcoreConfig;
 
 @Singleton
 public class AutoHostService {
+    private final EventSubscriptions subscriptions = new EventSubscriptions();
 
     private final TomlXcoreConfig config;
     private boolean initialized = false;
@@ -31,7 +35,7 @@ public class AutoHostService {
             return;
         }
         initialized = true;
-        Events.on(EventType.ServerLoadEvent.class, event -> onServerLoad());
+        subscriptions.on(EventType.ServerLoadEvent.class, event -> onServerLoad());
     }
 
     public boolean onServerLoad() {
@@ -114,5 +118,10 @@ public class AutoHostService {
             PLog.warn("Unknown gamemode '@', falling back to survival", name);
             return Gamemode.survival;
         }
+    }
+
+    @PreDestroy(priority = ShutdownOrder.STOP_PRODUCERS)
+    public void shutdownEventSubscriptions() {
+        subscriptions.close();
     }
 }
