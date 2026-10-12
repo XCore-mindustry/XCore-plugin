@@ -1,0 +1,22 @@
+{
+  "messageType": "maps.load.command",
+  "messageVersion": 1,
+  "server": "mini-pvp",
+  "files": [
+    {
+      "url": "https://cdn.example.test/maps/ancient-caldera.msav",
+      "fileName": "ancient-caldera.msav",
+      "discordUpload": {
+        "uploadedBy": {
+          "discordId": "123456789012345678",
+          "discordUsername": "Reviewer"
+        },
+        "uploadedAt": 0
+      }
+    },
+    {
+      "url": "https://cdn.example.test/maps/bridge-fight.MSAV",
+      "fileName": "bridge-fight.MSAV"
+    }
+  ]
+}

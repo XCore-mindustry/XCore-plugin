@@ -4,7 +4,11 @@
   "title": "MapEntryV1",
   "type": "object",
   "additionalProperties": false,
-  "required": ["name", "fileName", "author"],
+  "required": [
+    "name",
+    "fileName",
+    "author"
+  ],
   "properties": {
     "name": {
       "type": "string",
@@ -48,6 +52,9 @@
     "gameMode": {
       "type": "string",
       "minLength": 1
+    },
+    "discordUpload": {
+      "$ref": "urn:xcore:protocol:shared:types:map-discord-upload:v1"
     }
   }
 }
