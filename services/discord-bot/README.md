@@ -17,7 +17,9 @@ Standalone Discord bot for XCore transport migration.
 - Slash commands over streams:
   - `/map list <server>` → `maps.list`
   - `/map remove <server> <map>` → `maps.remove`
-  - `/map upload <server> <file1> [file2] [file3]` (+ `.msav` attachments) → `maps.load`
+  - `/map upload <server> <file1> [file2] [file3] [creator]` (+ `.msav` attachments) → `maps.load`
+    The uploader is recorded automatically; `creator` selects a Discord user for every attached map.
+    File authors stay separate, and `/map list` shows attribution with profile links and upload dates.
   - `/subnet list|check|allow|deny|remove|reload|import|sweep <server>` (general admin; protocol 0.6.0)
 - Rating seasons (Mini-PvP and HexedCore ladders; protocol 0.9.0):
   - consumes `xcore:evt:rating:season-started|season-ending-soon|season-ended|season-rescheduled`

@@ -149,3 +149,42 @@ async def test_rpc_remove_map_uses_canonical_payload() -> None:
 
     result = await bus.rpc_remove_map("mini-pvp", "map-a.msav", 5000)
     assert result == "ok"
+
+
+@pytest.mark.asyncio
+async def test_upload_metadata_roundtrips_through_outbound_and_list_normalization() -> (
+    None
+):
+    from xcore_discord_bot.protocol_outbound import build_maps_load_command
+
+    upload = {
+        "uploadedBy": {
+            "discordId": "123456789012345678",
+            "discordUsername": "Reviewer",
+        },
+        "uploadedAt": 1791806400000,
+        "creator": {"discordId": "234567890123456789", "discordUsername": "Creator"},
+    }
+    command = build_maps_load_command(
+        "mini-pvp",
+        [
+            {
+                "url": "https://example/arena.msav",
+                "filename": "arena.msav",
+                "discordUpload": upload,
+            }
+        ],
+    )
+    assert command.to_payload()["files"][0]["discordUpload"] == upload
+    entry = MapEntryV1.from_payload(
+        {
+            "name": "Arena",
+            "fileName": "arena.msav",
+            "author": "File author",
+            "discordUpload": upload,
+        }
+    )
+    result = RedisBus._normalize_map_entry_v1(entry)
+    assert result["uploaded_by_discord_id"] == upload["uploadedBy"]["discordId"]
+    assert result["creator_name"] == "Creator"
+    assert result["uploaded_at"] == str(upload["uploadedAt"])

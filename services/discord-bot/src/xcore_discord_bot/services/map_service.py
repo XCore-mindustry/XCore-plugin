@@ -23,6 +23,6 @@ class MapService:
         )
 
     async def publish_maps_load(
-        self, *, server: str, files: list[dict[str, str]]
+        self, *, server: str, files: list[dict[str, object]]
     ) -> None:
         await self._rpc.publish_maps_load(server=server, files=files)

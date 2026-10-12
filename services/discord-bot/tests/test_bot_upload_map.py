@@ -18,6 +18,7 @@ class _Role:
 class _Member:
     roles: list[_Role]
     display_name: str = "tester"
+    id: int = 123456789012345678
 
 
 @dataclass
@@ -31,7 +32,9 @@ class _InteractionResponse:
     replies: list[str] = field(default_factory=list)
     ephemeral_replies: list[str] = field(default_factory=list)
 
-    async def send_message(self, text: str, *, ephemeral: bool = False) -> None:
+    async def send_message(
+        self, text: str, *, ephemeral: bool = False, **kwargs
+    ) -> None:
         if ephemeral:
             self.ephemeral_replies.append(text)
         else:
@@ -114,4 +117,38 @@ async def test_upload_map_publishes_msav_files() -> None:
     server, files = bot._bus.maps_calls[0]
     assert server == "mini-pvp"
     assert [item["filename"] for item in files] == ["one.msav", "two.MSAV"]
-    assert any("Uploaded 2 map" in reply for reply in interaction.replies)
+    assert any("Queued 2 map" in reply for reply in interaction.replies)
+
+    for item in files:
+        assert item["discordUpload"]["uploadedBy"] == {
+            "discordId": "123456789012345678",
+            "discordUsername": "tester",
+        }
+        assert item["discordUpload"]["uploadedAt"] > 0
+        assert "creator" not in item["discordUpload"]
+
+
+@pytest.mark.asyncio
+async def test_upload_map_records_selected_creator_for_all_files() -> None:
+    bot = object.__new__(XCoreDiscordBot)
+    bot._settings = _Settings()
+    bot._bus = _Bus()
+    interaction = _Interaction(id=30, user=_Member(roles=[_Role(200)]))
+    creator = _Member(roles=[], display_name="Mapper", id=234567890123456789)
+    await cmd_upload_map(
+        bot,
+        interaction,
+        "mini-pvp",
+        [
+            _Attachment(filename="one.msav", url="https://example/one.msav"),
+            _Attachment(filename="two.msav", url="https://example/two.msav"),
+        ],
+        creator=creator,
+    )
+    _, files = bot._bus.maps_calls[0]
+    assert all(
+        item["discordUpload"]["creator"]
+        == {"discordId": str(creator.id), "discordUsername": "Mapper"}
+        for item in files
+    )
+    assert "Declared creator" in interaction.replies[0]

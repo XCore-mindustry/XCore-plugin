@@ -72,6 +72,7 @@ class MapsCog(commands.Cog):
         file1="Map file (.msav)",
         file2="Second .msav file (optional)",
         file3="Third .msav file (optional)",
+        creator="Map creator on Discord (optional; applies to all attached maps)",
     )
     @app_commands.autocomplete(server=_autocomplete_server_for_command)
     @map_reviewer_check()
@@ -82,10 +83,12 @@ class MapsCog(commands.Cog):
         file1: discord.Attachment,
         file2: discord.Attachment | None = None,
         file3: discord.Attachment | None = None,
+        creator: discord.User | None = None,
     ) -> None:
         await handlers_misc.cmd_upload_map(
             self.bot,
             interaction,
             server,
             [file1, file2, file3],
+            creator=creator,
         )

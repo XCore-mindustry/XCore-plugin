@@ -15,16 +15,17 @@ dependencies = [
     "python-dotenv>=1.1.0",
     "redis>=5.2.1",
     "tenacity>=9.1.2",
-    "xcore-protocol",
+    "xcore-protocol==0.13.0",
 ]
 
 [tool.uv.sources]
 # Pinned to a release tag, not a branch: a branch pin makes every build resolve a different
 # commit of the protocol. v0.10.0 is the first tag carrying the `rating` family (seasons, prizes,
 # request ids) this bot imports; v0.11.0 lets a player PID be zero or negative; v0.12.0 adds the
-# staff sync and password reset RPCs of permission roles. The tag is
+# staff sync and password reset RPCs of permission roles; v0.13.0 adds optional Discord
+# map submission attribution. The tag is
 # annotated, so uv records the commit it peels to and the build stays reproducible.
-xcore-protocol = { git = "https://github.com/XCore-mindustry/xcore-protocol.git", tag = "v0.12.0" }
+xcore-protocol = { git = "https://github.com/XCore-mindustry/xcore-protocol.git", tag = "v0.13.0" }
 
 [project.scripts]
 xcore-discord-bot = "xcore_discord_bot.main:main"
