@@ -42,7 +42,7 @@ jobs:
 
       - name: Build project
         run: |
-          ./gradlew jarRelease
+          ./gradlew jarRelease --refresh-dependencies
       - name: Upload Artifacts
         uses: actions/upload-artifact@v7
         with:
