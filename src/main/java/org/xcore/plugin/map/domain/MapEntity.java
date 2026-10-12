@@ -43,6 +43,9 @@ public class MapEntity extends ModelData {
     @Builder.Default
     public String author = "Unknown";
 
+    @BsonProperty("discord_upload")
+    public org.xcore.plugin.model.MapDiscordUpload discordUpload;
+
     @BsonProperty("file_name")
     @Builder.Default
     public String fileName = "Unknown";

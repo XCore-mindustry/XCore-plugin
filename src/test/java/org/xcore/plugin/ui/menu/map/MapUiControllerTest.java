@@ -57,6 +57,8 @@ class MapUiControllerTest {
 
         mapService = mock(MapService.class);
         mapDataRepository = mock(MapDataRepository.class);
+        when(mapDataRepository.enrichDiscordUploadAsync(any())).thenAnswer(call ->
+                java.util.concurrent.CompletableFuture.completedFuture(call.getArgument(0)));
         previewService = mock(MapPreviewService.class);
         observerService = mock(MapVoteObserverService.class);
 
@@ -347,6 +349,30 @@ class MapUiControllerTest {
         assertThat(text).contains("Лайк (14)", "Дизлайк (2)", "Голосовать за эту карту", "К списку карт");
         // None of the menu's own texts is cut on the smallest screen.
         assertThat(text).doesNotContain("…");
+    }
+
+    @Test
+    void discordAttributionIsDistinctAndFitsAllScreenClasses() {
+        var data = new MapData("Desert Crossing", "map-1", "Anuke", "survival");
+        data.discordUpload = new org.xcore.plugin.model.MapDiscordUpload(
+                "123456789012345678", "[scarlet]Reviewer\n" + "R".repeat(100), 1791806400000L,
+                "234567890123456789", "Mapper");
+        var model = createTestDetailsModel("map-1").withResolvedDetails(data);
+        for (String language : LayoutAssert.LANGUAGES) {
+            session.localization = LayoutAssert.localization(language);
+            var controller = new MapUiController(mapService, mapDataRepository, previewService, observerService, session);
+            for (Screen screen : Screen.ALL) {
+                var window = controller.window(model, screen);
+                LayoutAssert.assertLaidOut(window, screen);
+                assertThat(LayoutAssert.allText(window)).contains("Mapper", "123456789012345678", "2026-10-12");
+            }
+            LayoutAssert.assertFitsPacket(controller.render(model), language + " Discord attribution");
+        }
+        session.localization = LayoutAssert.localization("ru");
+        var controller = new MapUiController(mapService, mapDataRepository, previewService, observerService, session);
+        String text = LayoutAssert.allText(controller.window(model, Screen.WIDE));
+        assertThat(text).contains("Автор из файла: Anuke", "Указанный автор:", "Добавил через Discord:");
+        assertThat(text).doesNotContain("[scarlet]Reviewer");
     }
 
     @Test

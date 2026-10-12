@@ -21,6 +21,13 @@ public final class MapsProtocolMapper {
     }
 
     public static MapEntryV1 toMapEntry(Map map, String currentGameMode, MapData persistedMap) {
+        var upload = persistedMap != null && map.file != null
+                && map.file.name().equalsIgnoreCase(persistedMap.fileName) ? persistedMap.discordUpload : null;
+        return toMapEntry(map, currentGameMode, persistedMap, upload);
+    }
+
+    public static MapEntryV1 toMapEntry(Map map, String currentGameMode, MapData persistedMap,
+                                      org.xcore.plugin.model.MapDiscordUpload upload) {
         String fileName = map.file == null || map.file.name() == null || map.file.name().isBlank()
                 ? map.plainName() + ".msav"
                 : map.file.name();
@@ -39,7 +46,8 @@ public final class MapsProtocolMapper {
                 persistedMap == null ? null : persistedMap.reputation,
                 persistedMap == null ? null : persistedMap.popularity,
                 persistedMap == null ? null : persistedMap.interest,
-                persistedMap == null ? currentGameMode : persistedMap.gameMode
+                persistedMap == null ? currentGameMode : persistedMap.gameMode,
+                upload == null ? null : upload.toProtocol()
         );
     }
 

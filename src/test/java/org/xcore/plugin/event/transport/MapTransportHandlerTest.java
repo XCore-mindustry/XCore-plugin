@@ -343,11 +343,79 @@ class MapTransportHandlerTest {
 
         listener(listeners, MapsLoadCommandV1.class)
                 .get(new MapsLoadCommandV1("other-server", List.of(
-                        new MapFileSourceV1("https://example/maps/a.msav", "a.msav")
+                        new MapFileSourceV1("https://example/maps/a.msav", "a.msav", null)
                 )));
 
         verifyNoInteractions(mapService);
         verifyNoInteractions(mapDataRepository);
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void onlyDownloadedMapsGetAttributedAfterTheRegistryReload(@org.junit.jupiter.api.io.TempDir java.nio.file.Path directory) throws Exception {
+        var originalDirectory = Vars.customMapDirectory;
+        Vars.customMapDirectory = new Fi(directory.toFile());
+        var network = mock(NetworkService.class);
+        var config = new TomlXcoreConfig();
+        config.server.name = "mini-pvp";
+        var service = mock(MapService.class);
+        var repository = mock(MapDataRepository.class);
+        when(repository.recordDiscordUpload(anyString(), anyString(), anyString(), anyString(), anyString(), any()))
+                .thenReturn(true);
+        var registry = mock(Maps.class);
+        Vars.maps = registry;
+        Vars.state = new mindustry.core.GameState();
+        Vars.state.rules = mock(Rules.class);
+        when(Vars.state.rules.mode()).thenReturn(Gamemode.pvp);
+        var installed = realMap("Arena");
+        when(service.findMapByFileName("arena.msav")).thenReturn(installed);
+        var success = new HashMap<String, arc.func.ConsT<arc.util.Http.HttpResponse, Exception>>();
+        var errors = new HashMap<String, Cons<Throwable>>();
+        try (var http = org.mockito.Mockito.mockStatic(arc.util.Http.class)) {
+            for (String url : List.of("https://example/arena.msav", "https://example/fail.msav")) {
+                var request = mock(arc.util.Http.HttpRequest.class);
+                http.when(() -> arc.util.Http.get(url)).thenReturn(request);
+                when(request.error(any())).thenAnswer(call -> {
+                    errors.put(url, call.getArgument(0));
+                    return request;
+                });
+                doAnswer(call -> {
+                    success.put(url, call.getArgument(0));
+                    return null;
+                }).when(request).submit(any());
+            }
+            var handler = new MapTransportHandler(network, config, service, repository,
+                    new Async(InlineStorageExecutor.create(), Runnable::run));
+            Map<Class<?>, Cons<?>> listeners = new HashMap<>();
+            captureListeners(network, listeners);
+            handler.registerListeners();
+            var upload = new org.xcore.protocol.generated.shared.MapDiscordUploadV1(
+                    new org.xcore.protocol.generated.shared.DiscordIdentityRefV1("123456789012345678", "Reviewer"),
+                    1791806400000L,
+                    new org.xcore.protocol.generated.shared.DiscordIdentityRefV1("234567890123456789", "Creator"));
+            listener(listeners, MapsLoadCommandV1.class).get(new MapsLoadCommandV1("mini-pvp", List.of(
+                    new MapFileSourceV1("https://example/arena.msav", "arena.msav", upload),
+                    new MapFileSourceV1("https://example/fail.msav", "fail.msav", upload))));
+            var response = mock(arc.util.Http.HttpResponse.class);
+            byte[] bytes = {97, 98, 99};
+            when(response.getResult()).thenReturn(bytes);
+            success.get("https://example/arena.msav").get(response);
+            verify(registry, never()).reload();
+            errors.get("https://example/fail.msav").get(new java.io.IOException("404"));
+            verify(registry).reload();
+            var metadata = ArgumentCaptor.forClass(org.xcore.plugin.model.MapDiscordUpload.class);
+            verify(repository).recordDiscordUpload(org.mockito.ArgumentMatchers.eq("Arena"),
+                    org.mockito.ArgumentMatchers.eq("arena.msav"), org.mockito.ArgumentMatchers.eq("somebody"),
+                    org.mockito.ArgumentMatchers.eq("pvp"), org.mockito.ArgumentMatchers.eq(
+                            org.xcore.plugin.map.domain.MapContentHash.digest(new java.io.ByteArrayInputStream(bytes)).asHex()),
+                    metadata.capture());
+            assertThat(metadata.getValue().creatorName).isEqualTo("Creator");
+            verify(repository, never()).recordDiscordUpload(anyString(), org.mockito.ArgumentMatchers.eq("fail.msav"),
+                    anyString(), anyString(), anyString(), any());
+            assertThat(Vars.customMapDirectory.child("arena.msav").readBytes()).containsExactly(bytes);
+        } finally {
+            Vars.customMapDirectory = originalDirectory;
+        }
     }
 
     private static void captureListeners(NetworkService network, Map<Class<?>, Cons<?>> listeners) {        doAnswer(invocation -> {

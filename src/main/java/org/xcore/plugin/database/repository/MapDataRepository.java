@@ -156,13 +156,15 @@ public class MapDataRepository extends DataRepository<MapData> {
     }
 
     public MapData findOrCreate(String name, String fileName, String author, String gameMode) {
-        return findByFileName(fileName, gameMode)
-                .or(() -> find(name, author, gameMode))
-                .orElseGet(() -> {
-                    MapData newData = new MapData(name, fileName, author, gameMode);
-                    save(newData);
-                    return newData;
-                });
+        MapData data = findByFileName(fileName, gameMode)
+                .or(() -> find(name, author, gameMode)).orElse(null);
+        boolean created = data == null;
+        if (created) data = new MapData(name, fileName, author, gameMode);
+        if (data.discordUpload == null && fileName != null && fileName.equals(data.fileName)) {
+            data.discordUpload = findDiscordUpload(fileName);
+        }
+        if (created) save(data);
+        return data;
     }
 
     /** Add advisory metadata only; never overwrite an existing identity or unrelated statistics. */
@@ -179,6 +181,62 @@ public class MapDataRepository extends DataRepository<MapData> {
                 and(eq("_id", id), eq("file_name", fileName), eq("content_hash", null)),
                 Updates.set("content_hash", hash.asHex())))
                 .thenApply(result -> result != null && result.getMatchedCount() > 0);
+    }
+
+    /** Called on the storage executor after the engine accepted a downloaded map. */
+    public boolean recordDiscordUpload(String name, String fileName, String author, String gameMode,
+                                       String contentHash, org.xcore.plugin.model.MapDiscordUpload upload) {
+        if (isReadOnly()) return false;
+        MapData data = findByFileName(fileName, gameMode).orElse(null);
+        if (data == null) {
+            data = new MapData(name, fileName, author, gameMode);
+            data.contentHash = contentHash;
+            data.discordUpload = upload;
+            if (!save(data)) return false;
+        }
+        // Submission belongs to the file, regardless of the statistics' game mode.
+        // Update only metadata; concurrent votes and game statistics are preserved.
+        return collection.updateMany(eq("file_name", fileName), Updates.combine(
+                Updates.set("name", name),
+                Updates.set("author", author),
+                Updates.set("content_hash", contentHash),
+                upload == null ? Updates.unset("discord_upload") : Updates.set("discord_upload", upload),
+                Updates.set("updated_at", System.currentTimeMillis())
+        )).getMatchedCount() > 0;
+    }
+
+    /** Attribution is shared by all statistics partitions of this installed file. Off-thread only. */
+    public org.xcore.plugin.model.MapDiscordUpload findDiscordUpload(String fileName) {
+        if (fileName == null || fileName.isBlank()) return null;
+        try {
+            MapData source = collection.find(and(eq("file_name", fileName), exists("discord_upload", true)))
+                    .sort(new Document("discord_upload.uploadedAt", -1)).first();
+            return source == null ? null : source.discordUpload;
+        } catch (RuntimeException failure) {
+            PLog.warn("Map attribution lookup failed for @: @", fileName, failure.toString());
+            return null;
+        }
+    }
+
+    /** Enrich an in-memory read result without creating or changing a persistent map identity. */
+    public java.util.concurrent.CompletionStage<MapData> enrichDiscordUploadAsync(MapData data) {
+        if (data == null || data.discordUpload != null || data.fileName == null) {
+            return java.util.concurrent.CompletableFuture.completedFuture(data);
+        }
+        if (reactiveCollection == null) {
+            return java.util.concurrent.CompletableFuture.failedFuture(new IllegalStateException(
+                    "Reactive MongoDB store is required for map attribution reads"));
+        }
+        return MongoAsync.first(reactiveCollection.find(and(
+                eq("file_name", data.fileName), exists("discord_upload", true)))
+                .sort(new Document("discord_upload.uploadedAt", -1)))
+                .thenApply(source -> {
+                    if (source != null) data.discordUpload = source.discordUpload;
+                    return data;
+                }).exceptionally(failure -> {
+                    PLog.warn("Map attribution lookup failed for @: @", data.fileName, failure.toString());
+                    return data;
+                });
     }
 
     public void incrementStats(ObjectId id, double popularityDelta, double interestDelta, int reputationDelta) {

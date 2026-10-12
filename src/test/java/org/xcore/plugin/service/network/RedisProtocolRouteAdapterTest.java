@@ -78,7 +78,7 @@ class RedisProtocolRouteAdapterTest {
     void testMapsLoadCommandRoutesToMapsStream() {
         var payload = new MapsLoadCommandV1(
                 "survival",
-                java.util.List.of(new MapFileSourceV1("https://example/maps/a.msav", "a.msav"))
+                java.util.List.of(new MapFileSourceV1("https://example/maps/a.msav", "a.msav", null))
         );
         var descriptor = routeAdapter.routeDescriptorFor(payload);
 

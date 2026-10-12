@@ -284,7 +284,8 @@ final class MapFlows {
                             "playedYear", mapData.playedTimesYear, "lastPlayed", last,
                             "like", mapData.like, "dislike", mapData.dislike,
                             "min", minDuration, "avg", averageDuration, "max", maxDuration
-                    )),
+                    )) + (mapData.discordUpload == null ? "" : "\n\n"
+                            + org.xcore.plugin.ui.menu.map.MapUploadText.format(session.locale(), mapData.discordUpload)),
                     grid.build()
             );
         }
