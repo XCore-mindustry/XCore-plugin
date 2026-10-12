@@ -155,6 +155,20 @@ class EventEditorServiceTest {
     }
 
     @Test
+    @DisplayName("a new event without an author id is refused before either repository is written")
+    void save_refusesMissingAuthor() {
+        Draft draft = draft().withMap(new MapChoice(null, "Caldera", "caldera.msav", "ospx", "pvp"));
+
+        SaveResult result = service.save(draft, new Editor(null, true, true), "Fallback");
+
+        assertThat(result.saved()).isFalse();
+        assertThat(result.problem()).isEqualTo(Problem.NOT_ALLOWED);
+        assertThat(result.event()).isNull();
+        verify(eventDataRepository, never()).save(any(EventData.class));
+        verify(mapDataRepository, never()).findOrCreate(anyString(), anyString(), anyString(), anyString());
+    }
+
+    @Test
     @DisplayName("an event without a name gets the fallback one, cut to the length of a name")
     void save_usesFallbackName() {
         SaveResult result = service.save(draft().withTexts("   ", ""), player(), "Событие игрока " + "x".repeat(40));

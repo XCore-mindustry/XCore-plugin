@@ -695,6 +695,10 @@ public class EventUiController implements UiController<EventUiModel, EventUiEven
             if (error != null) {
                 Log.err("Failed to save an event", error);
             }
+            // Clear the saved draft even after closing, but keep a newer draft the player started.
+            if (error == null && result != null && result.saved() && draft.isNew() && keptDraft() == draft) {
+                forget();
+            }
             deliver(dialog, generation, new EventUiEvent.Saved(error == null && result != null
                     ? result : new SaveResult(null, Problem.FAILED)));
         });

@@ -189,6 +189,9 @@ public class EventEditorService {
 
         EventData event;
         if (draft.isNew()) {
+            if (editor.id() == null) {
+                return new SaveResult(null, Problem.NOT_ALLOWED);
+            }
             event = new EventData();
             event.author = editor.id();
         } else {

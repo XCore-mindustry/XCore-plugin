@@ -1031,6 +1031,67 @@ class EventUiControllerTest {
         assertThat(session.hasDraft(Draft.class)).isFalse();
     }
 
+    @DisplayName("closing during a save discards a saved draft and preserves a refused one")
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    void save_afterDialogClosed(boolean succeeds) {
+        crowded();
+        Dialog dialog = open();
+        dialog.send(new EventUiEvent.Create());
+        dialog.send(new EventUiEvent.EditorPress(new Fields("Турнир", "Командный"), EditorAction.PICK_MAP));
+        dialog.send(new EventUiEvent.ChooseMap(0));
+        Draft draft = dialog.draft();
+        if (!succeeds) {
+            backend.saveProblem = Problem.FAILED;
+        }
+
+        dialog.press(new EventUiEvent.EditorPress(null, EditorAction.SAVE));
+        dialog.press(new EventUiEvent.Close());
+        session.setActiveUiSession(null);
+        dialog.settle();
+
+        assertThat(dialog.closed).isTrue();
+        assertThat(dialog.delivered).noneMatch(EventUiEvent.Saved.class::isInstance);
+        assertThat(backend.saved).containsExactly(draft);
+        assertThat(session.hasDraft(Draft.class)).isEqualTo(!succeeds);
+        Dialog reopened = open();
+        reopened.send(new EventUiEvent.Create());
+        if (succeeds) {
+            assertThat(reopened.draft()).isEqualTo(Draft.blank(null));
+            assertThat(reopened.model.feedback()).isEmpty();
+        } else {
+            assertThat(reopened.draft()).isEqualTo(draft);
+            assertThat(reopened.model.feedback()).contains("event-ui-draft-restored");
+        }
+    }
+
+    @Test
+    @DisplayName("a late save completion keeps a replacement draft created in another dialog")
+    void save_keepsReplacementDraft() {
+        crowded();
+        Dialog first = open();
+        first.send(new EventUiEvent.Create());
+        first.send(new EventUiEvent.EditorPress(new Fields("Первый", ""), EditorAction.PICK_MAP));
+        first.send(new EventUiEvent.ChooseMap(0));
+        first.press(new EventUiEvent.EditorPress(null, EditorAction.SAVE));
+        first.press(new EventUiEvent.Close());
+
+        Dialog second = open();
+        second.press(new EventUiEvent.Create());
+        second.press(new EventUiEvent.CancelEdit());
+        second.press(new EventUiEvent.Create());
+        second.press(new EventUiEvent.EditorPress(new Fields("Второй", ""), EditorAction.TOGGLE_TEMPORARY));
+        Draft replacement = second.draft();
+        first.settle();
+
+        assertThat(backend.saved).hasSize(1);
+        assertThat(first.delivered).noneMatch(EventUiEvent.Saved.class::isInstance);
+        assertThat(session.getDraft(Draft.class)).isSameAs(replacement);
+        Dialog reopened = open();
+        reopened.send(new EventUiEvent.Create());
+        assertThat(reopened.draft()).isEqualTo(replacement);
+    }
+
     @Test
     @DisplayName("an event stored without an id to read it back by is shown in the list, with the same notice")
     void save_withoutId() {

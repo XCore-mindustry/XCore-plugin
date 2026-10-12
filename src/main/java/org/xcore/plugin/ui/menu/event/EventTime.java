@@ -119,7 +119,10 @@ public final class EventTime {
         ZonedDateTime picked = switch (shortcut) {
             case NOW -> now;
             case IN_HOUR -> now.plusHours(1);
-            case TODAY_EVENING -> now.with(LocalTime.of(20, 0));
+            case TODAY_EVENING -> {
+                ZonedDateTime evening = now.with(LocalTime.of(20, 0));
+                yield evening.isAfter(now) ? evening : evening.plusDays(1);
+            }
             case TOMORROW_NOON -> now.plusDays(1).with(LocalTime.NOON);
             case PLUS_HOUR -> from.plusHours(1);
             case PLUS_THREE_HOURS -> from.plusHours(3);

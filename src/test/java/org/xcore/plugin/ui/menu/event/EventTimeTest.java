@@ -2,6 +2,8 @@ package org.xcore.plugin.ui.menu.event;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.xcore.plugin.ui.menu.event.EventTime.Shortcut;
 import org.xcore.plugin.ui.menu.event.EventTime.Step;
 
@@ -59,6 +61,20 @@ class EventTimeTest {
         assertThat(EventTime.shortcut(Shortcut.IN_HOUR, 0L, CLOCK)).isEqualTo(at("2026-10-16T18:52:00"));
         assertThat(EventTime.shortcut(Shortcut.TODAY_EVENING, 0L, CLOCK)).isEqualTo(at("2026-10-16T20:00:00"));
         assertThat(EventTime.shortcut(Shortcut.TOMORROW_NOON, 0L, CLOCK)).isEqualTo(at("2026-10-17T12:00:00"));
+    }
+
+    @DisplayName("the evening shortcut picks the next 20:00 in the server's zone")
+    @ParameterizedTest
+    @CsvSource({
+            "2026-10-16T19:59:59, 2026-10-16T20:00:00",
+            "2026-10-16T20:00:00, 2026-10-17T20:00:00",
+            "2026-10-16T20:00:30, 2026-10-17T20:00:00",
+            "2026-10-16T23:59:59, 2026-10-17T20:00:00"
+    })
+    void shortcut_eveningAlwaysInFuture(String now, String expected) {
+        Clock clock = Clock.fixed(Instant.ofEpochMilli(at(now)), ZONE);
+
+        assertThat(EventTime.shortcut(Shortcut.TODAY_EVENING, 0L, clock)).isEqualTo(at(expected));
     }
 
     @Test
