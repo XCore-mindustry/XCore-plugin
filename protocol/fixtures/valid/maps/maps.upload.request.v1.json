@@ -1,0 +1,19 @@
+{
+  "messageType": "maps.upload.request",
+  "messageVersion": 1,
+  "server": "mini-pvp",
+  "files": [
+    {
+      "fileName": "arena.msav",
+      "url": "https://cdn.example.test/arena.msav",
+      "discordUpload": {
+        "uploadedBy": {
+          "discordId": "123456789012345678",
+          "discordUsername": "Mapper"
+        },
+        "uploadedAt": 1791800000000,
+        "uploadedByHandle": "mapper"
+      }
+    }
+  ]
+}

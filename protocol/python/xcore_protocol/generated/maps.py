@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from collections.abc import Mapping
 from dataclasses import dataclass
 from enum import StrEnum
@@ -12,6 +13,8 @@ from .shared import (
     MapDiscordUploadV1,
     MapEntryV1,
     MapFileSourceV1,
+    MapUploadResultV1,
+    MapUploadResultV1Status,
 )
 
 def _expect_mapping(value: Any, field_name: str) -> Mapping[str, Any]:
@@ -121,6 +124,8 @@ class MapsListRequestV1:
     MESSAGE_VERSION: ClassVar[int] = 1
     def __post_init__(self) -> None:
         _expect_str(self.server, 'server')
+        if len(self.server) < 1:
+            raise ValueError("server is too short")
 
     @classmethod
     def from_payload(cls, payload: Mapping[str, Any]) -> "MapsListRequestV1":
@@ -156,6 +161,8 @@ class MapsListResponseV1:
     MESSAGE_VERSION: ClassVar[int] = 1
     def __post_init__(self) -> None:
         _expect_str(self.server, 'server')
+        if len(self.server) < 1:
+            raise ValueError("server is too short")
         if not isinstance(self.maps, tuple):
             raise TypeError("maps must be a tuple")
         for item in self.maps:
@@ -197,10 +204,14 @@ class MapsLoadCommandV1:
     MESSAGE_VERSION: ClassVar[int] = 1
     def __post_init__(self) -> None:
         _expect_str(self.server, 'server')
+        if len(self.server) < 1:
+            raise ValueError("server is too short")
         if not isinstance(self.files, tuple):
             raise TypeError("files must be a tuple")
         for item in self.files:
             _expect_instance(item, 'files[]', MapFileSourceV1)
+        if len(self.files) < 1:
+            raise ValueError("files has too few items")
 
     @classmethod
     def from_payload(cls, payload: Mapping[str, Any]) -> "MapsLoadCommandV1":
@@ -238,7 +249,11 @@ class MapsRemoveRequestV1:
     MESSAGE_VERSION: ClassVar[int] = 1
     def __post_init__(self) -> None:
         _expect_str(self.server, 'server')
+        if len(self.server) < 1:
+            raise ValueError("server is too short")
         _expect_str(self.fileName, 'fileName')
+        if re.search('^[^/\\\\]+\\.[mM][sS][aA][vV]$', self.fileName) is None:
+            raise ValueError("fileName does not match its pattern")
 
     @classmethod
     def from_payload(cls, payload: Mapping[str, Any]) -> "MapsRemoveRequestV1":
@@ -276,7 +291,11 @@ class MapsRemoveResponseV1:
     MESSAGE_VERSION: ClassVar[int] = 1
     def __post_init__(self) -> None:
         _expect_str(self.server, 'server')
+        if len(self.server) < 1:
+            raise ValueError("server is too short")
         _expect_str(self.result, 'result')
+        if len(self.result) < 1:
+            raise ValueError("result is too short")
 
     @classmethod
     def from_payload(cls, payload: Mapping[str, Any]) -> "MapsRemoveResponseV1":
@@ -305,10 +324,102 @@ class MapsRemoveResponseV1:
         payload['result'] = self.result
         return payload
 
+@dataclass(frozen=True, slots=True)
+class MapsUploadRequestV1:
+    server: str
+    files: tuple[MapFileSourceV1, ...]
+
+    MESSAGE_TYPE: ClassVar[str] = 'maps.upload.request'
+    MESSAGE_VERSION: ClassVar[int] = 1
+    def __post_init__(self) -> None:
+        _expect_str(self.server, 'server')
+        if len(self.server) < 1:
+            raise ValueError("server is too short")
+        if not isinstance(self.files, tuple):
+            raise TypeError("files must be a tuple")
+        for item in self.files:
+            _expect_instance(item, 'files[]', MapFileSourceV1)
+        if len(self.files) < 1:
+            raise ValueError("files has too few items")
+
+    @classmethod
+    def from_payload(cls, payload: Mapping[str, Any]) -> "MapsUploadRequestV1":
+        mapping = _expect_mapping(payload, "MapsUploadRequestV1")
+        _expect_exact_keys(
+            mapping,
+            required=frozenset(('messageType', 'messageVersion', 'server', 'files')),
+            allowed=frozenset(('messageType', 'messageVersion', 'server', 'files')),
+            model_name="MapsUploadRequestV1",
+        )
+        if mapping['messageType'] != cls.MESSAGE_TYPE:
+            raise ValueError('messageType' + " must equal " + repr(cls.MESSAGE_TYPE))
+        if mapping['messageVersion'] != cls.MESSAGE_VERSION:
+            raise ValueError('messageVersion' + " must equal " + repr(cls.MESSAGE_VERSION))
+        return cls(
+            server=_expect_str(mapping['server'], 'server'),
+            files=tuple(MapFileSourceV1.from_payload(_expect_mapping(item, 'files[]')) for item in _expect_list(mapping['files'], 'files')),
+        )
+
+    def to_payload(self) -> dict[str, Any]:
+        payload: dict[str, Any] = {
+            'messageType': self.MESSAGE_TYPE,
+            'messageVersion': self.MESSAGE_VERSION,
+        }
+        payload['server'] = self.server
+        payload['files'] = [item.to_payload() for item in self.files]
+        return payload
+
+@dataclass(frozen=True, slots=True)
+class MapsUploadResponseV1:
+    server: str
+    results: tuple[MapUploadResultV1, ...]
+
+    MESSAGE_TYPE: ClassVar[str] = 'maps.upload.response'
+    MESSAGE_VERSION: ClassVar[int] = 1
+    def __post_init__(self) -> None:
+        _expect_str(self.server, 'server')
+        if len(self.server) < 1:
+            raise ValueError("server is too short")
+        if not isinstance(self.results, tuple):
+            raise TypeError("results must be a tuple")
+        for item in self.results:
+            _expect_instance(item, 'results[]', MapUploadResultV1)
+        if len(self.results) < 1:
+            raise ValueError("results has too few items")
+
+    @classmethod
+    def from_payload(cls, payload: Mapping[str, Any]) -> "MapsUploadResponseV1":
+        mapping = _expect_mapping(payload, "MapsUploadResponseV1")
+        _expect_exact_keys(
+            mapping,
+            required=frozenset(('messageType', 'messageVersion', 'server', 'results')),
+            allowed=frozenset(('messageType', 'messageVersion', 'server', 'results')),
+            model_name="MapsUploadResponseV1",
+        )
+        if mapping['messageType'] != cls.MESSAGE_TYPE:
+            raise ValueError('messageType' + " must equal " + repr(cls.MESSAGE_TYPE))
+        if mapping['messageVersion'] != cls.MESSAGE_VERSION:
+            raise ValueError('messageVersion' + " must equal " + repr(cls.MESSAGE_VERSION))
+        return cls(
+            server=_expect_str(mapping['server'], 'server'),
+            results=tuple(MapUploadResultV1.from_payload(_expect_mapping(item, 'results[]')) for item in _expect_list(mapping['results'], 'results')),
+        )
+
+    def to_payload(self) -> dict[str, Any]:
+        payload: dict[str, Any] = {
+            'messageType': self.MESSAGE_TYPE,
+            'messageVersion': self.MESSAGE_VERSION,
+        }
+        payload['server'] = self.server
+        payload['results'] = [item.to_payload() for item in self.results]
+        return payload
+
 __all__ = [
     "MapsListRequestV1",
     "MapsListResponseV1",
     "MapsLoadCommandV1",
     "MapsRemoveRequestV1",
     "MapsRemoveResponseV1",
+    "MapsUploadRequestV1",
+    "MapsUploadResponseV1",
 ]

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from collections.abc import Mapping
 from dataclasses import dataclass
 from enum import StrEnum
@@ -116,8 +117,12 @@ class PlayerActiveBadgeChangedCommandV1:
     MESSAGE_VERSION: ClassVar[int] = 1
     def __post_init__(self) -> None:
         _expect_str(self.playerUuid, 'playerUuid')
+        if len(self.playerUuid) < 1:
+            raise ValueError("playerUuid is too short")
         _expect_str(self.activeBadge, 'activeBadge')
         _expect_str(self.server, 'server')
+        if len(self.server) < 1:
+            raise ValueError("server is too short")
 
     @classmethod
     def from_payload(cls, payload: Mapping[str, Any]) -> "PlayerActiveBadgeChangedCommandV1":
@@ -159,12 +164,16 @@ class PlayerBadgeInventoryChangedCommandV1:
     MESSAGE_VERSION: ClassVar[int] = 1
     def __post_init__(self) -> None:
         _expect_str(self.playerUuid, 'playerUuid')
+        if len(self.playerUuid) < 1:
+            raise ValueError("playerUuid is too short")
         _expect_str(self.activeBadge, 'activeBadge')
         if not isinstance(self.unlockedBadges, tuple):
             raise TypeError("unlockedBadges must be a tuple")
         for item in self.unlockedBadges:
             _expect_str(item, 'unlockedBadges[]')
         _expect_str(self.server, 'server')
+        if len(self.server) < 1:
+            raise ValueError("server is too short")
 
     @classmethod
     def from_payload(cls, payload: Mapping[str, Any]) -> "PlayerBadgeInventoryChangedCommandV1":
@@ -207,8 +216,12 @@ class PlayerBadgeSymbolColorModeChangedCommandV1:
     MESSAGE_VERSION: ClassVar[int] = 1
     def __post_init__(self) -> None:
         _expect_str(self.playerUuid, 'playerUuid')
+        if len(self.playerUuid) < 1:
+            raise ValueError("playerUuid is too short")
         _expect_str(self.badgeSymbolColorMode, 'badgeSymbolColorMode')
         _expect_str(self.server, 'server')
+        if len(self.server) < 1:
+            raise ValueError("server is too short")
 
     @classmethod
     def from_payload(cls, payload: Mapping[str, Any]) -> "PlayerBadgeSymbolColorModeChangedCommandV1":
@@ -249,8 +262,12 @@ class PlayerCustomNicknameChangedCommandV1:
     MESSAGE_VERSION: ClassVar[int] = 1
     def __post_init__(self) -> None:
         _expect_str(self.playerUuid, 'playerUuid')
+        if len(self.playerUuid) < 1:
+            raise ValueError("playerUuid is too short")
         _expect_str(self.customNickname, 'customNickname')
         _expect_str(self.server, 'server')
+        if len(self.server) < 1:
+            raise ValueError("server is too short")
 
     @classmethod
     def from_payload(cls, payload: Mapping[str, Any]) -> "PlayerCustomNicknameChangedCommandV1":
@@ -291,7 +308,11 @@ class PlayerJoinLeaveV1:
     MESSAGE_VERSION: ClassVar[int] = 1
     def __post_init__(self) -> None:
         _expect_str(self.playerName, 'playerName')
+        if len(self.playerName) < 1:
+            raise ValueError("playerName is too short")
         _expect_str(self.server, 'server')
+        if len(self.server) < 1:
+            raise ValueError("server is too short")
         _expect_bool(self.joined, 'joined')
 
     @classmethod

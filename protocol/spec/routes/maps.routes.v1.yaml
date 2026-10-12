@@ -46,3 +46,20 @@ messages:
     replayable: false
     idempotentConsumerRecommended: true
     owner: maps
+  - messageType: maps.upload.request
+    messageVersion: 1
+    kind: rpc-request
+    stream: xcore:rpc:req:{server}
+    bindings:
+      server: payload.server
+    targetScope: server
+    ttlMs: 180000
+    replayable: false
+    idempotentConsumerRecommended: true
+    owner: maps
+    response:
+      messageType: maps.upload.response
+      messageVersion: 1
+      stream: xcore:rpc:resp:{requester}
+      bindings:
+        requester: rpc.requester

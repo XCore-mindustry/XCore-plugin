@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from collections.abc import Mapping
 from dataclasses import dataclass
 from enum import StrEnum
@@ -140,8 +141,12 @@ class ModerationAuditAppendedV1:
         _expect_instance(self.target, 'target', ModerationTargetRefV1)
         _expect_instance(self.actor, 'actor', ActorRefV1)
         _expect_str(self.reason, 'reason')
+        if len(self.reason) < 1:
+            raise ValueError("reason is too short")
         if self.server is not None:
             _expect_str(self.server, 'server')
+            if len(self.server) < 1:
+                raise ValueError("server is too short")
         if self.occurredAt is not None:
             _expect_str(self.occurredAt, 'occurredAt')
         if self.details is not None:
@@ -202,10 +207,14 @@ class ModerationBanCreatedV1:
         _expect_instance(self.target, 'target', PlayerRefV1)
         _expect_instance(self.actor, 'actor', ActorRefV1)
         _expect_str(self.reason, 'reason')
+        if len(self.reason) < 1:
+            raise ValueError("reason is too short")
         if self.expiration is not None:
             _expect_instance(self.expiration, 'expiration', ExpirationInfoV1)
         if self.server is not None:
             _expect_str(self.server, 'server')
+            if len(self.server) < 1:
+                raise ValueError("server is too short")
         if self.occurredAt is not None:
             _expect_str(self.occurredAt, 'occurredAt')
 
@@ -258,6 +267,8 @@ class ModerationKickBannedCommandV1:
     def __post_init__(self) -> None:
         _expect_instance(self.target, 'target', PlayerCommandTargetV1)
         _expect_str(self.server, 'server')
+        if len(self.server) < 1:
+            raise ValueError("server is too short")
         if self.requestedAt is not None:
             _expect_str(self.requestedAt, 'requestedAt')
 
@@ -306,10 +317,14 @@ class ModerationMuteCreatedV1:
         _expect_instance(self.target, 'target', PlayerRefV1)
         _expect_instance(self.actor, 'actor', ActorRefV1)
         _expect_str(self.reason, 'reason')
+        if len(self.reason) < 1:
+            raise ValueError("reason is too short")
         if self.expiration is not None:
             _expect_instance(self.expiration, 'expiration', ExpirationInfoV1)
         if self.server is not None:
             _expect_str(self.server, 'server')
+            if len(self.server) < 1:
+                raise ValueError("server is too short")
         if self.occurredAt is not None:
             _expect_str(self.occurredAt, 'occurredAt')
 
@@ -362,6 +377,8 @@ class ModerationPardonCommandV1:
     def __post_init__(self) -> None:
         _expect_instance(self.target, 'target', PlayerCommandTargetV1)
         _expect_str(self.server, 'server')
+        if len(self.server) < 1:
+            raise ValueError("server is too short")
         if self.requestedAt is not None:
             _expect_str(self.requestedAt, 'requestedAt')
 
@@ -411,6 +428,8 @@ class ModerationVoteKickCreatedV1:
         _expect_instance(self.target, 'target', PlayerRefV1)
         _expect_instance(self.actor, 'actor', ActorRefV1)
         _expect_str(self.reason, 'reason')
+        if len(self.reason) < 1:
+            raise ValueError("reason is too short")
         if self.votesFor is not None:
             if not isinstance(self.votesFor, tuple):
                 raise TypeError("votesFor must be a tuple")
@@ -423,6 +442,8 @@ class ModerationVoteKickCreatedV1:
                 _expect_instance(item, 'votesAgainst[]', VoteKickParticipantV1)
         if self.server is not None:
             _expect_str(self.server, 'server')
+            if len(self.server) < 1:
+                raise ValueError("server is too short")
         if self.occurredAt is not None:
             _expect_str(self.occurredAt, 'occurredAt')
 

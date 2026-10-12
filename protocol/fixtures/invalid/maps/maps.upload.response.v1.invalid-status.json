@@ -1,0 +1,11 @@
+{
+  "messageType": "maps.upload.response",
+  "messageVersion": 1,
+  "server": "mini-pvp",
+  "results": [
+    {
+      "fileName": "arena.msav",
+      "status": "unknown"
+    }
+  ]
+}

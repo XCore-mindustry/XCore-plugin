@@ -7,6 +7,8 @@ Maps request/response contracts belong here.
 - `maps.list.response` — return canonical map entries for one server.
 - `maps.remove.request` — request removal of one `.msav` map file from one server.
 - `maps.remove.response` — return the server result for a remove request.
+- `maps.upload.request` — upload maps and await per-file installation/attribution results.
+- `maps.upload.response` — report installed, failed, superseded or rejected files in request order.
 - `maps.load.command` — command one server to download and load uploaded `.msav` files.
 
 ## Field Policy

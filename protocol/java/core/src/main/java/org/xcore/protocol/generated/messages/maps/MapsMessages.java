@@ -7,6 +7,7 @@ import java.util.Objects;
 import org.xcore.protocol.generated.runtime.ProtocolPayload;
 import org.xcore.protocol.generated.shared.MapEntryV1;
 import org.xcore.protocol.generated.shared.MapFileSourceV1;
+import org.xcore.protocol.generated.shared.MapUploadResultV1;
 
 public final class MapsMessages {
     private MapsMessages() {
@@ -164,6 +165,86 @@ public final class MapsMessages {
             payload.put("messageVersion", MESSAGE_VERSION);
             payload.put("server", server);
             payload.put("result", result);
+            return payload;
+        }
+    }
+
+    public record MapsUploadRequestV1(
+            String server,
+            List<MapFileSourceV1> files
+    ) implements ProtocolPayload {
+    public static final String MESSAGE_TYPE = "maps.upload.request";
+    public static final int MESSAGE_VERSION = 1;
+
+        public MapsUploadRequestV1 {
+            Objects.requireNonNull(server, "server must not be null");
+            if (server.length() < 1) {
+                throw new IllegalArgumentException("server must be at least 1 characters");
+            }
+            files = Objects.requireNonNull(files, "files must not be null");
+            files = List.copyOf(files);
+            if (files.size() < 1) {
+                throw new IllegalArgumentException("files must contain at least 1 item(s)");
+            }
+            for (MapFileSourceV1 item : files) {
+                Objects.requireNonNull(item, "files[] must not be null");
+            }
+        }
+
+        @Override
+        public Map<String, Object> toPayload() {
+            Map<String, Object> payload = new LinkedHashMap<>();
+            payload.put("messageType", MESSAGE_TYPE);
+            payload.put("messageVersion", MESSAGE_VERSION);
+            payload.put("server", server);
+            if (files != null) {
+                payload.put(
+        "files",
+        files.stream()
+            .map(item -> item.toPayload())
+            .toList()
+    );
+            }
+            return payload;
+        }
+    }
+
+    public record MapsUploadResponseV1(
+            String server,
+            List<MapUploadResultV1> results
+    ) implements ProtocolPayload {
+    public static final String MESSAGE_TYPE = "maps.upload.response";
+    public static final int MESSAGE_VERSION = 1;
+
+        public MapsUploadResponseV1 {
+            Objects.requireNonNull(server, "server must not be null");
+            if (server.length() < 1) {
+                throw new IllegalArgumentException("server must be at least 1 characters");
+            }
+            results = Objects.requireNonNull(results, "results must not be null");
+            results = List.copyOf(results);
+            if (results.size() < 1) {
+                throw new IllegalArgumentException("results must contain at least 1 item(s)");
+            }
+            for (MapUploadResultV1 item : results) {
+                Objects.requireNonNull(item, "results[] must not be null");
+            }
+        }
+
+        @Override
+        public Map<String, Object> toPayload() {
+            Map<String, Object> payload = new LinkedHashMap<>();
+            payload.put("messageType", MESSAGE_TYPE);
+            payload.put("messageVersion", MESSAGE_VERSION);
+            payload.put("server", server);
+            if (results != null) {
+                payload.put(
+        "results",
+        results.stream()
+            .map(item -> item.toPayload())
+            .toList()
+    );
+            }
             return payload;
         }
     }

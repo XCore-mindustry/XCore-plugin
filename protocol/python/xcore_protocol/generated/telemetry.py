@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from collections.abc import Mapping
 from dataclasses import dataclass
 from enum import StrEnum
@@ -125,16 +126,32 @@ class MetricsSnapshotV1:
     SCHEMA_VERSION: ClassVar[str] = 'metrics.snapshot.v1'
     def __post_init__(self) -> None:
         _expect_str(self.server, 'server')
+        if len(self.server) < 1:
+            raise ValueError("server is too short")
         _expect_str(self.nodeId, 'nodeId')
+        if len(self.nodeId) < 1:
+            raise ValueError("nodeId is too short")
         _expect_str(self.producer, 'producer')
+        if len(self.producer) < 1:
+            raise ValueError("producer is too short")
         _expect_int(self.createdAtUnixMs, 'createdAtUnixMs')
+        if self.createdAtUnixMs < 0:
+            raise ValueError("createdAtUnixMs must be >= 0")
         _expect_int(self.startTimeUnixMs, 'startTimeUnixMs')
+        if self.startTimeUnixMs < 0:
+            raise ValueError("startTimeUnixMs must be >= 0")
         _expect_int(self.sequence, 'sequence')
+        if self.sequence < 0:
+            raise ValueError("sequence must be >= 0")
         _expect_int(self.intervalMs, 'intervalMs')
+        if self.intervalMs < 1:
+            raise ValueError("intervalMs must be >= 1")
         if not isinstance(self.samples, tuple):
             raise TypeError("samples must be a tuple")
         for item in self.samples:
             _expect_instance(item, 'samples[]', MetricSampleV1)
+        if len(self.samples) < 1:
+            raise ValueError("samples has too few items")
 
     @classmethod
     def from_payload(cls, payload: Mapping[str, Any]) -> "MetricsSnapshotV1":

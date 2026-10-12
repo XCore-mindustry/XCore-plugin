@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "$id": "urn:xcore:protocol:shared:types:map-upload-result:v1",
+  "title": "MapUploadResultV1",
+  "required": [
+    "fileName",
+    "status"
+  ],
+  "properties": {
+    "fileName": {
+      "type": "string",
+      "minLength": 1
+    },
+    "status": {
+      "type": "string",
+      "minLength": 1,
+      "enum": [
+        "installed",
+        "download_failed",
+        "invalid_map",
+        "superseded",
+        "metadata_failed",
+        "rejected"
+      ]
+    },
+    "detail": {
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}

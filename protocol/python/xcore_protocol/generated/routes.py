@@ -11,6 +11,8 @@ from .maps import (
     MapsRemoveRequestV1,
     MapsRemoveResponseV1,
     MapsLoadCommandV1,
+    MapsUploadRequestV1,
+    MapsUploadResponseV1,
 )
 
 from .chat import (
@@ -174,6 +176,29 @@ MAPS_LOAD_COMMAND_V1 = RouteDescriptor(
     idempotentConsumerRecommended=True,
     owner='maps',
     response=None,
+)
+
+MAPS_UPLOAD_REQUEST_V1 = RouteDescriptor(
+    family='maps',
+    methodName='mapsUploadRequestV1Route',
+    messageType='maps.upload.request',
+    messageVersion=1,
+    payloadType=MapsUploadRequestV1,
+    kind='rpc-request',
+    stream='xcore:rpc:req:{server}',
+    bindings={'server': 'payload.server'},
+    targetScope='server',
+    ttlMs=180000,
+    replayable=False,
+    idempotentConsumerRecommended=True,
+    owner='maps',
+    response=RouteResponseDescriptor(
+        messageType='maps.upload.response',
+        messageVersion=1,
+        payloadType=MapsUploadResponseV1,
+        stream='xcore:rpc:resp:{requester}',
+        bindings={'requester': 'rpc.requester'},
+    ),
 )
 
 CHAT_MESSAGE_V1 = RouteDescriptor(
@@ -931,6 +956,7 @@ ROUTES_BY_MESSAGE: dict[tuple[str, int], RouteDescriptor] = {
     ('maps.list.request', 1): MAPS_LIST_REQUEST_V1,
     ('maps.remove.request', 1): MAPS_REMOVE_REQUEST_V1,
     ('maps.load.command', 1): MAPS_LOAD_COMMAND_V1,
+    ('maps.upload.request', 1): MAPS_UPLOAD_REQUEST_V1,
     ('chat.message', 1): CHAT_MESSAGE_V1,
     ('chat.global', 1): CHAT_GLOBAL_V1,
     ('chat.discord-ingress.command', 1): CHAT_DISCORD_INGRESS_COMMAND_V1,
@@ -982,6 +1008,7 @@ __all__ = [
     "MAPS_LIST_REQUEST_V1",
     "MAPS_REMOVE_REQUEST_V1",
     "MAPS_LOAD_COMMAND_V1",
+    "MAPS_UPLOAD_REQUEST_V1",
     "CHAT_MESSAGE_V1",
     "CHAT_GLOBAL_V1",
     "CHAT_DISCORD_INGRESS_COMMAND_V1",

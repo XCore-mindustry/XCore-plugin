@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from collections.abc import Mapping
 from dataclasses import dataclass
 from enum import StrEnum
@@ -116,8 +117,14 @@ class ChatDiscordIngressCommandV1:
     MESSAGE_VERSION: ClassVar[int] = 1
     def __post_init__(self) -> None:
         _expect_str(self.authorName, 'authorName')
+        if len(self.authorName) < 1:
+            raise ValueError("authorName is too short")
         _expect_str(self.message, 'message')
+        if len(self.message) < 1:
+            raise ValueError("message is too short")
         _expect_str(self.server, 'server')
+        if len(self.server) < 1:
+            raise ValueError("server is too short")
 
     @classmethod
     def from_payload(cls, payload: Mapping[str, Any]) -> "ChatDiscordIngressCommandV1":
@@ -158,8 +165,14 @@ class ChatGlobalV1:
     MESSAGE_VERSION: ClassVar[int] = 1
     def __post_init__(self) -> None:
         _expect_str(self.authorName, 'authorName')
+        if len(self.authorName) < 1:
+            raise ValueError("authorName is too short")
         _expect_str(self.message, 'message')
+        if len(self.message) < 1:
+            raise ValueError("message is too short")
         _expect_str(self.server, 'server')
+        if len(self.server) < 1:
+            raise ValueError("server is too short")
 
     @classmethod
     def from_payload(cls, payload: Mapping[str, Any]) -> "ChatGlobalV1":
@@ -200,8 +213,14 @@ class ChatMessageV1:
     MESSAGE_VERSION: ClassVar[int] = 1
     def __post_init__(self) -> None:
         _expect_str(self.authorName, 'authorName')
+        if len(self.authorName) < 1:
+            raise ValueError("authorName is too short")
         _expect_str(self.message, 'message')
+        if len(self.message) < 1:
+            raise ValueError("message is too short")
         _expect_str(self.server, 'server')
+        if len(self.server) < 1:
+            raise ValueError("server is too short")
 
     @classmethod
     def from_payload(cls, payload: Mapping[str, Any]) -> "ChatMessageV1":
@@ -246,12 +265,22 @@ class ChatPrivateV1:
     MESSAGE_VERSION: ClassVar[int] = 1
     def __post_init__(self) -> None:
         _expect_str(self.fromUuid, 'fromUuid')
+        if len(self.fromUuid) < 1:
+            raise ValueError("fromUuid is too short")
         _expect_int(self.fromPid, 'fromPid')
         _expect_str(self.fromName, 'fromName')
+        if len(self.fromName) < 1:
+            raise ValueError("fromName is too short")
         _expect_str(self.toUuid, 'toUuid')
+        if len(self.toUuid) < 1:
+            raise ValueError("toUuid is too short")
         _expect_int(self.toPid, 'toPid')
         _expect_str(self.message, 'message')
+        if len(self.message) < 1:
+            raise ValueError("message is too short")
         _expect_str(self.server, 'server')
+        if len(self.server) < 1:
+            raise ValueError("server is too short")
 
     @classmethod
     def from_payload(cls, payload: Mapping[str, Any]) -> "ChatPrivateV1":

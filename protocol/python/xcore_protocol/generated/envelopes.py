@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from collections.abc import Mapping
 from dataclasses import dataclass
 from enum import StrEnum
@@ -133,21 +134,43 @@ class EnvelopeBaseV1:
     def __post_init__(self) -> None:
         _expect_instance(self.message_kind, 'message_kind', EnvelopeBaseV1Message_kind)
         _expect_str(self.message_type, 'message_type')
+        if len(self.message_type) < 1:
+            raise ValueError("message_type is too short")
         _expect_int(self.message_version, 'message_version')
+        if self.message_version < 1:
+            raise ValueError("message_version must be >= 1")
         _expect_str(self.message_id, 'message_id')
+        if len(self.message_id) < 1:
+            raise ValueError("message_id is too short")
         if self.correlation_id is not None:
             _expect_str(self.correlation_id, 'correlation_id')
+            if len(self.correlation_id) < 1:
+                raise ValueError("correlation_id is too short")
         if self.causation_id is not None:
             _expect_str(self.causation_id, 'causation_id')
+            if len(self.causation_id) < 1:
+                raise ValueError("causation_id is too short")
         _expect_str(self.producer, 'producer')
+        if len(self.producer) < 1:
+            raise ValueError("producer is too short")
         if self.target is not None:
             _expect_str(self.target, 'target')
+            if len(self.target) < 1:
+                raise ValueError("target is too short")
         _expect_str(self.created_at, 'created_at')
+        if re.search('^[0-9]+$', self.created_at) is None:
+            raise ValueError("created_at does not match its pattern")
         if self.expires_at is not None:
             _expect_str(self.expires_at, 'expires_at')
+            if re.search('^[0-9]+$', self.expires_at) is None:
+                raise ValueError("expires_at does not match its pattern")
         if self.schema_ref is not None:
             _expect_str(self.schema_ref, 'schema_ref')
+            if len(self.schema_ref) < 1:
+                raise ValueError("schema_ref is too short")
         _expect_str(self.payload_json, 'payload_json')
+        if len(self.payload_json) < 2:
+            raise ValueError("payload_json is too short")
 
     @classmethod
     def from_payload(cls, payload: Mapping[str, Any]) -> "EnvelopeBaseV1":
@@ -220,20 +243,42 @@ class EventEnvelopeV1:
     CONTENT_TYPE: ClassVar[str] = 'application/json'
     def __post_init__(self) -> None:
         _expect_str(self.message_type, 'message_type')
+        if len(self.message_type) < 1:
+            raise ValueError("message_type is too short")
         _expect_int(self.message_version, 'message_version')
+        if self.message_version < 1:
+            raise ValueError("message_version must be >= 1")
         _expect_str(self.message_id, 'message_id')
+        if len(self.message_id) < 1:
+            raise ValueError("message_id is too short")
         if self.correlation_id is not None:
             _expect_str(self.correlation_id, 'correlation_id')
+            if len(self.correlation_id) < 1:
+                raise ValueError("correlation_id is too short")
         if self.causation_id is not None:
             _expect_str(self.causation_id, 'causation_id')
+            if len(self.causation_id) < 1:
+                raise ValueError("causation_id is too short")
         _expect_str(self.producer, 'producer')
+        if len(self.producer) < 1:
+            raise ValueError("producer is too short")
         if self.target is not None:
             _expect_str(self.target, 'target')
+            if len(self.target) < 1:
+                raise ValueError("target is too short")
         _expect_str(self.created_at, 'created_at')
+        if re.search('^[0-9]+$', self.created_at) is None:
+            raise ValueError("created_at does not match its pattern")
         _expect_str(self.expires_at, 'expires_at')
+        if re.search('^[0-9]+$', self.expires_at) is None:
+            raise ValueError("expires_at does not match its pattern")
         if self.schema_ref is not None:
             _expect_str(self.schema_ref, 'schema_ref')
+            if len(self.schema_ref) < 1:
+                raise ValueError("schema_ref is too short")
         _expect_str(self.payload_json, 'payload_json')
+        if len(self.payload_json) < 2:
+            raise ValueError("payload_json is too short")
 
     @classmethod
     def from_payload(cls, payload: Mapping[str, Any]) -> "EventEnvelopeV1":
@@ -306,19 +351,41 @@ class CommandEnvelopeV1:
     CONTENT_TYPE: ClassVar[str] = 'application/json'
     def __post_init__(self) -> None:
         _expect_str(self.message_type, 'message_type')
+        if len(self.message_type) < 1:
+            raise ValueError("message_type is too short")
         _expect_int(self.message_version, 'message_version')
+        if self.message_version < 1:
+            raise ValueError("message_version must be >= 1")
         _expect_str(self.message_id, 'message_id')
+        if len(self.message_id) < 1:
+            raise ValueError("message_id is too short")
         if self.correlation_id is not None:
             _expect_str(self.correlation_id, 'correlation_id')
+            if len(self.correlation_id) < 1:
+                raise ValueError("correlation_id is too short")
         if self.causation_id is not None:
             _expect_str(self.causation_id, 'causation_id')
+            if len(self.causation_id) < 1:
+                raise ValueError("causation_id is too short")
         _expect_str(self.producer, 'producer')
+        if len(self.producer) < 1:
+            raise ValueError("producer is too short")
         _expect_str(self.target, 'target')
+        if len(self.target) < 1:
+            raise ValueError("target is too short")
         _expect_str(self.created_at, 'created_at')
+        if re.search('^[0-9]+$', self.created_at) is None:
+            raise ValueError("created_at does not match its pattern")
         _expect_str(self.expires_at, 'expires_at')
+        if re.search('^[0-9]+$', self.expires_at) is None:
+            raise ValueError("expires_at does not match its pattern")
         if self.schema_ref is not None:
             _expect_str(self.schema_ref, 'schema_ref')
+            if len(self.schema_ref) < 1:
+                raise ValueError("schema_ref is too short")
         _expect_str(self.payload_json, 'payload_json')
+        if len(self.payload_json) < 2:
+            raise ValueError("payload_json is too short")
 
     @classmethod
     def from_payload(cls, payload: Mapping[str, Any]) -> "CommandEnvelopeV1":
@@ -392,20 +459,46 @@ class RpcRequestEnvelopeV1:
     CONTENT_TYPE: ClassVar[str] = 'application/json'
     def __post_init__(self) -> None:
         _expect_str(self.message_type, 'message_type')
+        if len(self.message_type) < 1:
+            raise ValueError("message_type is too short")
         _expect_int(self.message_version, 'message_version')
+        if self.message_version < 1:
+            raise ValueError("message_version must be >= 1")
         _expect_str(self.message_id, 'message_id')
+        if len(self.message_id) < 1:
+            raise ValueError("message_id is too short")
         _expect_str(self.correlation_id, 'correlation_id')
+        if len(self.correlation_id) < 1:
+            raise ValueError("correlation_id is too short")
         if self.causation_id is not None:
             _expect_str(self.causation_id, 'causation_id')
+            if len(self.causation_id) < 1:
+                raise ValueError("causation_id is too short")
         _expect_str(self.producer, 'producer')
+        if len(self.producer) < 1:
+            raise ValueError("producer is too short")
         _expect_str(self.target, 'target')
+        if len(self.target) < 1:
+            raise ValueError("target is too short")
         _expect_str(self.created_at, 'created_at')
+        if re.search('^[0-9]+$', self.created_at) is None:
+            raise ValueError("created_at does not match its pattern")
         _expect_str(self.expires_at, 'expires_at')
+        if re.search('^[0-9]+$', self.expires_at) is None:
+            raise ValueError("expires_at does not match its pattern")
         if self.schema_ref is not None:
             _expect_str(self.schema_ref, 'schema_ref')
+            if len(self.schema_ref) < 1:
+                raise ValueError("schema_ref is too short")
         _expect_str(self.payload_json, 'payload_json')
+        if len(self.payload_json) < 2:
+            raise ValueError("payload_json is too short")
         _expect_str(self.reply_to, 'reply_to')
+        if len(self.reply_to) < 1:
+            raise ValueError("reply_to is too short")
         _expect_str(self.timeout_ms, 'timeout_ms')
+        if re.search('^[0-9]+$', self.timeout_ms) is None:
+            raise ValueError("timeout_ms does not match its pattern")
 
     @classmethod
     def from_payload(cls, payload: Mapping[str, Any]) -> "RpcRequestEnvelopeV1":
@@ -488,26 +581,50 @@ class RpcResponseEnvelopeV1:
     CONTENT_TYPE: ClassVar[str] = 'application/json'
     def __post_init__(self) -> None:
         _expect_str(self.message_type, 'message_type')
+        if len(self.message_type) < 1:
+            raise ValueError("message_type is too short")
         _expect_int(self.message_version, 'message_version')
+        if self.message_version < 1:
+            raise ValueError("message_version must be >= 1")
         _expect_str(self.message_id, 'message_id')
+        if len(self.message_id) < 1:
+            raise ValueError("message_id is too short")
         _expect_str(self.correlation_id, 'correlation_id')
+        if len(self.correlation_id) < 1:
+            raise ValueError("correlation_id is too short")
         if self.causation_id is not None:
             _expect_str(self.causation_id, 'causation_id')
+            if len(self.causation_id) < 1:
+                raise ValueError("causation_id is too short")
         _expect_str(self.producer, 'producer')
+        if len(self.producer) < 1:
+            raise ValueError("producer is too short")
         if self.target is not None:
             _expect_str(self.target, 'target')
+            if len(self.target) < 1:
+                raise ValueError("target is too short")
         _expect_str(self.created_at, 'created_at')
+        if re.search('^[0-9]+$', self.created_at) is None:
+            raise ValueError("created_at does not match its pattern")
         if self.expires_at is not None:
             _expect_str(self.expires_at, 'expires_at')
+            if re.search('^[0-9]+$', self.expires_at) is None:
+                raise ValueError("expires_at does not match its pattern")
         if self.schema_ref is not None:
             _expect_str(self.schema_ref, 'schema_ref')
+            if len(self.schema_ref) < 1:
+                raise ValueError("schema_ref is too short")
         _expect_str(self.payload_json, 'payload_json')
+        if len(self.payload_json) < 2:
+            raise ValueError("payload_json is too short")
         _expect_instance(self.status, 'status', RpcResponseEnvelopeV1Status)
         if self.error_code is not None:
             _expect_str(self.error_code, 'error_code')
         if self.error_message is not None:
             _expect_str(self.error_message, 'error_message')
         _expect_str(self.responded_at, 'responded_at')
+        if re.search('^[0-9]+$', self.responded_at) is None:
+            raise ValueError("responded_at does not match its pattern")
 
     @classmethod
     def from_payload(cls, payload: Mapping[str, Any]) -> "RpcResponseEnvelopeV1":
@@ -596,27 +713,61 @@ class DlqEnvelopeV1:
     CONTENT_TYPE: ClassVar[str] = 'application/json'
     def __post_init__(self) -> None:
         _expect_str(self.message_type, 'message_type')
+        if len(self.message_type) < 1:
+            raise ValueError("message_type is too short")
         _expect_int(self.message_version, 'message_version')
+        if self.message_version < 1:
+            raise ValueError("message_version must be >= 1")
         _expect_str(self.message_id, 'message_id')
+        if len(self.message_id) < 1:
+            raise ValueError("message_id is too short")
         if self.correlation_id is not None:
             _expect_str(self.correlation_id, 'correlation_id')
+            if len(self.correlation_id) < 1:
+                raise ValueError("correlation_id is too short")
         if self.causation_id is not None:
             _expect_str(self.causation_id, 'causation_id')
+            if len(self.causation_id) < 1:
+                raise ValueError("causation_id is too short")
         _expect_str(self.producer, 'producer')
+        if len(self.producer) < 1:
+            raise ValueError("producer is too short")
         if self.target is not None:
             _expect_str(self.target, 'target')
+            if len(self.target) < 1:
+                raise ValueError("target is too short")
         _expect_str(self.created_at, 'created_at')
+        if re.search('^[0-9]+$', self.created_at) is None:
+            raise ValueError("created_at does not match its pattern")
         if self.expires_at is not None:
             _expect_str(self.expires_at, 'expires_at')
+            if re.search('^[0-9]+$', self.expires_at) is None:
+                raise ValueError("expires_at does not match its pattern")
         if self.schema_ref is not None:
             _expect_str(self.schema_ref, 'schema_ref')
+            if len(self.schema_ref) < 1:
+                raise ValueError("schema_ref is too short")
         _expect_str(self.payload_json, 'payload_json')
+        if len(self.payload_json) < 2:
+            raise ValueError("payload_json is too short")
         _expect_str(self.source_stream, 'source_stream')
+        if len(self.source_stream) < 1:
+            raise ValueError("source_stream is too short")
         _expect_str(self.source_group, 'source_group')
+        if len(self.source_group) < 1:
+            raise ValueError("source_group is too short")
         _expect_str(self.source_id, 'source_id')
+        if len(self.source_id) < 1:
+            raise ValueError("source_id is too short")
         _expect_str(self.failed_at, 'failed_at')
+        if re.search('^[0-9]+$', self.failed_at) is None:
+            raise ValueError("failed_at does not match its pattern")
         _expect_str(self.attempts, 'attempts')
+        if re.search('^[0-9]+$', self.attempts) is None:
+            raise ValueError("attempts does not match its pattern")
         _expect_str(self.failure_reason, 'failure_reason')
+        if len(self.failure_reason) < 1:
+            raise ValueError("failure_reason is too short")
 
     @classmethod
     def from_payload(cls, payload: Mapping[str, Any]) -> "DlqEnvelopeV1":

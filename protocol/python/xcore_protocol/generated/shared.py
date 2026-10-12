@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from collections.abc import Mapping
 from dataclasses import dataclass
 from enum import StrEnum
@@ -121,8 +122,12 @@ class ActorRefV1:
 
     def __post_init__(self) -> None:
         _expect_str(self.actorName, 'actorName')
+        if len(self.actorName) < 1:
+            raise ValueError("actorName is too short")
         if self.actorDiscordId is not None:
             _expect_str(self.actorDiscordId, 'actorDiscordId')
+            if len(self.actorDiscordId) < 1:
+                raise ValueError("actorDiscordId is too short")
         if self.actorType is not None:
             _expect_instance(self.actorType, 'actorType', ActorRefV1ActorType)
 
@@ -157,8 +162,12 @@ class DiscordIdentityRefV1:
 
     def __post_init__(self) -> None:
         _expect_str(self.discordId, 'discordId')
+        if len(self.discordId) < 1:
+            raise ValueError("discordId is too short")
         if self.discordUsername is not None:
             _expect_str(self.discordUsername, 'discordUsername')
+            if len(self.discordUsername) < 1:
+                raise ValueError("discordUsername is too short")
 
     @classmethod
     def from_payload(cls, payload: Mapping[str, Any]) -> "DiscordIdentityRefV1":
@@ -219,12 +228,24 @@ class MapDiscordUploadV1:
     uploadedBy: DiscordIdentityRefV1
     uploadedAt: int
     creator: DiscordIdentityRefV1 | None = None
+    uploadedByHandle: str | None = None
+    creatorHandle: str | None = None
 
     def __post_init__(self) -> None:
         _expect_instance(self.uploadedBy, 'uploadedBy', DiscordIdentityRefV1)
         _expect_int(self.uploadedAt, 'uploadedAt')
+        if self.uploadedAt < 1:
+            raise ValueError("uploadedAt must be >= 1")
         if self.creator is not None:
             _expect_instance(self.creator, 'creator', DiscordIdentityRefV1)
+        if self.uploadedByHandle is not None:
+            _expect_str(self.uploadedByHandle, 'uploadedByHandle')
+            if len(self.uploadedByHandle) < 1:
+                raise ValueError("uploadedByHandle is too short")
+        if self.creatorHandle is not None:
+            _expect_str(self.creatorHandle, 'creatorHandle')
+            if len(self.creatorHandle) < 1:
+                raise ValueError("creatorHandle is too short")
 
     @classmethod
     def from_payload(cls, payload: Mapping[str, Any]) -> "MapDiscordUploadV1":
@@ -232,13 +253,15 @@ class MapDiscordUploadV1:
         _expect_exact_keys(
             mapping,
             required=frozenset(('uploadedBy', 'uploadedAt')),
-            allowed=frozenset(('uploadedBy', 'uploadedAt', 'creator')),
+            allowed=frozenset(('uploadedBy', 'uploadedAt', 'creator', 'uploadedByHandle', 'creatorHandle')),
             model_name="MapDiscordUploadV1",
         )
         return cls(
             uploadedBy=DiscordIdentityRefV1.from_payload(_expect_mapping(mapping['uploadedBy'], 'uploadedBy')),
             uploadedAt=_expect_int(mapping['uploadedAt'], 'uploadedAt'),
             creator=(DiscordIdentityRefV1.from_payload(_expect_mapping(mapping['creator'], 'creator')) if 'creator' in mapping else None),
+            uploadedByHandle=(_expect_str(mapping['uploadedByHandle'], 'uploadedByHandle') if 'uploadedByHandle' in mapping else None),
+            creatorHandle=(_expect_str(mapping['creatorHandle'], 'creatorHandle') if 'creatorHandle' in mapping else None),
         )
 
     def to_payload(self) -> dict[str, Any]:
@@ -247,6 +270,10 @@ class MapDiscordUploadV1:
         payload['uploadedAt'] = self.uploadedAt
         if self.creator is not None:
             payload['creator'] = self.creator.to_payload()
+        if self.uploadedByHandle is not None:
+            payload['uploadedByHandle'] = self.uploadedByHandle
+        if self.creatorHandle is not None:
+            payload['creatorHandle'] = self.creatorHandle
         return payload
 
 @dataclass(frozen=True, slots=True)
@@ -267,14 +294,26 @@ class MapEntryV1:
 
     def __post_init__(self) -> None:
         _expect_str(self.name, 'name')
+        if len(self.name) < 1:
+            raise ValueError("name is too short")
         _expect_str(self.fileName, 'fileName')
+        if len(self.fileName) < 1:
+            raise ValueError("fileName is too short")
         _expect_str(self.author, 'author')
+        if len(self.author) < 1:
+            raise ValueError("author is too short")
         if self.width is not None:
             _expect_int(self.width, 'width')
+            if self.width < 0:
+                raise ValueError("width must be >= 0")
         if self.height is not None:
             _expect_int(self.height, 'height')
+            if self.height < 0:
+                raise ValueError("height must be >= 0")
         if self.fileSizeBytes is not None:
             _expect_int(self.fileSizeBytes, 'fileSizeBytes')
+            if self.fileSizeBytes < 0:
+                raise ValueError("fileSizeBytes must be >= 0")
         if self.like is not None:
             _expect_int(self.like, 'like')
         if self.dislike is not None:
@@ -287,6 +326,8 @@ class MapEntryV1:
             _expect_number(self.interest, 'interest')
         if self.gameMode is not None:
             _expect_str(self.gameMode, 'gameMode')
+            if len(self.gameMode) < 1:
+                raise ValueError("gameMode is too short")
         if self.discordUpload is not None:
             _expect_instance(self.discordUpload, 'discordUpload', MapDiscordUploadV1)
 
@@ -351,6 +392,8 @@ class MapFileSourceV1:
     def __post_init__(self) -> None:
         _expect_str(self.url, 'url')
         _expect_str(self.fileName, 'fileName')
+        if re.search('^[^/\\\\]+\\.[mM][sS][aA][vV]$', self.fileName) is None:
+            raise ValueError("fileName does not match its pattern")
         if self.discordUpload is not None:
             _expect_instance(self.discordUpload, 'discordUpload', MapDiscordUploadV1)
 
@@ -377,6 +420,55 @@ class MapFileSourceV1:
             payload['discordUpload'] = self.discordUpload.to_payload()
         return payload
 
+class MapUploadResultV1Status(StrEnum):
+    INSTALLED = 'installed'
+    DOWNLOAD_FAILED = 'download_failed'
+    INVALID_MAP = 'invalid_map'
+    SUPERSEDED = 'superseded'
+    METADATA_FAILED = 'metadata_failed'
+    REJECTED = 'rejected'
+
+@dataclass(frozen=True, slots=True)
+class MapUploadResultV1:
+    fileName: str
+    status: MapUploadResultV1Status
+    detail: str | None = None
+
+    def __post_init__(self) -> None:
+        _expect_str(self.fileName, 'fileName')
+        if len(self.fileName) < 1:
+            raise ValueError("fileName is too short")
+        _expect_instance(self.status, 'status', MapUploadResultV1Status)
+        if len(self.status) < 1:
+            raise ValueError("status is too short")
+        if self.detail is not None:
+            _expect_str(self.detail, 'detail')
+            if len(self.detail) < 1:
+                raise ValueError("detail is too short")
+
+    @classmethod
+    def from_payload(cls, payload: Mapping[str, Any]) -> "MapUploadResultV1":
+        mapping = _expect_mapping(payload, "MapUploadResultV1")
+        _expect_exact_keys(
+            mapping,
+            required=frozenset(('fileName', 'status')),
+            allowed=frozenset(('fileName', 'status', 'detail')),
+            model_name="MapUploadResultV1",
+        )
+        return cls(
+            fileName=_expect_str(mapping['fileName'], 'fileName'),
+            status=_expect_enum(mapping['status'], 'status', MapUploadResultV1Status),
+            detail=(_expect_str(mapping['detail'], 'detail') if 'detail' in mapping else None),
+        )
+
+    def to_payload(self) -> dict[str, Any]:
+        payload: dict[str, Any] = {}
+        payload['fileName'] = self.fileName
+        payload['status'] = str(self.status)
+        if self.detail is not None:
+            payload['detail'] = self.detail
+        return payload
+
 class MetricSampleV1Type(StrEnum):
     COUNTER = 'counter'
     GAUGE = 'gauge'
@@ -398,12 +490,18 @@ class MetricSampleV1:
 
     def __post_init__(self) -> None:
         _expect_str(self.name, 'name')
+        if re.search('^[a-zA-Z_:][a-zA-Z0-9_:]*$', self.name) is None:
+            raise ValueError("name does not match its pattern")
         _expect_instance(self.type, 'type', MetricSampleV1Type)
         _expect_json_object(self.labels, 'labels', allowed_types=('string',), allow_null=False)
         if self.help is not None:
             _expect_str(self.help, 'help')
+            if len(self.help) < 1:
+                raise ValueError("help is too short")
         if self.unit is not None:
             _expect_str(self.unit, 'unit')
+            if len(self.unit) < 1:
+                raise ValueError("unit is too short")
         if self.value is not None:
             _expect_number(self.value, 'value')
         if self.buckets is not None:
@@ -418,6 +516,8 @@ class MetricSampleV1:
                 _expect_int(item, 'counts[]')
         if self.count is not None:
             _expect_int(self.count, 'count')
+            if self.count < 0:
+                raise ValueError("count must be >= 0")
         if self.sum is not None:
             _expect_number(self.sum, 'sum')
 
@@ -474,12 +574,18 @@ class ModerationTargetRefV1:
     def __post_init__(self) -> None:
         if self.playerUuid is not None:
             _expect_str(self.playerUuid, 'playerUuid')
+            if len(self.playerUuid) < 1:
+                raise ValueError("playerUuid is too short")
         if self.playerPid is not None:
             _expect_int(self.playerPid, 'playerPid')
         if self.playerName is not None:
             _expect_str(self.playerName, 'playerName')
+            if len(self.playerName) < 1:
+                raise ValueError("playerName is too short")
         if self.ip is not None:
             _expect_str(self.ip, 'ip')
+            if len(self.ip) < 1:
+                raise ValueError("ip is too short")
         if not (self.playerUuid is not None or self.ip is not None):
             raise ValueError("At least one of playerUuid, ip must be provided")
 
@@ -521,12 +627,18 @@ class PlayerCommandTargetV1:
     def __post_init__(self) -> None:
         if self.playerUuid is not None:
             _expect_str(self.playerUuid, 'playerUuid')
+            if len(self.playerUuid) < 1:
+                raise ValueError("playerUuid is too short")
         if self.playerPid is not None:
             _expect_int(self.playerPid, 'playerPid')
         if self.playerName is not None:
             _expect_str(self.playerName, 'playerName')
+            if len(self.playerName) < 1:
+                raise ValueError("playerName is too short")
         if self.ip is not None:
             _expect_str(self.ip, 'ip')
+            if len(self.ip) < 1:
+                raise ValueError("ip is too short")
         if not (self.playerUuid is not None or self.ip is not None):
             raise ValueError("At least one of playerUuid, ip must be provided")
 
@@ -567,11 +679,17 @@ class PlayerRefV1:
 
     def __post_init__(self) -> None:
         _expect_str(self.playerUuid, 'playerUuid')
+        if len(self.playerUuid) < 1:
+            raise ValueError("playerUuid is too short")
         if self.playerPid is not None:
             _expect_int(self.playerPid, 'playerPid')
         _expect_str(self.playerName, 'playerName')
+        if len(self.playerName) < 1:
+            raise ValueError("playerName is too short")
         if self.ip is not None:
             _expect_str(self.ip, 'ip')
+            if len(self.ip) < 1:
+                raise ValueError("ip is too short")
 
     @classmethod
     def from_payload(cls, payload: Mapping[str, Any]) -> "PlayerRefV1":
@@ -612,13 +730,21 @@ class SeasonPodiumEntryV1:
 
     def __post_init__(self) -> None:
         _expect_int(self.place, 'place')
+        if self.place < 1:
+            raise ValueError("place must be >= 1")
         _expect_instance(self.player, 'player', PlayerRefV1)
         if self.discord is not None:
             _expect_instance(self.discord, 'discord', DiscordIdentityRefV1)
         _expect_int(self.rating, 'rating')
         _expect_str(self.league, 'league')
+        if len(self.league) < 1:
+            raise ValueError("league is too short")
         _expect_int(self.matches, 'matches')
+        if self.matches < 0:
+            raise ValueError("matches must be >= 0")
         _expect_int(self.wins, 'wins')
+        if self.wins < 0:
+            raise ValueError("wins must be >= 0")
         if self.prizes is not None:
             if not isinstance(self.prizes, tuple):
                 raise TypeError("prizes must be a tuple")
@@ -673,9 +799,15 @@ class SeasonPrizeV1:
 
     def __post_init__(self) -> None:
         _expect_int(self.placeFrom, 'placeFrom')
+        if self.placeFrom < 1:
+            raise ValueError("placeFrom must be >= 1")
         _expect_int(self.placeTo, 'placeTo')
+        if self.placeTo < 1:
+            raise ValueError("placeTo must be >= 1")
         _expect_instance(self.kind, 'kind', SeasonPrizeV1Kind)
         _expect_str(self.value, 'value')
+        if len(self.value) < 1:
+            raise ValueError("value is too short")
         if self.description is not None:
             _expect_str(self.description, 'description')
 
@@ -716,8 +848,14 @@ class SeasonRefV1:
 
     def __post_init__(self) -> None:
         _expect_str(self.ladder, 'ladder')
+        if len(self.ladder) < 1:
+            raise ValueError("ladder is too short")
         _expect_int(self.season, 'season')
+        if self.season < 1:
+            raise ValueError("season must be >= 1")
         _expect_str(self.name, 'name')
+        if len(self.name) < 1:
+            raise ValueError("name is too short")
         _expect_str(self.startsAt, 'startsAt')
         _expect_str(self.endsAt, 'endsAt')
 
@@ -754,7 +892,11 @@ class SeasonSummaryV1:
 
     def __post_init__(self) -> None:
         _expect_int(self.participants, 'participants')
+        if self.participants < 0:
+            raise ValueError("participants must be >= 0")
         _expect_int(self.matches, 'matches')
+        if self.matches < 0:
+            raise ValueError("matches must be >= 0")
 
     @classmethod
     def from_payload(cls, payload: Mapping[str, Any]) -> "SeasonSummaryV1":
@@ -784,10 +926,14 @@ class VoteKickParticipantV1:
 
     def __post_init__(self) -> None:
         _expect_str(self.playerName, 'playerName')
+        if len(self.playerName) < 1:
+            raise ValueError("playerName is too short")
         if self.playerPid is not None:
             _expect_int(self.playerPid, 'playerPid')
         if self.discordId is not None:
             _expect_str(self.discordId, 'discordId')
+            if len(self.discordId) < 1:
+                raise ValueError("discordId is too short")
 
     @classmethod
     def from_payload(cls, payload: Mapping[str, Any]) -> "VoteKickParticipantV1":
@@ -820,6 +966,7 @@ __all__ = [
     "MapDiscordUploadV1",
     "MapEntryV1",
     "MapFileSourceV1",
+    "MapUploadResultV1",
     "MetricSampleV1",
     "ModerationTargetRefV1",
     "PlayerCommandTargetV1",
@@ -830,6 +977,7 @@ __all__ = [
     "SeasonSummaryV1",
     "VoteKickParticipantV1",
     "ActorRefV1ActorType",
+    "MapUploadResultV1Status",
     "MetricSampleV1Type",
     "SeasonPrizeV1Kind",
 ]

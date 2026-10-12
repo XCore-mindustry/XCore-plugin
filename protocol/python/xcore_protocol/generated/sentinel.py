@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from collections.abc import Mapping
 from dataclasses import dataclass
 from enum import StrEnum
@@ -121,8 +122,14 @@ class SentinelSubnetRulesCheckRequestV1:
     MESSAGE_VERSION: ClassVar[int] = 1
     def __post_init__(self) -> None:
         _expect_str(self.request, 'request')
+        if len(self.request) < 1:
+            raise ValueError("request is too short")
         _expect_str(self.targetServer, 'targetServer')
+        if len(self.targetServer) < 1:
+            raise ValueError("targetServer is too short")
         _expect_str(self.ip, 'ip')
+        if len(self.ip) < 1:
+            raise ValueError("ip is too short")
 
     @classmethod
     def from_payload(cls, payload: Mapping[str, Any]) -> "SentinelSubnetRulesCheckRequestV1":
@@ -164,7 +171,11 @@ class SentinelSubnetRulesCheckResponseV1:
     MESSAGE_VERSION: ClassVar[int] = 1
     def __post_init__(self) -> None:
         _expect_str(self.request, 'request')
+        if len(self.request) < 1:
+            raise ValueError("request is too short")
         _expect_str(self.targetServer, 'targetServer')
+        if len(self.targetServer) < 1:
+            raise ValueError("targetServer is too short")
         _expect_bool(self.allowed, 'allowed')
         if not isinstance(self.matchedRules, tuple):
             raise TypeError("matchedRules must be a tuple")
@@ -225,21 +236,33 @@ class SentinelSubnetRulesCommandV1:
     MESSAGE_VERSION: ClassVar[int] = 1
     def __post_init__(self) -> None:
         _expect_str(self.request, 'request')
+        if len(self.request) < 1:
+            raise ValueError("request is too short")
         _expect_str(self.idempotency, 'idempotency')
+        if len(self.idempotency) < 1:
+            raise ValueError("idempotency is too short")
         _expect_instance(self.actor, 'actor', ActorRefV1)
         _expect_instance(self.operation, 'operation', SentinelSubnetRulesCommandV1Operation)
         if self.targetServer is not None:
             _expect_str(self.targetServer, 'targetServer')
+            if len(self.targetServer) < 1:
+                raise ValueError("targetServer is too short")
         if not isinstance(self.rules, tuple):
             raise TypeError("rules must be a tuple")
         for item in self.rules:
             _expect_str(item, 'rules[]')
         if self.source is not None:
             _expect_str(self.source, 'source')
+            if len(self.source) < 1:
+                raise ValueError("source is too short")
         if self.reason is not None:
             _expect_str(self.reason, 'reason')
+            if len(self.reason) < 1:
+                raise ValueError("reason is too short")
         if self.expiresAt is not None:
             _expect_int(self.expiresAt, 'expiresAt')
+            if self.expiresAt < 0:
+                raise ValueError("expiresAt must be >= 0")
 
     @classmethod
     def from_payload(cls, payload: Mapping[str, Any]) -> "SentinelSubnetRulesCommandV1":
@@ -297,8 +320,12 @@ class SentinelSubnetRulesInvalidatedV1:
     def __post_init__(self) -> None:
         if self.reason is not None:
             _expect_str(self.reason, 'reason')
+            if len(self.reason) < 1:
+                raise ValueError("reason is too short")
         if self.sourceServer is not None:
             _expect_str(self.sourceServer, 'sourceServer')
+            if len(self.sourceServer) < 1:
+                raise ValueError("sourceServer is too short")
         if self.occurredAt is not None:
             _expect_str(self.occurredAt, 'occurredAt')
 
@@ -343,7 +370,11 @@ class SentinelSubnetRulesListRequestV1:
     MESSAGE_VERSION: ClassVar[int] = 1
     def __post_init__(self) -> None:
         _expect_str(self.request, 'request')
+        if len(self.request) < 1:
+            raise ValueError("request is too short")
         _expect_str(self.targetServer, 'targetServer')
+        if len(self.targetServer) < 1:
+            raise ValueError("targetServer is too short")
 
     @classmethod
     def from_payload(cls, payload: Mapping[str, Any]) -> "SentinelSubnetRulesListRequestV1":
@@ -382,7 +413,11 @@ class SentinelSubnetRulesListResponseV1:
     MESSAGE_VERSION: ClassVar[int] = 1
     def __post_init__(self) -> None:
         _expect_str(self.request, 'request')
+        if len(self.request) < 1:
+            raise ValueError("request is too short")
         _expect_str(self.targetServer, 'targetServer')
+        if len(self.targetServer) < 1:
+            raise ValueError("targetServer is too short")
         if not isinstance(self.rules, tuple):
             raise TypeError("rules must be a tuple")
         for item in self.rules:
@@ -429,11 +464,17 @@ class SentinelSubnetRulesResponseV1:
     MESSAGE_VERSION: ClassVar[int] = 1
     def __post_init__(self) -> None:
         _expect_str(self.request, 'request')
+        if len(self.request) < 1:
+            raise ValueError("request is too short")
         _expect_bool(self.success, 'success')
         if self.targetServer is not None:
             _expect_str(self.targetServer, 'targetServer')
+            if len(self.targetServer) < 1:
+                raise ValueError("targetServer is too short")
         if self.error is not None:
             _expect_str(self.error, 'error')
+            if len(self.error) < 1:
+                raise ValueError("error is too short")
         if self.rules is not None:
             if not isinstance(self.rules, tuple):
                 raise TypeError("rules must be a tuple")
@@ -487,8 +528,12 @@ class SentinelSubnetSweepCommandV1:
     def __post_init__(self) -> None:
         if self.actor is not None:
             _expect_str(self.actor, 'actor')
+            if len(self.actor) < 1:
+                raise ValueError("actor is too short")
         if self.reason is not None:
             _expect_str(self.reason, 'reason')
+            if len(self.reason) < 1:
+                raise ValueError("reason is too short")
         if self.occurredAt is not None:
             _expect_str(self.occurredAt, 'occurredAt')
 

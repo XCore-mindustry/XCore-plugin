@@ -379,6 +379,7 @@ def _render_shared_module(shared_schemas: tuple[NormalizedSchema, ...]) -> str:
     return (
         '"""Generated canonical shared protocol models."""\n\n'
         "from __future__ import annotations\n\n"
+        "import re\n"
         "from collections.abc import Mapping\n"
         "from dataclasses import dataclass\n"
         "from enum import StrEnum\n"
@@ -409,6 +410,7 @@ def _render_family_module(
     return (
         f'"""Generated canonical {config.name} protocol models."""\n\n'
         "from __future__ import annotations\n\n"
+        "import re\n"
         "from collections.abc import Mapping\n"
         "from dataclasses import dataclass\n"
         "from enum import StrEnum\n"
@@ -576,6 +578,7 @@ def _render_envelope_module(envelope_schemas: tuple[NormalizedSchema, ...]) -> s
     return (
         '"""Generated canonical envelope models for the supported subset."""\n\n'
         "from __future__ import annotations\n\n"
+        "import re\n"
         "from collections.abc import Mapping\n"
         "from dataclasses import dataclass\n"
         "from enum import StrEnum\n"
@@ -728,6 +731,8 @@ def _post_init_checks(field: NormalizedField) -> list[str]:
             f"        for item in {field_ref}:",
             f"            {item_validator}",
         ]
+        if field.min_items is not None:
+            body.extend([f"        if len({field_ref}) < {field.min_items}:", f'            raise ValueError("{field.name} has too few items")'])
         if field.unique_items:
             body.extend(
                 [
@@ -739,9 +744,16 @@ def _post_init_checks(field: NormalizedField) -> list[str]:
             return body
         return [f"        if {field_ref} is not None:", *(f"    {line}" for line in body)]
 
+    checks = [f"        {validator}"]
+    if field.minimum is not None:
+        checks.extend([f"        if {field_ref} < {field.minimum!r}:", f'            raise ValueError("{field.name} must be >= {field.minimum}")'])
+    if field.min_length is not None:
+        checks.extend([f"        if len({field_ref}) < {field.min_length}:", f'            raise ValueError("{field.name} is too short")'])
+    if field.pattern is not None:
+        checks.extend([f"        if re.search({field.pattern!r}, {field_ref}) is None:", f'            raise ValueError("{field.name} does not match its pattern")'])
     if field.required:
-        return [f"        {validator}"]
-    return [f"        if {field_ref} is not None:", f"            {validator}"]
+        return checks
+    return [f"        if {field_ref} is not None:", *("    " + line for line in checks)]
 
 
 def _render_const_classvars(fields: tuple[NormalizedField, ...]) -> str:

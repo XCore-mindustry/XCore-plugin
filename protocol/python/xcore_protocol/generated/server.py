@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from collections.abc import Mapping
 from dataclasses import dataclass
 from enum import StrEnum
@@ -114,6 +115,8 @@ class PlayerDataCacheReloadCommandV1:
     MESSAGE_VERSION: ClassVar[int] = 1
     def __post_init__(self) -> None:
         _expect_str(self.server, 'server')
+        if len(self.server) < 1:
+            raise ValueError("server is too short")
 
     @classmethod
     def from_payload(cls, payload: Mapping[str, Any]) -> "PlayerDataCacheReloadCommandV1":
@@ -151,6 +154,8 @@ class ServerCommandExecuteCommandV1:
     MESSAGE_VERSION: ClassVar[int] = 1
     def __post_init__(self) -> None:
         _expect_str(self.command, 'command')
+        if len(self.command) < 1:
+            raise ValueError("command is too short")
         if not isinstance(self.targetServers, tuple):
             raise TypeError("targetServers must be a tuple")
         for item in self.targetServers:
@@ -158,6 +163,8 @@ class ServerCommandExecuteCommandV1:
         _expect_bool(self.exclusion, 'exclusion')
         if self.sourceServer is not None:
             _expect_str(self.sourceServer, 'sourceServer')
+            if len(self.sourceServer) < 1:
+                raise ValueError("sourceServer is too short")
 
     @classmethod
     def from_payload(cls, payload: Mapping[str, Any]) -> "ServerCommandExecuteCommandV1":
@@ -200,7 +207,11 @@ class ServerActionV1:
     MESSAGE_VERSION: ClassVar[int] = 1
     def __post_init__(self) -> None:
         _expect_str(self.message, 'message')
+        if len(self.message) < 1:
+            raise ValueError("message is too short")
         _expect_str(self.server, 'server')
+        if len(self.server) < 1:
+            raise ValueError("server is too short")
 
     @classmethod
     def from_payload(cls, payload: Mapping[str, Any]) -> "ServerActionV1":
@@ -248,24 +259,42 @@ class ServerHeartbeatV1:
     MESSAGE_VERSION: ClassVar[int] = 1
     def __post_init__(self) -> None:
         _expect_str(self.serverName, 'serverName')
+        if len(self.serverName) < 1:
+            raise ValueError("serverName is too short")
         _expect_int(self.discordChannelId, 'discordChannelId')
+        if self.discordChannelId < 0:
+            raise ValueError("discordChannelId must be >= 0")
         _expect_int(self.players, 'players')
+        if self.players < 0:
+            raise ValueError("players must be >= 0")
         _expect_int(self.maxPlayers, 'maxPlayers')
+        if self.maxPlayers < 0:
+            raise ValueError("maxPlayers must be >= 0")
         _expect_str(self.version, 'version')
+        if len(self.version) < 1:
+            raise ValueError("version is too short")
         if self.host is not None:
             _expect_str(self.host, 'host')
+            if len(self.host) < 1:
+                raise ValueError("host is too short")
         if self.port is not None:
             _expect_int(self.port, 'port')
+            if self.port < 0:
+                raise ValueError("port must be >= 0")
         if self.description is not None:
             _expect_str(self.description, 'description')
         if self.map is not None:
             _expect_str(self.map, 'map')
         if self.wave is not None:
             _expect_int(self.wave, 'wave')
+            if self.wave < 0:
+                raise ValueError("wave must be >= 0")
         if self.mode is not None:
             _expect_str(self.mode, 'mode')
         if self.tps is not None:
             _expect_int(self.tps, 'tps')
+            if self.tps < 0:
+                raise ValueError("tps must be >= 0")
 
     @classmethod
     def from_payload(cls, payload: Mapping[str, Any]) -> "ServerHeartbeatV1":

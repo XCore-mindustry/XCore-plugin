@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "$id": "urn:xcore:protocol:messages:maps:maps.upload.response:v1",
+  "title": "MapsUploadResponseV1",
+  "required": [
+    "messageType",
+    "messageVersion",
+    "server",
+    "results"
+  ],
+  "properties": {
+    "messageType": {
+      "const": "maps.upload.response"
+    },
+    "messageVersion": {
+      "const": 1
+    },
+    "server": {
+      "type": "string",
+      "minLength": 1
+    },
+    "results": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "urn:xcore:protocol:shared:types:map-upload-result:v1"
+      }
+    }
+  }
+}
