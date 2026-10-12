@@ -266,7 +266,7 @@ class XCoreDiscordBot(commands.Bot):
         self,
         *,
         server: str,
-        files: list[dict[str, str]],
+        files: list[dict[str, object]],
     ) -> None:
         await self._bus.publish_maps_load(server=server, files=files)
 

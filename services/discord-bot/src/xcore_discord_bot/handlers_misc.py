@@ -27,6 +27,7 @@ from .rating_store import Placing
 from .retry import retry_read_rpc
 from .server_views import MapsListView, ServersView
 from .stats_embed import StaffNotes, StatsView, build_stats_embed, player_name
+from .utils.mindustry_colors import strip_mindustry_colors
 
 if TYPE_CHECKING:
     from .bot import XCoreDiscordBot
@@ -93,6 +94,60 @@ def _sort_maps(maps: list[dict[str, str]], mode: str) -> list[dict[str, str]]:
             str(item.get("name", "")).lower(),
         ),
     )
+
+
+def _map_text(value: str, limit: int = 80, *, inline_code: bool = False) -> str:
+    text = " ".join(str(value).split()).replace("`", "'")[:limit]
+    text = discord.utils.escape_mentions(text)
+    return text if inline_code else discord.utils.escape_markdown(text)
+
+
+def _map_contributor(item: dict[str, str], prefix: str) -> str:
+    discord_id = item.get(f"{prefix}_discord_id", "")
+    name = _map_text(item.get(f"{prefix}_name", "") or discord_id)
+    if discord_id.isascii() and discord_id.isdigit():
+        return f"[{name}](https://discord.com/users/{discord_id})"
+    return name
+
+
+def _map_list_row(item: dict[str, str]) -> str:
+    name = _map_text(strip_mindustry_colors(item.get("name", "Unknown")))
+    file_name = _map_text(item.get("file_name", ""), 100, inline_code=True)
+    author = _map_text(
+        strip_mindustry_colors(item.get("author", "Unknown")), inline_code=True
+    )
+    width = str(item.get("width", "")).strip()
+    height = str(item.get("height", "")).strip()
+    file_size = str(item.get("file_size_bytes", "")).strip()
+    details = f" • {width}x{height}" if width.isdigit() and height.isdigit() else ""
+    if file_size.isdigit():
+        details += f" • {format_size(int(file_size))}"
+    details += _map_rating_part(item)
+    uploaded = bool(item.get("uploaded_by_discord_id"))
+    author_label = "file author" if uploaded else "by"
+    row = f"• {name} — {author_label} `{author}`"
+    row += f"\n  `{file_name}`{details}" if file_name else details
+    if uploaded:
+        if item.get("creator_discord_id"):
+            row += f"\n  Declared creator: {_map_contributor(item, 'creator')}"
+        row += f"\n  Added via Discord: {_map_contributor(item, 'uploaded_by')}"
+        uploaded_at = item.get("uploaded_at", "")
+        if uploaded_at.isascii() and uploaded_at.isdigit():
+            row += f" • <t:{int(uploaded_at) // 1000}:d>"
+    return row
+
+
+def _map_list_pages(maps: list[dict[str, str]], sort_mode: str) -> list[list[str]]:
+    pages: list[list[str]] = [[]]
+    length = 0
+    for item in _sort_maps(maps, sort_mode):
+        row = _map_list_row(item)
+        if pages[-1] and (len(pages[-1]) >= 15 or length + len(row) + 1 > 3800):
+            pages.append([])
+            length = 0
+        pages[-1].append(row)
+        length += len(row) + 1
+    return pages
 
 
 async def _loaded(awaitable: Awaitable[T], what: str, player: PlayerRecord) -> T | None:
@@ -479,57 +534,23 @@ async def cmd_maps(
         await interaction.followup.send(f"No maps found on server `{server}`")
         return
 
-    page_size = 15
     default_sort_mode = "reputation"
 
     async def fetch_page(page: int, sort_mode: str) -> tuple[discord.Embed, bool]:
-        sorted_maps = _sort_maps(maps, sort_mode)
-        start = page * page_size
-        end = start + page_size
-        chunk = sorted_maps[start:end]
-
+        pages = _map_list_pages(maps, sort_mode)
+        chunk = pages[page]
         embed = discord.Embed(
             title=f"Maps on `{server}`",
+            description="\n".join(chunk),
             color=discord.Color.green(),
         )
-        if chunk:
-            lines: list[str] = []
-            for item in chunk:
-                name = item.get("name", "Unknown")
-                file_name = item.get("file_name", "")
-                author = item.get("author", "Unknown")
-                width = str(item.get("width", "")).strip()
-                height = str(item.get("height", "")).strip()
-                file_size_raw = str(item.get("file_size_bytes", "")).strip()
-
-                size_part = ""
-                if file_size_raw.isdigit():
-                    size_part = f" • {format_size(int(file_size_raw))}"
-
-                dims_part = (
-                    f" • {width}x{height}"
-                    if width.isdigit() and height.isdigit()
-                    else ""
-                )
-                rating_part = _map_rating_part(item)
-                lines.append(
-                    f"• {name} — by `{author}`\n"
-                    f"  `{file_name}`{dims_part}{size_part}{rating_part}"
-                    if file_name
-                    else f"• {name} — by `{author}`{dims_part}{size_part}{rating_part}"
-                )
-            embed.description = "\n".join(lines)
-        else:
-            embed.description = "No maps found."
-        has_next = end < len(sorted_maps)
-        total_pages = max(1, (len(sorted_maps) + page_size - 1) // page_size)
         embed.set_footer(
             text=(
-                f"Sort: {sort_mode} • Page {page + 1}/{total_pages} "
-                f"• total maps: {len(sorted_maps)} • entries on page: {len(chunk)}"
+                f"Sort: {sort_mode} • Page {page + 1}/{len(pages)} "
+                f"• total maps: {len(maps)} • entries on page: {len(chunk)}"
             )
         )
-        return embed, has_next
+        return embed, page + 1 < len(pages)
 
     first_embed, has_next = await fetch_page(0, default_sort_mode)
     view = MapsListView(
@@ -617,6 +638,7 @@ async def cmd_upload_map(
     interaction: Interaction,
     server: str,
     attachments: list[discord.Attachment | None],
+    creator: discord.abc.User | None = None,
 ) -> None:
     files = [
         {"url": att.url, "filename": att.filename}
@@ -637,8 +659,30 @@ async def cmd_upload_map(
     ):
         return
 
+    upload = {
+        "uploadedBy": {
+            "discordId": str(interaction.user.id),
+            "discordUsername": interaction.user.display_name,
+        },
+        "uploadedAt": int(time.time() * 1000),
+    }
+    if creator is not None:
+        upload["creator"] = {
+            "discordId": str(creator.id),
+            "discordUsername": creator.display_name,
+        }
+    for item in files:
+        item["discordUpload"] = upload
+
     await bot.publish_maps_load(server=server, files=files)
     await interaction.response.send_message(
-        f"Uploaded {len(files)} map(s) to `{server}`: "
+        f"Queued {len(files)} map(s) for upload to `{server}`: "
         + ", ".join(item["filename"] for item in files)
+        + (
+            f"\nDeclared creator: <@{creator.id}> (all attached maps)."
+            if creator
+            else ""
+        )
+        + "\nThe author recorded in each map file is preserved.",
+        allowed_mentions=discord.AllowedMentions.none(),
     )

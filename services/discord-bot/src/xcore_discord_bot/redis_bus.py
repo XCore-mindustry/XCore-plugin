@@ -756,7 +756,9 @@ class RedisBus:
             ).to_payload(),
         )
 
-    async def publish_maps_load(self, server: str, files: list[dict[str, str]]) -> None:
+    async def publish_maps_load(
+        self, server: str, files: list[dict[str, object]]
+    ) -> None:
         await self._publish_event(
             stream=f"xcore:cmd:maps-load:{server}",
             event_type="maps.load.command",
@@ -1189,6 +1191,22 @@ class RedisBus:
             "popularity": str(entry.popularity) if entry.popularity is not None else "",
             "interest": str(entry.interest) if entry.interest is not None else "",
             "game_mode": entry.gameMode if entry.gameMode is not None else "",
+            **(
+                {
+                    "uploaded_by_discord_id": entry.discordUpload.uploadedBy.discordId,
+                    "uploaded_by_name": entry.discordUpload.uploadedBy.discordUsername
+                    or "",
+                    "uploaded_at": str(entry.discordUpload.uploadedAt),
+                    "creator_discord_id": entry.discordUpload.creator.discordId
+                    if entry.discordUpload.creator
+                    else "",
+                    "creator_name": entry.discordUpload.creator.discordUsername or ""
+                    if entry.discordUpload.creator
+                    else "",
+                }
+                if entry.discordUpload
+                else {}
+            ),
         }
 
     async def rpc_remove_map(self, server: str, file_name: str, timeout_ms: int) -> str:

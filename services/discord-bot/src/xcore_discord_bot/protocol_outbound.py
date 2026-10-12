@@ -281,14 +281,21 @@ def build_chat_discord_ingress_command(
 
 def build_maps_load_command(
     server: str,
-    files: list[dict[str, str]],
+    files: list[dict[str, object]],
 ) -> MapsLoadCommandV1:
     return MapsLoadCommandV1(
         server=server,
         files=tuple(
-            MapFileSourceV1(
-                url=item["url"],
-                fileName=item.get("fileName", item.get("filename", "")),
+            MapFileSourceV1.from_payload(
+                {
+                    "url": item["url"],
+                    "fileName": item.get("fileName", item.get("filename", "")),
+                    **(
+                        {"discordUpload": item["discordUpload"]}
+                        if "discordUpload" in item
+                        else {}
+                    ),
+                }
             )
             for item in files
         ),

@@ -201,3 +201,71 @@ async def test_perform_remove_map_returns_timeout_message() -> None:
 
     assert result == "No response from target server (timeout)."
     assert bot.remove_calls == [("mini-pvp", "arena.msav", 9876)]
+
+
+@pytest.mark.asyncio
+async def test_maps_show_distinct_file_author_creator_and_submitter() -> None:
+    bot = _MapsBot(
+        maps=[
+            {
+                "name": "Arena",
+                "file_name": "arena.msav",
+                "author": "[blue]File Mapper[]",
+                "uploaded_by_discord_id": "123456789012345678",
+                "uploaded_by_name": "Reviewer",
+                "creator_discord_id": "234567890123456789",
+                "creator_name": "Creator",
+                "uploaded_at": "1791806400000",
+            }
+        ]
+    )
+    interaction = _Interaction()
+    await cmd_maps(bot, interaction, "mini-pvp")
+    description = interaction.followup.messages[0]["embed"].description
+    assert "file author `File Mapper`" in description
+    assert (
+        "Declared creator: [Creator](https://discord.com/users/234567890123456789)"
+        in description
+    )
+    assert (
+        "Added via Discord: [Reviewer](https://discord.com/users/123456789012345678)"
+        in description
+    )
+    assert "<t:1791806400:d>" in description
+
+
+def test_map_list_pages_respect_embed_limit_and_keep_every_map() -> None:
+    from xcore_discord_bot.handlers_misc import _map_list_pages
+
+    maps = [
+        {
+            "name": "*" * 200,
+            "file_name": "`" * 200,
+            "author": "*" * 200,
+            "uploaded_by_discord_id": "123456789012345678",
+            "uploaded_by_name": "*" * 200,
+            "creator_discord_id": "234567890123456789",
+            "creator_name": "*" * 200,
+            "uploaded_at": "1791806400000",
+        }
+        for _ in range(40)
+    ]
+    pages = _map_list_pages(maps, "name")
+    assert sum(map(len, pages)) == 40
+    assert len(pages) > 1
+    assert all(len("\n".join(page)) <= 4096 for page in pages)
+
+
+def test_map_inline_code_preserves_filename_punctuation_without_color_markup() -> None:
+    from xcore_discord_bot.handlers_misc import _map_list_row
+
+    row = _map_list_row(
+        {
+            "name": "[green]Arena[]",
+            "author": "[blue]Map_Maker[]",
+            "file_name": "arena_v2.msav",
+        }
+    )
+    assert "`arena_v2.msav`" in row
+    assert "`Map_Maker`" in row
+    assert "[green]" not in row and "[blue]" not in row
