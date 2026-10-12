@@ -42,7 +42,6 @@ public class SeasonAnnouncer implements SeasonObserver {
     private final Clock clock;
     private final Map<String, LadderDefinition> followed = new ConcurrentHashMap<>();
 
-    @Inject
     public SeasonAnnouncer(SeasonLifecycleService lifecycle,
                            SeasonResolver resolver,
                            SeasonSchedule schedule,
@@ -51,6 +50,7 @@ public class SeasonAnnouncer implements SeasonObserver {
         this(lifecycle, resolver, schedule, sessions, displays, Clock.systemUTC());
     }
 
+    @Inject
     SeasonAnnouncer(SeasonLifecycleService lifecycle,
                     SeasonResolver resolver,
                     SeasonSchedule schedule,

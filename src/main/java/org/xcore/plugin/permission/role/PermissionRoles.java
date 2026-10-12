@@ -26,15 +26,19 @@ public class PermissionRoles {
     private final Clock clock;
     private volatile PermissionModel model = PermissionModel.EMPTY;
 
-    @Inject
     public PermissionRoles(TomlXcoreConfig config) {
+        this(config, Clock.systemUTC());
+    }
+
+    @Inject
+    public PermissionRoles(TomlXcoreConfig config, Clock clock) {
         this(config.permissions.rolesEnabled(),
                 config.permissions.trustNativeAdmins,
                 config.server.name,
                 Fi.get(config.paths.globalConfigDirectory == null || config.paths.globalConfigDirectory.isBlank()
                         ? System.getProperty("user.home")
                         : config.paths.globalConfigDirectory).child(FILE_NAME),
-                Clock.systemUTC());
+                clock);
 
         if (enabled) {
             // Running with roles and no usable role file would leave the server with no staff

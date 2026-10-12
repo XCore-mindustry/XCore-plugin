@@ -44,10 +44,10 @@ class InformationMenuTest {
     private InformationMenu informationMenu;
     private Session session;
     private TomlSecretsConfig secretsConfig;
-    private Provider<MapMenu> map;
-    private Provider<EventMenu> event;
-    private Provider<HelpMenu> help;
-    private Provider<PlayerMenu> player;
+    private MapMenu map;
+    private EventMenu event;
+    private HelpMenu help;
+    private PlayerMenu player;
 
     @BeforeEach
     @SuppressWarnings("unchecked")
@@ -69,10 +69,10 @@ class InformationMenuTest {
 
         BuildInfo buildInfo = new BuildInfo();
         buildInfo.setVersion("test-version");
-        map = mock(Provider.class);
-        event = mock(Provider.class);
-        help = mock(Provider.class);
-        player = mock(Provider.class);
+        map = mock(MapMenu.class);
+        event = mock(EventMenu.class);
+        help = mock(HelpMenu.class);
+        player = mock(PlayerMenu.class);
         informationMenu = new InformationMenu(config, secretsConfig, sessionService, buildInfo, menuService, map, event, help, player);
         informationMenu.init();
 
@@ -158,8 +158,7 @@ class InformationMenuTest {
     @Test
     @DisplayName("main help action uses route history and opens help menu")
     void main_helpActionUsesRouteHistoryAndOpensHelpMenu() {
-        HelpMenu helpMenu = mock(HelpMenu.class);
-        when(help.get()).thenReturn(helpMenu);
+        HelpMenu helpMenu = help;
 
         informationMenu.main("viewer-1");
         menuService.onMenuOption(session, 1);
@@ -172,8 +171,7 @@ class InformationMenuTest {
     @Test
     @DisplayName("main maps action uses route history and opens maps menu")
     void main_mapsActionUsesRouteHistoryAndOpensMapsMenu() {
-        MapMenu mapMenu = mock(MapMenu.class);
-        when(map.get()).thenReturn(mapMenu);
+        MapMenu mapMenu = map;
 
         informationMenu.main("viewer-1");
         menuService.onMenuOption(session, 2);
@@ -186,8 +184,7 @@ class InformationMenuTest {
     @Test
     @DisplayName("main players action uses route history and opens players menu")
     void main_playersActionUsesRouteHistoryAndOpensPlayersMenu() {
-        PlayerMenu playerMenu = mock(PlayerMenu.class);
-        when(player.get()).thenReturn(playerMenu);
+        PlayerMenu playerMenu = player;
 
         informationMenu.main("viewer-1");
         menuService.onMenuOption(session, 3);
@@ -209,14 +206,12 @@ class InformationMenuTest {
         when(localSessionService.get("viewer-1")).thenReturn(localSession);
 
         EventMenu eventMenu = mock(EventMenu.class);
-        Provider<EventMenu> localEvent = mock(Provider.class);
-        when(localEvent.get()).thenReturn(eventMenu);
 
         TomlXcoreConfig eventConfig = new TomlXcoreConfig();
         eventConfig.server.name = "event";
         BuildInfo buildInfo = new BuildInfo();
         buildInfo.setVersion("test-version");
-        InformationMenu eventInformationMenu = new InformationMenu(eventConfig, secretsConfig, localSessionService, buildInfo, localMenuService, map, localEvent, help, player);
+        InformationMenu eventInformationMenu = new InformationMenu(eventConfig, secretsConfig, localSessionService, buildInfo, localMenuService, map, eventMenu, help, player);
         eventInformationMenu.init();
 
         eventInformationMenu.main("viewer-1");
@@ -239,14 +234,12 @@ class InformationMenuTest {
         when(localSessionService.get("viewer-1")).thenReturn(localSession);
 
         EventMenu eventMenu = mock(EventMenu.class);
-        Provider<EventMenu> localEvent = mock(Provider.class);
-        when(localEvent.get()).thenReturn(eventMenu);
 
         TomlXcoreConfig eventConfig = new TomlXcoreConfig();
         eventConfig.server.name = "event";
         BuildInfo buildInfo = new BuildInfo();
         buildInfo.setVersion("test-version");
-        InformationMenu eventInformationMenu = new InformationMenu(eventConfig, secretsConfig, localSessionService, buildInfo, localMenuService, map, localEvent, help, player);
+        InformationMenu eventInformationMenu = new InformationMenu(eventConfig, secretsConfig, localSessionService, buildInfo, localMenuService, map, eventMenu, help, player);
         eventInformationMenu.init();
 
         eventInformationMenu.main("viewer-1");

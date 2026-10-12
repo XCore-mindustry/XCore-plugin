@@ -50,12 +50,12 @@ public class LadderViews {
     private final SeasonText text;
     private final LadderProgressText progressText;
 
-    @Inject
     public LadderViews(SeasonStore seasons, SeasonResolver resolver, SeasonSchedule schedule,
                        PlayerDataRepository players, PrizeGrantRepository grants) {
         this(seasons, resolver, schedule, players, grants, Clock.systemUTC());
     }
 
+    @Inject
     public LadderViews(SeasonStore seasons, SeasonResolver resolver, SeasonSchedule schedule,
                        @Nullable PlayerDataRepository players, PrizeGrantRepository grants, Clock clock) {
         this.seasons = Objects.requireNonNull(seasons, "seasons");

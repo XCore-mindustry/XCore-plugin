@@ -44,7 +44,6 @@ public class MatchHistoryMenu {
     private final Async async;
     private final Clock clock;
 
-    @Inject
     public MatchHistoryMenu(LadderService ladders,
                             SeasonAnnouncer announcer,
                             LadderViews views,
@@ -56,6 +55,7 @@ public class MatchHistoryMenu {
         this(ladders, announcer, views, presenters, playerMenu, menuService, sessionService, async, Clock.systemUTC());
     }
 
+    @Inject
     public MatchHistoryMenu(LadderService ladders,
                             SeasonAnnouncer announcer,
                             LadderViews views,

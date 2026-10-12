@@ -89,9 +89,10 @@ public class SeasonLifecycleService implements LadderSeasons {
                                   PluginIdempotencyLedgerFactory ledgerFactory,
                                   AuditService audit,
                                   TomlSecretsConfig config,
-                                  Async async) {
+                                  Async async,
+                                  Clock clock) {
         this(store, resolver, schedule, finalizer, prizes, ledgerFactory.create(LEDGER_ID), audit, config, async,
-                Clock.systemUTC());
+                clock);
     }
 
     public SeasonLifecycleService(SeasonStore store,

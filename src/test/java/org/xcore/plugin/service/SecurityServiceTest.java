@@ -267,12 +267,7 @@ class SecurityServiceTest {
 
         @Override
         public void build(Builder builder) {
-            if (builder.isBeanAbsent(SecurityService.class)) {
-                builder.register(new SecurityService(
-                        builder.get(MuteDataRepository.class),
-                        () -> builder.get(SessionService.class)
-                ));
-            }
+            SecurityService$DI.build(builder);
         }
     }
 }
