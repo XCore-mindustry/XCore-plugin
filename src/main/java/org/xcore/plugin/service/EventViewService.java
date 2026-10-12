@@ -4,8 +4,8 @@ import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import org.bson.types.ObjectId;
 import org.xcore.plugin.common.CustomGatherers;
-import org.xcore.plugin.common.StatusEnum;
 import org.xcore.plugin.database.repository.EventDataRepository;
+import org.xcore.plugin.database.repository.EventDataRepository.Listing;
 import org.xcore.plugin.database.repository.MapDataRepository;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
 import org.xcore.plugin.model.EventData;
@@ -13,7 +13,6 @@ import org.xcore.plugin.model.MapData;
 import org.xcore.plugin.model.PlayerData;
 
 import java.util.List;
-import java.util.Map;
 
 @Singleton
 public class EventViewService {
@@ -46,15 +45,16 @@ public class EventViewService {
         return eventDataRepository.findById(id);
     }
 
-    public EventPage page(int requestedPage, int perPage, Map<String, StatusEnum> filters) {
-        int total = (int) eventDataRepository.count(filters);
+    /** @param author whose events {@link Listing#MINE} lists; ignored by the other listings */
+    public EventPage page(int requestedPage, int perPage, Listing listing, ObjectId author) {
+        int total = (int) eventDataRepository.count(listing, author);
         var pagination = CustomGatherers.calculatePagination(total, perPage);
         if (total == 0) {
             return new EventPage(List.of(), total, 1, pagination.totalPages());
         }
         int validPage = pagination.clampPage(requestedPage);
         int skip = (validPage - 1) * perPage;
-        List<EventData> events = eventDataRepository.findPage(skip, perPage, filters);
+        List<EventData> events = eventDataRepository.findPage(listing, author, skip, perPage);
         return new EventPage(events, total, validPage, pagination.totalPages());
     }
 

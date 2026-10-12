@@ -1,24 +1,27 @@
 package org.xcore.plugin.ui;
 
-import com.ospx.flubundle.Bundle;
 import arc.files.Fi;
 import arc.struct.Seq;
 import arc.struct.StringMap;
+import com.ospx.flubundle.Bundle;
 import jakarta.inject.Provider;
 import mindustry.core.GameState;
 import mindustry.game.Gamemode;
 import mindustry.gen.Player;
-import mindustry.maps.Map;
 import mindustry.net.NetConnection;
+import mindustry.ui.builder.MenuResult;
 import org.bson.types.ObjectId;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
+import org.xcore.plugin.concurrent.Async;
+import org.xcore.plugin.concurrent.InlineStorageExecutor;
+import org.xcore.plugin.concurrent.StorageExecutor;
 import org.xcore.plugin.config.TomlSecretsConfig;
-import org.xcore.plugin.config.TomlXcoreConfig;
-import org.xcore.plugin.common.StatusEnum;
 import org.xcore.plugin.database.repository.EventDataRepository;
+import org.xcore.plugin.database.repository.EventDataRepository.Listing;
 import org.xcore.plugin.database.repository.MapDataRepository;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
 import org.xcore.plugin.localization.Localization;
@@ -26,6 +29,8 @@ import org.xcore.plugin.model.EventData;
 import org.xcore.plugin.model.MapData;
 import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.service.EventEditorService;
+import org.xcore.plugin.service.EventEditorService.Draft;
+import org.xcore.plugin.service.EventEditorService.MapChoice;
 import org.xcore.plugin.service.EventService;
 import org.xcore.plugin.service.EventViewService;
 import org.xcore.plugin.service.MapService;
@@ -33,16 +38,35 @@ import org.xcore.plugin.session.Session;
 import org.xcore.plugin.session.SessionService;
 import org.xcore.plugin.ui.menu.EventMenu;
 import org.xcore.plugin.ui.menu.MapMenu;
-import org.xcore.plugin.ui.route.MenuRoute;
+import org.xcore.plugin.ui.menu.event.EventUiBackend;
+import org.xcore.plugin.ui.menu.event.EventUiController;
+import org.xcore.plugin.ui.menu.event.EventUiModel;
+import org.xcore.plugin.ui.menu.event.EventUiModel.Catalog;
+import org.xcore.plugin.ui.menu.event.EventUiModel.Tab;
+import org.xcore.plugin.ui.menu.event.EventUiModel.View;
+import org.xcore.plugin.ui.menu.event.EventUiModel.Viewer;
+import org.xcore.plugin.ui.menu.event.EventUiModel.VoteState;
+import org.xcore.plugin.vote.VoteEvent;
 import org.xcore.plugin.vote.VoteService;
+import org.xcore.plugin.vote.VoteSession;
 
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneOffset;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Deque;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
+import java.util.concurrent.Callable;
+import java.util.concurrent.CompletableFuture;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -54,6 +78,8 @@ import static org.mockito.Mockito.when;
 
 class EventMenuTest {
 
+    private static final Clock CLOCK = Clock.fixed(Instant.parse("2026-10-16T14:52:30Z"), ZoneOffset.ofHours(3));
+
     private SessionService sessionService;
     private EventDataRepository eventDataRepository;
     private MapDataRepository mapDataRepository;
@@ -61,11 +87,11 @@ class EventMenuTest {
     private MapService mapService;
     private EventService eventService;
     private VoteService voteService;
-    private Provider<MapMenu> mapMenuProvider;
+    private MapMenu mapMenu;
     private MindustryMenuGateway gateway;
     private MenuService menuService;
+    private Deque<Runnable> mainThread;
     private EventMenu eventMenu;
-    private MapMenu mapMenu;
     private Session session;
     private TomlSecretsConfig secretsConfig;
     private GameState originalState;
@@ -80,7 +106,7 @@ class EventMenuTest {
         mapService = mock(MapService.class);
         eventService = mock(EventService.class);
         voteService = mock(VoteService.class);
-        mapMenuProvider = mock(Provider.class);
+        mapMenu = mock(MapMenu.class);
         gateway = mock(MindustryMenuGateway.class);
 
         Provider<SessionService> sessionProvider = mock(Provider.class);
@@ -90,35 +116,8 @@ class EventMenuTest {
         secretsConfig = new TomlSecretsConfig();
         secretsConfig.pagination.eventsPerPage = 10;
         secretsConfig.pagination.mapsPerPage = 10;
-        EventEditorService eventEditorService = new EventEditorService(eventDataRepository, mapDataRepository, playerDataRepository);
-        EventViewService eventViewService = new EventViewService(eventDataRepository, mapDataRepository, playerDataRepository);
-        eventMenu = new EventMenu(
-                secretsConfig,
-                sessionService,
-                mapService,
-                eventService,
-                eventEditorService,
-                eventViewService,
-                voteService,
-                mapMenuProvider,
-                menuService
-        );
-        eventMenu.init();
-
-        Provider<EventMenu> eventMenuProvider = mock(Provider.class);
-        when(eventMenuProvider.get()).thenReturn(eventMenu);
-        mapMenu = new MapMenu(
-                new TomlXcoreConfig(),
-                secretsConfig,
-                sessionService,
-                mapDataRepository,
-                eventDataRepository,
-                mapService,
-                eventMenuProvider,
-                menuService
-        );
-        mapMenu.init();
-        when(mapMenuProvider.get()).thenReturn(mapMenu);
+        mainThread = new ArrayDeque<>();
+        eventMenu = eventMenu(InlineStorageExecutor.create());
 
         originalState = mindustry.Vars.state;
         mindustry.Vars.state = new GameState();
@@ -130,9 +129,10 @@ class EventMenuTest {
         when(sessionService.get(session.data.uuid)).thenReturn(session);
 
         when(eventDataRepository.findActive()).thenReturn(Optional.empty());
-        when(eventDataRepository.count(anyMapOfStatus())).thenReturn(0L);
-        when(eventDataRepository.findPage(anyInt(), anyInt(), any())).thenReturn(List.of());
-        when(eventDataRepository.findById(any(ObjectId.class))).thenReturn(null);
+        when(eventDataRepository.count(any(Listing.class), any())).thenReturn(0L);
+        when(eventDataRepository.findPage(any(Listing.class), any(), anyInt(), anyInt())).thenReturn(List.of());
+        when(eventDataRepository.save(any(EventData.class))).thenReturn(true);
+        when(mapService.getAvailableMaps()).thenReturn(Seq.with(createMap("Caldera"), createMap("Frozen Forest")));
     }
 
     @AfterEach
@@ -140,498 +140,11 @@ class EventMenuTest {
         mindustry.Vars.state = originalState;
     }
 
-    @Test
-    @DisplayName("createStart opens active prompt via gateway textInput, sets draft author and map, and does not set textHandler")
-    void createStart_opensPromptAndSetsDraft() {
-        MapData map = new MapData();
-        map.id = new ObjectId();
-
-        eventMenu.createStart(session.data.uuid, map);
-
-        EventData draft = session.getDraft(EventData.class);
-        assertThat(draft.author).isEqualTo(session.data.id);
-        assertThat(draft.map).isEqualTo(map.id);
-        assertThat(session.textHandler).isNull();
-        assertThat(session.activePrompt()).isNotNull();
-        assertThat(session.activeScreen()).isNotNull();
-        assertThat(session.activeScreen().hasRoute()).isTrue();
-        assertThat(session.activeScreen().route()).isEqualTo(MenuRoute.of("event.create-start"));
-        verify(gateway).textInput(eq(session.player), eq(0), eq("event-menu-create-start-title"), eq("event-menu-create-start-message"), eq(20), anyString(), eq(false));
-    }
-
-    @Test
-    @DisplayName("main createStart action opens prompt without adding legacy history")
-    void main_createStartAction_opensPromptWithoutAddingLegacyHistory() {
-        eventMenu.main(session.data.uuid);
-
-        menuService.onMenuOption(session, 1);
-
-        assertThat(session.hasHistory()).isFalse();
-        assertThat(session.activePrompt()).isNotNull();
-    }
-
-    @Test
-    @DisplayName("createStart submit sets draft name and returns to edit screen with no active prompt")
-    void createStart_submit_setsNameAndReturnsToEdit() {
-        MapData map = new MapData();
-        map.id = new ObjectId();
-
-        eventMenu.createStart(session.data.uuid, map);
-        assertThat(session.activePrompt()).isNotNull();
-
-        menuService.onTextInput(session, "My Event");
-
-        EventData draft = session.getDraft(EventData.class);
-        assertThat(draft.name).isEqualTo("My Event");
-        assertThat(session.activePrompt()).isNull();
-        assertThat(session.activeScreen()).isNotNull();
-        assertThat(session.activeScreen().hasRoute()).isTrue();
-        assertThat(session.activeScreen().route()).isEqualTo(MenuRoute.of("event.edit"));
-    }
-
-    @Test
-    @DisplayName("createStart cancel clears draft and leaves no active prompt or textHandler")
-    void createStart_cancel_clearsDraftAndPrompt() {
-        MapData map = new MapData();
-        map.id = new ObjectId();
-
-        eventMenu.createStart(session.data.uuid, map);
-        assertThat(session.activePrompt()).isNotNull();
-
-        menuService.onTextInput(session, null);
-
-        assertThat(session.activePrompt()).isNull();
-        assertThat(session.textHandler).isNull();
-        assertThat(session.hasDraft(EventData.class)).isFalse();
-        assertThat(session.activeScreen()).isNotNull();
-    }
-
-    @Test
-    @DisplayName("edit name prompt submit mutates draft name, clears active prompt, leaves textHandler null")
-    void editName_submit_mutatesDraftName() {
-        EventData draft = new EventData();
-        draft.name = "Old";
-        draft.author = session.data.id;
-        session.setDraft(EventData.class, draft);
-
-        eventMenu.edit(session.data.uuid);
-        menuService.onMenuOption(session, 0);
-
-        assertThat(session.activePrompt()).isNotNull();
-        assertThat(session.textHandler).isNull();
-        verify(gateway).textInput(eq(session.player), eq(0), eq("event-menu-edit-name-title"), eq(""), eq(24), eq("Old"), eq(false));
-
-        menuService.onTextInput(session, "New Name");
-
-        assertThat(draft.name).isEqualTo("New Name");
-        assertThat(session.activePrompt()).isNull();
-        assertThat(session.textHandler).isNull();
-        assertThat(session.activeScreen()).isNotNull();
-        assertThat(session.activeScreen().hasRoute()).isTrue();
-        assertThat(session.activeScreen().route()).isEqualTo(MenuRoute.of("event.edit"));
-    }
-
-    @Test
-    @DisplayName("edit description prompt submit mutates draft description")
-    void editDescription_submit_mutatesDraftDescription() {
-        EventData draft = new EventData();
-        draft.name = "Event";
-        draft.author = session.data.id;
-        session.setDraft(EventData.class, draft);
-
-        eventMenu.edit(session.data.uuid);
-        menuService.onMenuOption(session, 1);
-
-        assertThat(session.activePrompt()).isNotNull();
-        verify(gateway).textInput(eq(session.player), eq(0), eq("event-menu-edit-description-title"), eq(""), eq(1000), eq("Unknown"), eq(false));
-
-        menuService.onTextInput(session, "New Desc");
-
-        assertThat(draft.description).isEqualTo("New Desc");
-        assertThat(session.activePrompt()).isNull();
-        assertThat(session.textHandler).isNull();
-    }
-
-    @Test
-    @DisplayName("planned start and end open picker and apply values through routed flow")
-    void plannedStartEnd_picker_appliesValues() {
-        EventData draft = new EventData();
-        draft.name = "Event";
-        draft.author = session.data.id;
-        draft.plannedEndTime = 999L;
-        session.setDraft(EventData.class, draft);
-
-        eventMenu.edit(session.data.uuid);
-
-        // planned start is option 3 and opens the shared picker route
-        menuService.onMenuOption(session, 3);
-        assertThat(session.activeScreen()).isNotNull();
-        assertThat(session.activeScreen().route()).isEqualTo(MenuRoute.of("shared.datetime-picker"));
-        assertThat(session.hasRouteHistory()).isTrue();
-
-        // picker option 0 = Today, option 15 = Apply
-        menuService.onMenuOption(session, 0);
-        menuService.onMenuOption(session, 15);
-        assertThat(draft.plannedStartTime).isGreaterThan(0L);
-        assertThat(session.activeScreen()).isNotNull();
-        assertThat(session.activeScreen().route()).isEqualTo(MenuRoute.of("event.edit"));
-
-        // planned end is option 4 and uses reset/apply to write zero back into the draft
-        menuService.onMenuOption(session, 4);
-        assertThat(session.activeScreen()).isNotNull();
-        assertThat(session.activeScreen().route()).isEqualTo(MenuRoute.of("shared.datetime-picker"));
-
-        // picker option 16 = Reset, option 15 = Apply
-        menuService.onMenuOption(session, 16);
-        menuService.onMenuOption(session, 15);
-        assertThat(draft.plannedEndTime).isEqualTo(0L);
-        assertThat(session.activeScreen()).isNotNull();
-        assertThat(session.activeScreen().route()).isEqualTo(MenuRoute.of("event.edit"));
-    }
-
-    @Test
-    @DisplayName("main renders routed screen with route metadata")
-    void main_rendersRoutedScreenWithRouteMetadata() {
-        eventMenu.main(session.data.uuid);
-
-        assertThat(session.activeScreen()).isNotNull();
-        assertThat(session.activeScreen().hasRoute()).isTrue();
-        assertThat(session.activeScreen().route()).isEqualTo(MenuRoute.of("event.main"));
-        verify(gateway).menu(eq(session.player), eq(0), eq("event-menu-main-title"), eq("event-menu-main-content"), any());
-    }
-
-    @Test
-    @DisplayName("main events action opens routed events via route history")
-    void main_eventsAction_opensRoutedEventsViaRouteHistory() {
-        eventMenu.main(session.data.uuid);
-
-        menuService.onMenuOption(session, 0);
-
-        assertThat(session.hasHistory()).isFalse();
-        assertThat(session.hasRouteHistory()).isTrue();
-        assertThat(session.activeScreen()).isNotNull();
-        assertThat(session.activeScreen().hasRoute()).isTrue();
-        assertThat(session.activeScreen().route()).isEqualTo(MenuRoute.of("event.events").withParam("page", "1"));
-    }
-
-    @Test
-    @DisplayName("events empty renders routed screen with empty content")
-    void events_empty_rendersRoutedEmptyScreen() {
-        eventMenu.events(session.data.uuid, 1);
-
-        assertThat(session.activeScreen()).isNotNull();
-        assertThat(session.activeScreen().hasRoute()).isTrue();
-        assertThat(session.activeScreen().route()).isEqualTo(MenuRoute.of("event.events").withParam("page", "1"));
-        verify(gateway).menu(eq(session.player), eq(0), eq("event-menu-events-title"), eq("event-menu-events-empty"), any());
-    }
-
-    @Test
-    @DisplayName("events with events renders page and lists events")
-    void events_withEvents_rendersPageWithEvents() {
-        EventData event1 = new EventData();
-        event1.id = new ObjectId();
-        event1.name = "Event One";
-        event1.isActive = false;
-
-        when(eventDataRepository.count(anyMapOfStatus())).thenReturn(1L);
-        when(eventDataRepository.findPage(anyInt(), anyInt(), any())).thenReturn(List.of(event1));
-
-        eventMenu.events(session.data.uuid, 1);
-
-        assertThat(session.activeScreen()).isNotNull();
-        assertThat(session.activeScreen().route()).isEqualTo(MenuRoute.of("event.events").withParam("page", "1"));
-        assertThat(session.activeScreen().actionCount()).isGreaterThan(0);
-        verify(gateway).menu(eq(session.player), eq(0), eq("event-menu-events-title"), eq("event-menu-events-content"), any());
-    }
-
-    @Test
-    @DisplayName("events next page navigation renders second page")
-    void events_nextPage_rendersSecondPage() {
-        EventData event1 = new EventData();
-        event1.id = new ObjectId();
-        event1.name = "Event One";
-
-        EventData event2 = new EventData();
-        event2.id = new ObjectId();
-        event2.name = "Event Two";
-
-        secretsConfig.pagination.eventsPerPage = 1;
-        when(eventDataRepository.count(anyMapOfStatus())).thenReturn(2L);
-        when(eventDataRepository.findPage(anyInt(), anyInt(), any())).thenReturn(List.of(event1), List.of(event2));
-
-        eventMenu.events(session.data.uuid, 1);
-
-        // rows: filters (0..2), next (3), event1 (4), main (5), close (6)
-        menuService.onMenuOption(session, 3);
-
-        assertThat(session.activeScreen()).isNotNull();
-        assertThat(session.activeScreen().route()).isEqualTo(MenuRoute.of("event.events").withParam("page", "2"));
-        verify(gateway, times(2)).menu(eq(session.player), eq(0), eq("event-menu-events-title"), anyString(), any());
-    }
-
-    @Test
-    @DisplayName("events status toggle changes filter and resets to page 1")
-    void events_statusToggle_changesFilter() {
-        eventMenu.events(session.data.uuid, 2);
-
-        // rows: filters (0..2), main (3), close (4)
-        menuService.onMenuOption(session, 0);
-
-        assertThat(session.sortStatus.get("finished")).isEqualTo(StatusEnum.Active);
-        assertThat(session.activeScreen().route()).isEqualTo(MenuRoute.of("event.events").withParam("page", "1"));
-    }
-
-    @Test
-    @DisplayName("events click event opens routed event detail and back returns to events")
-    void events_clickEvent_opensRoutedEventAndBackReturnsToEvents() {
-        EventData event1 = new EventData();
-        event1.id = new ObjectId();
-        event1.name = "Event One";
-        event1.author = session.data.id;
-
-        when(eventDataRepository.count(anyMapOfStatus())).thenReturn(1L);
-        when(eventDataRepository.findPage(anyInt(), anyInt(), any())).thenReturn(List.of(event1));
-        when(eventDataRepository.findById(event1.id)).thenReturn(event1);
-
-        eventMenu.events(session.data.uuid, 1);
-
-        // rows: filters (0..2), event1 (3), main (4), back (5), close (6)
-        menuService.onMenuOption(session, 3);
-
-        assertThat(session.hasHistory()).isFalse();
-        assertThat(session.hasRouteHistory()).isTrue();
-        assertThat(session.activeScreen()).isNotNull();
-        assertThat(session.activeScreen().hasRoute()).isTrue();
-        assertThat(session.activeScreen().route()).isEqualTo(MenuRoute.of("event.details").withParam("eventId", event1.id.toHexString()));
-
-        menuService.goBack(session);
-
-        assertThat(session.activeScreen()).isNotNull();
-        assertThat(session.activeScreen().hasRoute()).isTrue();
-        assertThat(session.activeScreen().route()).isEqualTo(MenuRoute.of("event.events").withParam("page", "1"));
-    }
-
-    @Test
-    @DisplayName("event renders routed screen with route metadata")
-    void event_rendersRoutedScreenWithRouteMetadata() {
-        EventData event = new EventData();
-        event.id = new ObjectId();
-        event.name = "Event One";
-        event.author = session.data.id;
-
-        when(eventDataRepository.findById(event.id)).thenReturn(event);
-
-        eventMenu.event(session.data.uuid, event);
-
-        assertThat(session.activeScreen()).isNotNull();
-        assertThat(session.activeScreen().hasRoute()).isTrue();
-        assertThat(session.activeScreen().route()).isEqualTo(MenuRoute.of("event.details").withParam("eventId", event.id.toHexString()));
-        verify(gateway).menu(eq(session.player), eq(0), eq("event-menu-event-title"), eq("event-menu-event-content"), any());
-    }
-
-    @Test
-    @DisplayName("event events action opens routed events via route history")
-    void event_eventsAction_opensRoutedEventsViaRouteHistory() {
-        EventData event = new EventData();
-        event.id = new ObjectId();
-        event.name = "Event One";
-        event.author = session.data.id;
-
-        when(eventDataRepository.findById(event.id)).thenReturn(event);
-
-        eventMenu.event(session.data.uuid, event);
-
-        menuService.onMenuOption(session, 4);
-
-        assertThat(session.hasHistory()).isFalse();
-        assertThat(session.hasRouteHistory()).isTrue();
-        assertThat(session.activeScreen()).isNotNull();
-        assertThat(session.activeScreen().hasRoute()).isTrue();
-        assertThat(session.activeScreen().route()).isEqualTo(MenuRoute.of("event.events").withParam("page", "1"));
-    }
-
-    @Test
-    @DisplayName("event edit action opens legacy edit without adding legacy history")
-    void event_editAction_opensRoutedEditWithoutAddingLegacyHistory() {
-        EventData event = new EventData();
-        event.id = new ObjectId();
-        event.name = "Event One";
-        event.author = session.data.id;
-
-        when(eventDataRepository.findById(event.id)).thenReturn(event);
-
-        eventMenu.event(session.data.uuid, event);
-
-        menuService.onMenuOption(session, 3);
-
-        assertThat(session.hasHistory()).isFalse();
-        assertThat(session.activeScreen()).isNotNull();
-        assertThat(session.activeScreen().hasRoute()).isTrue();
-        assertThat(session.activeScreen().route()).isEqualTo(MenuRoute.of("event.edit"));
-        assertThat(session.hasDraft(EventData.class)).isTrue();
-        assertThat(session.getDraft(EventData.class)).isSameAs(event);
-    }
-
-    @Test
-    @DisplayName("edit renders routed screen with route metadata")
-    void edit_rendersRoutedScreenWithRouteMetadata() {
-        EventData draft = new EventData();
-        draft.name = "Event";
-        draft.author = session.data.id;
-        session.setDraft(EventData.class, draft);
-
-        eventMenu.edit(session.data.uuid);
-
-        assertThat(session.activeScreen()).isNotNull();
-        assertThat(session.activeScreen().hasRoute()).isTrue();
-        assertThat(session.activeScreen().route()).isEqualTo(MenuRoute.of("event.edit"));
-        verify(gateway).menu(eq(session.player), eq(0), eq("event-menu-edit-title"), eq("event-menu-edit-content"), any());
-    }
-
-    @Test
-    @DisplayName("edit map action opens routed map selection via route history")
-    void edit_mapAction_opensRoutedMapSelectionViaRouteHistory() {
-        EventData draft = new EventData();
-        draft.name = "Event";
-        draft.author = session.data.id;
-        session.setDraft(EventData.class, draft);
-        when(mapService.getAvailableMaps()).thenReturn(Seq.with(createMap("Map1")));
-
-        eventMenu.edit(session.data.uuid);
-
-        menuService.onMenuOption(session, 2);
-
-        assertThat(session.hasHistory()).isFalse();
-        assertThat(session.hasRouteHistory()).isTrue();
-        assertThat(session.activeScreen()).isNotNull();
-        assertThat(session.activeScreen().hasRoute()).isTrue();
-        assertThat(session.activeScreen().route()).isEqualTo(MenuRoute.of("event.map-selection").withParam("page", "1"));
-    }
-
-    @Test
-    @DisplayName("map selection choosing map updates draft and returns to routed edit")
-    void mapSelection_chooseMap_updatesDraftAndReturnsToRoutedEdit() {
-        EventData draft = new EventData();
-        draft.name = "Event";
-        draft.author = session.data.id;
-        session.setDraft(EventData.class, draft);
-
-        MapData selectedMap = new MapData("Map1", "Map1.msav", "author", "pvp");
-        selectedMap.id = new ObjectId();
-        when(mapService.getAvailableMaps()).thenReturn(Seq.with(createMap("Map1")));
-        when(mapDataRepository.findOrCreate("Map1", "Map1.msav", "author", "pvp")).thenReturn(selectedMap);
-        when(mapDataRepository.findById(selectedMap.id)).thenReturn(selectedMap);
-
-        eventMenu.edit(session.data.uuid);
-        menuService.onMenuOption(session, 2);
-        menuService.onMenuOption(session, 0);
-
-        assertThat(draft.map).isEqualTo(selectedMap.id);
-        assertThat(session.hasHistory()).isFalse();
-        assertThat(session.activeScreen()).isNotNull();
-        assertThat(session.activeScreen().hasRoute()).isTrue();
-        assertThat(session.activeScreen().route()).isEqualTo(MenuRoute.of("event.edit"));
-    }
-
-    @Test
-    @DisplayName("map selection back returns to routed edit")
-    void mapSelection_back_returnsToRoutedEdit() {
-        EventData draft = new EventData();
-        draft.name = "Event";
-        draft.author = session.data.id;
-        session.setDraft(EventData.class, draft);
-        when(mapService.getAvailableMaps()).thenReturn(Seq.with(createMap("Map1")));
-
-        eventMenu.edit(session.data.uuid);
-        menuService.onMenuOption(session, 2);
-        menuService.onMenuOption(session, 1);
-
-        assertThat(session.activeScreen()).isNotNull();
-        assertThat(session.activeScreen().hasRoute()).isTrue();
-        assertThat(session.activeScreen().route()).isEqualTo(MenuRoute.of("event.edit"));
-    }
-
-    @Test
-    @DisplayName("event map action opens routed map via route history")
-    void event_mapAction_opensRoutedMapViaRouteHistory() {
-        EventData event = new EventData();
-        event.id = new ObjectId();
-        event.name = "Event One";
-        event.author = session.data.id;
-
-        MapData map = new MapData("Map One", "Map One.msav", "author", "pvp");
-        map.id = new ObjectId();
-        event.map = map.id;
-
-        when(eventDataRepository.findById(event.id)).thenReturn(event);
-        when(mapDataRepository.findById(map.id)).thenReturn(map);
-
-        eventMenu.event(session.data.uuid, event);
-
-        menuService.onMenuOption(session, 3);
-
-        assertThat(session.hasHistory()).isFalse();
-        assertThat(session.hasRouteHistory()).isTrue();
-        assertThat(session.activeScreen()).isNotNull();
-        assertThat(session.activeScreen().hasRoute()).isTrue();
-        assertThat(session.activeScreen().route()).isEqualTo(MenuRoute.of("map.details").withParam("mapId", map.id.toHexString()));
-    }
-
-    @Test
-    @DisplayName("event not found renders routed fallback screen")
-    void event_notFoundRendersRoutedFallbackScreen() {
-        ObjectId missingId = new ObjectId();
-        EventData event = new EventData();
-        event.id = missingId;
-
-        when(eventDataRepository.findById(missingId)).thenReturn(null);
-
-        eventMenu.event(session.data.uuid, event);
-
-        assertThat(session.activeScreen()).isNotNull();
-        assertThat(session.activeScreen().hasRoute()).isTrue();
-        assertThat(session.activeScreen().route()).isEqualTo(MenuRoute.of("event.details").withParam("eventId", missingId.toHexString()));
-        verify(gateway).menu(eq(session.player), eq(0), eq("event-menu-event-title"), eq("error-internal"), any());
-    }
-
-    private EventData activeEvent() {
-        EventData active = new EventData();
-        active.id = new ObjectId();
-        active.name = "Running";
-        active.isActive = true;
-        when(eventDataRepository.findActive()).thenReturn(Optional.of(active));
-        return active;
-    }
-
-    @Test
-    @DisplayName("the stop button is offered to an admin only and stops the event")
-    void main_stop_adminOnly() {
-        activeEvent();
-
-        eventMenu.main(session.data.uuid);
-        int withoutStop = session.activeScreen().actionCount();
-
-        session.player.admin = true;
-        eventMenu.main(session.data.uuid);
-        assertThat(session.activeScreen().actionCount()).isEqualTo(withoutStop + 1);
-
-        menuService.onMenuOption(session, 3);
-
-        verify(eventService).finishActiveEvent();
-    }
-
-    @Test
-    @DisplayName("a stop button left open from before the admin was demoted does nothing")
-    void main_stop_recheckedOnClick() {
-        activeEvent();
-        session.player.admin = true;
-        eventMenu.main(session.data.uuid);
-
-        session.player.admin = false;
-        menuService.onMenuOption(session, 3);
-
-        verify(eventService, never()).finishActiveEvent();
-        verify(session.localization).send("error-access-denied");
+    private EventMenu eventMenu(StorageExecutor storage) {
+        return new EventMenu(secretsConfig, sessionService, mapService, eventService,
+                new EventEditorService(eventDataRepository, mapDataRepository),
+                new EventViewService(eventDataRepository, mapDataRepository, playerDataRepository),
+                voteService, () -> mapMenu, null, menuService, new Async(storage, mainThread::add), CLOCK);
     }
 
     private Session session() {
@@ -640,14 +153,9 @@ class EventMenuTest {
         PlayerData data = new PlayerData("test-uuid", true);
         data.uuid = "test-uuid";
         data.id = new ObjectId();
-        Session session = new Session(
-                new TomlSecretsConfig(),
-                mock(Bundle.class),
-                menuService,
-                mock(PlayerDataRepository.class),
-                player,
-                data
-        );
+        data.nickname = "ospx";
+        Session session = new Session(new TomlSecretsConfig(), mock(Bundle.class), menuService,
+                mock(PlayerDataRepository.class), player, data);
         Localization localization = mock(Localization.class);
         when(localization.t(anyString())).thenAnswer(invocation -> invocation.getArgument(0));
         when(localization.t(anyString(), anyMap())).thenAnswer(invocation -> invocation.getArgument(0));
@@ -658,18 +166,350 @@ class EventMenuTest {
         return session;
     }
 
-    private mindustry.maps.Map createMap(String name) {
-        return new mindustry.maps.Map(
-                new Fi(name + ".msav"),
-                100,
-                100,
-                StringMap.of("name", name, "author", "author"),
-                true
-        );
+    private static mindustry.maps.Map createMap(String name) {
+        return new mindustry.maps.Map(new Fi(name + ".msav"), 100, 100,
+                StringMap.of("name", name, "author", "author"), true);
     }
 
-    @SuppressWarnings("unchecked")
-    private static java.util.Map<String, StatusEnum> anyMapOfStatus() {
-        return any(java.util.Map.class);
+    private List<EventData> stored(int count) {
+        List<EventData> events = new ArrayList<>();
+        for (int i = 0; i < count; i++) {
+            EventData event = new EventData();
+            event.id = new ObjectId();
+            event.name = "Event " + i;
+            event.author = session.data.id;
+            events.add(event);
+        }
+        return events;
+    }
+
+    private void settle() {
+        while (!mainThread.isEmpty()) {
+            mainThread.poll().run();
+        }
+    }
+
+    private EventUiModel shown() {
+        assertThat(session.hasActiveUiSession()).isTrue();
+        return (EventUiModel) session.activeUiSession().model();
+    }
+
+    /** How often the client was sent the dialog, whole. */
+    private void verifyShown(int times) {
+        verify(gateway, times(times)).menuBuilder(eq(session.player), anyInt(), anyLong(), any(), eq(false), eq(true),
+                eq(true), any());
+    }
+
+    /** A press of the dialog the client has open, with what its fields hold. */
+    private void press(String action, String... fields) {
+        MenuResult result = new MenuResult(action);
+        result.token = session.activeUiSession().token();
+        for (int i = 0; i + 1 < fields.length; i += 2) {
+            result.values.put(fields[i], fields[i + 1]);
+        }
+        menuService.onMenuBuilderResult(session, result);
+        settle();
+    }
+
+    // =========================================================================
+    // Opening
+    // =========================================================================
+
+    @Test
+    @DisplayName("/event opens the list over the whole screen once the events have been read")
+    void main_opensTheListOnceRead() {
+        List<EventData> events = stored(3);
+        when(eventDataRepository.count(Listing.UPCOMING, session.data.id)).thenReturn(3L);
+        when(eventDataRepository.findPage(Listing.UPCOMING, session.data.id, 0, 10)).thenReturn(events);
+
+        eventMenu.main(session.data.uuid);
+        verify(gateway, never()).menuBuilder(any(), anyInt(), anyLong(), any(), anyBoolean(), anyBoolean(),
+                anyBoolean(), any());
+
+        settle();
+        verifyShown(1);
+        assertThat(shown().view()).isEqualTo(View.LIST);
+        assertThat(shown().catalog().tab()).isEqualTo(Tab.UPCOMING);
+        assertThat(shown().catalog().events()).isEqualTo(events);
+        assertThat(shown().viewer().id()).isEqualTo(session.data.id);
+    }
+
+    @Test
+    @DisplayName("/events opens the list on the page asked for")
+    void events_opensOnThePage() {
+        List<EventData> events = stored(5);
+        when(eventDataRepository.count(Listing.UPCOMING, session.data.id)).thenReturn(15L);
+        when(eventDataRepository.findPage(Listing.UPCOMING, session.data.id, 10, 10)).thenReturn(events);
+
+        eventMenu.events(session.data.uuid, 2);
+        settle();
+
+        assertThat(shown().catalog().page()).isEqualTo(2);
+        assertThat(shown().catalog().totalPages()).isEqualTo(2);
+        assertThat(shown().catalog().events()).isEqualTo(events);
+    }
+
+    @Test
+    @DisplayName("the list does not open over what the player opened while it was being read")
+    void main_yieldsToANewerMenu() {
+        eventMenu.main(session.data.uuid);
+        session.nextUiVersion();
+
+        settle();
+
+        assertThat(session.hasActiveUiSession()).isFalse();
+        verifyShown(0);
+    }
+
+    @Test
+    @DisplayName("events that could not be read are said so in the chat, and nothing opens")
+    void main_failedLoad() {
+        StorageExecutor failing = mock(StorageExecutor.class);
+        when(failing.supply(any(Callable.class)))
+                .thenReturn(CompletableFuture.failedFuture(new IllegalStateException("storage is down")));
+
+        eventMenu(failing).main(session.data.uuid);
+        settle();
+
+        verify(session.localization).send("event-ui-load-failed");
+        assertThat(session.hasActiveUiSession()).isFalse();
+        verifyShown(0);
+    }
+
+    @Test
+    @DisplayName("a player the server does not know gets no menu")
+    void main_unknownPlayer() {
+        eventMenu.main("nobody");
+        eventMenu.createStart("nobody", null);
+        settle();
+
+        verify(gateway, never()).menuBuilder(any(), anyInt(), anyLong(), any(), anyBoolean(), anyBoolean(),
+                anyBoolean(), any());
+    }
+
+    @Test
+    @DisplayName("an event made for a map opens in the editor with that map, and is kept with the player")
+    void createStart_opensTheEditor() {
+        MapData map = new MapData("Caldera", "Caldera.msav", "author", "pvp");
+        map.id = new ObjectId();
+
+        eventMenu.createStart(session.data.uuid, map);
+
+        verifyShown(1);
+        assertThat(shown().view()).isEqualTo(View.EDITOR);
+        assertThat(shown().editing().draft().map()).isEqualTo(MapChoice.of(map));
+        assertThat(shown().editing().maps()).extracting(MapChoice::name).containsExactly("Caldera", "Frozen Forest");
+        assertThat(session.getDraft(Draft.class).map().id()).isEqualTo(map.id);
+
+        eventMenu.createStart(session.data.uuid, null);
+        assertThat(shown().editing().draft().map().id()).isEqualTo(map.id);
+    }
+
+    // =========================================================================
+    // Through the dialog
+    // =========================================================================
+
+    @Test
+    @DisplayName("an event is written in the dialog and stored: its map gets a record, its author is the player")
+    void create_throughTheDialog() {
+        MapData record = new MapData("Frozen Forest", "Frozen Forest.msav", "author", "pvp");
+        record.id = new ObjectId();
+        when(mapDataRepository.findOrCreate("Frozen Forest", "Frozen Forest.msav", "author", "pvp")).thenReturn(record);
+        when(mapDataRepository.findById(record.id)).thenReturn(record);
+        ArgumentCaptor<EventData> saved = ArgumentCaptor.forClass(EventData.class);
+        // Storage gives a new event its id, as the driver does on an insert.
+        when(eventDataRepository.save(saved.capture())).thenAnswer(i -> {
+            i.<EventData>getArgument(0).id = new ObjectId();
+            return true;
+        });
+        when(eventDataRepository.findById(any(ObjectId.class))).thenAnswer(i -> saved.getValue());
+        eventMenu.main(session.data.uuid);
+        settle();
+
+        press("action:create");
+        assertThat(shown().view()).isEqualTo(View.EDITOR);
+
+        // Without a map the event is not stored, and the editor says what it lacks.
+        press("action:edit:save", "field_event_name", "Турнир", "field_event_description", "Командный");
+        assertThat(shown().feedback()).contains("event-ui-error-no-map");
+        verify(eventDataRepository, never()).save(any(EventData.class));
+
+        press("action:edit:map", "field_event_name", "Турнир", "field_event_description", "Командный");
+        assertThat(shown().view()).isEqualTo(View.MAPS);
+        press("action:maps:pick:1");
+        press("action:edit:temporary", "field_event_name", "Турнир", "field_event_description", "Командный");
+        press("action:edit:end", "field_event_name", "Турнир", "field_event_description", "Командный");
+        assertThat(shown().view()).isEqualTo(View.TIME);
+        press("action:time:set:plus_three_hours");
+        press("action:time:apply");
+        press("action:edit:save", "field_event_name", "Турнир", "field_event_description", "Командный");
+
+        EventData event = saved.getValue();
+        assertThat(event.name).isEqualTo("Турнир");
+        assertThat(event.description).isEqualTo("Командный");
+        assertThat(event.author).isEqualTo(session.data.id);
+        assertThat(event.map).isEqualTo(record.id);
+        assertThat(event.isTemporary).isTrue();
+        assertThat(event.plannedEndTime).isEqualTo(Instant.parse("2026-10-16T17:52:00Z").toEpochMilli());
+        assertThat(shown().view()).isEqualTo(View.DETAILS);
+        assertThat(shown().details().event()).isSameAs(event);
+        assertThat(shown().details().map()).isSameAs(record);
+        assertThat(shown().feedback()).contains("event-ui-saved");
+        assertThat(session.hasDraft(Draft.class)).isFalse();
+    }
+
+    @Test
+    @DisplayName("a dialog closed by the client is closed for the server too")
+    void closedDialog() {
+        eventMenu.main(session.data.uuid);
+        settle();
+
+        MenuResult closed = new MenuResult();
+        closed.token = session.activeUiSession().token();
+        menuService.onMenuBuilderResult(session, closed);
+
+        assertThat(session.hasActiveUiSession()).isFalse();
+    }
+
+    // =========================================================================
+    // What the menu asks of the server
+    // =========================================================================
+
+    @Test
+    @DisplayName("a page of a tab is read by its listing and comes with the event that runs")
+    void catalog() {
+        EventData active = new EventData();
+        active.id = new ObjectId();
+        active.isActive = true;
+        when(eventDataRepository.findActive()).thenReturn(Optional.of(active));
+        ObjectId viewer = new ObjectId();
+        List<EventData> events = stored(2);
+        when(eventDataRepository.count(Listing.PAST, viewer)).thenReturn(12L);
+        when(eventDataRepository.findPage(Listing.PAST, viewer, 10, 10)).thenReturn(events);
+
+        Catalog catalog = eventMenu.catalog(Tab.PAST, 2, new Viewer(viewer, false, false, false, false, false));
+
+        assertThat(catalog.tab()).isEqualTo(Tab.PAST);
+        assertThat(catalog.page()).isEqualTo(2);
+        assertThat(catalog.totalPages()).isEqualTo(2);
+        assertThat(catalog.total()).isEqualTo(12);
+        assertThat(catalog.events()).isEqualTo(events);
+        assertThat(catalog.active()).isSameAs(active);
+        assertThat(catalog.loaded()).isTrue();
+    }
+
+    @Test
+    @DisplayName("a player not stored yet has no events of their own, and storage is not searched by no author")
+    void catalog_mineWithoutId() {
+        Catalog catalog = eventMenu.catalog(Tab.MINE, 1, Viewer.GUEST);
+
+        assertThat(catalog.events()).isEmpty();
+        assertThat(catalog.loaded()).isTrue();
+        verify(eventDataRepository, never()).count(any(Listing.class), any());
+        verify(eventDataRepository, never()).findPage(any(Listing.class), any(), anyInt(), anyInt());
+    }
+
+    @Test
+    @DisplayName("an event is read with its map and the name its author goes by")
+    void event() {
+        EventData event = stored(1).getFirst();
+        MapData map = new MapData("Caldera", "Caldera.msav", "author", "pvp");
+        map.id = new ObjectId();
+        event.map = map.id;
+        PlayerData author = new PlayerData("author-uuid", true);
+        author.nickname = "plain";
+        when(eventDataRepository.findById(event.id)).thenReturn(event);
+        when(mapDataRepository.findById(map.id)).thenReturn(map);
+        when(playerDataRepository.findById(event.author)).thenReturn(author);
+
+        assertThat(eventMenu.event(event.id)).isEqualTo(new EventUiBackend.Stored(event, map, "plain"));
+
+        author.customNickname = "[gold]custom";
+        assertThat(eventMenu.event(event.id).author()).isEqualTo("[gold]custom");
+
+        when(playerDataRepository.findById(event.author)).thenReturn(null);
+        when(mapDataRepository.findById(map.id)).thenReturn(null);
+        assertThat(eventMenu.event(event.id)).isEqualTo(new EventUiBackend.Stored(event, null, ""));
+
+        assertThat(eventMenu.event(new ObjectId())).isNull();
+    }
+
+    @Test
+    @DisplayName("the votes are told apart: none, one for an event, one for something else")
+    void votes() throws Exception {
+        assertThat(eventMenu.votes()).isEqualTo(VoteState.NONE);
+        assertThat(eventMenu.votedEvent()).isNull();
+
+        when(voteService.isVoting()).thenReturn(true);
+        when(voteService.getCurrentSession()).thenReturn(mock(VoteSession.class));
+        assertThat(eventMenu.votes()).isEqualTo(new VoteState(true, null, "", 0, 0));
+        assertThat(eventMenu.votes().forEvent()).isFalse();
+        eventMenu.stopVote();
+        verify(voteService, never()).endVote();
+
+        EventData target = stored(1).getFirst();
+        VoteEvent vote = mock(VoteEvent.class);
+        var field = VoteEvent.class.getField("target");
+        field.setAccessible(true);
+        field.set(vote, target);
+        when(vote.votes()).thenReturn(2);
+        when(vote.votesRequired()).thenReturn(5);
+        when(voteService.getCurrentSession()).thenReturn(vote);
+
+        assertThat(eventMenu.votes()).isEqualTo(new VoteState(true, target.id.toHexString(), "Event 0", 2, 5));
+        assertThat(eventMenu.votes().isFor(target)).isTrue();
+        assertThat(eventMenu.votedEvent()).isSameAs(target);
+        eventMenu.stopVote();
+        verify(voteService).endVote();
+    }
+
+    @Test
+    @DisplayName("the maps an event can be given are the server's own, in the mode it plays")
+    void maps() {
+        assertThat(eventMenu.maps()).containsExactly(
+                new MapChoice(null, "Caldera", "Caldera.msav", "author", "pvp"),
+                new MapChoice(null, "Frozen Forest", "Frozen Forest.msav", "author", "pvp"));
+        assertThat(eventMenu.mapsPerPage()).isEqualTo(10);
+    }
+
+    @Test
+    @DisplayName("a vote, a rating and a stop go to the service that does them")
+    void delegates() {
+        EventData event = stored(1).getFirst();
+        when(eventService.handleReputation(session.player, true, event)).thenReturn(true);
+
+        eventMenu.startVote(session.player, event, true);
+        assertThat(eventMenu.rate(session.player, true, event)).isTrue();
+        assertThat(eventMenu.rate(session.player, false, event)).isFalse();
+        eventMenu.finishActiveEvent();
+
+        verify(eventService).startVoteSession(session.player, event, true);
+        verify(eventService).finishActiveEvent();
+    }
+
+    @Test
+    @DisplayName("the map of an event opens in the maps menu, and one the server lacks has no picture")
+    void map() {
+        MapData map = new MapData("Caldera", "Caldera.msav", "author", "pvp");
+
+        eventMenu.openMap(session, map);
+        verify(mapMenu).map(session.data.uuid, map);
+
+        assertThat(eventMenu.cachedPreview(map)).isNull();
+        List<Throwable> errors = new ArrayList<>();
+        eventMenu.requestPreview(session.player, map, (region, error) -> {
+            assertThat(region).isNull();
+            errors.add(error);
+        });
+        assertThat(errors).hasSize(1);
+    }
+
+    @Test
+    @DisplayName("the menu is laid out by the controller of its own session")
+    void controller() {
+        eventMenu.main(session.data.uuid);
+        settle();
+
+        assertThat(EventUiController.viewer(session)).isEqualTo(shown().viewer());
     }
 }

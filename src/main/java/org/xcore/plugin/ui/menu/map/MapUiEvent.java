@@ -18,6 +18,8 @@ public sealed interface MapUiEvent {
     record TriggerRtv() implements MapUiEvent {}
     record AdminForceRtvClick() implements MapUiEvent {}
     record AdminCancelForceRtv() implements MapUiEvent {}
+    /** Starts an event for the map on screen; offered only where events are held. */
+    record CreateEvent() implements MapUiEvent {}
 
     // --- Async & Live Push Callbacks ---
     record SummariesReady() implements MapUiEvent {}

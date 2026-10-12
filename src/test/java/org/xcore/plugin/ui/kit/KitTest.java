@@ -55,6 +55,24 @@ class KitTest {
     }
 
     @Test
+    @DisplayName("a word wider than its place is broken into lines that fit, with its colours left whole")
+    void breakWords_breaksOnlyWhatIsTooWide() {
+        assertThat(TextWidth.breakWords("[accent]Short words[] stay as they are", 120f))
+                .isEqualTo("[accent]Short words[] stay as they are");
+
+        String word = "Ы".repeat(60);
+        String broken = TextWidth.breakWords("до [accent]" + word + "[] после", 120f);
+        assertThat(broken.replace("\n", "")).isEqualTo("до [accent]" + word + "[] после");
+        assertThat(broken.split("\\s+")).allSatisfy(part -> assertThat(TextWidth.of(part)).isLessThanOrEqualTo(120f));
+        // A tag is never split, wherever the line happens to end.
+        for (float width = 20f; width < 200f; width += 7f) {
+            assertThat(TextWidth.breakWords("[#ffd37f]" + word + "[][[" + word + "[white]", width))
+                    .contains("[#ffd37f]", "[]", "[[", "[white]");
+        }
+        assertThat(TextWidth.breakWords(null, 100f)).isEmpty();
+    }
+
+    @Test
     @DisplayName("an escaped text keeps its brackets instead of having them read as colours")
     void escape_keepsBrackets() {
         assertThat(TextWidth.escape("votekick <player> [reason]")).isEqualTo("votekick <player> [[reason]");

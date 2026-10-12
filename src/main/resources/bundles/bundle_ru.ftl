@@ -884,116 +884,99 @@ commands-event-description = Меню управления событиями.
 commands-events-description = Список всех событий на серверах.
 event-events = События
 event-menu-main = Основные события
-event-menu-main-title = [orange]{ -xcore } — События
-event-menu-main-content =
-    [gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
-    [white]Центр событий[]
-    [lightgray]Здесь можно просматривать активные и запланированные события сервера.[]
-    [gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
-    { "" }
-    [accent]■ Текущее событие[]
-    [gray]Статус: [white]{ $currentEventState }[]
-    [gray]Выбрано: [white]{ $currentEventName }[]
-    { "" }
-    [accent]■ Голосование[]
-    [gray]Сессия голосования: [white]{ $voteStatus }[]
-    { "" }
-    [accent]■ Действия[]
-    [gray]Откройте каталог событий, текущую карточку или подготовьте новое событие.[]
 event-menu-event = Событие
-event-menu-event-title = [orange]{ -xcore } — Событие
-event-menu-event-content =
-    [gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
-    [white]{ $name }[]
-    [lightgray]{ $description }[]
-    [gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
-    { "" }
-    [accent]■ Обзор[]
-    [gray]Автор: [white]{ $author }[]
-    [gray]Карта: [white]{ $mapName }[]
-    [gray]Тип: [white]{ $eventType }[] [darkgray]|[gray] Состояние: [white]{ $eventState }[]
-    [gray]Временное: [white]{ $isTemporary }[]
-    { "" }
-    [accent]■ Расписание[]
-    [gray]Создано: [white]{ $createdEventTime }[]
-    [gray]Планируемый старт: [white]{ $plannedStartTime }[]
-    [gray]Планируемый конец: [white]{ $plannedEndTime }[]
-    { "" }
-    [accent]■ Репутация[]
-    [gray]Лайки: [white]{ $like }[] [darkgray]|[gray] Дизлайки: [white]{ $dislike }[]
-event-menu-event-map = Посмотреть карту
-event-menu-events = Список событий
-event-menu-events-title = [orange]{ -xcore } — Список событий
-event-menu-events-content =
-    [gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
-    [white]Каталог событий[]
-    [lightgray]Страница [green]{ $page }[]/[green]{ $total }[] [gold]•[] [lightgray]Событий: [green]{ $count }[]
-    [gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
-    { "" }
-    [accent]■ Фильтры[]
-    [gray]Завершено: [white]{ $finished }[]
-    [gray]Крупное: [white]{ $major }[] [darkgray]|[gray] Активное: [white]{ $active }[]
-    { "" }
-    [accent]■ Список[]
-    [gray]Выберите событие ниже, чтобы открыть его карточку.[]
-event-menu-events-empty =
-    [gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
-    [white]Каталог событий[]
-    [lightgray]Сейчас нет событий, подходящих под выбранные фильтры.[]
-    [gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
-    { "" }
-    [accent]■ Фильтры[]
-    [gray]Завершено: [white]{ $finished }[]
-    [gray]Крупное: [white]{ $major }[] [darkgray]|[gray] Активное: [white]{ $active }[]
-event-menu-events-row = [accent]{ $state }[] [darkgray]•[] [white]{ $type }[] [darkgray]—[] { $name }
-event-menu-events-selected = [green]●[] [accent]{ $state }[] [darkgray]•[] [white]{ $type }[] [darkgray]—[] { $name }
-event-menu-create-start = Создать
-event-menu-create-start-title = [orange]{ -xcore } — Создание события
-event-menu-create-start-message = Введите название будущего события
 event-menu-create-start-default = Событие игрока { $playerName }
 event-menu-create-start-map = Создать событие для этой карты
-event-menu-edit = Редактировать
-event-menu-edit-title = [orange]{ -xcore } — Редактирование события
-event-menu-edit-content =
-    [gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
-    [white]{ $name }[]
-    [lightgray]{ $description }[]
-    [gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
-    { "" }
-    [accent]■ Идентичность[]
-    [gray]Автор: [white]{ $author }[]
-    [gray]Тип: [white]{ $eventType }[]
-    { "" }
-    [accent]■ Карта[]
-    [gray]Выбранная карта: [white]{ $mapName }[]
-    { "" }
-    [accent]■ Расписание[]
-    [gray]Планируемый старт: [white]{ $plannedStartTime }[]
-    [gray]Планируемый конец: [white]{ $plannedEndTime }[]
-    { "" }
-    [accent]■ Флаги[]
-    [gray]Временное: [white]{ $isTemporary }[]
-event-menu-edit-name = Название
-event-menu-edit-name-reset = [scarlet]Сбросить название
-event-menu-edit-name-title = [orange]{ -xcore } — Редактирование события
-event-menu-edit-name-message = Измените название:
-event-menu-edit-description = Описание
-event-menu-edit-description-title = [orange]{ -xcore } — Редактирование события
-event-menu-edit-description-message = Измените описание:
-event-menu-edit-map = Изменить карту
-event-menu-edit-temporary-active = [green]Временное
-event-menu-edit-temporary-inactive = [gray]Временное
-event-menu-edit-major-active = [green]Крупное
-event-menu-edit-major-inactive = [gray]Крупное
-event-menu-edit-planned-start = Начало события
-event-menu-edit-planned-start-title = [orange]{ -xcore } — Редактирование события
-event-menu-edit-planned-start-message = Введите время начала в мс или через m/h/d:
-event-menu-edit-planned-end = Конец события
-event-menu-edit-planned-end-title = [orange]{ -xcore } — Редактирование события
-event-menu-edit-planned-end-message = Введите время окончания в мс или через m/h/d:
-event-menu-maps = Карты
-event-menu-maps-title = [orange]{ -xcore } — Выбор карты
-event-menu-maps-content = [white]Страница [green]{ $page }[] из [green]{ $total }[]
+event-ui-title = События
+event-ui-server-time = Время сервера: { $zone }
+event-ui-tab-upcoming = Скоро
+event-ui-tab-major = Крупные
+event-ui-tab-past = Прошедшие
+event-ui-tab-mine = Мои
+event-ui-now-running = Идёт сейчас
+event-ui-now-vote = Голосование
+event-ui-empty-upcoming = Событий пока не запланировано. Создайте первое!
+event-ui-empty-major = Крупных событий пока не запланировано.
+event-ui-empty-past = Ещё ни одно событие не завершилось.
+event-ui-empty-mine = Вы пока не создали ни одного события.
+event-ui-create = Создать событие
+event-ui-load-failed = Не удалось загрузить события. Попробуйте ещё раз.
+event-ui-state-active = Идёт сейчас
+event-ui-state-active-until = Идёт до { $time }
+event-ui-state-finished = Завершено
+event-ui-state-finished-at = Завершено { $date }
+event-ui-state-unscheduled = Без даты
+event-ui-major = Крупное
+event-ui-major-hint = Отмечено звездой и собрано на отдельной вкладке
+event-ui-temporary = Временное
+event-ui-temporary-hint = Закончится само во время конца
+event-ui-about = О событии
+event-ui-no-description = Описания нет.
+event-ui-author = Автор: { $author }
+event-ui-created = Создано: { $date }
+event-ui-map-schedule = Карта и расписание
+event-ui-map-none = Карта не указана
+event-ui-map-pick = Выберите карту
+event-ui-planned-start = Начало: { $time }
+event-ui-planned-end = Конец: { $time }
+event-ui-started = Началось: { $time }
+event-ui-ended = Завершилось: { $time }
+event-ui-not-set = не задано
+event-ui-open-map = Открыть карту
+event-ui-rating = Оценка
+event-ui-launch = Запуск
+event-ui-launch-hint = Событие запускают сами игроки — голосованием. Оно начнётся со следующей сменой карты.
+event-ui-launch-again = Это событие уже проводилось. Его можно запустить снова.
+event-ui-launch-active = Событие идёт прямо сейчас.
+event-ui-launch-voting = Идёт голосование: { $votes } из { $required }. Напишите y или n в чат.
+event-ui-launch-busy = Сейчас идёт другое голосование. Дождитесь его конца.
+event-ui-vote = Начать голосование
+event-ui-vote-busy = Голосование уже идёт.
+event-ui-vote-stopped = Голосование остановлено.
+event-ui-force = Запустить сразу
+event-ui-force-confirm = Точно запустить?
+event-ui-stop = Остановить событие
+event-ui-stop-confirm = Точно остановить?
+event-ui-stop-vote = Остановить голосование
+event-ui-stopped = Событие остановлено.
+event-ui-to-list = К списку
+event-ui-edit = Изменить
+event-ui-editor-new = Новое событие
+event-ui-editor-edit = Изменение события
+event-ui-texts = Название и описание
+event-ui-name = Название
+event-ui-description = Описание
+event-ui-description-hint = О чём это событие
+event-ui-map = Карта
+event-ui-schedule = Расписание и тип
+event-ui-start = Начало
+event-ui-end = Конец
+event-ui-save = Сохранить
+event-ui-saved = Событие сохранено.
+event-ui-draft-restored = Ваше недописанное событие на месте.
+event-ui-maps-title = Выбор карты
+event-ui-to-editor = К редактору
+event-ui-time-start = Начало события
+event-ui-time-end = Конец события
+event-ui-time-unset = Не задано
+event-ui-time-unset-hint = Задайте стрелками или кнопкой ниже
+event-ui-time-hours = { $value } ч
+event-ui-time-minutes = { $value } мин
+event-ui-time-now = Сейчас
+event-ui-time-in-hour = Через час
+event-ui-time-today-evening = Сегодня 20:00
+event-ui-time-tomorrow-noon = Завтра 12:00
+event-ui-time-plus-hour = +1 ч
+event-ui-time-plus-three-hours = +3 ч
+event-ui-time-plus-day = +1 день
+event-ui-time-apply = Готово
+event-ui-time-clear = Сбросить
+event-ui-error-no-map = Сначала выберите карту.
+event-ui-error-no-end = Временному событию нужно время конца.
+event-ui-error-end-before-start = Конец должен быть позже начала.
+event-ui-error-not-allowed = Вам нельзя менять это событие.
+event-ui-error-gone = Этого события больше нет.
+event-ui-error-save-failed = Не удалось сохранить событие. Попробуйте ещё раз.
 vote-event-vote =
     { $nickname }[lightgray] проголосовал за смену текущего события на [orange]{ $name }[lightgray]. ([accent]{ $votes }[]/[accent]{ $votesRequired }[])
     Напишите [orange]y[] или [orange]n[], чтобы проголосовать.
@@ -1001,54 +984,6 @@ vote-event-left = { $nickname }[lightgray] вышел. Его голос за с
 vote-event-fail = [lightgray]Голосование не прошло. Недостаточно голосов для смены события на [orange]{ $name }[].
 vote-event-success = [orange]Голосование прошло. Событие [accent]{ $name }[] будет загружено при следующей смене карты.
 vote-event-cancelled = [lightgray]Голосование за смену события на [orange]{ $name }[lightgray] было отменено администратором { $admin }.
-event-vote = [orange]Голосование
-event-avote = [red]Мгновенная смена
-event-menu-vote-stop = Остановить голосование
-event-menu-stop = Остановить событие
-event-menu-this-event = [orange]Текущее событие
-event-menu-type-major = Крупное событие
-event-menu-type-regular = Обычное событие
-event-menu-state-none = Нет активного события
-event-menu-state-planned = Запланировано
-event-menu-state-active = Активно сейчас
-event-menu-state-finished = Завершено
-event-menu-vote-status-running = Идёт
-event-menu-vote-status-idle = Не идёт
-date-time-picker-title = [orange]{ -xcore } — Дата и время
-date-time-picker-content =
-    [gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
-    [white]{ $field }[]
-    [lightgray]Текущее значение: [white]{ $value }[]
-    [gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
-    { "" }
-    [accent]■ Дата[]
-    [gray]Сначала выберите день, а затем уточните время ниже.[]
-    { "" }
-    [accent]■ Время[]
-    [gray]Используйте пресеты или точные корректировки для удобной настройки.[]
-    { "" }
-    [accent]■ Ручной ввод[]
-    [gray]Используйте его только если нужны точные миллисекунды или относительное значение вида +m/+h/+d.[]
-date-time-picker-field-generic = Планируемое время
-date-time-picker-today = Сегодня
-date-time-picker-tomorrow = Завтра
-date-time-picker-plus-2d = +2 дня
-date-time-picker-plus-7d = +7 дней
-date-time-picker-now = Сейчас
-date-time-picker-time-0000 = 00:00
-date-time-picker-time-0600 = 06:00
-date-time-picker-time-1200 = 12:00
-date-time-picker-time-1800 = 18:00
-date-time-picker-minus-1d = -1д
-date-time-picker-plus-1d = +1д
-date-time-picker-minus-1h = -1ч
-date-time-picker-plus-1h = +1ч
-date-time-picker-minus-15m = -15м
-date-time-picker-plus-15m = +15м
-date-time-picker-reset = Сбросить
-date-time-picker-manual = Ручной ввод
-date-time-picker-manual-title = [orange]{ -xcore } — Ручной ввод времени
-date-time-picker-manual-message = Введите абсолютные миллисекунды или относительное время вроде +30m, +2h, +1d.
 event-end = Событие [green]{ $name }[] завершилось!
 # ==============================================================================
 # Errors

@@ -957,116 +957,99 @@ commands-event-description = Menu správy událostí.
 commands-events-description = Seznam všech událostí na serverech.
 event-events = Události
 event-menu-main = Hlavní události
-event-menu-main-title = [orange]{ -xcore } — Události
-event-menu-main-content =
-    [gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
-    [white]Centrum událostí[]
-    [lightgray]Všechny aktivní a plánované události serveru na jednom místě.[]
-    [gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
-    { "" }
-    [accent]■ Aktuální událost[]
-    [gray]Stav: [white]{ $currentEventState }[]
-    [gray]Vybraná: [white]{ $currentEventName }[]
-    { "" }
-    [accent]■ Hlasování[]
-    [gray]Hlasování: [white]{ $voteStatus }[]
-    { "" }
-    [accent]■ Akce[]
-    [gray]Otevři katalog, prohlédni si aktuální událost nebo připrav novou.[]
 event-menu-event = Událost
-event-menu-event-title = [orange]{ -xcore } — Událost
-event-menu-event-content =
-    [gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
-    [white]{ $name }[]
-    [lightgray]{ $description }[]
-    [gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
-    { "" }
-    [accent]■ Přehled[]
-    [gray]Autor: [white]{ $author }[]
-    [gray]Mapa: [white]{ $mapName }[]
-    [gray]Typ: [white]{ $eventType }[] [darkgray]|[gray] Stav: [white]{ $eventState }[]
-    [gray]Dočasná: [white]{ $isTemporary }[]
-    { "" }
-    [accent]■ Plán[]
-    [gray]Vytvořena: [white]{ $createdEventTime }[]
-    [gray]Plánovaný začátek: [white]{ $plannedStartTime }[]
-    [gray]Plánovaný konec: [white]{ $plannedEndTime }[]
-    { "" }
-    [accent]■ Reputace[]
-    [gray]Líbí se: [white]{ $like }[] [darkgray]|[gray] Nelíbí se: [white]{ $dislike }[]
-event-menu-event-map = Zobrazit mapu
-event-menu-events = Seznam událostí
-event-menu-events-title = [orange]{ -xcore } — Seznam událostí
-event-menu-events-content =
-    [gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
-    [white]Katalog událostí[]
-    [lightgray]Strana [green]{ $page }[]/[green]{ $total }[] [gold]•[] [lightgray]Události: [green]{ $count }[]
-    [gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
-    { "" }
-    [accent]■ Filtry[]
-    [gray]Skončené: [white]{ $finished }[]
-    [gray]Velké: [white]{ $major }[] [darkgray]|[gray] Aktivní: [white]{ $active }[]
-    { "" }
-    [accent]■ Seznam[]
-    [gray]Vyber níže událost a zobrazí se její karta.[]
-event-menu-events-empty =
-    [gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
-    [white]Katalog událostí[]
-    [lightgray]Aktuálním filtrům zatím neodpovídají žádné události.[]
-    [gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
-    { "" }
-    [accent]■ Filtry[]
-    [gray]Skončené: [white]{ $finished }[]
-    [gray]Velké: [white]{ $major }[] [darkgray]|[gray] Aktivní: [white]{ $active }[]
-event-menu-events-row = [accent]{ $state }[] [darkgray]•[] [white]{ $type }[] [darkgray]—[] { $name }
-event-menu-events-selected = [green]●[] [accent]{ $state }[] [darkgray]•[] [white]{ $type }[] [darkgray]—[] { $name }
-event-menu-create-start = Vytvořit
-event-menu-create-start-title = [orange]{ -xcore } — Vytvoření události
-event-menu-create-start-message = Zadej název nové události
 event-menu-create-start-default = Událost hráče { $playerName }
 event-menu-create-start-map = Vytvořit událost pro tuto mapu
-event-menu-edit = Upravit
-event-menu-edit-title = [orange]{ -xcore } — Úprava události
-event-menu-edit-content =
-    [gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
-    [white]{ $name }[]
-    [lightgray]{ $description }[]
-    [gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
-    { "" }
-    [accent]■ Údaje[]
-    [gray]Autor: [white]{ $author }[]
-    [gray]Typ: [white]{ $eventType }[]
-    { "" }
-    [accent]■ Mapa[]
-    [gray]Vybraná mapa: [white]{ $mapName }[]
-    { "" }
-    [accent]■ Plán[]
-    [gray]Plánovaný začátek: [white]{ $plannedStartTime }[]
-    [gray]Plánovaný konec: [white]{ $plannedEndTime }[]
-    { "" }
-    [accent]■ Možnosti[]
-    [gray]Dočasná: [white]{ $isTemporary }[]
-event-menu-edit-name = Název
-event-menu-edit-name-reset = [scarlet]Obnovit název
-event-menu-edit-name-title = [orange]{ -xcore } — Úprava události
-event-menu-edit-name-message = Upravit název:
-event-menu-edit-description = Popis
-event-menu-edit-description-title = [orange]{ -xcore } — Úprava události
-event-menu-edit-description-message = Upravit popis:
-event-menu-edit-map = Změnit mapu
-event-menu-edit-temporary-active = [green]Dočasná
-event-menu-edit-temporary-inactive = [gray]Dočasná
-event-menu-edit-major-active = [green]Velká
-event-menu-edit-major-inactive = [gray]Velká
-event-menu-edit-planned-start = Začátek události
-event-menu-edit-planned-start-title = [orange]{ -xcore } — Úprava události
-event-menu-edit-planned-start-message = Zadej čas začátku v ms nebo pomocí m/h/d:
-event-menu-edit-planned-end = Konec události
-event-menu-edit-planned-end-title = [orange]{ -xcore } — Úprava události
-event-menu-edit-planned-end-message = Zadej čas konce v ms nebo pomocí m/h/d:
-event-menu-maps = Mapy
-event-menu-maps-title = [orange]{ -xcore } — Výběr mapy
-event-menu-maps-content = [white]Strana [green]{ $page }[] z [green]{ $total }[]
+event-ui-title = Události
+event-ui-server-time = Čas serveru: { $zone }
+event-ui-tab-upcoming = Brzy
+event-ui-tab-major = Velké
+event-ui-tab-past = Minulé
+event-ui-tab-mine = Moje
+event-ui-now-running = Právě běží
+event-ui-now-vote = Hlasování
+event-ui-empty-upcoming = Zatím nejsou naplánované žádné události. Vytvořte první!
+event-ui-empty-major = Zatím nejsou naplánované žádné velké události.
+event-ui-empty-past = Žádná událost zatím neskončila.
+event-ui-empty-mine = Zatím jste nevytvořili žádnou událost.
+event-ui-create = Vytvořit událost
+event-ui-load-failed = Události se nepodařilo načíst. Zkuste to znovu.
+event-ui-state-active = Právě běží
+event-ui-state-active-until = Běží do { $time }
+event-ui-state-finished = Dokončeno
+event-ui-state-finished-at = Dokončeno { $date }
+event-ui-state-unscheduled = Bez data
+event-ui-major = Velká
+event-ui-major-hint = Označená hvězdou a uvedená na vlastní kartě
+event-ui-temporary = Dočasná
+event-ui-temporary-hint = Skončí sama v čase konce
+event-ui-about = O události
+event-ui-no-description = Bez popisu.
+event-ui-author = Autor: { $author }
+event-ui-created = Vytvořeno: { $date }
+event-ui-map-schedule = Mapa a rozvrh
+event-ui-map-none = Mapa není zadána
+event-ui-map-pick = Vyberte mapu
+event-ui-planned-start = Začátek: { $time }
+event-ui-planned-end = Konec: { $time }
+event-ui-started = Začala: { $time }
+event-ui-ended = Skončila: { $time }
+event-ui-not-set = nezadáno
+event-ui-open-map = Otevřít mapu
+event-ui-rating = Hodnocení
+event-ui-launch = Spuštění
+event-ui-launch-hint = Událost spouštějí sami hráči — hlasováním. Začne při příští změně mapy.
+event-ui-launch-again = Tato událost už proběhla. Lze ji spustit znovu.
+event-ui-launch-active = Událost právě běží.
+event-ui-launch-voting = Probíhá hlasování: { $votes } z { $required }. Napište y nebo n do chatu.
+event-ui-launch-busy = Probíhá jiné hlasování. Počkejte na jeho konec.
+event-ui-vote = Zahájit hlasování
+event-ui-vote-busy = Hlasování už probíhá.
+event-ui-vote-stopped = Hlasování bylo zastaveno.
+event-ui-force = Spustit hned
+event-ui-force-confirm = Opravdu spustit?
+event-ui-stop = Zastavit událost
+event-ui-stop-confirm = Opravdu zastavit?
+event-ui-stop-vote = Zastavit hlasování
+event-ui-stopped = Událost byla zastavena.
+event-ui-to-list = Na seznam
+event-ui-edit = Upravit
+event-ui-editor-new = Nová událost
+event-ui-editor-edit = Úprava události
+event-ui-texts = Název a popis
+event-ui-name = Název
+event-ui-description = Popis
+event-ui-description-hint = O čem tato událost je
+event-ui-map = Mapa
+event-ui-schedule = Rozvrh a typ
+event-ui-start = Začátek
+event-ui-end = Konec
+event-ui-save = Uložit
+event-ui-saved = Událost byla uložena.
+event-ui-draft-restored = Vaše rozepsaná událost je zpět.
+event-ui-maps-title = Výběr mapy
+event-ui-to-editor = Do editoru
+event-ui-time-start = Začátek události
+event-ui-time-end = Konec události
+event-ui-time-unset = Nezadáno
+event-ui-time-unset-hint = Nastavte šipkami nebo tlačítkem níže
+event-ui-time-hours = { $value } h
+event-ui-time-minutes = { $value } min
+event-ui-time-now = Teď
+event-ui-time-in-hour = Za hodinu
+event-ui-time-today-evening = Dnes 20:00
+event-ui-time-tomorrow-noon = Zítra 12:00
+event-ui-time-plus-hour = +1 h
+event-ui-time-plus-three-hours = +3 h
+event-ui-time-plus-day = +1 den
+event-ui-time-apply = Hotovo
+event-ui-time-clear = Vymazat
+event-ui-error-no-map = Nejdřív vyberte mapu.
+event-ui-error-no-end = Dočasná událost potřebuje čas konce.
+event-ui-error-end-before-start = Konec musí být později než začátek.
+event-ui-error-not-allowed = Tuto událost nesmíte měnit.
+event-ui-error-gone = Tato událost už neexistuje.
+event-ui-error-save-failed = Událost se nepodařilo uložit. Zkuste to znovu.
 vote-event-vote =
     { $nickname }[lightgray] hlasoval pro změnu události na [orange]{ $name }[lightgray]. ([accent]{ $votes }[]/[accent]{ $votesRequired }[])
     Napiš [orange]y[] nebo [orange]n[] a hlasuj.
@@ -1074,54 +1057,6 @@ vote-event-left = { $nickname }[lightgray] odešel. Jeho hlas pro změnu událos
 vote-event-fail = [lightgray]Hlasování neuspělo. Málo hlasů pro změnu události na [orange]{ $name }[].
 vote-event-success = [orange]Hlasování prošlo. Událost [accent]{ $name }[] se načte při příští změně mapy.
 vote-event-cancelled = [lightgray]Hlasování o změně události na [orange]{ $name }[lightgray] zrušil administrátor { $admin }.
-event-vote = [orange]Hlasování
-event-avote = [red]Okamžitá změna
-event-menu-vote-stop = Zastavit hlasování
-event-menu-stop = Zastavit událost
-event-menu-this-event = [orange]Aktuální událost
-event-menu-type-major = Velká událost
-event-menu-type-regular = Běžná událost
-event-menu-state-none = Žádná aktivní událost
-event-menu-state-planned = Plánovaná
-event-menu-state-active = Právě probíhá
-event-menu-state-finished = Skončená
-event-menu-vote-status-running = Probíhá
-event-menu-vote-status-idle = Neprobíhá
-date-time-picker-title = [orange]{ -xcore } — Datum a čas
-date-time-picker-content =
-    [gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
-    [white]{ $field }[]
-    [lightgray]Aktuální hodnota: [white]{ $value }[]
-    [gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
-    { "" }
-    [accent]■ Datum[]
-    [gray]Nejdřív vyber den, pak níže uprav čas.[]
-    { "" }
-    [accent]■ Čas[]
-    [gray]Použij předvolby nebo jemné úpravy pro přesné plánování.[]
-    { "" }
-    [accent]■ Ruční zadání[]
-    [gray]Jen když potřebuješ přesné milisekundy nebo relativní hodnotu +m/+h/+d.[]
-date-time-picker-field-generic = Plánovaný čas
-date-time-picker-today = Dnes
-date-time-picker-tomorrow = Zítra
-date-time-picker-plus-2d = +2 dny
-date-time-picker-plus-7d = +7 dní
-date-time-picker-now = Teď
-date-time-picker-time-0000 = 00:00
-date-time-picker-time-0600 = 06:00
-date-time-picker-time-1200 = 12:00
-date-time-picker-time-1800 = 18:00
-date-time-picker-minus-1d = -1 d
-date-time-picker-plus-1d = +1 d
-date-time-picker-minus-1h = -1 h
-date-time-picker-plus-1h = +1 h
-date-time-picker-minus-15m = -15 min
-date-time-picker-plus-15m = +15 min
-date-time-picker-reset = Obnovit
-date-time-picker-manual = Ruční zadání
-date-time-picker-manual-title = [orange]{ -xcore } — Ruční zadání času
-date-time-picker-manual-message = Zadej absolutní milisekundy nebo relativní čas, např. +30m, +2h, +1d.
 event-end = Událost [green]{ $name }[] skončila!
 # ==============================================================================
 # Errors

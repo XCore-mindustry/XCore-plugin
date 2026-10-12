@@ -5,14 +5,15 @@ import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 import org.bson.Document;
 import org.bson.conversions.Bson;
+import org.bson.types.ObjectId;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.xcore.plugin.common.StatusEnum;
 import org.xcore.plugin.config.TomlSecretsConfig;
+import org.xcore.plugin.database.repository.EventDataRepository.Listing;
 import org.xcore.plugin.model.EventData;
 
-import java.util.Map;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
@@ -33,51 +34,60 @@ class EventDataRepositoryLogicTest {
     }
 
     @Test
-    @DisplayName("getQuery returns empty document when no filters")
-    void getQuery_returnsEmptyDocument_whenNoFilters() {
-        var query = repository.getQuery(null);
+    @DisplayName("upcoming lists what is neither running nor over")
+    void getQuery_upcoming_excludesRunningAndFinished() {
+        var json = toJson(repository.getQuery(Listing.UPCOMING, null));
 
-        assertThat(toJson(query)).isEqualTo("{}");
+        assertThat(json).contains("\"is_finished\": false").contains("\"is_active\": false");
     }
 
     @Test
-    @DisplayName("getQuery includes finished filter when active")
-    void getQuery_includesFinishedFilter_whenActive() {
-        var query = repository.getQuery(Map.of("finished", StatusEnum.Active));
+    @DisplayName("major lists the major events that are not over")
+    void getQuery_major_keepsUnfinishedMajorEvents() {
+        var json = toJson(repository.getQuery(Listing.MAJOR, null));
 
-        assertThat(toJson(query)).contains("\"is_finished\": true");
+        assertThat(json).contains("\"is_major\": true").contains("\"is_finished\": false");
     }
 
     @Test
-    @DisplayName("getQuery includes major filter when inactive")
-    void getQuery_includesMajorFilter_whenInactive() {
-        var query = repository.getQuery(Map.of("major", StatusEnum.Inactive));
-
-        assertThat(toJson(query)).contains("\"is_major\": false");
+    @DisplayName("past lists the finished events")
+    void getQuery_past_keepsFinishedEvents() {
+        assertThat(toJson(repository.getQuery(Listing.PAST, null))).contains("\"is_finished\": true");
     }
 
     @Test
-    @DisplayName("getQuery includes active filter when active")
-    void getQuery_includesActiveFilter_whenActive() {
-        var query = repository.getQuery(Map.of("active", StatusEnum.Active));
+    @DisplayName("mine lists the events of one author, whatever their state")
+    void getQuery_mine_filtersByAuthorOnly() {
+        ObjectId author = new ObjectId();
 
-        assertThat(toJson(query)).contains("\"is_active\": true");
+        var json = toJson(repository.getQuery(Listing.MINE, author));
+
+        assertThat(json).contains(author.toHexString()).doesNotContain("is_finished");
     }
 
     @Test
-    @DisplayName("getQuery combines multiple filters with and")
-    void getQuery_combinesMultipleFilters_withAnd() {
-        var query = repository.getQuery(Map.of(
-                "finished", StatusEnum.Active,
-                "major", StatusEnum.Inactive,
-                "active", StatusEnum.Active
-        ));
-        var json = toJson(query);
+    @DisplayName("upcoming puts the events with a start time first, by that time")
+    void getPipeline_upcoming_sortsScheduledFirst() {
+        List<String> stages = repository.getPipeline(Listing.UPCOMING, null, 20, 10).stream()
+                .map(EventDataRepositoryLogicTest::toJson).toList();
 
-        assertThat(json).contains("\"$and\"");
-        assertThat(json).contains("\"is_finished\": true");
-        assertThat(json).contains("\"is_major\": false");
-        assertThat(json).contains("\"is_active\": true");
+        assertThat(stages).hasSize(6);
+        assertThat(stages.get(1)).contains("$addFields").contains("$lte").contains("$planned_start_at");
+        assertThat(stages.get(2)).containsSubsequence("unscheduled", "planned_start_at", "created_at");
+        assertThat(stages.get(3)).contains("\"$skip\": 20");
+        assertThat(stages.get(4)).contains("\"$limit\": 10");
+        // The field the sort needs is not a field of an event.
+        assertThat(stages.get(5)).contains("$project").contains("\"unscheduled\": 0");
+    }
+
+    @Test
+    @DisplayName("past puts the latest to end first")
+    void getPipeline_past_sortsByEndDescending() {
+        List<String> stages = repository.getPipeline(Listing.PAST, null, 0, 10).stream()
+                .map(EventDataRepositoryLogicTest::toJson).toList();
+
+        assertThat(stages).hasSize(4);
+        assertThat(stages.get(1)).contains("\"ended_at\": -1");
     }
 
     private static String toJson(Bson query) {

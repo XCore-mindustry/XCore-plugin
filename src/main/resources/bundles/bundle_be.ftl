@@ -966,116 +966,99 @@ commands-event-description = Меню кіравання падзеямі.
 commands-events-description = Спіс усіх падзей на серверах.
 event-events = Падзеі
 event-menu-main = Галоўныя падзеі
-event-menu-main-title = [orange]{ -xcore } — Падзеі
-event-menu-main-content =
-    [gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
-    [white]Цэнтр падзей[]
-    [lightgray]Усе актыўныя і запланаваныя падзеі сервера ў адным месцы.[]
-    [gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
-    { "" }
-    [accent]■ Бягучая падзея[]
-    [gray]Статус: [white]{ $currentEventState }[]
-    [gray]Выбрана: [white]{ $currentEventName }[]
-    { "" }
-    [accent]■ Галасаванне[]
-    [gray]Галасаванне: [white]{ $voteStatus }[]
-    { "" }
-    [accent]■ Дзеянні[]
-    [gray]Адкрыйце каталог, паглядзіце бягучую падзею або падрыхтуйце новую.[]
 event-menu-event = Падзея
-event-menu-event-title = [orange]{ -xcore } — Падзея
-event-menu-event-content =
-    [gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
-    [white]{ $name }[]
-    [lightgray]{ $description }[]
-    [gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
-    { "" }
-    [accent]■ Агляд[]
-    [gray]Аўтар: [white]{ $author }[]
-    [gray]Карта: [white]{ $mapName }[]
-    [gray]Тып: [white]{ $eventType }[] [darkgray]|[gray] Стан: [white]{ $eventState }[]
-    [gray]Часовая: [white]{ $isTemporary }[]
-    { "" }
-    [accent]■ Расклад[]
-    [gray]Створана: [white]{ $createdEventTime }[]
-    [gray]Запланаваны пачатак: [white]{ $plannedStartTime }[]
-    [gray]Запланаваны канец: [white]{ $plannedEndTime }[]
-    { "" }
-    [accent]■ Рэпутацыя[]
-    [gray]Падабаецца: [white]{ $like }[] [darkgray]|[gray] Не падабаецца: [white]{ $dislike }[]
-event-menu-event-map = Паглядзець карту
-event-menu-events = Спіс падзей
-event-menu-events-title = [orange]{ -xcore } — Спіс падзей
-event-menu-events-content =
-    [gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
-    [white]Каталог падзей[]
-    [lightgray]Старонка [green]{ $page }[]/[green]{ $total }[] [gold]•[] [lightgray]Падзей: [green]{ $count }[]
-    [gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
-    { "" }
-    [accent]■ Фільтры[]
-    [gray]Скончаныя: [white]{ $finished }[]
-    [gray]Вялікія: [white]{ $major }[] [darkgray]|[gray] Актыўныя: [white]{ $active }[]
-    { "" }
-    [accent]■ Спіс[]
-    [gray]Выберыце падзею ніжэй, каб убачыць яе картку.[]
-event-menu-events-empty =
-    [gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
-    [white]Каталог падзей[]
-    [lightgray]Пад бягучыя фільтры падзей пакуль няма.[]
-    [gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
-    { "" }
-    [accent]■ Фільтры[]
-    [gray]Скончаныя: [white]{ $finished }[]
-    [gray]Вялікія: [white]{ $major }[] [darkgray]|[gray] Актыўныя: [white]{ $active }[]
-event-menu-events-row = [accent]{ $state }[] [darkgray]•[] [white]{ $type }[] [darkgray]—[] { $name }
-event-menu-events-selected = [green]●[] [accent]{ $state }[] [darkgray]•[] [white]{ $type }[] [darkgray]—[] { $name }
-event-menu-create-start = Стварыць
-event-menu-create-start-title = [orange]{ -xcore } — Стварэнне падзеі
-event-menu-create-start-message = Увядзіце назву новай падзеі
 event-menu-create-start-default = Падзея { $playerName }
 event-menu-create-start-map = Стварыць падзею для гэтай карты
-event-menu-edit = Змяніць
-event-menu-edit-title = [orange]{ -xcore } — Змяненне падзеі
-event-menu-edit-content =
-    [gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
-    [white]{ $name }[]
-    [lightgray]{ $description }[]
-    [gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
-    { "" }
-    [accent]■ Даныя[]
-    [gray]Аўтар: [white]{ $author }[]
-    [gray]Тып: [white]{ $eventType }[]
-    { "" }
-    [accent]■ Карта[]
-    [gray]Выбраная карта: [white]{ $mapName }[]
-    { "" }
-    [accent]■ Расклад[]
-    [gray]Запланаваны пачатак: [white]{ $plannedStartTime }[]
-    [gray]Запланаваны канец: [white]{ $plannedEndTime }[]
-    { "" }
-    [accent]■ Параметры[]
-    [gray]Часовая: [white]{ $isTemporary }[]
-event-menu-edit-name = Назва
-event-menu-edit-name-reset = [scarlet]Скінуць назву
-event-menu-edit-name-title = [orange]{ -xcore } — Змяненне падзеі
-event-menu-edit-name-message = Змяніць назву:
-event-menu-edit-description = Апісанне
-event-menu-edit-description-title = [orange]{ -xcore } — Змяненне падзеі
-event-menu-edit-description-message = Змяніць апісанне:
-event-menu-edit-map = Змяніць карту
-event-menu-edit-temporary-active = [green]Часовая
-event-menu-edit-temporary-inactive = [gray]Часовая
-event-menu-edit-major-active = [green]Вялікая
-event-menu-edit-major-inactive = [gray]Вялікая
-event-menu-edit-planned-start = Пачатак падзеі
-event-menu-edit-planned-start-title = [orange]{ -xcore } — Змяненне падзеі
-event-menu-edit-planned-start-message = Увядзіце час пачатку ў мс або праз m/h/d:
-event-menu-edit-planned-end = Канец падзеі
-event-menu-edit-planned-end-title = [orange]{ -xcore } — Змяненне падзеі
-event-menu-edit-planned-end-message = Увядзіце час канца ў мс або праз m/h/d:
-event-menu-maps = Карты
-event-menu-maps-title = [orange]{ -xcore } — Выбар карты
-event-menu-maps-content = [white]Старонка [green]{ $page }[] з [green]{ $total }[]
+event-ui-title = Падзеі
+event-ui-server-time = Час сервера: { $zone }
+event-ui-tab-upcoming = Хутка
+event-ui-tab-major = Буйныя
+event-ui-tab-past = Мінулыя
+event-ui-tab-mine = Мае
+event-ui-now-running = Ідзе зараз
+event-ui-now-vote = Галасаванне
+event-ui-empty-upcoming = Падзей пакуль не запланавана. Стварыце першую!
+event-ui-empty-major = Буйных падзей пакуль не запланавана.
+event-ui-empty-past = Яшчэ ніводная падзея не завяршылася.
+event-ui-empty-mine = Вы пакуль не стварылі ніводнай падзеі.
+event-ui-create = Стварыць падзею
+event-ui-load-failed = Не ўдалося загрузіць падзеі. Паспрабуйце яшчэ раз.
+event-ui-state-active = Ідзе зараз
+event-ui-state-active-until = Ідзе да { $time }
+event-ui-state-finished = Завершана
+event-ui-state-finished-at = Завершана { $date }
+event-ui-state-unscheduled = Без даты
+event-ui-major = Буйная
+event-ui-major-hint = Пазначана зоркай і сабрана на асобнай укладцы
+event-ui-temporary = Часовая
+event-ui-temporary-hint = Скончыцца сама ў час канца
+event-ui-about = Пра падзею
+event-ui-no-description = Апісання няма.
+event-ui-author = Аўтар: { $author }
+event-ui-created = Створана: { $date }
+event-ui-map-schedule = Карта і расклад
+event-ui-map-none = Карта не ўказана
+event-ui-map-pick = Выберыце карту
+event-ui-planned-start = Пачатак: { $time }
+event-ui-planned-end = Канец: { $time }
+event-ui-started = Пачалася: { $time }
+event-ui-ended = Завяршылася: { $time }
+event-ui-not-set = не зададзена
+event-ui-open-map = Адкрыць карту
+event-ui-rating = Ацэнка
+event-ui-launch = Запуск
+event-ui-launch-hint = Падзею запускаюць самі гульцы — галасаваннем. Яна пачнецца з наступнай зменай карты.
+event-ui-launch-again = Гэтая падзея ўжо праводзілася. Яе можна запусціць зноў.
+event-ui-launch-active = Падзея ідзе проста зараз.
+event-ui-launch-voting = Ідзе галасаванне: { $votes } з { $required }. Напішыце y або n у чат.
+event-ui-launch-busy = Зараз ідзе іншае галасаванне. Дачакайцеся яго канца.
+event-ui-vote = Пачаць галасаванне
+event-ui-vote-busy = Галасаванне ўжо ідзе.
+event-ui-vote-stopped = Галасаванне спынена.
+event-ui-force = Запусціць адразу
+event-ui-force-confirm = Дакладна запусціць?
+event-ui-stop = Спыніць падзею
+event-ui-stop-confirm = Дакладна спыніць?
+event-ui-stop-vote = Спыніць галасаванне
+event-ui-stopped = Падзея спынена.
+event-ui-to-list = Да спіса
+event-ui-edit = Змяніць
+event-ui-editor-new = Новая падзея
+event-ui-editor-edit = Змена падзеі
+event-ui-texts = Назва і апісанне
+event-ui-name = Назва
+event-ui-description = Апісанне
+event-ui-description-hint = Пра што гэтая падзея
+event-ui-map = Карта
+event-ui-schedule = Расклад і тып
+event-ui-start = Пачатак
+event-ui-end = Канец
+event-ui-save = Захаваць
+event-ui-saved = Падзея захавана.
+event-ui-draft-restored = Ваша недапісаная падзея на месцы.
+event-ui-maps-title = Выбар карты
+event-ui-to-editor = Да рэдактара
+event-ui-time-start = Пачатак падзеі
+event-ui-time-end = Канец падзеі
+event-ui-time-unset = Не зададзена
+event-ui-time-unset-hint = Задайце стрэлкамі або кнопкай ніжэй
+event-ui-time-hours = { $value } г
+event-ui-time-minutes = { $value } хв
+event-ui-time-now = Зараз
+event-ui-time-in-hour = Праз гадзіну
+event-ui-time-today-evening = Сёння 20:00
+event-ui-time-tomorrow-noon = Заўтра 12:00
+event-ui-time-plus-hour = +1 г
+event-ui-time-plus-three-hours = +3 г
+event-ui-time-plus-day = +1 дзень
+event-ui-time-apply = Гатова
+event-ui-time-clear = Скінуць
+event-ui-error-no-map = Спачатку выберыце карту.
+event-ui-error-no-end = Часовай падзеі патрэбен час канца.
+event-ui-error-end-before-start = Канец павінен быць пазней за пачатак.
+event-ui-error-not-allowed = Вам нельга змяняць гэтую падзею.
+event-ui-error-gone = Гэтай падзеі больш няма.
+event-ui-error-save-failed = Не ўдалося захаваць падзею. Паспрабуйце яшчэ раз.
 vote-event-vote =
     { $nickname }[lightgray] прагаласаваў за змену падзеі на [orange]{ $name }[lightgray]. ([accent]{ $votes }[]/[accent]{ $votesRequired }[])
     Увядзіце [orange]y[] або [orange]n[], каб прагаласаваць.
@@ -1083,54 +1066,6 @@ vote-event-left = { $nickname }[lightgray] выйшаў. Яго голас за 
 vote-event-fail = [lightgray]Галасаванне не прайшло. Недастаткова галасоў, каб змяніць падзею на [orange]{ $name }[].
 vote-event-success = [orange]Галасаванне прайшло. Падзея [accent]{ $name }[] загрузіцца пры наступнай змене карты.
 vote-event-cancelled = [lightgray]Галасаванне за змену падзеі на [orange]{ $name }[lightgray] адмяніў адміністратар { $admin }.
-event-vote = [orange]Галасаванне
-event-avote = [red]Імгненная змена
-event-menu-vote-stop = Спыніць галасаванне
-event-menu-stop = Спыніць падзею
-event-menu-this-event = [orange]Бягучая падзея
-event-menu-type-major = Вялікая падзея
-event-menu-type-regular = Звычайная падзея
-event-menu-state-none = Няма актыўнай падзеі
-event-menu-state-planned = Запланавана
-event-menu-state-active = Ідзе зараз
-event-menu-state-finished = Скончана
-event-menu-vote-status-running = Ідзе
-event-menu-vote-status-idle = Не ідзе
-date-time-picker-title = [orange]{ -xcore } — Дата і час
-date-time-picker-content =
-    [gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
-    [white]{ $field }[]
-    [lightgray]Бягучае значэнне: [white]{ $value }[]
-    [gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
-    { "" }
-    [accent]■ Дата[]
-    [gray]Спачатку выберыце дзень, потым удакладніце час ніжэй.[]
-    { "" }
-    [accent]■ Час[]
-    [gray]Карыстайцеся гатовымі варыянтамі або дакладнай падстройкай.[]
-    { "" }
-    [accent]■ Ручны ўвод[]
-    [gray]Толькі калі патрэбныя дакладныя мілісекунды або адноснае значэнне +m/+h/+d.[]
-date-time-picker-field-generic = Запланаваны час
-date-time-picker-today = Сёння
-date-time-picker-tomorrow = Заўтра
-date-time-picker-plus-2d = +2 дні
-date-time-picker-plus-7d = +7 дзён
-date-time-picker-now = Зараз
-date-time-picker-time-0000 = 00:00
-date-time-picker-time-0600 = 06:00
-date-time-picker-time-1200 = 12:00
-date-time-picker-time-1800 = 18:00
-date-time-picker-minus-1d = -1 д
-date-time-picker-plus-1d = +1 д
-date-time-picker-minus-1h = -1 г
-date-time-picker-plus-1h = +1 г
-date-time-picker-minus-15m = -15 хв
-date-time-picker-plus-15m = +15 хв
-date-time-picker-reset = Скінуць
-date-time-picker-manual = Ручны ўвод
-date-time-picker-manual-title = [orange]{ -xcore } — Ручны ўвод часу
-date-time-picker-manual-message = Увядзіце абсалютныя мілісекунды або адносны час, напрыклад +30m, +2h, +1d.
 event-end = Падзея [green]{ $name }[] скончылася!
 # ==============================================================================
 # Errors
