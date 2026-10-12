@@ -9,6 +9,7 @@ All notable changes to this project will be documented in this file.
 - `Localization.context()` and `contextOrNull()` are removed; use `Localization.send(...)` or `Messenger`.
 
 ### Changed
+- Updated `xcore-protocol` to 0.13.0 for optional Discord map submission attribution.
 - Missing bundle keys go through `MissingKeyPolicy.logOnce()`.
 - Updated FluBundle to 2.1.0. Connection checks (ban, recent kick, pirated client) explain a denied connection in the language the player selected earlier, not only the client language. `SessionLocaleResolver` looks it up by uuid: a live session, the language last seen for that uuid, or the database (only off the game thread, so the fast checks never block on it).
 - Vanilla blocks, units, items and teams passed as message arguments render with their localized names (FluBundle `ContentNames`).
@@ -18,6 +19,7 @@ All notable changes to this project will be documented in this file.
 - Complete translations for Belarusian, Czech, German, Spanish, French and Polish (previously 9–174 of 905 keys), and the remaining Ukrainian permission names. Belarusian, Czech, German, Spanish, French and Polish bundles now follow the English file's order and section headers.
 
 ### Added
+- Discord map attribution in `/map`: uploader and optional declared creator with stored Discord IDs, names and upload date, separate from the map file author. Submission metadata follows the file across game modes while statistics remain partitioned.
 - Match history: `/matches` and a "Matches" button on the player's own `/stats` profile list their rated matches per ladder (result, rating before and after, map, time) and open a match with every participant, their rating change and why it did or did not count. Players see only their own history for now.
 - `rating_matches` collection: `Ladder.settle` records a match once when the settlement carries a `MatchReport` (`MatchSettlement.withReport`), rated or not, with the ratings the standings were left at. A failure to record is logged and does not affect the settlement. Account merges move the matches along.
 - `MatchPresenter` / `MatchPresenters`: a mode words its own outcomes, reasons and figures in the history; `StandardMatchPresenter` covers team and free-for-all ladders.

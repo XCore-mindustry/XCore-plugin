@@ -85,6 +85,10 @@ class MapUiClientIntegrationTest {
 
         mapService = mock(MapService.class);
         mapDataRepository = mock(MapDataRepository.class);
+        when(mapDataRepository.enrichDiscordUploadAsync(any())).thenAnswer(call ->
+                java.util.concurrent.CompletableFuture.completedFuture(call.getArgument(0)));
+        when(mapDataRepository.enrichDiscordUploadAsync(any(), anyString())).thenAnswer(call ->
+                CompletableFuture.completedFuture(call.getArgument(0)));
         previewService = mock(MapPreviewService.class);
         observerService = mock(MapVoteObserverService.class);
         summaryCache = new MapSummaryCache(mapDataRepository);

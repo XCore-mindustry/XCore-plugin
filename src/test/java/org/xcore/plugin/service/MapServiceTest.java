@@ -40,6 +40,25 @@ class MapServiceTest {
     }
 
     @Test
+    void filenameLookupPrefersExactCaseAndRejectsAmbiguousCaseAliases() {
+        originalMaps = Vars.maps;
+        var registry = mock(Maps.class);
+        Vars.maps = registry;
+        var upper = new Map(new Fi("Arena.msav"), 10, 10, StringMap.of("name", "Arena", "author", "Author"), true);
+        var lower = new Map(new Fi("arena.msav"), 10, 10, StringMap.of("name", "Arena", "author", "Author"), true);
+        when(registry.customMaps()).thenReturn(Seq.with(upper, lower));
+        var service = new MapService(mock(EventDataRepository.class), mock(MapDataRepository.class),
+                mock(SessionService.class), new TomlXcoreConfig(), new TomlSecretsConfig(), mock(VoteService.class),
+                mock(VoteNewWaveFactory.class), mock(VoteRtvFactory.class), mock(GameStateService.class));
+        assertThat(service.findMapByFileName("arena.msav")).isSameAs(lower);
+        assertThat(service.findMapByFileName("Arena.msav")).isSameAs(upper);
+        assertThat(service.findMapByFileName("ARENA.msav")).isNull();
+        assertThat(service.findPersistedMap(new MapData("Arena", "arena.msav", "Author", "pvp"))).isSameAs(lower);
+        when(registry.customMaps()).thenReturn(Seq.with(upper));
+        assertThat(service.findMapByFileName("arena.msav")).isSameAs(upper);
+    }
+
+    @Test
     @DisplayName("resolveNextMap returns active event map even when same map repeats")
     void resolveNextMapReturnsActiveEventMap() {
         originalMaps = Vars.maps;

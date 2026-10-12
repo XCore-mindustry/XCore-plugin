@@ -98,6 +98,19 @@ class MapMenuTest {
     }
 
     @Test
+    void legacyMenuDoesNotShowAttributionFromAMismatchedFileAlias() {
+        var data = new MapData("Map1", "other.msav", "author", "pvp");
+        data.id = new org.bson.types.ObjectId();
+        data.discordUpload = new org.xcore.plugin.model.MapDiscordUpload("123", "Foreign", 1791806400000L, null, null);
+        when(mapDataRepository.findById(data.id)).thenReturn(data);
+        when(mapService.findPersistedMap(data)).thenReturn(createMap("Map1"));
+        mapMenu.map("viewer-1", data);
+        var content = org.mockito.ArgumentCaptor.forClass(String.class);
+        verify(gateway).menu(eq(session.player), eq(0), anyString(), content.capture(), any());
+        assertThat(content.getValue()).doesNotContain("map-upload-submitter", "map-upload-date");
+    }
+
+    @Test
     @DisplayName("maps renders routed screen with route metadata")
     void maps_rendersRoutedScreenWithRouteMetadata() {
         when(mapService.getAvailableMaps()).thenReturn(Seq.with(

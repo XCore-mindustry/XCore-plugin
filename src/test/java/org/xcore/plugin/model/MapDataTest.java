@@ -8,6 +8,21 @@ import static org.assertj.core.api.Assertions.assertThat;
 class MapDataTest {
 
     @Test
+    void discordSubmissionSurvivesGameStatisticsUpdatesAndProtocolRoundtrip() {
+        var map = new MapData("Arena", "arena.msav", "File author", "survival");
+        var upload = new MapDiscordUpload("123456789012345678", "Reviewer", 1791806400000L,
+                "234567890123456789", "Creator");
+        map.discordUpload = upload;
+        map.registerGame(1000, true, "pvp", "Updated file author");
+        assertThat(map.discordUpload).isSameAs(upload);
+        assertThat(MapDiscordUpload.fromProtocol(upload.toProtocol())).isEqualTo(upload);
+        assertThat(map.author).isEqualTo("Updated file author");
+        upload.creatorDiscordId = null;
+        upload.creatorName = null;
+        assertThat(upload.toProtocol().creator()).isNull();
+    }
+
+    @Test
     @DisplayName("registerGame initializes stats on first game")
     void registerFirstGame() {
         var map = new MapData("Map", "map.msav", "Author", "survival");

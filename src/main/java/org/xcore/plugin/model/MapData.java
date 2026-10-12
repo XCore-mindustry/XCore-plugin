@@ -19,6 +19,9 @@ public class MapData extends ModelData {
     @Builder.Default public String fileName = "Unknown";
     @Builder.Default public String author = "Unknown";
 
+    @BsonProperty("discord_upload")
+    public org.xcore.plugin.model.MapDiscordUpload discordUpload;
+
     /**
      * SHA-256 of the exact map file bytes. Advisory metadata captured off-thread;
      * not an identity key and not yet enforced unique.

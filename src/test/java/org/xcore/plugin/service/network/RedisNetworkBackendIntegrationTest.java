@@ -709,7 +709,7 @@ class RedisNetworkBackendIntegrationTest {
                     Map.entry("server", "alpha"),
                     Map.entry("payload_json", new Gson().toJson(new MapsLoadCommandV1(
                             "alpha",
-                            List.of(new MapFileSourceV1("https://example/maps/a.msav", "a.msav"))
+                            List.of(new MapFileSourceV1("https://example/maps/a.msav", "a.msav", null))
                     )))
             );
 
@@ -921,6 +921,6 @@ class RedisNetworkBackendIntegrationTest {
             String gameMode
     ) {
         Integer fileSize = fileSizeBytes == null ? null : Math.toIntExact(fileSizeBytes);
-        return new MapEntryV1(name, fileName, author, width, height, fileSize, like, dislike, reputation, popularity, interest, gameMode);
+        return new MapEntryV1(name, fileName, author, width, height, fileSize, like, dislike, reputation, popularity, interest, gameMode, null);
     }
 }

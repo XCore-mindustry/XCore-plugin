@@ -1,0 +1,13 @@
+// Source validation across the workspace before publishing a protocol release.
+// Usage: ./gradlew --init-script gradle/local-protocol.init.gradle test shadowJar
+settingsEvaluated { settings ->
+    def protocolDirectory = new File(settings.settingsDir.parentFile, 'xcore-protocol')
+    if (!protocolDirectory.isDirectory()) {
+        throw new GradleException("Expected sibling xcore-protocol checkout: ${protocolDirectory}")
+    }
+    settings.includeBuild(protocolDirectory) {
+        dependencySubstitution {
+            substitute module('org.xcore:xcore-protocol-java') using project(':')
+        }
+    }
+}

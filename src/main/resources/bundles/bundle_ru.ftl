@@ -1355,3 +1355,9 @@ match-history-finish-surrender = сдачей
 match-history-finish-timeout = по таймеру
 match-history-finish-admin-stop = остановлен администратором
 match-history-finish-technical-error = техническая ошибка
+
+# Discord submission attribution; the declared creator is supplied by the uploader.
+map-upload-file-author = Автор из файла: { $author }
+map-upload-creator = Указанный автор: { $person }
+map-upload-submitter = Добавил через Discord: { $person }
+map-upload-date = Загружена: [lightgray]{ $date }[] (UTC)

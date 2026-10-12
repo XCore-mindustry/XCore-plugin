@@ -114,12 +114,11 @@ public class MapService {
         String targetFileName = (mapData.fileName != null && !mapData.fileName.isBlank())
                 ? mapData.fileName.trim()
                 : null;
+        Map byFile = findMapByFileName(targetFileName);
+        if (byFile != null) return byFile;
         Map fallbackMatch = null;
 
         for (Map map : getAvailableMaps()) {
-            if (targetFileName != null && map.file != null && map.file.name().equalsIgnoreCase(targetFileName)) {
-                return map;
-            }
             if (fallbackMatch == null && Objects.equals(map.plainName(), mapData.name)
                     && (Objects.equals(map.author(), mapData.author) || Objects.equals(map.plainAuthor(), mapData.author))) {
                 fallbackMatch = map;
@@ -134,9 +133,11 @@ public class MapService {
         }
 
         String normalized = fileName.trim();
-        return getAvailableMaps().find(map ->
-                map.file != null && map.file.name().equalsIgnoreCase(normalized)
-        );
+        var available = getAvailableMaps();
+        Map exact = available.find(map -> map.file != null && map.file.name().equals(normalized));
+        if (exact != null) return exact;
+        var aliases = available.select(map -> map.file != null && map.file.name().equalsIgnoreCase(normalized));
+        return aliases.size == 1 ? aliases.first() : null;
     }
 
     public Map resolveNextMap(Gamemode mode, Map previous) {
