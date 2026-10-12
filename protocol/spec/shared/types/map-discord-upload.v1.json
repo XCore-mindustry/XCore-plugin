@@ -19,6 +19,14 @@
     },
     "creator": {
       "$ref": "urn:xcore:protocol:shared:types:discord-identity-ref:v1"
+    },
+    "uploadedByHandle": {
+      "type": "string",
+      "minLength": 1
+    },
+    "creatorHandle": {
+      "type": "string",
+      "minLength": 1
     }
   }
 }

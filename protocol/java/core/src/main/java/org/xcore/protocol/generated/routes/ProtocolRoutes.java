@@ -109,6 +109,29 @@ public final class ProtocolRoutes {
             null
     );
 
+    public static final RouteDescriptor MAPS_UPLOAD_REQUEST_V1 = new RouteDescriptor(
+            "maps",
+            "mapsUploadRequestV1Route",
+            "maps.upload.request",
+            1,
+            MapsMessages.MapsUploadRequestV1.class,
+            "rpc-request",
+            "xcore:rpc:req:{server}",
+            Map.of("server", "payload.server"),
+            "server",
+            180000,
+            false,
+            true,
+            "maps",
+            new RouteResponseDescriptor(
+                    "maps.upload.response",
+                    1,
+                    MapsMessages.MapsUploadResponseV1.class,
+                    "xcore:rpc:resp:{requester}",
+                    Map.of("requester", "rpc.requester")
+            )
+    );
+
     public static final RouteDescriptor CHAT_MESSAGE_V1 = new RouteDescriptor(
             "chat",
             "chatMessageV1Route",
@@ -864,6 +887,7 @@ public final class ProtocolRoutes {
             entry(key("maps.list.request", 1), MAPS_LIST_REQUEST_V1),
             entry(key("maps.remove.request", 1), MAPS_REMOVE_REQUEST_V1),
             entry(key("maps.load.command", 1), MAPS_LOAD_COMMAND_V1),
+            entry(key("maps.upload.request", 1), MAPS_UPLOAD_REQUEST_V1),
             entry(key("chat.message", 1), CHAT_MESSAGE_V1),
             entry(key("chat.global", 1), CHAT_GLOBAL_V1),
             entry(key("chat.discord-ingress.command", 1), CHAT_DISCORD_INGRESS_COMMAND_V1),
@@ -912,6 +936,7 @@ public final class ProtocolRoutes {
             entry((Class<? extends ProtocolPayload>) MapsMessages.MapsListRequestV1.class, MAPS_LIST_REQUEST_V1),
             entry((Class<? extends ProtocolPayload>) MapsMessages.MapsRemoveRequestV1.class, MAPS_REMOVE_REQUEST_V1),
             entry((Class<? extends ProtocolPayload>) MapsMessages.MapsLoadCommandV1.class, MAPS_LOAD_COMMAND_V1),
+            entry((Class<? extends ProtocolPayload>) MapsMessages.MapsUploadRequestV1.class, MAPS_UPLOAD_REQUEST_V1),
             entry((Class<? extends ProtocolPayload>) ChatMessages.ChatMessageV1.class, CHAT_MESSAGE_V1),
             entry((Class<? extends ProtocolPayload>) ChatMessages.ChatGlobalV1.class, CHAT_GLOBAL_V1),
             entry((Class<? extends ProtocolPayload>) ChatMessages.ChatDiscordIngressCommandV1.class, CHAT_DISCORD_INGRESS_COMMAND_V1),

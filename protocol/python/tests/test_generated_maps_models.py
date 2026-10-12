@@ -125,3 +125,18 @@ def test_discord_submission_fixtures_roundtrip() -> None:
     for name, model in (("maps.load.command", MapsLoadCommandV1), ("maps.list.response", MapsListResponseV1)):
         payload = load_json(fixtures_root() / "valid" / "maps" / f"{name}.v1.discord-upload.json")
         assert model.from_payload(payload).to_payload() == payload
+
+
+def test_upload_rpc_fixtures_and_constraints() -> None:
+    import pytest
+    from xcore_protocol.generated import MapsUploadRequestV1, MapsUploadResponseV1, MapDiscordUploadV1
+    for name, model in (("request", MapsUploadRequestV1), ("response", MapsUploadResponseV1)):
+        payload = load_json(fixtures_root() / "valid" / "maps" / f"maps.upload.{name}.v1.json")
+        assert model.from_payload(payload).to_payload() == payload
+    for payload in (
+        {"uploadedBy": {"discordId": "1"}, "uploadedAt": -5},
+        {"uploadedBy": {"discordId": ""}, "uploadedAt": 1},
+        {"uploadedBy": {"discordId": "1", "discordUsername": ""}, "uploadedAt": 1},
+    ):
+        with pytest.raises(ValueError):
+            MapDiscordUploadV1.from_payload(payload)

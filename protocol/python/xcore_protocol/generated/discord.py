@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from collections.abc import Mapping
 from dataclasses import dataclass
 from enum import StrEnum
@@ -133,7 +134,11 @@ class DiscordAdminAccessChangedCommandV1:
         _expect_instance(self.source, 'source', ActorRefV1)
         _expect_instance(self.actor, 'actor', ActorRefV1)
         _expect_str(self.reason, 'reason')
+        if len(self.reason) < 1:
+            raise ValueError("reason is too short")
         _expect_str(self.server, 'server')
+        if len(self.server) < 1:
+            raise ValueError("server is too short")
         _expect_str(self.occurredAt, 'occurredAt')
 
     @classmethod
@@ -187,8 +192,12 @@ class DiscordLinkCodeCreatedV1:
     MESSAGE_VERSION: ClassVar[int] = 1
     def __post_init__(self) -> None:
         _expect_str(self.code, 'code')
+        if len(self.code) < 1:
+            raise ValueError("code is too short")
         _expect_instance(self.player, 'player', PlayerRefV1)
         _expect_str(self.server, 'server')
+        if len(self.server) < 1:
+            raise ValueError("server is too short")
         _expect_str(self.createdAt, 'createdAt')
         _expect_str(self.expiresAt, 'expiresAt')
 
@@ -237,9 +246,13 @@ class DiscordLinkConfirmCommandV1:
     MESSAGE_VERSION: ClassVar[int] = 1
     def __post_init__(self) -> None:
         _expect_str(self.code, 'code')
+        if len(self.code) < 1:
+            raise ValueError("code is too short")
         _expect_instance(self.player, 'player', PlayerRefV1)
         _expect_instance(self.discord, 'discord', DiscordIdentityRefV1)
         _expect_str(self.server, 'server')
+        if len(self.server) < 1:
+            raise ValueError("server is too short")
         _expect_str(self.confirmedAt, 'confirmedAt')
 
     @classmethod
@@ -294,6 +307,8 @@ class DiscordLinkStatusChangedV1:
         _expect_instance(self.discord, 'discord', DiscordIdentityRefV1)
         _expect_instance(self.action, 'action', DiscordLinkStatusChangedV1Action)
         _expect_str(self.server, 'server')
+        if len(self.server) < 1:
+            raise ValueError("server is too short")
         _expect_str(self.occurredAt, 'occurredAt')
 
     @classmethod
@@ -344,6 +359,8 @@ class DiscordUnlinkCommandV1:
         _expect_instance(self.discord, 'discord', DiscordIdentityRefV1)
         _expect_instance(self.actor, 'actor', ActorRefV1)
         _expect_str(self.server, 'server')
+        if len(self.server) < 1:
+            raise ValueError("server is too short")
         _expect_str(self.requestedAt, 'requestedAt')
 
     @classmethod

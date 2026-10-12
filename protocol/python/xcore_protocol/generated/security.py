@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from collections.abc import Mapping
 from dataclasses import dataclass
 from enum import StrEnum
@@ -115,7 +116,11 @@ class PlayerPasswordResetCommandV1:
     MESSAGE_VERSION: ClassVar[int] = 1
     def __post_init__(self) -> None:
         _expect_str(self.playerUuid, 'playerUuid')
+        if len(self.playerUuid) < 1:
+            raise ValueError("playerUuid is too short")
         _expect_str(self.server, 'server')
+        if len(self.server) < 1:
+            raise ValueError("server is too short")
 
     @classmethod
     def from_payload(cls, payload: Mapping[str, Any]) -> "PlayerPasswordResetCommandV1":
@@ -155,9 +160,15 @@ class SecurityPermissionsChangedV1:
     MESSAGE_VERSION: ClassVar[int] = 1
     def __post_init__(self) -> None:
         _expect_str(self.playerUuid, 'playerUuid')
+        if len(self.playerUuid) < 1:
+            raise ValueError("playerUuid is too short")
         _expect_int(self.revision, 'revision')
+        if self.revision < 0:
+            raise ValueError("revision must be >= 0")
         if self.sourceServer is not None:
             _expect_str(self.sourceServer, 'sourceServer')
+            if len(self.sourceServer) < 1:
+                raise ValueError("sourceServer is too short")
         if self.occurredAt is not None:
             _expect_str(self.occurredAt, 'occurredAt')
 
@@ -204,8 +215,14 @@ class SecurityStaffResetPasswordRequestV1:
     MESSAGE_VERSION: ClassVar[int] = 1
     def __post_init__(self) -> None:
         _expect_str(self.server, 'server')
+        if len(self.server) < 1:
+            raise ValueError("server is too short")
         _expect_str(self.operationId, 'operationId')
+        if len(self.operationId) < 1:
+            raise ValueError("operationId is too short")
         _expect_str(self.playerUuid, 'playerUuid')
+        if len(self.playerUuid) < 1:
+            raise ValueError("playerUuid is too short")
 
     @classmethod
     def from_payload(cls, payload: Mapping[str, Any]) -> "SecurityStaffResetPasswordRequestV1":
@@ -246,7 +263,11 @@ class SecurityStaffResetPasswordResponseV1:
     MESSAGE_VERSION: ClassVar[int] = 1
     def __post_init__(self) -> None:
         _expect_str(self.server, 'server')
+        if len(self.server) < 1:
+            raise ValueError("server is too short")
         _expect_str(self.operationId, 'operationId')
+        if len(self.operationId) < 1:
+            raise ValueError("operationId is too short")
         _expect_bool(self.changed, 'changed')
 
     @classmethod
@@ -291,9 +312,17 @@ class SecurityStaffSyncRequestV1:
     MESSAGE_VERSION: ClassVar[int] = 1
     def __post_init__(self) -> None:
         _expect_str(self.server, 'server')
+        if len(self.server) < 1:
+            raise ValueError("server is too short")
         _expect_str(self.operationId, 'operationId')
+        if len(self.operationId) < 1:
+            raise ValueError("operationId is too short")
         _expect_str(self.playerUuid, 'playerUuid')
+        if len(self.playerUuid) < 1:
+            raise ValueError("playerUuid is too short")
         _expect_str(self.discordId, 'discordId')
+        if len(self.discordId) < 1:
+            raise ValueError("discordId is too short")
         if not isinstance(self.roleIds, tuple):
             raise TypeError("roleIds must be a tuple")
         for item in self.roleIds:
@@ -348,8 +377,14 @@ class SecurityStaffSyncResponseV1:
     MESSAGE_VERSION: ClassVar[int] = 1
     def __post_init__(self) -> None:
         _expect_str(self.server, 'server')
+        if len(self.server) < 1:
+            raise ValueError("server is too short")
         _expect_str(self.operationId, 'operationId')
+        if len(self.operationId) < 1:
+            raise ValueError("operationId is too short")
         _expect_int(self.revision, 'revision')
+        if self.revision < 0:
+            raise ValueError("revision must be >= 0")
         _expect_bool(self.changed, 'changed')
 
     @classmethod

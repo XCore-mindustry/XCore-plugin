@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from collections.abc import Mapping
 from dataclasses import dataclass
 from enum import StrEnum
@@ -128,8 +129,14 @@ class RatingAccountsMergeRequestV1:
     MESSAGE_VERSION: ClassVar[int] = 1
     def __post_init__(self) -> None:
         _expect_str(self.server, 'server')
+        if len(self.server) < 1:
+            raise ValueError("server is too short")
         _expect_str(self.sourceUuid, 'sourceUuid')
+        if len(self.sourceUuid) < 1:
+            raise ValueError("sourceUuid is too short")
         _expect_str(self.targetUuid, 'targetUuid')
+        if len(self.targetUuid) < 1:
+            raise ValueError("targetUuid is too short")
 
     @classmethod
     def from_payload(cls, payload: Mapping[str, Any]) -> "RatingAccountsMergeRequestV1":
@@ -169,7 +176,11 @@ class RatingAccountsMergeResponseV1:
     MESSAGE_VERSION: ClassVar[int] = 1
     def __post_init__(self) -> None:
         _expect_str(self.server, 'server')
+        if len(self.server) < 1:
+            raise ValueError("server is too short")
         _expect_int(self.standingsMerged, 'standingsMerged')
+        if self.standingsMerged < 0:
+            raise ValueError("standingsMerged must be >= 0")
 
     @classmethod
     def from_payload(cls, payload: Mapping[str, Any]) -> "RatingAccountsMergeResponseV1":
@@ -216,9 +227,17 @@ class RatingPrizeGrantUpdateRequestV1:
     MESSAGE_VERSION: ClassVar[int] = 1
     def __post_init__(self) -> None:
         _expect_str(self.server, 'server')
+        if len(self.server) < 1:
+            raise ValueError("server is too short")
         _expect_str(self.ladder, 'ladder')
+        if len(self.ladder) < 1:
+            raise ValueError("ladder is too short")
         _expect_int(self.season, 'season')
+        if self.season < 1:
+            raise ValueError("season must be >= 1")
         _expect_int(self.place, 'place')
+        if self.place < 1:
+            raise ValueError("place must be >= 1")
         if self.playerPid is not None:
             _expect_int(self.playerPid, 'playerPid')
         _expect_instance(self.status, 'status', RatingPrizeGrantUpdateRequestV1Status)
@@ -278,9 +297,17 @@ class RatingPrizeGrantUpdateResponseV1:
     MESSAGE_VERSION: ClassVar[int] = 1
     def __post_init__(self) -> None:
         _expect_str(self.server, 'server')
+        if len(self.server) < 1:
+            raise ValueError("server is too short")
         _expect_int(self.season, 'season')
+        if self.season < 1:
+            raise ValueError("season must be >= 1")
         _expect_int(self.place, 'place')
+        if self.place < 1:
+            raise ValueError("place must be >= 1")
         _expect_int(self.updated, 'updated')
+        if self.updated < 0:
+            raise ValueError("updated must be >= 0")
 
     @classmethod
     def from_payload(cls, payload: Mapping[str, Any]) -> "RatingPrizeGrantUpdateResponseV1":
@@ -331,6 +358,8 @@ class RatingSeasonEndedV1:
             _expect_instance(item, 'podium[]', SeasonPodiumEntryV1)
         _expect_instance(self.summary, 'summary', SeasonSummaryV1)
         _expect_str(self.server, 'server')
+        if len(self.server) < 1:
+            raise ValueError("server is too short")
         _expect_str(self.occurredAt, 'occurredAt')
 
     @classmethod
@@ -379,7 +408,11 @@ class RatingSeasonEndingSoonV1:
     def __post_init__(self) -> None:
         _expect_instance(self.season, 'season', SeasonRefV1)
         _expect_str(self.notice, 'notice')
+        if len(self.notice) < 1:
+            raise ValueError("notice is too short")
         _expect_str(self.server, 'server')
+        if len(self.server) < 1:
+            raise ValueError("server is too short")
         _expect_str(self.occurredAt, 'occurredAt')
         if self.prizes is not None:
             if not isinstance(self.prizes, tuple):
@@ -440,17 +473,27 @@ class RatingSeasonPrizesSetRequestV1:
     MESSAGE_VERSION: ClassVar[int] = 1
     def __post_init__(self) -> None:
         _expect_str(self.server, 'server')
+        if len(self.server) < 1:
+            raise ValueError("server is too short")
         _expect_str(self.ladder, 'ladder')
+        if len(self.ladder) < 1:
+            raise ValueError("ladder is too short")
         _expect_instance(self.operation, 'operation', RatingSeasonPrizesSetRequestV1Operation)
         if self.prize is not None:
             _expect_instance(self.prize, 'prize', SeasonPrizeV1)
         if self.placeFrom is not None:
             _expect_int(self.placeFrom, 'placeFrom')
+            if self.placeFrom < 1:
+                raise ValueError("placeFrom must be >= 1")
         if self.placeTo is not None:
             _expect_int(self.placeTo, 'placeTo')
+            if self.placeTo < 1:
+                raise ValueError("placeTo must be >= 1")
         _expect_instance(self.actor, 'actor', ActorRefV1)
         if self.requestId is not None:
             _expect_str(self.requestId, 'requestId')
+            if len(self.requestId) < 1:
+                raise ValueError("requestId is too short")
 
     @classmethod
     def from_payload(cls, payload: Mapping[str, Any]) -> "RatingSeasonPrizesSetRequestV1":
@@ -505,6 +548,8 @@ class RatingSeasonPrizesSetResponseV1:
     MESSAGE_VERSION: ClassVar[int] = 1
     def __post_init__(self) -> None:
         _expect_str(self.server, 'server')
+        if len(self.server) < 1:
+            raise ValueError("server is too short")
         _expect_instance(self.season, 'season', SeasonRefV1)
         if not isinstance(self.prizes, tuple):
             raise TypeError("prizes must be a tuple")
@@ -560,10 +605,16 @@ class RatingSeasonRescheduleRequestV1:
     MESSAGE_VERSION: ClassVar[int] = 1
     def __post_init__(self) -> None:
         _expect_str(self.server, 'server')
+        if len(self.server) < 1:
+            raise ValueError("server is too short")
         _expect_str(self.ladder, 'ladder')
+        if len(self.ladder) < 1:
+            raise ValueError("ladder is too short")
         _expect_instance(self.operation, 'operation', RatingSeasonRescheduleRequestV1Operation)
         if self.extendSeconds is not None:
             _expect_int(self.extendSeconds, 'extendSeconds')
+            if self.extendSeconds < 1:
+                raise ValueError("extendSeconds must be >= 1")
         if self.endsAt is not None:
             _expect_str(self.endsAt, 'endsAt')
         _expect_instance(self.actor, 'actor', ActorRefV1)
@@ -571,6 +622,8 @@ class RatingSeasonRescheduleRequestV1:
             _expect_str(self.reason, 'reason')
         if self.requestId is not None:
             _expect_str(self.requestId, 'requestId')
+            if len(self.requestId) < 1:
+                raise ValueError("requestId is too short")
 
     @classmethod
     def from_payload(cls, payload: Mapping[str, Any]) -> "RatingSeasonRescheduleRequestV1":
@@ -626,6 +679,8 @@ class RatingSeasonRescheduleResponseV1:
     MESSAGE_VERSION: ClassVar[int] = 1
     def __post_init__(self) -> None:
         _expect_str(self.server, 'server')
+        if len(self.server) < 1:
+            raise ValueError("server is too short")
         _expect_instance(self.season, 'season', SeasonRefV1)
         _expect_str(self.previousEndsAt, 'previousEndsAt')
         _expect_bool(self.ended, 'ended')
@@ -679,6 +734,8 @@ class RatingSeasonRescheduledV1:
         if self.reason is not None:
             _expect_str(self.reason, 'reason')
         _expect_str(self.server, 'server')
+        if len(self.server) < 1:
+            raise ValueError("server is too short")
         _expect_str(self.occurredAt, 'occurredAt')
 
     @classmethod
@@ -730,7 +787,11 @@ class RatingSeasonStartedV1:
         _expect_instance(self.season, 'season', SeasonRefV1)
         if self.previousSeason is not None:
             _expect_int(self.previousSeason, 'previousSeason')
+            if self.previousSeason < 1:
+                raise ValueError("previousSeason must be >= 1")
         _expect_str(self.server, 'server')
+        if len(self.server) < 1:
+            raise ValueError("server is too short")
         _expect_str(self.occurredAt, 'occurredAt')
 
     @classmethod
