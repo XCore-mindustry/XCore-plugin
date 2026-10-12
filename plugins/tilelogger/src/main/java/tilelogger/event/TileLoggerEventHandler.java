@@ -1,9 +1,12 @@
 package tilelogger.event;
 
-import arc.Events;
+import arc.func.Cons;
+import org.xcore.plugin.event.EventSubscriptions;
+import org.xcore.plugin.startup.ShutdownOrder;
 import com.ospx.flubundle.Args;
 import com.ospx.flubundle.mindustry.Messenger;
 import io.avaje.inject.PostConstruct;
+import io.avaje.inject.PreDestroy;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import mindustry.Vars;
@@ -24,6 +27,10 @@ public class TileLoggerEventHandler {
 
     private final TileLoggerService service;
     private final Messenger messenger;
+    private final EventSubscriptions subscriptions = new EventSubscriptions();
+    private Cons<Player> previousOnKick;
+    private Cons<Player> onKick;
+    private volatile boolean stopped;
 
     @Inject
     public TileLoggerEventHandler(TileLoggerService service, Messenger messenger) {
@@ -34,62 +41,65 @@ public class TileLoggerEventHandler {
 
     @PostConstruct
     public void init() {
-        VoteKick.setOnKick(player -> {
+        previousOnKick = VoteKick.onKick;
+        onKick = player -> {
+            if (stopped) return;
             var target = service.findPlayerUuid(player.uuid());
             if (target != null) {
                 service.rollback(null, target, -1, -180,
                         new Rect((short)0, (short)0, (short)(Vars.world.width()-1), (short)(Vars.world.height()-1)));
             }
-        });
+        };
+        VoteKick.setOnKick(onKick);
 
-        Events.on(EventType.BuildSelectEvent.class, event -> {
+        subscriptions.on(EventType.BuildSelectEvent.class, event -> {
             if (event.builder == null || event.breaking) return;
             service.logBuild(event.tile, service.unitToPlayerInfo(event.builder));
         });
 
-        Events.on(EventType.BlockBuildBeginEvent.class, event -> {
+        subscriptions.on(EventType.BlockBuildBeginEvent.class, event -> {
             if (event.unit == null || !event.breaking) return;
             service.logDestroy(event.tile, service.unitToPlayerInfo(event.unit));
         });
 
-        Events.on(EventType.BlockBuildEndEvent.class, event -> {
+        subscriptions.on(EventType.BlockBuildEndEvent.class, event -> {
             if (event.unit == null || event.breaking) return;
             service.logBuild(event.tile, service.unitToPlayerInfo(event.unit));
         });
 
-        Events.on(EventType.BuildRotateEvent.class, event -> {
+        subscriptions.on(EventType.BuildRotateEvent.class, event -> {
             if (event.unit == null) return;
             service.logBuild(event.build.tile, service.unitToPlayerInfo(event.unit));
         });
 
-        Events.on(EventType.ConfigEvent.class, event -> {
+        subscriptions.on(EventType.ConfigEvent.class, event -> {
             if (event.tile == null) return;
             if (event.tile instanceof PowerNodeBuild && event.value instanceof Integer i)
                 service.logBuild(Vars.world.tile(i), event.player == null ? null : event.player.getInfo());
             service.logBuild(event.tile.tile, event.player == null ? null : event.player.getInfo());
         });
 
-        Events.on(EventType.PickupEvent.class, event -> {
+        subscriptions.on(EventType.PickupEvent.class, event -> {
             if (event.build == null) return;
             service.logDestroy(event.build.tile, service.unitToPlayerInfo(event.carrier));
         });
 
-        Events.on(EventType.PayloadDropEvent.class, event -> {
+        subscriptions.on(EventType.PayloadDropEvent.class, event -> {
             if (event.build == null) return;
             service.logBuild(event.build.tile, service.unitToPlayerInfo(event.carrier));
         });
 
-        Events.on(EventType.BlockDestroyEvent.class, event -> service.logDestroy(event.tile, null));
+        subscriptions.on(EventType.BlockDestroyEvent.class, event -> service.logDestroy(event.tile, null));
 
-        Events.on(EventType.PlayEvent.class, _ -> {
+        subscriptions.on(EventType.PlayEvent.class, _ -> {
             String mapName = Vars.state.map.file.name();
             String date = new SimpleDateFormat("yyyy-MM-dd_HH-mm-ss").format(new Date());
             service.resetHistory(date + "_" + mapName, true);
         });
 
-        Events.on(EventType.PlayerLeave.class, event -> service.removePlayerConfig(event.player.uuid()));
+        subscriptions.on(EventType.PlayerLeave.class, event -> service.removePlayerConfig(event.player.uuid()));
 
-        Events.on(EventType.TapEvent.class, event -> {
+        subscriptions.on(EventType.TapEvent.class, event -> {
             if (event.tile == null) return;
 
             PlayerConfig config = service.getPlayerConfig(event.player);
@@ -118,4 +128,11 @@ public class TileLoggerEventHandler {
             }
         });
     }
+    @PreDestroy(priority = ShutdownOrder.STOP_PRODUCERS)
+    public void stop() {
+        stopped = true;
+        subscriptions.close();
+        if (VoteKick.onKick == onKick) VoteKick.setOnKick(previousOnKick);
+    }
+
 }
