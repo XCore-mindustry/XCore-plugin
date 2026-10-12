@@ -2,6 +2,9 @@ package org.xcore.plugin.gamemode.pvp;
 
 import arc.Core;
 import arc.Events;
+import io.avaje.inject.PreDestroy;
+import org.xcore.plugin.event.EventSubscriptions;
+import org.xcore.plugin.startup.ShutdownOrder;
 import arc.struct.Seq;
 import com.ospx.flubundle.Args;
 import com.ospx.flubundle.Bundle;
@@ -39,6 +42,7 @@ import static org.xcore.plugin.common.PLog.info;
 
 @Singleton
 public class MiniPvP {
+    private final EventSubscriptions subscriptions = new EventSubscriptions();
     public final Seq<String> defeatedPlayers = new Seq<>();
     public boolean roundHadMultipleTeams = false;
 
@@ -94,7 +98,7 @@ public class MiniPvP {
     public void init() {
         if (!"mini-pvp".equals(config.server.name)) return;
 
-        Events.on(EventType.PlayEvent.class, e -> {
+        subscriptions.on(EventType.PlayEvent.class, e -> {
             clearRoundState();
             if (matchTracker != null) {
                 matchTracker.startMatch(observerService);
@@ -104,7 +108,7 @@ public class MiniPvP {
             }
         });
 
-        Events.on(EventType.PlayerConnectionConfirmed.class, e -> {
+        subscriptions.on(EventType.PlayerConnectionConfirmed.class, e -> {
             if (defeatedPlayers.contains(e.player.uuid())) {
                 observerService.enter(e.player);
                 Session session = sessionService.get(e.player);
@@ -115,20 +119,20 @@ public class MiniPvP {
             }
         });
 
-        Events.on(EventType.PlayerLeave.class, e -> {
+        subscriptions.on(EventType.PlayerLeave.class, e -> {
             if (matchTracker != null && e.player != null) {
                 matchTracker.onPlayerLeave(e.player);
             }
         });
 
-        Events.run(EventType.Trigger.update, () -> {
+        subscriptions.run(EventType.Trigger.update, () -> {
             if (!roundHadMultipleTeams && Vars.state != null && Vars.state.isPlaying() && Vars.state.rules.pvp) {
                 updateRoundTeamsPresence();
             }
             updateHud();
         });
 
-        Events.on(EventType.GameOverEvent.class, e -> {
+        subscriptions.on(EventType.GameOverEvent.class, e -> {
             if (e.winner == Team.derelict) return;
 
             if (ratingSettler != null) {
@@ -140,7 +144,7 @@ public class MiniPvP {
             }
         });
 
-        Events.on(EventType.BlockDestroyEvent.class, event -> {
+        subscriptions.on(EventType.BlockDestroyEvent.class, event -> {
             var team = event.tile.team();
 
             if (event.tile.block() instanceof CoreBlock) {
@@ -311,5 +315,10 @@ public class MiniPvP {
             Call.hideHudText();
         } catch (Exception ignored) {
         }
+    }
+
+    @PreDestroy(priority = ShutdownOrder.STOP_PRODUCERS)
+    public void shutdownEventSubscriptions() {
+        subscriptions.close();
     }
 }

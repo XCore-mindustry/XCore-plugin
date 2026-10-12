@@ -1,6 +1,8 @@
 package org.xcore.plugin.gamemode.pvp.rating;
 
-import arc.Events;
+import io.avaje.inject.PreDestroy;
+import org.xcore.plugin.event.EventSubscriptions;
+import org.xcore.plugin.startup.ShutdownOrder;
 import io.avaje.inject.PostConstruct;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
@@ -13,6 +15,7 @@ import org.xcore.plugin.rating.ladder.LadderLeagueDisplay;
 
 @Singleton
 public class MiniPvPDisplayService {
+    private final EventSubscriptions subscriptions = new EventSubscriptions();
     private static final String PROVIDER_ID = "minipvp-league";
 
     private final TomlXcoreConfig config;
@@ -38,7 +41,7 @@ public class MiniPvPDisplayService {
         if (!"mini-pvp".equals(config.server.name)) return;
 
         start();
-        Events.on(EventType.PlayerJoin.class, e -> display.preload(e.player));
+        subscriptions.on(EventType.PlayerJoin.class, e -> display.preload(e.player));
     }
 
     public void start() {
@@ -46,7 +49,9 @@ public class MiniPvPDisplayService {
         registration = registry.register(display);
     }
 
+    @PreDestroy(priority = ShutdownOrder.STOP_PRODUCERS)
     public void stop() {
+        subscriptions.close();
         if (registration != null) {
             registration.close();
             registration = null;

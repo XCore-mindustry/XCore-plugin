@@ -3,6 +3,7 @@ package org.xcore.plugin.metrics;
 import com.google.gson.Gson;
 import io.avaje.inject.PostConstruct;
 import io.avaje.inject.PreDestroy;
+import org.xcore.plugin.startup.ShutdownOrder;
 import io.lettuce.core.SetArgs;
 import jakarta.inject.Named;
 import jakarta.inject.Singleton;
@@ -57,7 +58,7 @@ public final class MetricsSnapshotPublisher {
         worker = Thread.ofVirtual().name("telemetry-snapshot-publisher").start(this::runLoop);
     }
 
-    @PreDestroy
+    @PreDestroy(priority = ShutdownOrder.STOP_PRODUCERS)
     public void shutdown() {
         running = false;
         if (worker != null) {

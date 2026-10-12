@@ -1,6 +1,8 @@
 package org.xcore.plugin.rating.season;
 
-import arc.Events;
+import io.avaje.inject.PreDestroy;
+import org.xcore.plugin.event.EventSubscriptions;
+import org.xcore.plugin.startup.ShutdownOrder;
 import io.avaje.inject.PostConstruct;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
@@ -31,6 +33,7 @@ import static com.ospx.flubundle.Bundle.args;
  */
 @Singleton
 public class SeasonAnnouncer implements SeasonObserver {
+    private final EventSubscriptions subscriptions = new EventSubscriptions();
     private final SeasonLifecycleService lifecycle;
     private final SeasonResolver resolver;
     private final SeasonSchedule schedule;
@@ -39,7 +42,6 @@ public class SeasonAnnouncer implements SeasonObserver {
     private final Clock clock;
     private final Map<String, LadderDefinition> followed = new ConcurrentHashMap<>();
 
-    @Inject
     public SeasonAnnouncer(SeasonLifecycleService lifecycle,
                            SeasonResolver resolver,
                            SeasonSchedule schedule,
@@ -48,6 +50,7 @@ public class SeasonAnnouncer implements SeasonObserver {
         this(lifecycle, resolver, schedule, sessions, displays, Clock.systemUTC());
     }
 
+    @Inject
     SeasonAnnouncer(SeasonLifecycleService lifecycle,
                     SeasonResolver resolver,
                     SeasonSchedule schedule,
@@ -65,7 +68,7 @@ public class SeasonAnnouncer implements SeasonObserver {
     @PostConstruct
     public void init() {
         lifecycle.addObserver(this);
-        Events.on(EventType.PlayerJoin.class, event -> greet(event.player));
+        subscriptions.on(EventType.PlayerJoin.class, event -> greet(event.player));
     }
 
     /** Announces this ladder's seasons to the players of this server. */
@@ -143,5 +146,10 @@ public class SeasonAnnouncer implements SeasonObserver {
 
     private static boolean reachable(Session session) {
         return session != null && session.player != null && session.player.con != null && session.locale() != null;
+    }
+
+    @PreDestroy(priority = ShutdownOrder.STOP_PRODUCERS)
+    public void shutdownEventSubscriptions() {
+        subscriptions.close();
     }
 }

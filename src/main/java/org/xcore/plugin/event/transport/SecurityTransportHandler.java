@@ -1,6 +1,8 @@
 package org.xcore.plugin.event.transport;
 
 import arc.util.Timer;
+import io.avaje.inject.PreDestroy;
+import org.xcore.plugin.startup.ShutdownOrder;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import org.xcore.plugin.common.PLog;
@@ -44,6 +46,9 @@ public class SecurityTransportHandler {
     private final PermissionSessions sessions;
     private final StaffCredentials credentials;
     private final PlayerDataRepository players;
+    private Timer.Task refreshTask;
+    private Timer.Task reapplyTask;
+    private volatile boolean stopped;
 
     @Inject
     public SecurityTransportHandler(NetworkService network,
@@ -62,6 +67,13 @@ public class SecurityTransportHandler {
         grants.onChanged(this::announce);
     }
 
+    @PreDestroy(priority = ShutdownOrder.STOP_PRODUCERS)
+    public synchronized void stop() {
+        stopped = true;
+        if (refreshTask != null) { refreshTask.cancel(); refreshTask = null; }
+        if (reapplyTask != null) { reapplyTask.cancel(); reapplyTask = null; }
+    }
+
     public void registerListeners() {
         network.subscribe(SecurityPermissionsChangedV1.class, e -> sessions.onChanged(e.playerUuid(), e.revision()));
         network.subscribe(SecurityStaffSyncRequestV1.class, this::sync);
@@ -72,12 +84,13 @@ public class SecurityTransportHandler {
      * Starts the periodic reread that catches a change whose announcement was lost. Game
      * thread, once the server has loaded.
      */
-    public void start() {
+    public synchronized void start() {
+        if (stopped || refreshTask != null) return;
         if (!roles.enabled()) {
             return;
         }
-        Timer.schedule(sessions::refreshAll, PermissionSessions.REFRESH_SECONDS, PermissionSessions.REFRESH_SECONDS);
-        Timer.schedule(sessions::reapplyAll, PermissionSessions.REAPPLY_SECONDS, PermissionSessions.REAPPLY_SECONDS);
+        refreshTask = Timer.schedule(() -> { if (!stopped) sessions.refreshAll(); }, PermissionSessions.REFRESH_SECONDS, PermissionSessions.REFRESH_SECONDS);
+        reapplyTask = Timer.schedule(() -> { if (!stopped) sessions.reapplyAll(); }, PermissionSessions.REAPPLY_SECONDS, PermissionSessions.REAPPLY_SECONDS);
 
         // The game's own admin list gives nothing with roles on. Listing it once lets the
         // operator hand out roles to those who are meant to keep their rights.

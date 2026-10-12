@@ -4,6 +4,7 @@ import arc.util.Log;
 import arc.util.Timer;
 import io.avaje.inject.PostConstruct;
 import io.avaje.inject.PreDestroy;
+import org.xcore.plugin.startup.ShutdownOrder;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import mindustry.Vars;
@@ -26,6 +27,7 @@ public class AnnouncementService {
     private final SessionService sessionService;
     private final AtomicInteger currentIndex = new AtomicInteger(0);
     private Timer.Task scheduledTask;
+    private volatile boolean stopped;
 
     public static final List<String> DEFAULT_ANNOUNCEMENTS = List.of(
             "announcement-hub",
@@ -48,13 +50,14 @@ public class AnnouncementService {
         float firstDelay = Math.max(1f, config.announcements.firstDelaySeconds);
         float interval = Math.max(10f, config.announcements.intervalSeconds);
 
-        scheduledTask = Timer.schedule(this::broadcastNext, firstDelay, interval);
+        scheduledTask = Timer.schedule(() -> { if (!stopped) broadcastNext(); }, firstDelay, interval);
         Log.info("[AnnouncementService] Scheduled periodic announcements every @s (initial delay @s)",
                 interval, firstDelay);
     }
 
-    @PreDestroy
+    @PreDestroy(priority = ShutdownOrder.STOP_PRODUCERS)
     public void stop() {
+        stopped = true;
         if (scheduledTask != null) {
             scheduledTask.cancel();
             scheduledTask = null;

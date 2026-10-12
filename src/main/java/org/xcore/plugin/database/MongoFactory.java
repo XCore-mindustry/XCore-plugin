@@ -7,7 +7,6 @@ import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoDatabase;
 import io.avaje.inject.Bean;
 import io.avaje.inject.Factory;
-import io.avaje.inject.PreDestroy;
 import org.bson.codecs.configuration.CodecRegistry;
 import org.bson.codecs.pojo.PojoCodecProvider;
 import org.xcore.plugin.common.PLog;
@@ -21,7 +20,6 @@ import static com.mongodb.MongoClientSettings.getDefaultCodecRegistry;
 public class MongoFactory {
 
     private final TomlSecretsConfig config;
-    private MongoClient mongoClient;
 
     public MongoFactory(TomlSecretsConfig config) {
         this.config = config;
@@ -34,8 +32,7 @@ public class MongoFactory {
                 .applyConnectionString(connectionString)
                 .build();
 
-        mongoClient = MongoClients.create(settings);
-        return mongoClient;
+        return MongoClients.create(settings);
     }
 
     private CodecRegistry pojoCodecRegistry() {
@@ -52,10 +49,4 @@ public class MongoFactory {
                 .withCodecRegistry(pojoCodecRegistry());
     }
 
-    @PreDestroy
-    public void close() {
-        if (mongoClient != null) {
-            mongoClient.close();
-        }
-    }
 }

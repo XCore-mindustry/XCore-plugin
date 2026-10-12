@@ -34,11 +34,11 @@ public class PrizeService implements SeasonPrizes {
     private final Map<PrizeKind, PrizeHandler> handlers = new EnumMap<>(PrizeKind.class);
     private final Clock clock;
 
-    @Inject
     public PrizeService(PrizeGrantRepository grants, SeasonStore seasons, List<PrizeHandler> handlers) {
         this(grants, seasons, handlers, Clock.systemUTC());
     }
 
+    @Inject
     public PrizeService(PrizeGrantRepository grants, SeasonStore seasons, List<PrizeHandler> handlers, Clock clock) {
         this.grants = Objects.requireNonNull(grants, "grants");
         this.seasons = Objects.requireNonNull(seasons, "seasons");

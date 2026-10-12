@@ -1,10 +1,11 @@
 package org.xcore.plugin;
 
-import arc.Events;
 import io.avaje.inject.BeanScope;
 import mindustry.game.EventType;
 import mindustry.mod.Plugin;
 import org.xcore.plugin.common.PLog;
+import org.xcore.plugin.concurrent.GameThread;
+import org.xcore.plugin.event.EventSubscriptions;
 import org.xcore.plugin.startup.PluginStartupCoordinator;
 
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -13,34 +14,41 @@ public class XcorePlugin extends Plugin {
     public static BeanScope container; // for dependent plugins
 
     private static final AtomicBoolean closed = new AtomicBoolean(false);
+    private static EventSubscriptions lifecycleEvents;
+    private static Thread shutdownHook;
 
     @Override
     public void init() {
+        if (container != null) return;
         closed.set(false);
-        container = BeanScope.builder()
+        try {
+            container = createScope();
+            if (!container.get(PluginStartupCoordinator.class).start()) {
+                PLog.err("CRITICAL: Database migrations failed! Plugin initialization stopped.");
+                teardown();
+                return;
+            }
+
+            lifecycleEvents = new EventSubscriptions();
+            lifecycleEvents.on(EventType.DisposeEvent.class, e -> teardown());
+            shutdownHook = new Thread(XcorePlugin::teardown, "xcore-shutdown-hook");
+            try {
+                Runtime.getRuntime().addShutdownHook(shutdownHook);
+            } catch (IllegalStateException ignored) {
+                teardown();
+                return;
+            }
+            PLog.info("Plugin initialized.");
+        } catch (RuntimeException | Error failure) {
+            teardown();
+            throw failure;
+        }
+    }
+
+    protected BeanScope createScope() {
+        return BeanScope.builder()
                 .classLoader(getClass().getClassLoader())
                 .build();
-
-        var startupCoordinator = container.get(PluginStartupCoordinator.class);
-        if (!startupCoordinator.start()) {
-            PLog.err("CRITICAL: Database migrations failed! Plugin initialization stopped.");
-            teardown();
-            return;
-        }
-
-        // Hook Mindustry's DisposeEvent for client/desktop host environments where Renderer disposes
-        Events.on(EventType.DisposeEvent.class, e -> teardown());
-
-        // Unconditional JVM shutdown hook for headless server teardown (SIGINT, SIGTERM, normal exit)
-        try {
-            Runtime.getRuntime().addShutdownHook(new Thread(XcorePlugin::teardown, "xcore-shutdown-hook"));
-        } catch (IllegalStateException ignored) {
-            // JVM is already shutting down
-            teardown();
-            return;
-        }
-
-        PLog.info("Plugin initialized.");
     }
 
     /**
@@ -53,6 +61,19 @@ public class XcorePlugin extends Plugin {
         }
 
         try {
+            if (lifecycleEvents != null) lifecycleEvents.close();
+            if (shutdownHook != null && shutdownHook != Thread.currentThread()) {
+                try {
+                    Runtime.getRuntime().removeShutdownHook(shutdownHook);
+                } catch (IllegalStateException ignored) {
+                    // The JVM is already shutting down.
+                }
+            }
+        } catch (Throwable t) {
+            PLog.err("Error removing plugin lifecycle hooks", t);
+        }
+
+        try {
             if (container != null) {
                 container.close();
                 PLog.info("Plugin scope closed successfully.");
@@ -60,6 +81,9 @@ public class XcorePlugin extends Plugin {
         } catch (Throwable t) {
             PLog.err("Error during plugin shutdown", t);
         } finally {
+            GameThread.setViolationListener(null);
+            lifecycleEvents = null;
+            shutdownHook = null;
             container = null;
         }
     }

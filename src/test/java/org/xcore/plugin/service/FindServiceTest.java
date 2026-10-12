@@ -8,6 +8,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.xcore.plugin.localization.TranslatorLanguagesProvider;
+import org.xcore.plugin.localization.TranslatorLanguagesProvider$DI;
 import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.session.SessionService;
 
@@ -27,6 +28,8 @@ class FindServiceTest {
                 .modules(new FindServiceModule())
                 .forTesting()
                 .mock(SessionService.class)
+                .mock(TranslationFallbackService.class, provider ->
+                        when(provider.supports(org.mockito.ArgumentMatchers.anyString())).thenReturn(true))
                 .build();
 
         findService = scope.get(FindService.class);
@@ -35,7 +38,7 @@ class FindServiceTest {
 
     @AfterEach
     void tearDown() {
-        scope.close();
+        if (scope != null) scope.close();
     }
 
     @Test
@@ -94,15 +97,8 @@ class FindServiceTest {
 
         @Override
         public void build(Builder builder) {
-            if (builder.isBeanAbsent(TranslatorLanguagesProvider.class)) {
-                builder.register(new TranslatorLanguagesProvider());
-            }
-            if (builder.isBeanAbsent(FindService.class)) {
-                builder.register(new FindService(
-                        builder.get(SessionService.class),
-                        builder.get(TranslatorLanguagesProvider.class)
-                ));
-            }
+            TranslatorLanguagesProvider$DI.build(builder);
+            FindService$DI.build(builder);
         }
     }
 }

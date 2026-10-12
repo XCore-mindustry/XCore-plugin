@@ -1,6 +1,8 @@
 package org.xcore.plugin.integration;
 
-import arc.Events;
+import io.avaje.inject.PreDestroy;
+import org.xcore.plugin.event.EventSubscriptions;
+import org.xcore.plugin.startup.ShutdownOrder;
 import arc.struct.IntMap;
 import arc.util.Ratekeeper;
 import arc.util.serialization.Jval;
@@ -31,6 +33,7 @@ import java.util.Map;
  */
 @Singleton
 public class FooClientIntegration {
+    private final EventSubscriptions subscriptions = new EventSubscriptions();
 
     public static final String PROTOCOL_VERSION = "2.0";
 
@@ -79,7 +82,7 @@ public class FooClientIntegration {
             }
         });
 
-        Events.on(EventType.PlayerLeave.class, event -> {
+        subscriptions.on(EventType.PlayerLeave.class, event -> {
             if (event.player != null) {
                 playerTransmissions.remove(event.player.id);
             }
@@ -189,5 +192,10 @@ public class FooClientIntegration {
         if (existing == null || existing.isEmpty()) return candidate;
         if (existing.equals("[args...]") && candidate != null && !candidate.isEmpty()) return candidate;
         return existing;
+    }
+
+    @PreDestroy(priority = ShutdownOrder.STOP_PRODUCERS)
+    public void shutdownEventSubscriptions() {
+        subscriptions.close();
     }
 }

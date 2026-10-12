@@ -2,7 +2,6 @@ package org.xcore.plugin.ui.menu;
 
 import io.avaje.inject.PostConstruct;
 import jakarta.inject.Inject;
-import jakarta.inject.Provider;
 import jakarta.inject.Singleton;
 import org.xcore.plugin.common.BuildInfo;
 import org.xcore.plugin.config.TomlSecretsConfig;
@@ -29,15 +28,15 @@ public class InformationMenu extends Menu {
     private final MenuService menuService;
     private final TomlXcoreConfig config;
 
-    private final Provider<MapMenu> map;
-    private final Provider<EventMenu> event;
-    private final Provider<HelpMenu> help;
-    private final Provider<PlayerMenu> player;
+    private final MapMenu map;
+    private final EventMenu event;
+    private final HelpMenu help;
+    private final PlayerMenu player;
 
     @Inject
     public InformationMenu(TomlXcoreConfig config, TomlSecretsConfig secretsConfig, SessionService sessionService,
-                           BuildInfo buildInfo, MenuService menuService, Provider<MapMenu> map, Provider<EventMenu> event,
-                           Provider<HelpMenu> help, Provider<PlayerMenu> player) {
+                           BuildInfo buildInfo, MenuService menuService, MapMenu map, EventMenu event,
+                           HelpMenu help, PlayerMenu player) {
         super(secretsConfig, sessionService);
         this.config = config;
         this.buildInfo = buildInfo;
@@ -74,11 +73,11 @@ public class InformationMenu extends Menu {
         MainFlow() {
             super(ROUTE_MAIN, NoState.class);
             action("information", ctx -> ctx.openRoute(MenuRoute.of(ROUTE_INFORMATION)));
-            action("help", ctx -> openRoutedFromMain(ctx, () -> help.get().help(getUuid(ctx.session()), 1)));
-            action("maps", ctx -> openRoutedFromMain(ctx, () -> map.get().maps(getUuid(ctx.session()), 1)));
-            action("players", ctx -> openRoutedFromMain(ctx, () -> player.get().players(getUuid(ctx.session()), 1)));
-            action("event-main", ctx -> openRoutedFromMain(ctx, () -> event.get().main(getUuid(ctx.session()))));
-            action("event-list", ctx -> openRoutedFromMain(ctx, () -> event.get().events(getUuid(ctx.session()), 1)));
+            action("help", ctx -> openRoutedFromMain(ctx, () -> help.help(getUuid(ctx.session()), 1)));
+            action("maps", ctx -> openRoutedFromMain(ctx, () -> map.maps(getUuid(ctx.session()), 1)));
+            action("players", ctx -> openRoutedFromMain(ctx, () -> player.players(getUuid(ctx.session()), 1)));
+            action("event-main", ctx -> openRoutedFromMain(ctx, () -> event.main(getUuid(ctx.session()))));
+            action("event-list", ctx -> openRoutedFromMain(ctx, () -> event.events(getUuid(ctx.session()), 1)));
         }
 
         @Override

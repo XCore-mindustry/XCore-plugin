@@ -1,6 +1,8 @@
 package org.xcore.plugin.gamemode.laststanding;
 
-import arc.Events;
+import io.avaje.inject.PreDestroy;
+import org.xcore.plugin.event.EventSubscriptions;
+import org.xcore.plugin.startup.ShutdownOrder;
 import arc.struct.ObjectMap;
 import io.avaje.inject.PostConstruct;
 import jakarta.inject.Inject;
@@ -20,6 +22,7 @@ import static mindustry.Vars.*;
 
 @Singleton
 public class LastStanding {
+    private final EventSubscriptions subscriptions = new EventSubscriptions();
     public static final ObjectMap<Team, Block> spawnFloors = ObjectMap.of(
             Team.sharded, Blocks.metalFloor,
             Team.malis, Blocks.metalFloor2,
@@ -38,7 +41,7 @@ public class LastStanding {
     public void init() {
         if (!"the-last-standing".equals(config.server.name)) return;
 
-        Events.on(EventType.CoreChangeEvent.class,
+        subscriptions.on(EventType.CoreChangeEvent.class,
                 event -> app.post(() -> spawnFloors.each((team, floor) -> {
                     if (team.active()) return;
 
@@ -48,13 +51,13 @@ public class LastStanding {
                     });
                 })));
 
-        Events.on(EventType.PlayEvent.class, event -> {
+        subscriptions.on(EventType.PlayEvent.class, event -> {
             state.rules.waves = true;
             Groups.unit.each(this::applyAi);
         });
 
-        Events.on(EventType.UnitSpawnEvent.class, event -> applyAi(event.unit));
-        Events.on(EventType.UnitCreateEvent.class, event -> applyAi(event.unit));
+        subscriptions.on(EventType.UnitSpawnEvent.class, event -> applyAi(event.unit));
+        subscriptions.on(EventType.UnitCreateEvent.class, event -> applyAi(event.unit));
     }
 
     private void applyAi(Unit unit) {
@@ -63,4 +66,10 @@ public class LastStanding {
             unit.controller(new LastStandingAi(ai));
         }
     }
+
+    @PreDestroy(priority = ShutdownOrder.STOP_PRODUCERS)
+    public void shutdownEventSubscriptions() {
+        subscriptions.close();
+    }
+
 }

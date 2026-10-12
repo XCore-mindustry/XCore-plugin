@@ -1,9 +1,10 @@
 package org.xcore.plugin.event;
 
-import arc.Events;
 import arc.util.Log;
 import arc.util.Timer;
 import io.avaje.inject.PostConstruct;
+import io.avaje.inject.PreDestroy;
+import org.xcore.plugin.startup.ShutdownOrder;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import mindustry.core.Version;
@@ -44,6 +45,10 @@ public class TransportService {
     private final NetworkService network;
     private final TomlXcoreConfig config;
     private final StorageExecutor storageExecutor;
+    private final EventSubscriptions subscriptions = new EventSubscriptions();
+    private final Runnable reconnectHook = this::registerListeners;
+    private Timer.Task heartbeatTask;
+    private volatile boolean stopped;
     private volatile String cachedPublicHost;
     private volatile long nextPublicHostResolveAttemptAtMs;
     private final AtomicBoolean hostResolveInFlight = new AtomicBoolean();
@@ -71,48 +76,65 @@ public class TransportService {
 
     @PostConstruct
     public void init() {
-        network.registerReconnectHook(this::registerListeners);
+        network.registerReconnectHook(reconnectHook);
         registerListeners();
 
-        Events.on(EventType.ServerLoadEvent.class, event -> {
-            network.post(new ServerActionV1("Server loaded", config.server.name));
-            securityTransportHandler.start();
+        subscriptions.on(EventType.ServerLoadEvent.class, event -> startHeartbeat());
+    }
 
-            Timer.schedule(() -> {
-                try {
-                    String desc = Administration.Config.desc.string();
-                    if ("off".equalsIgnoreCase(desc) || desc == null) {
-                        desc = "";
-                    }
-                    String mapName = mindustry.Vars.state.map != null ? mindustry.Vars.state.map.name() : "-";
-                    int wave = mindustry.Vars.state.wave;
-                    String modeName = mindustry.Vars.state.rules.modeName != null && !mindustry.Vars.state.rules.modeName.isEmpty()
-                            ? mindustry.Vars.state.rules.modeName
-                            : mindustry.Vars.state.rules.mode().name();
-                    int tps = (arc.Core.graphics != null ? arc.Core.graphics.getFramesPerSecond() : 60);
+    private synchronized void startHeartbeat() {
+        if (stopped) return;
+        if (heartbeatTask != null) heartbeatTask.cancel();
+        network.post(new ServerActionV1("Server loaded", config.server.name));
+        securityTransportHandler.start();
 
-                    network.post(new ServerHeartbeatV1(
-                            config.server.name,
-                            config.discord.channelIdAsLong(),
-                            Groups.player.size(),
-                            config.server.playerLimit + Groups.player.count(p -> p.admin),
-                            Version.buildString(),
-                            resolveHostAddress(),
-                            Administration.Config.port.num(),
-                            desc,
-                            mapName,
-                            wave,
-                            modeName,
-                            tps
-                    ));
-                } catch (Exception ex) {
-                    Log.err("Failed to publish heartbeat", ex);
+        heartbeatTask = Timer.schedule(() -> {
+            if (stopped) return;
+            try {
+                String desc = Administration.Config.desc.string();
+                if ("off".equalsIgnoreCase(desc) || desc == null) {
+                    desc = "";
                 }
-            }, 10f, 30f);
-        });
+                String mapName = mindustry.Vars.state.map != null ? mindustry.Vars.state.map.name() : "-";
+                int wave = mindustry.Vars.state.wave;
+                String modeName = mindustry.Vars.state.rules.modeName != null && !mindustry.Vars.state.rules.modeName.isEmpty()
+                        ? mindustry.Vars.state.rules.modeName
+                        : mindustry.Vars.state.rules.mode().name();
+                int tps = (arc.Core.graphics != null ? arc.Core.graphics.getFramesPerSecond() : 60);
+
+                network.post(new ServerHeartbeatV1(
+                        config.server.name,
+                        config.discord.channelIdAsLong(),
+                        Groups.player.size(),
+                        config.server.playerLimit + Groups.player.count(p -> p.admin),
+                        Version.buildString(),
+                        resolveHostAddress(),
+                        Administration.Config.port.num(),
+                        desc,
+                        mapName,
+                        wave,
+                        modeName,
+                        tps
+                ));
+            } catch (Exception ex) {
+                Log.err("Failed to publish heartbeat", ex);
+            }
+        }, 10f, 30f);
+    }
+
+    @PreDestroy(priority = ShutdownOrder.STOP_PRODUCERS)
+    public synchronized void stop() {
+        stopped = true;
+        subscriptions.close();
+        network.unregisterReconnectHook(reconnectHook);
+        if (heartbeatTask != null) {
+            heartbeatTask.cancel();
+            heartbeatTask = null;
+        }
     }
 
     private void registerListeners() {
+        if (stopped) return;
         chatTransportHandler.registerListeners();
         discordLinkTransportHandler.registerListeners();
         moderationTransportHandler.registerListeners();
