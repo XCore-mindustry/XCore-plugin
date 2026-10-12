@@ -14,6 +14,8 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.xcore.plugin.concurrent.Async;
+import org.xcore.plugin.concurrent.InlineStorageExecutor;
 import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.config.TomlSecretsConfig;
 import org.xcore.plugin.database.repository.EventDataRepository;
@@ -29,6 +31,7 @@ import org.xcore.plugin.ui.MindustryMenuGateway;
 import org.xcore.plugin.ui.flow.MenuMode;
 import org.xcore.plugin.ui.menu.EventMenu;
 import org.xcore.plugin.ui.menu.MapMenu;
+import org.xcore.plugin.ui.menu.event.EventUiModel;
 import org.xcore.plugin.ui.route.MenuRoute;
 import org.xcore.plugin.service.EventEditorService;
 import org.xcore.plugin.service.EventService;
@@ -198,9 +201,9 @@ class MapMenuTest {
     }
 
     @Test
-    @DisplayName("map create start action opens prompt without adding legacy history")
+    @DisplayName("on the event server a map offers an event of its own, which opens in the editor with that map")
     @SuppressWarnings("unchecked")
-    void map_createStartAction_opensPromptWithoutAddingLegacyHistory() {
+    void map_createStartAction_opensTheEventEditor() {
         TomlXcoreConfig eventConfig = new TomlXcoreConfig();
         eventConfig.server.name = "event";
         eventConfig.normalize();
@@ -214,17 +217,15 @@ class MapMenuTest {
         Session eventSession = session(eventConfig, localMenuService);
         when(localSessionService.get("viewer-1")).thenReturn(eventSession);
 
-        EventService eventService = mock(EventService.class);
-        VoteService voteService = mock(VoteService.class);
-        EventEditorService eventEditorService = new EventEditorService(eventDataRepository, mapDataRepository,
-                mock(org.xcore.plugin.database.repository.PlayerDataRepository.class));
+        EventEditorService eventEditorService = new EventEditorService(eventDataRepository, mapDataRepository);
         EventViewService eventViewService = new EventViewService(eventDataRepository, mapDataRepository,
                 mock(org.xcore.plugin.database.repository.PlayerDataRepository.class));
 
         Provider<MapMenu> localMapProvider = mock(Provider.class);
-        EventMenu realEventMenu = new EventMenu(secretsConfig, localSessionService,
-                mapService, eventService, eventEditorService, eventViewService, voteService, localMapProvider, localMenuService);
-        realEventMenu.init();
+        EventMenu realEventMenu = new EventMenu(secretsConfig, localSessionService, mapService,
+                mock(EventService.class), eventEditorService, eventViewService, mock(VoteService.class),
+                localMapProvider, null, localMenuService,
+                new Async(InlineStorageExecutor.create(), Runnable::run));
 
         Provider<EventMenu> eventMenuProvider = mock(Provider.class);
         when(eventMenuProvider.get()).thenReturn(realEventMenu);
@@ -237,6 +238,7 @@ class MapMenuTest {
         mapData.id = new org.bson.types.ObjectId();
         when(mapDataRepository.findById(mapData.id)).thenReturn(mapData);
         when(mapService.findPersistedMap(any())).thenReturn(null);
+        when(mapService.getAvailableMaps()).thenReturn(Seq.with());
         when(eventDataRepository.findActive()).thenReturn(Optional.empty());
 
         eventMapMenu.map("viewer-1", mapData);
@@ -244,9 +246,15 @@ class MapMenuTest {
         localMenuService.onMenuOption(eventSession, 4);
 
         assertThat(eventSession.hasHistory()).isFalse();
-        assertThat(eventSession.activePrompt()).isNotNull();
+        assertThat(eventSession.activePrompt()).isNull();
         assertThat(eventSession.textHandler).isNull();
-        verify(localGateway).textInput(eq(eventSession.player), eq(0), eq("event-menu-create-start-title"), eq("event-menu-create-start-message"), eq(20), anyString(), eq(false));
+        verify(localGateway).menuBuilder(eq(eventSession.player), anyInt(), anyLong(), any(), eq(false), eq(true),
+                eq(true), any());
+        EventUiModel shown = (EventUiModel) eventSession.activeUiSession().model();
+        assertThat(shown.view()).isEqualTo(EventUiModel.View.EDITOR);
+        assertThat(shown.editing().draft().map()).isEqualTo(EventEditorService.MapChoice.of(mapData));
+        verify(localGateway, never()).textInput(any(), anyInt(), anyString(), anyString(), anyInt(), anyString(),
+                anyBoolean());
     }
 
     @Test

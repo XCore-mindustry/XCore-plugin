@@ -3,7 +3,9 @@ package org.xcore.plugin.service;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import mindustry.gen.Player;
+import org.bson.types.ObjectId;
 import org.xcore.plugin.common.PLog;
+import org.xcore.plugin.concurrent.Async;
 import org.xcore.plugin.database.repository.EventDataRepository;
 import org.xcore.plugin.model.EventData;
 import org.xcore.plugin.model.PlayerData;
@@ -21,16 +23,19 @@ public class EventService {
     private final SessionService sessionService;
     private final VoteService voteService;
     private final VoteEventFactory voteEventFactory;
+    private final Async async;
 
     @Inject
     public EventService(EventDataRepository eventDataRepository,
                         SessionService sessionService,
                         VoteService voteService,
-                        VoteEventFactory voteEventFactory) {
+                        VoteEventFactory voteEventFactory,
+                        Async async) {
         this.eventDataRepository = eventDataRepository;
         this.sessionService = sessionService;
         this.voteService = voteService;
         this.voteEventFactory = voteEventFactory;
+        this.async = async;
     }
 
     public void startVoteSession(Player player, EventData target, boolean forced) {
@@ -56,28 +61,36 @@ public class EventService {
         }
     }
 
-    public void handleReputation(Player player, boolean like, EventData event) {
+    /**
+     * Counts the player's vote on an event. A vote already given the same way changes nothing.
+     *
+     * @param event the event as the player sees it; its counts are moved along with the stored ones
+     * @return whether the vote was counted
+     */
+    public boolean handleReputation(Player player, boolean like, EventData event) {
         var session = sessionService.get(player.uuid());
         PlayerData p = session.data;
         Boolean previousVote = p.eventVotes.get(event.id.toString());
 
         if (Boolean.valueOf(like).equals(previousVote)) {
             session.locale().send("error-already-voted");
-            return;
+            return false;
         }
 
+        int likeDelta = like ? 1 : previousVote != null ? -1 : 0;
+        int dislikeDelta = like ? previousVote != null ? -1 : 0 : 1;
+        event.like += likeDelta;
+        event.dislike += dislikeDelta;
         if (like) {
-            event.like += 1;
-            if (previousVote != null) event.dislike -= 1;
             session.locale().send(previousVote != null ? "like-event-changed" : "like-event-success");
         } else {
-            event.dislike += 1;
-            if (previousVote != null) event.like -= 1;
             session.locale().send(previousVote != null ? "dislike-event-changed" : "dislike-event-success");
         }
 
         sessionService.putEventVote(session, event.id.toString(), like);
-        eventDataRepository.save(event);
+        ObjectId id = event.id;
+        async.run(() -> eventDataRepository.applyVote(id, likeDelta, dislikeDelta));
+        return true;
     }
 
     public void checkTimedEvents() {

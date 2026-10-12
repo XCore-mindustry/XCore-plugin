@@ -948,116 +948,99 @@ commands-event-description = Menú de gestión de eventos.
 commands-events-description = Lista de todos los eventos de los servidores.
 event-events = Eventos
 event-menu-main = Eventos principales
-event-menu-main-title = [orange]{ -xcore } — Eventos
-event-menu-main-content =
-    [gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
-    [white]Centro de eventos[]
-    [lightgray]Todos los eventos activos y planificados del servidor en un solo lugar.[]
-    [gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
-    { "" }
-    [accent]■ Evento actual[]
-    [gray]Estado: [white]{ $currentEventState }[]
-    [gray]Seleccionado: [white]{ $currentEventName }[]
-    { "" }
-    [accent]■ Votación[]
-    [gray]Sesión de votación: [white]{ $voteStatus }[]
-    { "" }
-    [accent]■ Acciones[]
-    [gray]Abre el catálogo, consulta el evento actual o prepara uno nuevo.[]
 event-menu-event = Evento
-event-menu-event-title = [orange]{ -xcore } — Evento
-event-menu-event-content =
-    [gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
-    [white]{ $name }[]
-    [lightgray]{ $description }[]
-    [gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
-    { "" }
-    [accent]■ Resumen[]
-    [gray]Autor: [white]{ $author }[]
-    [gray]Mapa: [white]{ $mapName }[]
-    [gray]Tipo: [white]{ $eventType }[] [darkgray]|[gray] Estado: [white]{ $eventState }[]
-    [gray]Temporal: [white]{ $isTemporary }[]
-    { "" }
-    [accent]■ Calendario[]
-    [gray]Creado: [white]{ $createdEventTime }[]
-    [gray]Inicio previsto: [white]{ $plannedStartTime }[]
-    [gray]Fin previsto: [white]{ $plannedEndTime }[]
-    { "" }
-    [accent]■ Reputación[]
-    [gray]Me gusta: [white]{ $like }[] [darkgray]|[gray] No me gusta: [white]{ $dislike }[]
-event-menu-event-map = Ver mapa
-event-menu-events = Lista de eventos
-event-menu-events-title = [orange]{ -xcore } — Lista de eventos
-event-menu-events-content =
-    [gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
-    [white]Catálogo de eventos[]
-    [lightgray]Página [green]{ $page }[]/[green]{ $total }[] [gold]•[] [lightgray]Eventos: [green]{ $count }[]
-    [gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
-    { "" }
-    [accent]■ Filtros[]
-    [gray]Terminados: [white]{ $finished }[]
-    [gray]Principales: [white]{ $major }[] [darkgray]|[gray] Activos: [white]{ $active }[]
-    { "" }
-    [accent]■ Lista[]
-    [gray]Elige un evento para ver su ficha.[]
-event-menu-events-empty =
-    [gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
-    [white]Catálogo de eventos[]
-    [lightgray]Todavía no hay eventos que coincidan con los filtros actuales.[]
-    [gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
-    { "" }
-    [accent]■ Filtros[]
-    [gray]Terminados: [white]{ $finished }[]
-    [gray]Principales: [white]{ $major }[] [darkgray]|[gray] Activos: [white]{ $active }[]
-event-menu-events-row = [accent]{ $state }[] [darkgray]•[] [white]{ $type }[] [darkgray]—[] { $name }
-event-menu-events-selected = [green]●[] [accent]{ $state }[] [darkgray]•[] [white]{ $type }[] [darkgray]—[] { $name }
-event-menu-create-start = Crear
-event-menu-create-start-title = [orange]{ -xcore } — Crear evento
-event-menu-create-start-message = Escribe el nombre del nuevo evento
 event-menu-create-start-default = Evento de { $playerName }
 event-menu-create-start-map = Crear evento para este mapa
-event-menu-edit = Editar
-event-menu-edit-title = [orange]{ -xcore } — Editar evento
-event-menu-edit-content =
-    [gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
-    [white]{ $name }[]
-    [lightgray]{ $description }[]
-    [gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
-    { "" }
-    [accent]■ Identidad[]
-    [gray]Autor: [white]{ $author }[]
-    [gray]Tipo: [white]{ $eventType }[]
-    { "" }
-    [accent]■ Mapa[]
-    [gray]Mapa elegido: [white]{ $mapName }[]
-    { "" }
-    [accent]■ Calendario[]
-    [gray]Inicio previsto: [white]{ $plannedStartTime }[]
-    [gray]Fin previsto: [white]{ $plannedEndTime }[]
-    { "" }
-    [accent]■ Opciones[]
-    [gray]Temporal: [white]{ $isTemporary }[]
-event-menu-edit-name = Nombre
-event-menu-edit-name-reset = [scarlet]Restablecer nombre
-event-menu-edit-name-title = [orange]{ -xcore } — Editar evento
-event-menu-edit-name-message = Editar nombre:
-event-menu-edit-description = Descripción
-event-menu-edit-description-title = [orange]{ -xcore } — Editar evento
-event-menu-edit-description-message = Editar descripción:
-event-menu-edit-map = Cambiar mapa
-event-menu-edit-temporary-active = [green]Temporal
-event-menu-edit-temporary-inactive = [gray]Temporal
-event-menu-edit-major-active = [green]Principal
-event-menu-edit-major-inactive = [gray]Principal
-event-menu-edit-planned-start = Inicio del evento
-event-menu-edit-planned-start-title = [orange]{ -xcore } — Editar evento
-event-menu-edit-planned-start-message = Escribe la hora de inicio en ms o con m/h/d:
-event-menu-edit-planned-end = Fin del evento
-event-menu-edit-planned-end-title = [orange]{ -xcore } — Editar evento
-event-menu-edit-planned-end-message = Escribe la hora de fin en ms o con m/h/d:
-event-menu-maps = Mapas
-event-menu-maps-title = [orange]{ -xcore } — Elegir mapa
-event-menu-maps-content = [white]Página [green]{ $page }[] de [green]{ $total }[]
+event-ui-title = Eventos
+event-ui-server-time = Hora del servidor: { $zone }
+event-ui-tab-upcoming = Pronto
+event-ui-tab-major = Grandes
+event-ui-tab-past = Pasados
+event-ui-tab-mine = Míos
+event-ui-now-running = En curso ahora
+event-ui-now-vote = Votación
+event-ui-empty-upcoming = Aún no hay eventos planeados. ¡Crea el primero!
+event-ui-empty-major = Aún no hay eventos grandes planeados.
+event-ui-empty-past = Todavía no ha terminado ningún evento.
+event-ui-empty-mine = Aún no has creado ningún evento.
+event-ui-create = Crear evento
+event-ui-load-failed = No se pudieron cargar los eventos. Inténtalo de nuevo.
+event-ui-state-active = En curso ahora
+event-ui-state-active-until = En curso hasta { $time }
+event-ui-state-finished = Terminado
+event-ui-state-finished-at = Terminado el { $date }
+event-ui-state-unscheduled = Sin fecha
+event-ui-major = Grande
+event-ui-major-hint = Marcado con una estrella y reunido en una pestaña aparte
+event-ui-temporary = Temporal
+event-ui-temporary-hint = Termina solo a la hora de fin
+event-ui-about = Sobre el evento
+event-ui-no-description = Sin descripción.
+event-ui-author = Autor: { $author }
+event-ui-created = Creado: { $date }
+event-ui-map-schedule = Mapa y horario
+event-ui-map-none = Sin mapa
+event-ui-map-pick = Elige un mapa
+event-ui-planned-start = Inicio: { $time }
+event-ui-planned-end = Fin: { $time }
+event-ui-started = Empezó: { $time }
+event-ui-ended = Terminó: { $time }
+event-ui-not-set = sin definir
+event-ui-open-map = Abrir el mapa
+event-ui-rating = Valoración
+event-ui-launch = Inicio
+event-ui-launch-hint = Los propios jugadores inician un evento, por votación. Empieza con el siguiente cambio de mapa.
+event-ui-launch-again = Este evento ya se celebró. Se puede iniciar de nuevo.
+event-ui-launch-active = El evento está en curso ahora mismo.
+event-ui-launch-voting = Votación en curso: { $votes } de { $required }. Escribe y o n en el chat.
+event-ui-launch-busy = Hay otra votación en curso. Espera a que termine.
+event-ui-vote = Iniciar votación
+event-ui-vote-busy = Ya hay una votación en curso.
+event-ui-vote-stopped = La votación se ha detenido.
+event-ui-force = Iniciar ya
+event-ui-force-confirm = ¿Seguro que quieres iniciarlo?
+event-ui-stop = Detener el evento
+event-ui-stop-confirm = ¿Seguro que quieres detenerlo?
+event-ui-stop-vote = Detener la votación
+event-ui-stopped = El evento se ha detenido.
+event-ui-to-list = A la lista
+event-ui-edit = Cambiar
+event-ui-editor-new = Nuevo evento
+event-ui-editor-edit = Cambiar el evento
+event-ui-texts = Nombre y descripción
+event-ui-name = Nombre
+event-ui-description = Descripción
+event-ui-description-hint = De qué trata el evento
+event-ui-map = Mapa
+event-ui-schedule = Horario y tipo
+event-ui-start = Inicio
+event-ui-end = Fin
+event-ui-save = Guardar
+event-ui-saved = El evento se ha guardado.
+event-ui-draft-restored = Tu evento sin terminar sigue aquí.
+event-ui-maps-title = Elegir mapa
+event-ui-to-editor = Al editor
+event-ui-time-start = Inicio del evento
+event-ui-time-end = Fin del evento
+event-ui-time-unset = Sin definir
+event-ui-time-unset-hint = Defínelo con las flechas o con un botón de abajo
+event-ui-time-hours = { $value } h
+event-ui-time-minutes = { $value } min
+event-ui-time-now = Ahora
+event-ui-time-in-hour = En una hora
+event-ui-time-today-evening = Hoy 20:00
+event-ui-time-tomorrow-noon = Mañana 12:00
+event-ui-time-plus-hour = +1 h
+event-ui-time-plus-three-hours = +3 h
+event-ui-time-plus-day = +1 día
+event-ui-time-apply = Listo
+event-ui-time-clear = Borrar
+event-ui-error-no-map = Primero elige un mapa.
+event-ui-error-no-end = Un evento temporal necesita una hora de fin.
+event-ui-error-end-before-start = El fin debe ser posterior al inicio.
+event-ui-error-not-allowed = No puedes cambiar este evento.
+event-ui-error-gone = Este evento ya no existe.
+event-ui-error-save-failed = No se pudo guardar el evento. Inténtalo de nuevo.
 vote-event-vote =
     { $nickname }[lightgray] ha votado cambiar el evento actual a [orange]{ $name }[lightgray]. ([accent]{ $votes }[]/[accent]{ $votesRequired }[])
     Escribe [orange]y[] o [orange]n[] para votar.
@@ -1065,54 +1048,6 @@ vote-event-left = { $nickname }[lightgray] se ha ido. Su voto para cambiar el ev
 vote-event-fail = [lightgray]La votación ha fallado. No hay votos suficientes para cambiar el evento a [orange]{ $name }[].
 vote-event-success = [orange]Votación aprobada. El evento [accent]{ $name }[] se cargará en el próximo cambio de mapa.
 vote-event-cancelled = [lightgray]El administrador { $admin } ha cancelado la votación para cambiar el evento a [orange]{ $name }[lightgray].
-event-vote = [orange]Votación
-event-avote = [red]Cambio inmediato
-event-menu-vote-stop = Detener votación
-event-menu-stop = Detener evento
-event-menu-this-event = [orange]Evento actual
-event-menu-type-major = Evento principal
-event-menu-type-regular = Evento normal
-event-menu-state-none = Sin evento activo
-event-menu-state-planned = Planificado
-event-menu-state-active = En curso
-event-menu-state-finished = Terminado
-event-menu-vote-status-running = En curso
-event-menu-vote-status-idle = Inactiva
-date-time-picker-title = [orange]{ -xcore } — Fecha y hora
-date-time-picker-content =
-    [gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
-    [white]{ $field }[]
-    [lightgray]Valor actual: [white]{ $value }[]
-    [gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
-    { "" }
-    [accent]■ Fecha[]
-    [gray]Elige primero un día y luego ajusta la hora abajo.[]
-    { "" }
-    [accent]■ Hora[]
-    [gray]Usa los valores predefinidos o los ajustes finos para planificar con precisión.[]
-    { "" }
-    [accent]■ Entrada manual[]
-    [gray]Solo si necesitas milisegundos exactos o un valor relativo +m/+h/+d.[]
-date-time-picker-field-generic = Hora prevista
-date-time-picker-today = Hoy
-date-time-picker-tomorrow = Mañana
-date-time-picker-plus-2d = +2 días
-date-time-picker-plus-7d = +7 días
-date-time-picker-now = Ahora
-date-time-picker-time-0000 = 00:00
-date-time-picker-time-0600 = 06:00
-date-time-picker-time-1200 = 12:00
-date-time-picker-time-1800 = 18:00
-date-time-picker-minus-1d = -1 d
-date-time-picker-plus-1d = +1 d
-date-time-picker-minus-1h = -1 h
-date-time-picker-plus-1h = +1 h
-date-time-picker-minus-15m = -15 min
-date-time-picker-plus-15m = +15 min
-date-time-picker-reset = Restablecer
-date-time-picker-manual = Entrada manual
-date-time-picker-manual-title = [orange]{ -xcore } — Entrada manual de la hora
-date-time-picker-manual-message = Escribe milisegundos absolutos o un tiempo relativo como +30m, +2h, +1d.
 event-end = ¡El evento [green]{ $name }[] ha terminado!
 # ==============================================================================
 # Errors

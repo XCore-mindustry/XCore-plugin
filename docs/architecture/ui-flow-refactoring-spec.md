@@ -68,8 +68,7 @@ Refactor flows that use dynamic action IDs (e.g., `select:1`, `details:audit-123
 ### Phase 4: Complex Stateful Menus & Prompts (High Risk)
 Refactor menus that heavily rely on `Session.getDraft()` and multi-step prompts.
 - [ ] `PlayerSettingsFlows.java` (All flows). Migrate all `onPromptSubmit` switches to declarative `onPrompt()` calls in constructors.
-- [ ] `EventDraftFlows.java` (All flows).
-- [ ] `EventFlows.java` (All flows).
+- [x] `EventDraftFlows.java`, `EventFlows.java`, `DateTimePickerFlows.java` — removed: the events menu is an `xcore-ui` dialog now (`ui/menu/event/EventUiController`).
 - [ ] `MapFlows.java` (All flows).
 - [ ] `BanMenu.java` (`BanFlow`).
 

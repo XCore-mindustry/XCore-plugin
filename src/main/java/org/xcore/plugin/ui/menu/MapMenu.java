@@ -131,7 +131,7 @@ public class MapMenu extends Menu {
         if (session == null || session.player == null) return;
         session.clear();
 
-        var controller = new org.xcore.plugin.ui.menu.map.MapUiController(mapService, mapDataRepository, mapPreviewService, mapVoteObserverService, session, hashService, summaryCache);
+        var controller = controller(session);
         var initialModel = controller.createInitialBrowserModel(session, page);
         menuService.openUi(session, controller, initialModel, true);
         controller.requestSummariesAsync();
@@ -141,13 +141,22 @@ public class MapMenu extends Menu {
         if (session == null || session.player == null) return;
         session.clear();
 
-        var controller = new org.xcore.plugin.ui.menu.map.MapUiController(mapService, mapDataRepository, mapPreviewService, mapVoteObserverService, session, hashService, summaryCache);
+        var controller = controller(session);
         var initialModel = controller.createInitialDetailsModel(session, m);
         menuService.openUi(session, controller, initialModel, true);
         if (mapVoteObserverService != null) {
             mapVoteObserverService.registerViewing(session.player.uuid(), initialModel.selectedMapId());
         }
         controller.requestPreviewAsync(session, initialModel.selectedMapId());
+    }
+
+    /** The maps menu of {@code session}; on the events server a map can be given an event from it. */
+    private org.xcore.plugin.ui.menu.map.MapUiController controller(Session session) {
+        var controller = new org.xcore.plugin.ui.menu.map.MapUiController(mapService, mapDataRepository, mapPreviewService, mapVoteObserverService, session, hashService, summaryCache);
+        if (config != null && config.server != null && "event".equals(config.server.name)) {
+            controller.offerEvent(map -> eventMenu.get().createStart(getUuid(session), map));
+        }
+        return controller;
     }
 
     MapData resolveMap(String mapId) {

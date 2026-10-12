@@ -62,6 +62,8 @@ public class MapUiController implements UiController<MapUiModel, MapUiEvent> {
     private final Session session;
     private final org.xcore.plugin.service.map.MapContentHashService hashService;
     private final org.xcore.plugin.service.map.MapSummaryCache summaryCache;
+    /** Opens the editor of a new event for a map; {@code null} on a server that holds no events. */
+    private java.util.function.Consumer<MapData> eventCreator;
 
     public MapUiController(MapService mapService,
                            MapDataRepository mapDataRepository,
@@ -92,6 +94,16 @@ public class MapUiController implements UiController<MapUiModel, MapUiEvent> {
         this.previewService = previewService;
         this.observerService = observerService;
         this.session = session;
+    }
+
+    /**
+     * Gives the map a button that starts an event for it.
+     *
+     * @param eventCreator gets the map's record, or {@code null} for a map that has none yet
+     */
+    public MapUiController offerEvent(java.util.function.Consumer<MapData> eventCreator) {
+        this.eventCreator = eventCreator;
+        return this;
     }
 
     @Override
@@ -256,6 +268,23 @@ public class MapUiController implements UiController<MapUiModel, MapUiEvent> {
                 UpdateResult.patch(model.withAdminConfirm(false, 0L), Screen.slots(SLOT_RTV));
 
             // --- Close ---
+            case MapUiEvent.CreateEvent() -> {
+                if (eventCreator == null || model.mode() != MapUiModel.ViewMode.DETAILS) {
+                    yield UpdateResult.of(model);
+                }
+                if (observerService != null) {
+                    observerService.unregisterViewing(model.playerUuid());
+                }
+                // The editor takes the place of this dialog, so it opens once this press is dealt with.
+                MapData map = model.resolvedDetails();
+                if (ctx != null) {
+                    ctx.post(() -> eventCreator.accept(map));
+                } else {
+                    eventCreator.accept(map);
+                }
+                yield UpdateResult.of(model);
+            }
+
             case MapUiEvent.Close() -> {
                 if (observerService != null) {
                     observerService.unregisterViewing(model.playerUuid());
@@ -359,10 +388,15 @@ public class MapUiController implements UiController<MapUiModel, MapUiEvent> {
                     List.of(rtvCard(model, screen), communityCard(model, screen),
                             durationCard(model, screen.card()), popularityCard(model, screen.card())))).row());
 
+            List<Kit.Action> actions = new ArrayList<>();
+            actions.add(new Kit.Action(Iconc.left + " " + t(session, "map-maps-back"), "action:back_to_list"));
+            if (eventCreator != null) {
+                actions.add(new Kit.Action("[accent]" + Iconc.add + "[] "
+                        + Strings.stripColors(t(session, "event-menu-create-start-map")), "action:create_event"));
+            }
             window.add(Ui.table(bar -> {
                 bar.layout(l -> l.padTop(GAP));
-                bar.add(Kit.actions(width, List.of(
-                        new Kit.Action(Iconc.left + " " + t(session, "map-maps-back"), "action:back_to_list"))));
+                bar.add(Kit.actions(width, actions));
             })).row();
         });
     }
@@ -499,6 +533,7 @@ public class MapUiController implements UiController<MapUiModel, MapUiEvent> {
         if ("action:rtv".equals(res)) return new MapUiEvent.TriggerRtv();
         if ("action:admin_rtv".equals(res)) return new MapUiEvent.AdminForceRtvClick();
         if ("action:admin_rtv_cancel".equals(res)) return new MapUiEvent.AdminCancelForceRtv();
+        if ("action:create_event".equals(res)) return new MapUiEvent.CreateEvent();
         if ("action:close".equals(res)) return new MapUiEvent.Close();
 
         return null;

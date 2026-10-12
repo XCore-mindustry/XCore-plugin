@@ -73,6 +73,41 @@ public final class TextWidth {
     }
 
     /**
+     * {@code markup} with the words wider than {@code width} broken: a label starts a new line
+     * between words only, and a player may write a word as long as the whole field. Colour tags
+     * are kept whole.
+     */
+    public static String breakWords(String markup, float width) {
+        if (markup == null || markup.isEmpty()) return "";
+        StringBuilder broken = new StringBuilder(markup.length() + 8);
+        float word = 0f;
+        int i = 0;
+        while (i < markup.length()) {
+            int tag = tagLength(markup, i);
+            if (tag > 0) {
+                broken.append(markup, i, i + tag);
+                i += tag;
+                continue;
+            }
+            char c = markup.charAt(i);
+            int step = tag < 0 ? 2 : 1;
+            if (Character.isWhitespace(c)) {
+                word = 0f;
+            } else {
+                float advance = FontWidths.of(c);
+                if (word > 0f && word + advance > width) {
+                    broken.append('\n');
+                    word = 0f;
+                }
+                word += advance;
+            }
+            broken.append(markup, i, i + step);
+            i += step;
+        }
+        return broken.toString();
+    }
+
+    /**
      * {@code text} as markup that draws it as it is: a name or a reason a player wrote may hold
      * a bracket, which the client would otherwise read as the start of a colour.
      */
