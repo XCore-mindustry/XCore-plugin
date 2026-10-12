@@ -80,7 +80,7 @@ class MapCatalogTriggerTest {
                 mock(org.xcore.plugin.database.repository.MapDataRepository.class),
                 new org.xcore.plugin.concurrent.Async(
                         new org.xcore.plugin.concurrent.StorageExecutor(4), Runnable::run)
-        );
+        , mock(org.xcore.plugin.database.repository.MapUploadRepository.class));
         transport.registerListeners();
         Events.fire(new EventType.ServerLoadEvent());
         assertThat(CAPTURED).hasSize(1);
@@ -110,7 +110,7 @@ class MapCatalogTriggerTest {
                 mock(org.xcore.plugin.database.repository.MapDataRepository.class),
                 new org.xcore.plugin.concurrent.Async(
                         new org.xcore.plugin.concurrent.StorageExecutor(4), Runnable::run)
-        );
+        , mock(org.xcore.plugin.database.repository.MapUploadRepository.class));
         transport.registerListeners();
         CAPTURED.clear();
 

@@ -69,7 +69,7 @@ public class MapVoteHandler {
                 MapData mapData = mapDataRepository.findOrCreate(state.map.plainName(), state.map.file.name(), state.map.author(), state.rules.mode().name());
                 MapData nextMapData = mapDataRepository.findOrCreate(nextMap.plainName(), nextMap.file.name(), nextMap.author(), state.rules.mode().name());
 
-                mapMenu.get().showGameOverMenu(mapData, nextMapData, event.winner);
+                mapMenu.get().showGameOverMenu(mapData, nextMapData, event.winner, nextMap);
 
 
                 gameDataService.startNewGame(nextMapData, state.rules.modeName, "event".equals(config.server.name) ? eventDataRepository.findActive().orElse(null) : null);

@@ -10,6 +10,11 @@ import org.xcore.protocol.generated.messages.maps.MapsMessages.MapsLoadCommandV1
 import org.xcore.protocol.generated.messages.maps.MapsMessages.MapsRemoveRequestV1;
 import org.xcore.protocol.generated.shared.MapFileSourceV1;
 import org.xcore.protocol.generated.shared.MapEntryV1;
+import org.xcore.protocol.generated.shared.MapUploadResultV1;
+import org.xcore.protocol.generated.shared.MapUploadResultV1Status;
+import org.xcore.protocol.generated.messages.maps.MapsMessages.MapsUploadRequestV1;
+import org.xcore.protocol.generated.messages.maps.MapsMessages.MapsUploadResponseV1;
+import org.xcore.plugin.database.repository.MapUploadRepository;
 import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.concurrent.Async;
 import org.xcore.plugin.database.repository.MapDataRepository;
@@ -21,6 +26,13 @@ import org.xcore.plugin.service.MapService;
 import org.xcore.plugin.service.NetworkService;
 import org.xcore.plugin.service.network.MapsProtocolMapper;
 
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.BooleanSupplier;
+import java.util.function.Consumer;
+import java.util.concurrent.CompletionStage;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -39,44 +51,57 @@ public class MapTransportHandler {
     private final MapService mapService;
     private final MapDataRepository mapDataRepository;
     private final Async async;
-    private final java.util.concurrent.ConcurrentHashMap<String, DownloadedMap> installations = new java.util.concurrent.ConcurrentHashMap<>();
-    private final java.util.concurrent.atomic.AtomicLong installationSequence = new java.util.concurrent.atomic.AtomicLong();
+    private final MapUploadRepository uploadRepository;
+    private final Object[] fileLocks = java.util.stream.IntStream.range(0, 64).mapToObj(i -> new Object()).toArray();
+    private final ConcurrentHashMap<String, DownloadedMap> installations = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, Integer> activeUploads = new ConcurrentHashMap<>();
+    private final AtomicLong installationSequence = new AtomicLong();
     /** Accessed only on the game thread; storage writes for one file never overtake one another. */
-    private final java.util.Map<String, java.util.concurrent.CompletableFuture<Void>> pendingUploads = new java.util.HashMap<>();
+    private final java.util.Map<String, CompletableFuture<Boolean>> pendingUploads = new java.util.HashMap<>();
 
     @Inject
     public MapTransportHandler(NetworkService network,
                                TomlXcoreConfig config,
                                MapService mapService,
                                MapDataRepository mapDataRepository,
-                               Async async) {
+                               Async async, MapUploadRepository uploadRepository) {
         this.network = network;
         this.config = config;
         this.mapService = mapService;
         this.mapDataRepository = mapDataRepository;
         this.async = async;
+        this.uploadRepository = uploadRepository;
     }
 
     /** A map plus the identity fields read from the engine, captured on the game thread. */
-    private record MapIdentity(Map map, String fileName, String plainName, String author) {
+    private record MapIdentity(Map map, String fileName, String plainName, String author, MapDiscordUpload upload) {
     }
 
-    private record MapMetadata(MapData data, MapDiscordUpload upload) {}
     private record DownloadedMap(String hash, long sequence) {}
 
-    java.util.concurrent.CompletableFuture<Void> enqueueDiscordUpload(
+    CompletableFuture<Boolean> enqueueDiscordUpload(
             String name, String fileName, String author, String mode, String hash, MapDiscordUpload upload,
-            java.util.function.BooleanSupplier stillInstalled) {
-        var previous = pendingUploads.getOrDefault(fileName, java.util.concurrent.CompletableFuture.completedFuture(null));
+            BooleanSupplier stillInstalled) {
+        var previous = pendingUploads.getOrDefault(fileName, CompletableFuture.completedFuture(true));
         var write = previous.handle((ignored, error) -> null).thenCompose(ignored ->
-                async.supply(() -> !stillInstalled.getAsBoolean()
-                        || mapDataRepository.recordDiscordUpload(name, fileName, author, mode, hash, upload))
-                        .thenMain((saved, failure) -> {
-                            if (failure != null) Log.err("[Maps] Could not persist Discord metadata for " + fileName, failure);
-                            else if (!Boolean.TRUE.equals(saved)) Log.warn("[Maps] Discord metadata was not persisted for @", fileName);
-                        }));
+                async.supply(() -> {
+                    if (!stillInstalled.getAsBoolean() || !uploadRepository.save(fileName, hash, upload)) return false;
+                    // Preserve the previous availability of votes for a newly installed map.
+                    // Existing aliases/statistics are reused, never overwritten by attribution.
+                    if (name != null && !name.isBlank()) {
+                        try { mapDataRepository.findOrCreate(name, fileName, author, mode); }
+                        catch (RuntimeException failure) { Log.err("[Maps] Could not initialize statistics for " + fileName, failure); }
+                    }
+                    return true;
+                }).future());
         pendingUploads.put(fileName, write);
-        write.whenComplete((ignored, error) -> async.main(() -> pendingUploads.remove(fileName, write)));
+        write.whenComplete((saved, error) -> async.main(() -> {
+            pendingUploads.remove(fileName, write);
+            var token = installations.get(fileName);
+            if (token != null && token.hash() == null && !activeUploads.containsKey(fileName)) installations.remove(fileName, token);
+            if (error != null) Log.err("[Maps] Could not persist Discord metadata for " + fileName, error);
+            mapService.refreshAttribution();
+        }));
         return write;
     }
 
@@ -99,11 +124,11 @@ public class MapTransportHandler {
             List<MapIdentity> snapshot = new ArrayList<>(customMaps.size);
             for (int i = 0; i < customMaps.size; i++) {
                 Map map = customMaps.get(i);
-                snapshot.add(new MapIdentity(map, map.file.name(), map.plainName(), map.author()));
+                snapshot.add(new MapIdentity(map, map.file.name(), map.plainName(), map.author(), mapService.discordUploadFor(map)));
             }
 
             async.supply(() -> {
-                    List<MapMetadata> persisted = new ArrayList<>(snapshot.size());
+                    List<MapData> persisted = new ArrayList<>(snapshot.size());
                     for (MapIdentity identity : snapshot) {
                         // One unreachable map must not cost the peer the whole list. A map
                         // with no persisted record already serialises as a null MapData, so
@@ -113,10 +138,7 @@ public class MapTransportHandler {
                                     .findByFileName(identity.fileName(), currentGameMode)
                                     .or(() -> mapDataRepository.find(identity.plainName(), identity.author(), currentGameMode))
                                     .orElse(null);
-                            MapDiscordUpload upload = data != null && identity.fileName().equals(data.fileName)
-                                    ? data.discordUpload : null;
-                            if (upload == null) upload = mapDataRepository.findDiscordUpload(identity.fileName());
-                            persisted.add(new MapMetadata(data, upload));
+                            persisted.add(data);
                         } catch (RuntimeException lookupFailure) {
                             Log.err("[Maps] Lookup failed for map '@'; replying without its metadata",
                                     identity.plainName(), lookupFailure);
@@ -133,14 +155,13 @@ public class MapTransportHandler {
                     // Fall back to entries built from the engine snapshot alone.
                     if (error != null) {
                         Log.err("[Maps] Map list lookup failed; replying with engine data only", error);
-                        persisted = java.util.Collections.nCopies(snapshot.size(), (MapMetadata) null);
+                        persisted = java.util.Collections.nCopies(snapshot.size(), (MapData) null);
                     }
                     List<MapEntryV1> mapsList = new ArrayList<>(snapshot.size());
                     for (int i = 0; i < snapshot.size(); i++) {
                         MapIdentity identity = snapshot.get(i);
-                        MapMetadata metadata = persisted.get(i);
                         mapsList.add(MapsProtocolMapper.toMapEntry(identity.map(), currentGameMode,
-                                metadata == null ? null : metadata.data(), metadata == null ? null : metadata.upload()));
+                                persisted.get(i), identity.upload()));
                     }
                     network.respond(request,
                             MapsProtocolMapper.toMapsListResponse(request.server(), mapsList));
@@ -154,6 +175,11 @@ public class MapTransportHandler {
             // it, so the whole decision belongs on the game thread. There is no I/O here.
             var map = mapService.findMapByFileName(request.fileName());
             if (map != null) {
+                String removedName = map.file.name();
+                installations.put(removedName, new DownloadedMap(null, installationSequence.incrementAndGet()));
+                enqueueDiscordUpload("", removedName, "", "", null, null,
+                        () -> true); // Queue order, rather than a download token, defines this removal.
+                mapService.clearAttribution();
                 maps.removeMap(map);
                 maps.reload();
                 onMapsReloaded();
@@ -167,97 +193,131 @@ public class MapTransportHandler {
             if (map != null) info("Removed map @", map.plainName());
         }));
 
-        network.subscribe(MapsLoadCommandV1.class, e -> {
-            if (!config.server.name.equals(e.server())) return;
-
-            // The peer chooses the name, and Fi.child() does not stop "../" from escaping
-            // customMapDirectory. Validate before the name reaches the filesystem.
-            List<MapFileSourceV1> accepted = new ArrayList<>();
-            var acceptedNames = new java.util.HashSet<String>();
-            for (MapFileSourceV1 file : e.files()) {
-                try {
-                    MapFileNameSanitizer.requireSafeName(file.fileName());
-                    if (acceptedNames.add(file.fileName())) accepted.add(file);
-                } catch (IllegalArgumentException ex) {
-                    err("[Maps] Rejected unsafe map file name '@' from @", file.fileName(), e.server());
-                }
-            }
-
-            if (accepted.isEmpty()) {
-                err("[Maps] No usable map files in load command from @", e.server());
-                return;
-            }
-
-            var downloaded = new java.util.concurrent.ConcurrentHashMap<String, DownloadedMap>();
-            AtomicInteger completed = new AtomicInteger();
-            AtomicInteger written = new AtomicInteger();
-            // Both the success and the error handler have to count, or a single 404 leaves
-            // the counter short and the reload never happens: the maps that did download
-            // would sit on disk unindexed until some later command or a restart.
-            Runnable finishIfDone = () -> {
-                if (completed.incrementAndGet() != accepted.size()) {
-                    return;
-                }
-                int loaded = written.get();
-                if (loaded == 0) {
-                    return;
-                }
-                async.main(() -> {
-                    maps.reload();
-                    onMapsReloaded();
-                    String gameMode = state.rules.mode().name();
-                    for (MapFileSourceV1 source : accepted) {
-                        DownloadedMap download = downloaded.get(source.fileName());
-                        if (download == null || !download.equals(installations.get(source.fileName()))) continue;
-                        Map installed = mapService.findMapByFileName(source.fileName());
-                        if (installed == null || installed.file == null || !source.fileName().equals(installed.file.name())) continue;
-                        // Snapshot engine fields; the installation guard is safe to check on the worker.
-                        String name = installed.plainName();
-                        String author = installed.author();
-                        MapDiscordUpload upload = MapDiscordUpload.fromProtocol(source.discordUpload());
-                        enqueueDiscordUpload(name, source.fileName(), author, gameMode, download.hash(), upload,
-                                () -> download.equals(installations.get(source.fileName())));
-                    }
-                    if (loaded == accepted.size()) {
-                        info("Loaded @ maps.", loaded);
-                    } else {
-                        info("Loaded @ of @ maps; the rest failed to download.", loaded, accepted.size());
-                    }
-                });
-            };
-
-            for (MapFileSourceV1 file : accepted) {
-                String safeName = MapFileNameSanitizer.requireSafeName(file.fileName());
-                Http.get(file.url())
-                        .error(error -> {
-                            Log.err("Failed to download map @", file.fileName(), error);
-                            finishIfDone.run();
-                        })
-                        .submit(result -> {
-                            // The download and the file write are I/O and belong off the game
-                            // thread. The registry reload does not: maps.reload() rebuilds the
-                            // engine's map index, and the counter fires on whichever Arc HTTP
-                            // worker finished last, which is never the game thread.
-                            try {
-                                byte[] bytes = result.getResult();
-                                String hash = MapContentHash.digest(new java.io.ByteArrayInputStream(bytes)).asHex();
-                                // Serialize writes of the same physical file on HTTP workers. The token
-                                // also rejects late metadata from an older batch, even for identical bytes.
-                                installations.compute(safeName, (key, previous) -> {
-                                    customMapDirectory.child(safeName).writeBytes(bytes);
-                                    var download = new DownloadedMap(hash, installationSequence.incrementAndGet());
-                                    downloaded.put(safeName, download);
-                                    return download;
-                                });
-                                written.incrementAndGet();
-                            } catch (Exception failure) {
-                                Log.err("Failed to save map @", file.fileName(), failure);
-                            } finally {
-                                finishIfDone.run();
-                            }
-                        });
-            }
+        network.subscribe(MapsUploadRequestV1.class, request -> {
+            if (!config.server.name.equals(request.server())) return;
+            uploadFiles(request.files(), results -> network.respond(request, new MapsUploadResponseV1(request.server(), results)));
+        });
+        network.subscribe(MapsLoadCommandV1.class, command -> {
+            if (!config.server.name.equals(command.server())) return;
+            uploadFiles(command.files(), results -> info("Map upload results: @", results));
         });
     }
 
+    private void uploadFiles(List<MapFileSourceV1> files, Consumer<List<MapUploadResultV1>> reply) {
+        var results = new ConcurrentHashMap<String, MapUploadResultV1>();
+        List<MapFileSourceV1> accepted = new ArrayList<>();
+        var names = new java.util.HashSet<String>();
+        for (var file : files) {
+            try {
+                MapFileNameSanitizer.requireSafeName(file.fileName());
+                if (names.add(file.fileName())) accepted.add(file);
+                else results.put(file.fileName(), outcome(file.fileName(), MapUploadResultV1Status.REJECTED, "Duplicate filename"));
+            } catch (IllegalArgumentException unsafe) {
+                results.put(file.fileName(), outcome(file.fileName(), MapUploadResultV1Status.REJECTED, "Unsafe filename"));
+            }
+        }
+        accepted.removeIf(file -> results.containsKey(file.fileName()));
+        for (var file : accepted) activeUploads.compute(file.fileName(), (key, count) -> count == null ? 1 : count + 1);
+        Runnable respond = () -> {
+            var ordered = files.stream().map(file -> results.get(file.fileName())).toList();
+            try { reply.accept(ordered); }
+            finally {
+                for (var file : accepted) activeUploads.compute(file.fileName(), (key, count) -> {
+                    if (count == null || count <= 1) { installations.remove(key); return null; }
+                    return count - 1;
+                });
+            }
+        };
+        if (accepted.isEmpty()) { async.main(respond); return; }
+        var downloaded = new ConcurrentHashMap<String, DownloadedMap>();
+        AtomicInteger completed = new AtomicInteger();
+        Runnable finishIfDone = () -> {
+            if (completed.incrementAndGet() != accepted.size()) return;
+            async.main(() -> {
+                CompletionStage<Void> catalogReady = CompletableFuture.completedFuture(null);
+                if (!downloaded.isEmpty()) {
+                    try {
+                        maps.reload();
+                        catalogReady = mapService.rebuildIdentityCatalogAsync();
+                    } catch (RuntimeException reloadFailure) {
+                        Log.err("[Maps] Map registry reload failed", reloadFailure);
+                        for (var source : accepted) if (downloaded.containsKey(source.fileName()))
+                            results.put(source.fileName(), outcome(source.fileName(), MapUploadResultV1Status.INVALID_MAP, "Map registry reload failed"));
+                        respond.run();
+                        return;
+                    }
+                    if (catalogReady == null) catalogReady = CompletableFuture.completedFuture(null);
+                }
+                final var ready = catalogReady;
+                var writes = new ArrayList<CompletableFuture<?>>();
+                String mode = state.rules.mode().name();
+                for (var source : accepted) {
+                    DownloadedMap download = downloaded.get(source.fileName());
+                    if (download == null) continue;
+                    if (!download.equals(installations.get(source.fileName()))) {
+                        results.put(source.fileName(), outcome(source.fileName(), MapUploadResultV1Status.SUPERSEDED, "Replaced by a newer upload"));
+                        continue;
+                    }
+                    Map installed = mapService.findMapByFileName(source.fileName());
+                    if (installed == null || installed.file == null || !source.fileName().equals(installed.file.name())) {
+                        results.put(source.fileName(), outcome(source.fileName(), MapUploadResultV1Status.INVALID_MAP, "The server could not read this map"));
+                        continue;
+                    }
+                    var write = enqueueDiscordUpload(installed.plainName(), source.fileName(), installed.author(), mode,
+                            download.hash(), MapDiscordUpload.fromProtocol(source.discordUpload()),
+                            () -> download.equals(installations.get(source.fileName())))
+                            .handle((saved, error) -> {
+                                var status = !download.equals(installations.get(source.fileName())) ? MapUploadResultV1Status.SUPERSEDED
+                                        : error != null || !Boolean.TRUE.equals(saved) ? MapUploadResultV1Status.METADATA_FAILED
+                                        : MapUploadResultV1Status.INSTALLED;
+                                results.put(source.fileName(), outcome(source.fileName(), status,
+                                        status == MapUploadResultV1Status.METADATA_FAILED ? "Map installed, but attribution could not be saved" : null));
+                                return (Void) null;
+                            });
+                    writes.add(write);
+                }
+                CompletableFuture.allOf(writes.toArray(CompletableFuture[]::new))
+                        .thenCompose(ignored -> ready)
+                        .thenCompose(ignored -> {
+                            var refresh = mapService.refreshAttribution();
+                            return refresh == null ? CompletableFuture.completedFuture(null) : refresh;
+                        }).whenComplete((ignored, error) -> async.main(respond));
+            });
+        };
+        for (var file : accepted) {
+            var finished = new AtomicBoolean();
+            Runnable finishOne = () -> { if (finished.compareAndSet(false, true)) finishIfDone.run(); };
+            try {
+                Http.get(file.url()).timeout(30000)
+                    .error(error -> {
+                        Log.err("Failed to download map @", file.fileName(), error);
+                        results.put(file.fileName(), outcome(file.fileName(), MapUploadResultV1Status.DOWNLOAD_FAILED, "Download failed"));
+                        finishOne.run();
+                    }).submit(response -> {
+                        try {
+                            byte[] bytes = response.getResult();
+                            String hash = MapContentHash.digest(new java.io.ByteArrayInputStream(bytes)).asHex();
+                            // Fixed stripes bound memory and keep disk I/O outside ConcurrentHashMap.compute.
+                            Object lock = fileLocks[(file.fileName().hashCode() & 0x7fffffff) % fileLocks.length];
+                            synchronized (lock) {
+                                customMapDirectory.child(file.fileName()).writeBytes(bytes, false);
+                                var token = new DownloadedMap(hash, installationSequence.incrementAndGet());
+                                installations.put(file.fileName(), token);
+                                downloaded.put(file.fileName(), token);
+                            }
+                        } catch (Exception failure) {
+                            Log.err("Failed to save map @", file.fileName(), failure);
+                            results.put(file.fileName(), outcome(file.fileName(), MapUploadResultV1Status.DOWNLOAD_FAILED, "Download or file write failed"));
+                        } finally { finishOne.run(); }
+                    });
+            } catch (RuntimeException requestFailure) {
+                results.put(file.fileName(), outcome(file.fileName(), MapUploadResultV1Status.DOWNLOAD_FAILED, "Could not start download"));
+                finishOne.run();
+            }
+        }
+    }
+
+    private static MapUploadResultV1 outcome(String fileName, MapUploadResultV1Status status, String detail) {
+        return new MapUploadResultV1(fileName, status, detail);
+    }
 }

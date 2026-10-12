@@ -9,7 +9,9 @@ All notable changes to this project will be documented in this file.
 - `Localization.context()` and `contextOrNull()` are removed; use `Localization.send(...)` or `Messenger`.
 
 ### Changed
-- Updated `xcore-protocol` to 0.13.0 for optional Discord map submission attribution.
+- Updated `xcore-protocol` to 0.14.0 for per-file upload confirmations and Discord handle snapshots.
+- Store map submission provenance separately from statistics, scoped to server, exact filename and content hash, with an audit history and asynchronous UI cache.
+- Show declared creators in both map menus and at game over/world load; show Discord handles to players and IDs to administrators.
 - Missing bundle keys go through `MissingKeyPolicy.logOnce()`.
 - Updated FluBundle to 2.1.0. Connection checks (ban, recent kick, pirated client) explain a denied connection in the language the player selected earlier, not only the client language. `SessionLocaleResolver` looks it up by uuid: a live session, the language last seen for that uuid, or the database (only off the game thread, so the fast checks never block on it).
 - Vanilla blocks, units, items and teams passed as message arguments render with their localized names (FluBundle `ContentNames`).

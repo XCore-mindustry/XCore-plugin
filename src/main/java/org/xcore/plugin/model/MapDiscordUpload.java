@@ -16,16 +16,22 @@ public class MapDiscordUpload {
     public long uploadedAt;
     public String creatorDiscordId;
     public String creatorName;
+    public String uploadedByHandle;
+    public String creatorHandle;
+
+    public MapDiscordUpload(String id, String name, long at, String creatorId, String creatorName) {
+        this(id, name, at, creatorId, creatorName, null, null);
+    }
 
     public static MapDiscordUpload fromProtocol(MapDiscordUploadV1 upload) {
         if (upload == null) return null;
         return new MapDiscordUpload(upload.uploadedBy().discordId(), upload.uploadedBy().discordUsername(),
                 upload.uploadedAt(), upload.creator() == null ? null : upload.creator().discordId(),
-                upload.creator() == null ? null : upload.creator().discordUsername());
+                upload.creator() == null ? null : upload.creator().discordUsername(), upload.uploadedByHandle(), upload.creatorHandle());
     }
 
     public MapDiscordUploadV1 toProtocol() {
         return new MapDiscordUploadV1(new DiscordIdentityRefV1(uploadedByDiscordId, uploadedByName),
-                uploadedAt, creatorDiscordId == null ? null : new DiscordIdentityRefV1(creatorDiscordId, creatorName));
+                uploadedAt, creatorDiscordId == null ? null : new DiscordIdentityRefV1(creatorDiscordId, creatorName), uploadedByHandle, creatorHandle);
     }
 }

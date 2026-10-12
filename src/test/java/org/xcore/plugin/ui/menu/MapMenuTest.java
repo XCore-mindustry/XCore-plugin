@@ -111,6 +111,41 @@ class MapMenuTest {
     }
 
     @Test
+    void legacyMenuShowsInstalledFileAttributionEvenWhenStatisticsUseAnAlias() {
+        var data = new MapData("Map1", "old-name.msav", "author", "pvp");
+        data.id = new org.bson.types.ObjectId();
+        var installed = createMap("Map1");
+        when(mapDataRepository.findById(data.id)).thenReturn(data);
+        when(mapService.findPersistedMap(data)).thenReturn(installed);
+        when(mapService.discordUploadFor(installed)).thenReturn(new org.xcore.plugin.model.MapDiscordUpload(
+                "123456789012345678", "Reviewer", 1791806400000L, "234567890123456789", "Creator", "reviewer", "creator"));
+        mapMenu.map("viewer-1", data);
+        var content = org.mockito.ArgumentCaptor.forClass(String.class);
+        verify(gateway).menu(eq(session.player), eq(0), anyString(), content.capture(), any());
+        assertThat(content.getValue()).contains("map-upload-submitter", "map-upload-creator");
+    }
+
+    @Test
+    void gameOverMenuCreditsTheCreatorOfTheActualNextMap() {
+        var next = new MapData("Next", "next.msav", "Author", "pvp");
+        var installed = createMap("Next");
+        when(mapService.discordUploadFor(installed)).thenReturn(new org.xcore.plugin.model.MapDiscordUpload(
+                "123", "Reviewer", 1, "234", "Creator", "reviewer", "creator"));
+        when(sessionService.get(session.player.uuid())).thenReturn(session);
+        var localization = session.locale();
+        when(localization.format(anyString())).thenAnswer(call -> call.getArgument(0));
+        var previousPlayers = mindustry.gen.Groups.player;
+        mindustry.gen.Groups.player = new mindustry.entities.EntityGroup<>(Player.class, false, false);
+        mindustry.gen.Groups.player.add(session.player);
+        try {
+            mapMenu.showGameOverMenu(null, next, mindustry.game.Team.sharded, installed);
+            var content = org.mockito.ArgumentCaptor.forClass(String.class);
+            verify(gateway).menu(eq(session.player), eq(0), anyString(), content.capture(), any());
+            assertThat(content.getValue()).contains("map-vote-content", "map-upload-creator");
+        } finally { mindustry.gen.Groups.player = previousPlayers; }
+    }
+
+    @Test
     @DisplayName("maps renders routed screen with route metadata")
     void maps_rendersRoutedScreenWithRouteMetadata() {
         when(mapService.getAvailableMaps()).thenReturn(Seq.with(
