@@ -23,7 +23,7 @@ Protocol 0.14.0 adds optional `uploadedByHandle`/`creatorHandle` to `discordUplo
 ```
 
 `uploadedAt` is Unix epoch milliseconds. Attribution remains optional in files and
-map entries. Python generated models enforce schema minima, minimum lengths, patterns
+map entries. Generated Python models enforce schema minima, minimum lengths, patterns
 and minimum array sizes, including direct constructors.
 
 ## Storage and identity
@@ -109,5 +109,5 @@ Validation: protocol generation/fixtures/Java-Python compatibility; real Mongo P
 round-trip; server/name/hash isolation; alias statistics and both menus; ordered/stale
 uploads, partial RPC results and cache generations; Discord label injection, creator
 positions/filtering, pagination and timeout handling. For unpublished protocol changes,
-use `gradle/local-protocol.init.gradle` and the sibling Python generated sources; release
+use `gradle/local-protocol.init.gradle` and the sibling sources generated for Python; release
 builds use the published dependency and exact Git tag.
