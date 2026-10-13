@@ -1,7 +1,6 @@
 package org.xcore.plugin.event;
 
 import arc.util.Log;
-import arc.util.Timer;
 import io.avaje.inject.PostConstruct;
 import io.avaje.inject.PreDestroy;
 import org.xcore.plugin.startup.ShutdownOrder;
@@ -20,6 +19,7 @@ import org.xcore.plugin.event.transport.MapTransportHandler;
 import org.xcore.plugin.event.transport.RatingTransportHandler;
 import org.xcore.plugin.event.transport.SecurityTransportHandler;
 import org.xcore.plugin.event.transport.ModerationTransportHandler;
+import org.xcore.plugin.concurrent.ScheduledTasks;
 import org.xcore.plugin.concurrent.StorageExecutor;
 import org.xcore.plugin.service.NetworkService;
 
@@ -47,7 +47,8 @@ public class TransportService {
     private final StorageExecutor storageExecutor;
     private final EventSubscriptions subscriptions = new EventSubscriptions();
     private final Runnable reconnectHook = this::registerListeners;
-    private Timer.Task heartbeatTask;
+    private final ScheduledTasks tasks = new ScheduledTasks(TransportService.class);
+    private ScheduledTasks.Handle heartbeatTask;
     private volatile boolean stopped;
     private volatile String cachedPublicHost;
     private volatile long nextPublicHostResolveAttemptAtMs;
@@ -88,8 +89,7 @@ public class TransportService {
         network.post(new ServerActionV1("Server loaded", config.server.name));
         securityTransportHandler.start();
 
-        heartbeatTask = Timer.schedule(() -> {
-            if (stopped) return;
+        heartbeatTask = tasks.every(10f, 30f, () -> {
             try {
                 String desc = Administration.Config.desc.string();
                 if ("off".equalsIgnoreCase(desc) || desc == null) {
@@ -119,7 +119,7 @@ public class TransportService {
             } catch (Exception ex) {
                 Log.err("Failed to publish heartbeat", ex);
             }
-        }, 10f, 30f);
+        });
     }
 
     @PreDestroy(priority = ShutdownOrder.STOP_PRODUCERS)
@@ -127,10 +127,8 @@ public class TransportService {
         stopped = true;
         subscriptions.close();
         network.unregisterReconnectHook(reconnectHook);
-        if (heartbeatTask != null) {
-            heartbeatTask.cancel();
-            heartbeatTask = null;
-        }
+        tasks.close();
+        heartbeatTask = null;
     }
 
     private void registerListeners() {

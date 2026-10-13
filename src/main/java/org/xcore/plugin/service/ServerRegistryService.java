@@ -3,6 +3,7 @@ package org.xcore.plugin.service;
 import arc.Core;
 import arc.util.Log;
 import io.avaje.inject.PostConstruct;
+import io.avaje.inject.PreDestroy;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import mindustry.Vars;
@@ -10,7 +11,9 @@ import mindustry.gen.Groups;
 import mindustry.gen.Iconc;
 import mindustry.net.Administration;
 import org.xcore.protocol.generated.messages.server.ServerMessages.ServerHeartbeatV1;
+import org.xcore.plugin.concurrent.ScheduledTasks;
 import org.xcore.plugin.config.TomlXcoreConfig;
+import org.xcore.plugin.startup.ShutdownOrder;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -131,6 +134,7 @@ public class ServerRegistryService {
     private final TomlXcoreConfig config;
     private final NetworkService network;
     private final Map<String, HeartbeatEntry> heartbeats = new ConcurrentHashMap<>();
+    private final ScheduledTasks tasks = new ScheduledTasks(ServerRegistryService.class);
 
     @Inject
     public ServerRegistryService(TomlXcoreConfig config, NetworkService network) {
@@ -145,10 +149,15 @@ public class ServerRegistryService {
         if (isDevEnvironment()) {
             populateDevMockServers();
             try {
-                arc.util.Timer.schedule(this::populateDevMockServers, 30f, 30f);
+                tasks.every(30f, 30f, this::populateDevMockServers);
             } catch (Throwable ignored) {
             }
         }
+    }
+
+    @PreDestroy(priority = ShutdownOrder.STOP_PRODUCERS)
+    public void stop() {
+        tasks.close();
     }
 
     public boolean isDevEnvironment() {

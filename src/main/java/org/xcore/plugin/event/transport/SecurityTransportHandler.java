@@ -1,7 +1,7 @@
 package org.xcore.plugin.event.transport;
 
-import arc.util.Timer;
 import io.avaje.inject.PreDestroy;
+import org.xcore.plugin.concurrent.ScheduledTasks;
 import org.xcore.plugin.startup.ShutdownOrder;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
@@ -46,8 +46,8 @@ public class SecurityTransportHandler {
     private final PermissionSessions sessions;
     private final StaffCredentials credentials;
     private final PlayerDataRepository players;
-    private Timer.Task refreshTask;
-    private Timer.Task reapplyTask;
+    private final ScheduledTasks tasks = new ScheduledTasks(SecurityTransportHandler.class);
+    private boolean started;
     private volatile boolean stopped;
 
     @Inject
@@ -70,8 +70,7 @@ public class SecurityTransportHandler {
     @PreDestroy(priority = ShutdownOrder.STOP_PRODUCERS)
     public synchronized void stop() {
         stopped = true;
-        if (refreshTask != null) { refreshTask.cancel(); refreshTask = null; }
-        if (reapplyTask != null) { reapplyTask.cancel(); reapplyTask = null; }
+        tasks.close();
     }
 
     public void registerListeners() {
@@ -85,12 +84,13 @@ public class SecurityTransportHandler {
      * thread, once the server has loaded.
      */
     public synchronized void start() {
-        if (stopped || refreshTask != null) return;
+        if (stopped || started) return;
         if (!roles.enabled()) {
             return;
         }
-        refreshTask = Timer.schedule(() -> { if (!stopped) sessions.refreshAll(); }, PermissionSessions.REFRESH_SECONDS, PermissionSessions.REFRESH_SECONDS);
-        reapplyTask = Timer.schedule(() -> { if (!stopped) sessions.reapplyAll(); }, PermissionSessions.REAPPLY_SECONDS, PermissionSessions.REAPPLY_SECONDS);
+        started = true;
+        tasks.every(PermissionSessions.REFRESH_SECONDS, PermissionSessions.REFRESH_SECONDS, sessions::refreshAll);
+        tasks.every(PermissionSessions.REAPPLY_SECONDS, PermissionSessions.REAPPLY_SECONDS, sessions::reapplyAll);
 
         // The game's own admin list gives nothing with roles on. Listing it once lets the
         // operator hand out roles to those who are meant to keep their rights.

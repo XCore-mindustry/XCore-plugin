@@ -2,10 +2,10 @@ package org.xcore.plugin.service;
 
 import io.avaje.inject.PreDestroy;
 import org.xcore.plugin.event.EventSubscriptions;
+import org.xcore.plugin.event.RoundScope;
 import org.xcore.plugin.startup.ShutdownOrder;
 import arc.func.Boolf;
 import arc.struct.Seq;
-import arc.util.Timer;
 import arc.util.Strings;
 import org.jspecify.annotations.Nullable;
 import io.avaje.inject.PostConstruct;
@@ -60,6 +60,7 @@ public class MapService {
     private final VoteNewWaveFactory voteNewWaveFactory;
     private final VoteRtvFactory voteRtvFactory;
     private final GameStateService gameStateService;
+    private final RoundScope roundScope;
     private volatile org.xcore.plugin.service.map.MapIdentityCatalog identityCatalog;
 
     private final MapUploadRepository uploadRepository;
@@ -79,6 +80,7 @@ public class MapService {
                       VoteNewWaveFactory voteNewWaveFactory,
                       VoteRtvFactory voteRtvFactory,
                       GameStateService gameStateService,
+                      RoundScope roundScope,
                       @Nullable MapIdentityCatalog identityCatalog,
                       @Nullable MapUploadRepository uploadRepository) {
         this.eventDataRepository = eventDataRepository;
@@ -90,6 +92,7 @@ public class MapService {
         this.voteNewWaveFactory = voteNewWaveFactory;
         this.voteRtvFactory = voteRtvFactory;
         this.gameStateService = gameStateService;
+        this.roundScope = roundScope;
         this.identityCatalog = identityCatalog;
         this.uploadRepository = uploadRepository;
     }
@@ -112,6 +115,13 @@ public class MapService {
                       VoteNewWaveFactory waves, VoteRtvFactory rtv, GameStateService games,
                       MapIdentityCatalog catalog) {
         this(events, maps, sessions, config, secrets, votes, waves, rtv, games, catalog, null);
+    }
+
+    public MapService(EventDataRepository events, MapDataRepository maps, SessionService sessions,
+                      TomlXcoreConfig config, TomlSecretsConfig secrets, VoteService votes,
+                      VoteNewWaveFactory waves, VoteRtvFactory rtv, GameStateService games,
+                      MapIdentityCatalog catalog, MapUploadRepository uploads) {
+        this(events, maps, sessions, config, secrets, votes, waves, rtv, games, new RoundScope(), catalog, uploads);
     }
 
     @PostConstruct
@@ -360,12 +370,13 @@ public class MapService {
     }
 
     private void switchMapImmediately(Map target) {
-        Timer.schedule(
+        // Round-scoped: if the world changes during the delay, this switch is no longer wanted.
+        roundScope.after(
+                secretsConfig.maps.voting.switchDelaySeconds,
                 () -> gameStateService.reloadWorld(() -> {
                     Gamemode mode = Gamemode.valueOf(arc.Core.settings.getString("lastServerMode", "survival"));
                     Vars.world.loadMap(target, target.applyRules(mode));
-                }),
-                secretsConfig.maps.voting.switchDelaySeconds
+                })
         );
     }
 

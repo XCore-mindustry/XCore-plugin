@@ -16,6 +16,7 @@ import org.xcore.plugin.database.repository.PlayerDataRepository;
 import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.model.PlayerPids;
 import org.xcore.plugin.permission.PermissionNodes;
+import org.xcore.plugin.service.LeaderboardService;
 import org.xcore.plugin.session.ObserverService;
 import org.xcore.plugin.session.Session;
 import org.xcore.plugin.session.SessionService;
@@ -35,18 +36,29 @@ public class PlayerController implements CloudClientController {
     private final PlayerMenu menu;
     private final TopMenu topMenu;
     private final Async async;
+    private final LeaderboardService leaderboardService;
 
     @Inject
     public PlayerController(SessionService sessionService,
                             ObserverService observerService,
                             PlayerMenu menu,
                             TopMenu topMenu,
-                            Async async) {
+                            Async async,
+                            LeaderboardService leaderboardService) {
         this.sessionService = sessionService;
         this.observerService = observerService;
         this.menu = menu;
         this.topMenu = topMenu;
         this.async = async;
+        this.leaderboardService = leaderboardService;
+    }
+
+    public PlayerController(SessionService sessionService,
+                            ObserverService observerService,
+                            PlayerMenu menu,
+                            TopMenu topMenu,
+                            Async async) {
+        this(sessionService, observerService, menu, topMenu, async, null);
     }
 
     public PlayerController(SessionService sessionService,
@@ -188,6 +200,9 @@ public class PlayerController implements CloudClientController {
         }
 
         session.data.leaderboard = !session.data.leaderboard;
+        if (!session.data.leaderboard && leaderboardService != null) {
+            leaderboardService.hide(sender.player());
+        }
 
         sender.send("commands-lb-success", args(
                 "leaderboardEnabled", String.valueOf(session.data.leaderboard)

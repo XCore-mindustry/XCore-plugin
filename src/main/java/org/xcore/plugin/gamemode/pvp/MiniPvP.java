@@ -98,8 +98,11 @@ public class MiniPvP {
     public void init() {
         if (!"mini-pvp".equals(config.server.name)) return;
 
+        // Round state is dropped when the round ends rather than when the next one starts,
+        // so a world loaded without a PlayEvent (a save) does not inherit it.
+        subscriptions.on(EventType.ResetEvent.class, e -> clearRoundState());
+
         subscriptions.on(EventType.PlayEvent.class, e -> {
-            clearRoundState();
             if (matchTracker != null) {
                 matchTracker.startMatch(observerService);
             }

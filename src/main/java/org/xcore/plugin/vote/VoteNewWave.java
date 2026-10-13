@@ -71,6 +71,11 @@ public class VoteNewWave extends VoteSession {
     }
 
     @Override
+    public boolean endsWithRound() {
+        return true;
+    }
+
+    @Override
     public void cancelByAdmin(Player admin) {
         stop();
         sessionService.broadcast("vnw-cancelled", args(

@@ -2,8 +2,8 @@ package org.xcore.plugin.event.handler;
 
 import arc.util.Log;
 import arc.util.Strings;
-import arc.util.Timer;
 import com.ospx.flubundle.Bundle;
+import io.avaje.inject.PreDestroy;
 import jakarta.inject.Singleton;
 import mindustry.game.EventType.GameOverEvent;
 import mindustry.game.EventType.PlayEvent;
@@ -15,6 +15,7 @@ import mindustry.io.JsonIO;
 import mindustry.net.Packets;
 import org.xcore.protocol.generated.messages.server.ServerMessages.ServerActionV1;
 import org.xcore.plugin.common.PluginState;
+import org.xcore.plugin.concurrent.ScheduledTasks;
 import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.localization.Localization;
 import org.xcore.plugin.model.enums.FinishReason;
@@ -23,6 +24,7 @@ import org.xcore.plugin.service.MapStatsService;
 import org.xcore.plugin.service.NetworkService;
 import org.xcore.plugin.session.Session;
 import org.xcore.plugin.session.SessionService;
+import org.xcore.plugin.startup.ShutdownOrder;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -39,6 +41,7 @@ public class GameLifecycleHandler {
     private final PluginState pluginState;
     private final GameDataService gameDataService;
     private final MapStatsService mapStatsService;
+    private final ScheduledTasks tasks = new ScheduledTasks(GameLifecycleHandler.class);
 
     public GameLifecycleHandler(NetworkService network,
                                 TomlXcoreConfig config,
@@ -141,9 +144,14 @@ public class GameLifecycleHandler {
         gameDataService.finishGame(winner, FinishReason.NATURAL);
     }
 
+    @PreDestroy(priority = ShutdownOrder.STOP_PRODUCERS)
+    public void stop() {
+        tasks.close();
+    }
+
     private void restart() {
         AtomicInteger secondsLeft = new AtomicInteger(10);
-        Timer.schedule(() -> {
+        tasks.every(0, 1, () -> {
             Groups.player.each((p) -> {
                 Session session = sessionService.get(p);
                 Localization systemLocal = new Localization(bundle);
@@ -157,6 +165,6 @@ public class GameLifecycleHandler {
                 netServer.kickAll(Packets.KickReason.serverRestarting);
                 System.exit(0);
             }
-        }, 0, 1);
+        });
     }
 }

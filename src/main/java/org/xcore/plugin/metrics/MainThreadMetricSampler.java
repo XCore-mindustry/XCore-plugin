@@ -1,7 +1,6 @@
 package org.xcore.plugin.metrics;
 
 import arc.Core;
-import arc.util.Timer;
 import io.avaje.inject.PostConstruct;
 import io.avaje.inject.PreDestroy;
 import jakarta.inject.Singleton;
@@ -9,6 +8,7 @@ import mindustry.Vars;
 import mindustry.game.EventType;
 import mindustry.gen.Groups;
 import org.xcore.plugin.config.TomlXcoreConfig;
+import org.xcore.plugin.concurrent.ScheduledTasks;
 import org.xcore.plugin.event.EventSubscriptions;
 import org.xcore.plugin.startup.ShutdownOrder;
 
@@ -30,7 +30,8 @@ public final class MainThreadMetricSampler {
 
     private final EventSubscriptions subscriptions = new EventSubscriptions();
     private volatile boolean stopped;
-    private Timer.Task playersOnlineTask;
+    private final ScheduledTasks tasks = new ScheduledTasks(MainThreadMetricSampler.class);
+    private ScheduledTasks.Handle playersOnlineTask;
 
     public MainThreadMetricSampler(MetricsService metricsService, TomlXcoreConfig config) {
         this(
@@ -74,10 +75,8 @@ public final class MainThreadMetricSampler {
     public synchronized void shutdown() {
         stopped = true;
         subscriptions.close();
-        if (playersOnlineTask != null) {
-            playersOnlineTask.cancel();
-            playersOnlineTask = null;
-        }
+        tasks.close();
+        playersOnlineTask = null;
     }
 
     private synchronized void startPlayersOnlineSampling() {
@@ -88,9 +87,7 @@ public final class MainThreadMetricSampler {
         }
 
         float intervalSeconds = config.telemetry.sampleIntervalMs / 1000f;
-        playersOnlineTask = Timer.schedule(() -> {
-            if (!stopped) samplePeriodicMetrics();
-        }, intervalSeconds, intervalSeconds);
+        playersOnlineTask = tasks.every(intervalSeconds, intervalSeconds, this::samplePeriodicMetrics);
     }
 
     void samplePeriodicMetrics() {

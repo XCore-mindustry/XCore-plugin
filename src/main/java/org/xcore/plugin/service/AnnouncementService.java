@@ -1,7 +1,6 @@
 package org.xcore.plugin.service;
 
 import arc.util.Log;
-import arc.util.Timer;
 import io.avaje.inject.PostConstruct;
 import io.avaje.inject.PreDestroy;
 import org.xcore.plugin.startup.ShutdownOrder;
@@ -9,6 +8,7 @@ import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import mindustry.Vars;
 import mindustry.gen.Groups;
+import org.xcore.plugin.concurrent.ScheduledTasks;
 import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.session.Session;
 import org.xcore.plugin.session.SessionService;
@@ -26,8 +26,7 @@ public class AnnouncementService {
     private final TomlXcoreConfig config;
     private final SessionService sessionService;
     private final AtomicInteger currentIndex = new AtomicInteger(0);
-    private Timer.Task scheduledTask;
-    private volatile boolean stopped;
+    private final ScheduledTasks tasks = new ScheduledTasks(AnnouncementService.class);
 
     public static final List<String> DEFAULT_ANNOUNCEMENTS = List.of(
             "announcement-hub",
@@ -50,18 +49,14 @@ public class AnnouncementService {
         float firstDelay = Math.max(1f, config.announcements.firstDelaySeconds);
         float interval = Math.max(10f, config.announcements.intervalSeconds);
 
-        scheduledTask = Timer.schedule(() -> { if (!stopped) broadcastNext(); }, firstDelay, interval);
+        tasks.every(firstDelay, interval, this::broadcastNext);
         Log.info("[AnnouncementService] Scheduled periodic announcements every @s (initial delay @s)",
                 interval, firstDelay);
     }
 
     @PreDestroy(priority = ShutdownOrder.STOP_PRODUCERS)
     public void stop() {
-        stopped = true;
-        if (scheduledTask != null) {
-            scheduledTask.cancel();
-            scheduledTask = null;
-        }
+        tasks.close();
     }
 
     /**
