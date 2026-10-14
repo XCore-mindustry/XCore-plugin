@@ -11,6 +11,7 @@ import tilelogger.command.HistoryController;
 import tilelogger.command.RollbackController;
 import tilelogger.command.TileLoggerController;
 import tilelogger.command.TileLoggerServerController;
+import tilelogger.integration.XcoreBlockHistoryProvider;
 
 public class TileLoggerPlugin extends Plugin {
     private PluginScopes.Registration registration;
@@ -26,14 +27,11 @@ public class TileLoggerPlugin extends Plugin {
         }
 
         var scopes = xContainer.get(PluginScopes.class);
-        BeanScope scope = BeanScope.builder()
-                .classLoader(getClass().getClassLoader())
-                .parent(xContainer)
-                .modules(new TileLoggerModule())
-                .build();
+        BeanScope scope = createScope(xContainer);
 
         try {
             registration = scopes.register(scope);
+            scope.get(XcoreBlockHistoryProvider.class).start();
             var bundle = scope.get(Bundle.class);
             bundle.addSource(getClass());
 
@@ -54,6 +52,14 @@ public class TileLoggerPlugin extends Plugin {
             scope.close();
             throw failure;
         }
+    }
+
+    BeanScope createScope(BeanScope parent) {
+        return BeanScope.builder()
+                .classLoader(getClass().getClassLoader())
+                .parent(parent)
+                .modules(new TileLoggerModule())
+                .build();
     }
 
     public synchronized void disable() {
