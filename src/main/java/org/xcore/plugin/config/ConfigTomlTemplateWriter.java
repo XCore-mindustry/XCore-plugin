@@ -142,6 +142,7 @@ public final class ConfigTomlTemplateWriter {
             "announcement-hub",
             "announcement-discord",
             "announcement-help",
+            "announcement-report",
         ]
         """;
     }

@@ -1261,6 +1261,9 @@ announcement-discord =
 announcement-help =
     [gold]★ [accent]Nápověda XCore [lightgray]» [white]Potřebuješ pomoc nebo seznam příkazů?
     [lightgray]Napiš [accent]/help[lightgray] a uvidíš všechny dostupné příkazy!
+announcement-report =
+    [gold]★ [accent]Nahlášení XCore [lightgray]» [white]Někdo griefuje nebo porušuje pravidla?
+    [lightgray]Nahlas ho příkazem [accent]/report[lightgray] — tým se na to podívá!
 
 
 error-only-players = [scarlet]⚠ Tento příkaz mohou používat pouze hráči.

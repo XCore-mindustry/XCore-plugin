@@ -1249,6 +1249,9 @@ announcement-discord =
 announcement-help =
     [gold]★ [accent]Aide XCore [lightgray]» [white]Besoin d'aide ou de la liste des commandes ?
     [lightgray]Tapez [accent]/help[lightgray] pour voir toutes les commandes disponibles !
+announcement-report =
+    [gold]★ [accent]Signalements XCore [lightgray]» [white]Quelqu'un grief ou enfreint les règles ?
+    [lightgray]Signalez-le avec [accent]/report[lightgray], l'équipe s'en occupe !
 
 
 error-only-players = [scarlet]⚠ Cette commande ne peut être utilisée que par les joueurs.

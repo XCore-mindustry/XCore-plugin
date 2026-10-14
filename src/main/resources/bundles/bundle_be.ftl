@@ -1273,6 +1273,9 @@ announcement-discord =
 announcement-help =
     [gold]★ [accent]Дапамога XCore [lightgray]» [white]Патрэбна дапамога або спіс каманд?
     [lightgray]Увядзіце [accent]/help[lightgray], каб убачыць усе даступныя каманды!
+announcement-report =
+    [gold]★ [accent]Скаргі XCore [lightgray]» [white]Нехта грыферыць ці парушае правілы?
+    [lightgray]Паскардзіцеся камандай [accent]/report[lightgray] — адміністрацыя разбярэцца!
 
 
 error-only-players = [scarlet]⚠ Гэтая каманда даступная толькі гульцам.

@@ -1324,6 +1324,9 @@ announcement-discord =
 announcement-help =
     [gold]★ [accent]Помощь XCore [lightgray]» [white]Нужны все доступные команды?
     [lightgray]Используйте [accent]/help[lightgray], чтобы ознакомиться со всеми командами!
+announcement-report =
+    [gold]★ [accent]Жалобы XCore [lightgray]» [white]Кто-то гриферит или нарушает правила?
+    [lightgray]Пожалуйтесь командой [accent]/report[lightgray] — администрация разберётся!
 
 
 error-only-players = [scarlet]⚠ Эту команду могут использовать только игроки.
