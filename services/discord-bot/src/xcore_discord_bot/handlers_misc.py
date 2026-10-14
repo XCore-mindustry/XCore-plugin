@@ -23,11 +23,18 @@ from .presentation import (
     format_minutes,
     format_size,
 )
-from .protocol_outbound import build_maps_upload_request
 from .rating_store import Placing
-from .redis_bus import RpcError
-from .retry import TRANSIENT_EXCEPTIONS, retry_read_rpc
+from .retry import retry_read_rpc
 from .server_views import MapsListView, ServersView
+from .staff_actions import (
+    Actor,
+    InvalidMapUpload,
+    MapUploadFailed,
+    MapUploadFile,
+    MapUploadTimeout,
+    perform_map_upload,
+    prepare_map_upload,
+)
 from .stats_embed import StaffNotes, StatsView, build_stats_embed, player_name
 from .utils.mindustry_colors import strip_mindustry_colors
 
@@ -662,57 +669,30 @@ async def cmd_upload_map(
     creator: discord.abc.User | None = None,
     creators: list[discord.abc.User | None] | None = None,
 ) -> None:
-    def identity(user: discord.abc.User) -> dict[str, str]:
-        return {
-            "discordId": str(user.id),
-            "discordUsername": user.display_name or user.name,
-        }
+    def identity(user: discord.abc.User) -> Actor:
+        return Actor(
+            str(user.id),
+            user.display_name or user.name,
+            handle=getattr(user, "name", None),
+        )
 
-    files: list[dict[str, object]] = []
-    uploaded_at = int(time.time() * 1000)
-    for index, attachment in enumerate(attachments):
-        if attachment is None or not attachment.filename.lower().endswith(".msav"):
-            continue
-        selected_creator = (
-            creators[index]
+    uploader = identity(interaction.user)
+    files = [
+        MapUploadFile(
+            attachment.url,
+            attachment.filename,
+            creator=identity(creators[index])
             if creators and index < len(creators) and creators[index] is not None
-            else creator
+            else None,
         )
-        upload: dict[str, object] = {
-            "uploadedBy": identity(interaction.user),
-            "uploadedAt": uploaded_at,
-        }
-        if handle := getattr(interaction.user, "name", None):
-            upload["uploadedByHandle"] = handle
-        if selected_creator is not None:
-            upload["creator"] = identity(selected_creator)
-            if handle := getattr(selected_creator, "name", None):
-                upload["creatorHandle"] = handle
-        files.append(
-            {
-                "url": attachment.url,
-                "filename": attachment.filename,
-                "discordUpload": upload,
-            }
-        )
-
-    if not files:
-        await interaction.response.send_message(
-            "No valid .msav files attached.", ephemeral=True
-        )
-        return
-    if len({item["filename"] for item in files}) != len(files):
-        await interaction.response.send_message(
-            "Each attachment must have a different filename.", ephemeral=True
-        )
-        return
+        for index, attachment in enumerate(attachments)
+        if attachment is not None and attachment.filename.lower().endswith(".msav")
+    ]
+    creator_actor = identity(creator) if creator is not None else None
     try:
-        build_maps_upload_request(server, files)
-    except (ValueError, TypeError):
-        await interaction.response.send_message(
-            "The upload details are invalid; nothing was sent to the server.",
-            ephemeral=True,
-        )
+        prepare_map_upload(server, files, uploader, creator_actor)
+    except InvalidMapUpload as error:
+        await interaction.response.send_message(str(error), ephemeral=True)
         return
     if not await bot._claim_mutation(
         interaction, operation="upload-map", scope=f"{server}:{len(files)}"
@@ -723,21 +703,18 @@ async def cmd_upload_map(
         f"Uploading {len(files)} map(s) to `{_map_text(server, inline_code=True)}`…",
         allowed_mentions=discord.AllowedMentions.none(),
     )
-    bot._map_cache.pop(server, None)
     try:
-        response = await bot.rpc_upload_maps(
-            server=server, files=files, timeout_ms=120_000
-        )
-    except TimeoutError:
+        response = await perform_map_upload(bot, server, files, uploader, creator_actor)
+    except MapUploadTimeout as error:
         await interaction.edit_original_response(
-            content="The server has not confirmed the result yet. Some files may already be installed; check /map list before retrying.",
+            content=str(error),
             allowed_mentions=discord.AllowedMentions.none(),
         )
         return
-    except (RpcError, *TRANSIENT_EXCEPTIONS, ValueError, TypeError):
+    except MapUploadFailed as error:
         logger.exception("Map upload confirmation failed for %s", server)
         await interaction.edit_original_response(
-            content="Could not confirm the upload result. Check /map list before retrying.",
+            content=str(error),
             allowed_mentions=discord.AllowedMentions.none(),
         )
         return
@@ -757,4 +734,3 @@ async def cmd_upload_map(
     await interaction.edit_original_response(
         content="\n".join(rows), allowed_mentions=discord.AllowedMentions.none()
     )
-    bot._map_cache.pop(server, None)

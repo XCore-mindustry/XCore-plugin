@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from uuid import uuid4
 
+from xcore_protocol.generated.cases import CasesEvidenceRequestV1, CasesNoticeCommandV1
 from xcore_protocol.generated.chat import (
     ChatDiscordIngressCommandV1,
 )
@@ -16,6 +17,7 @@ from xcore_protocol.generated.identity import (
     PlayerBadgeInventoryChangedCommandV1,
 )
 from xcore_protocol.generated.maps import (
+    MapsInspectRequestV1,
     MapsListRequestV1,
     MapsLoadCommandV1,
     MapsRemoveRequestV1,
@@ -438,4 +440,40 @@ def build_prize_delivered_request(
         status=RatingPrizeGrantUpdateRequestV1Status.DELIVERED,
         actor=_discord_actor(discord_id, actor_name),
         note=note or None,
+    )
+
+
+def build_case_notice_command(
+    *, server: str, notice_id: str, player_uuid: str
+) -> CasesNoticeCommandV1:
+    return CasesNoticeCommandV1(
+        server=server,
+        noticeId=notice_id,
+        playerUuid=player_uuid,
+        requestedAt=utc_now_iso8601(),
+    )
+
+
+def build_case_evidence_request(
+    *, server: str, player_uuid: str, chat_lines: int = 30, window_seconds: int = 600
+) -> CasesEvidenceRequestV1:
+    request = CasesEvidenceRequestV1(
+        server=server,
+        playerUuid=player_uuid,
+        chatLines=chat_lines,
+        windowSeconds=window_seconds,
+    )
+    # Generated models currently enforce minimums but omit schema maximums.
+    if chat_lines > 30 or window_seconds > 1800:
+        raise ValueError("Evidence request exceeds the protocol limits")
+    return request
+
+
+def build_maps_inspect_request(
+    *, server: str, url: str, file_name: str, profile: str | None = None
+) -> MapsInspectRequestV1:
+    return MapsInspectRequestV1(
+        server=server,
+        file=MapFileSourceV1(url=url, fileName=file_name),
+        profile=profile,
     )

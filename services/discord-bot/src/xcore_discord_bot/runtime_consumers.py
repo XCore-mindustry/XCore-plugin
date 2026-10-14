@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 
 from redis.exceptions import RedisError
 
+from .cases.model import CaseKind
 from .contracts import (
     ChatGlobalV1,
     ChatMessageV1,
@@ -178,54 +179,128 @@ async def consume_server_actions(bot: XCoreDiscordBot) -> None:
     )
 
 
+CASE_REPORT_EVENT = "cases.report.submitted"
+CASE_BAN_EVENT = "moderation.ban.created"
+CASE_MUTE_EVENT = "moderation.mute.created"
+
+
+def case_reports_configured(bot: XCoreDiscordBot) -> bool:
+    service = getattr(getattr(bot, "container", None), "cases", None)
+    if service is None or not service.settings.cases_reports_enabled:
+        return False
+    return any(
+        flow.kind == CaseKind.REPORT
+        and callable(flow.event_hooks.get(CASE_REPORT_EVENT))
+        for flow in service.registry.configured(service.settings)
+    )
+
+
+def case_reports_active(bot: XCoreDiscordBot) -> bool:
+    if not case_reports_configured(bot):
+        return False
+    service = bot.container.cases
+    return service.storage_available and service.registry.enabled(CaseKind.REPORT)
+
+
+async def consume_case_reports(bot: XCoreDiscordBot) -> None:
+    if not case_reports_configured(bot):
+        return
+    daemon = getattr(bot.container, "cases_reconcile_daemon", None)
+    if daemon is not None:
+        # Startup validation needs Discord readiness and may disable the flow.
+        await daemon.ready.wait()
+    service = bot.container.cases
+
+    async def dispatch(payload) -> None:
+        await service.registry.dispatch_event(CASE_REPORT_EVENT, service, payload)
+
+    async def consume(callback) -> None:
+        await bot.consume_case_reports_stream(
+            callback, is_active=lambda: case_reports_active(bot)
+        )
+
+    await run_consumer_forever(bot, "Case report", consume, dispatch)
+
+
 async def consume_bans(bot: XCoreDiscordBot) -> None:
     async def dispatch(event: ModerationBanCreatedV1) -> None:
-        if not bot.bans_channel_id:
-            return
+        if bot.bans_channel_id:
 
-        player_id = await _player_pid_for_uuid(bot, event.target.playerUuid)
+            async def log() -> None:
+                player_id = event.target.playerPid
+                if player_id is None:
+                    player_id = await _player_pid_for_uuid(bot, event.target.playerUuid)
+                expire_dt = (
+                    bot._parse_iso_datetime(_expiration_value(event.expiration))
+                    or await bot.now_utc()
+                )
+                # Old events keep the existing lookup/log fallback.
+                extra = {"ban_id": event.banId} if event.banId is not None else {}
+                sent = await post_ban_log(
+                    bot,
+                    pid=player_id,
+                    name=event.target.playerName,
+                    admin_name=event.actor.actorName,
+                    admin_discord_id=event.actor.actorDiscordId,
+                    reason=event.reason,
+                    expire=expire_dt,
+                    **extra,
+                )
+                if sent is False:
+                    raise RuntimeError(
+                        f"Configured ban log channel {bot.bans_channel_id} is unresolved"
+                    )
 
-        expire_dt = (
-            bot._parse_iso_datetime(_expiration_value(event.expiration))
-            or await bot.now_utc()
-        )
-        await post_ban_log(
-            bot,
-            pid=event.target.playerPid
-            if event.target.playerPid is not None
-            else player_id,
-            name=event.target.playerName,
-            admin_name=event.actor.actorName,
-            admin_discord_id=event.actor.actorDiscordId,
-            reason=event.reason,
-            expire=expire_dt,
-        )
+            bus = getattr(bot, "_bus", None)
+            if bus is not None:
+                await bus.run_ban_log_once(event, log)
+            else:
+                await log()
+        service = getattr(getattr(bot, "container", None), "cases", None)
+        if (
+            service is not None
+            and service.settings.cases_enabled
+            and service.storage_available
+        ):
+            # A hook failure reaches Redis retry/DLQ. The completed log marker
+            # survives that retry, so auto-resolution can finish without another log.
+            await service.registry.dispatch_event(CASE_BAN_EVENT, service, event)
 
     await run_consumer_forever(bot, "Ban", bot.consume_bans_stream, dispatch)
 
 
 async def consume_mutes(bot: XCoreDiscordBot) -> None:
     async def dispatch(event: ModerationMuteCreatedV1) -> None:
-        if not bot.mutes_channel_id:
-            return
+        if bot.mutes_channel_id:
+            player_id = await _player_pid_for_uuid(bot, event.target.playerUuid)
 
-        player_id = await _player_pid_for_uuid(bot, event.target.playerUuid)
-
-        expire_dt = (
-            bot._parse_iso_datetime(_expiration_value(event.expiration))
-            or await bot.now_utc()
-        )
-        await post_mute_log(
-            bot,
-            pid=event.target.playerPid
-            if event.target.playerPid is not None
-            else player_id,
-            name=event.target.playerName,
-            admin_name=event.actor.actorName,
-            admin_discord_id=event.actor.actorDiscordId,
-            reason=event.reason,
-            expire=expire_dt,
-        )
+            expire_dt = (
+                bot._parse_iso_datetime(_expiration_value(event.expiration))
+                or await bot.now_utc()
+            )
+            await post_mute_log(
+                bot,
+                pid=event.target.playerPid
+                if event.target.playerPid is not None
+                else player_id,
+                name=event.target.playerName,
+                admin_name=event.actor.actorName,
+                admin_discord_id=event.actor.actorDiscordId,
+                reason=event.reason,
+                expire=expire_dt,
+            )
+        service = getattr(getattr(bot, "container", None), "cases", None)
+        if (
+            service is not None
+            and service.settings.cases_enabled
+            and service.storage_available
+        ):
+            try:
+                await service.registry.dispatch_event(CASE_MUTE_EVENT, service, event)
+            except Exception:
+                # Not retried: the log above has no delivery marker and would be posted
+                # again. The mute is in the audit trail, where the repair task finds it.
+                logger.exception("Case hooks failed for a mute event")
 
     await run_consumer_forever(bot, "Mute", bot.consume_mutes_stream, dispatch)
 

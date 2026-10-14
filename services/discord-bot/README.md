@@ -157,3 +157,68 @@ See `docs/canary-rollout.md`.
 uvx ruff check
 uvx ruff format --check
 ```
+
+## Cases
+
+Reports, appeals, badge requests, staff complaints and map review share one core
+(`src/xcore_discord_bot/cases/`). Everything is off by default. The core ships without flow
+modules and without the protocol 0.15 transport; those are separate packages. A switch that is
+on without its flow module or with a wrong Discord setup logs the reason and leaves that flow
+off; the rest of the bot, and the other flows, keep running.
+
+Environment variables:
+
+- `CASES_REPORTS_ENABLED`, `CASES_APPEALS_ENABLED`, `CASES_BADGES_ENABLED`,
+  `CASES_COMPLAINTS_ENABLED`, `CASES_MAPS_ENABLED`: `false`. One switch per flow.
+- `CASES_PANEL_CHANNEL_ID`: `0`. The public panel and the parent of private user threads.
+- `CASES_STAFF_FORUM_ID`: `0`. Private forum for reports, appeals and badge requests.
+- `CASES_SENIOR_FORUM_ID`: `0`. Senior-only forum for complaints.
+- `CASES_COMPLAINT_THREAD_CHANNEL_ID`: `0`. Parent of complaint user threads; `0` uses the
+  panel channel. No non-senior role may have Manage Threads there.
+- `CASES_BLACKLIST_ROLE_ID`: `0`. Members with this role cannot open cases from Discord.
+- `CASES_STAFF_LOCALE`: `en` (`en`, `ru`, `uk`). Language of staff cards. Map cards are
+  public and use the author's language.
+- `CASES_OPEN_COOLDOWN_SECONDS`: `60`. Per Discord user and kind.
+- `CASES_MAX_OPEN_PER_USER`: `3`. Open cases per Discord user and kind.
+- `CASES_REPORT_BURST_LIMIT`: `20`, `CASES_REPORT_BURST_WINDOW_SECONDS`: `600`. Used by the
+  report flow.
+- `CASES_APPEAL_COOLDOWN_DAYS`: `14`. Used by the appeal flow.
+- `CASES_BADGES_REQUESTABLE`:
+  `translator,map-maker,contributor,bug-finder,event-winner,veteran,developer`. Used by the
+  badge flow.
+- `CASES_EVIDENCE_RETENTION_DAYS`: `180`. Chat evidence of a closed case is cleared after this.
+- `CASES_NOTICE_TTL_DAYS`: `30`. Lifetime of an undelivered in-game notice.
+- `DISCORD_MAPS_FORUM_ID`: `0`. The existing public maps forum.
+- `MAPS_TAG_WAITING`, `MAPS_TAG_ACCEPTED`, `MAPS_TAG_REJECTED`: `Waiting`, `Accepted`,
+  `Rejected`. Tag names in the maps forum; they must already exist there.
+- `MAPS_IGNORED_TAGS`: `Report a map,Balance a map`.
+- `MAPS_TAG_PROFILES`: `Tower Defence=tower-defense,PvP=pvp,Survival=survival,Attack=attack`.
+- `MAPS_MAX_FILE_BYTES`: `4194304`.
+- `DISCORD_MAP_MAKER_ROLE_ID`: `0`. Discord role given with the Map Maker badge.
+
+A channel or role id of `0` or blank means "not configured". Staff roles are the existing
+admin, general-admin (head-admin) and map-reviewer settings.
+
+At start-up each switched-on flow is checked: channel types and guild, that the staff forum is
+hidden from `@everyone` and visible to the staff roles, that the complaint forum is visible to
+senior roles only, and the bot's permissions (view, send, send in threads, read history, manage
+threads; create private threads in the panel channel). The staff forums need the tags `Report`,
+`Appeal`, `Badge`, `Complaint`, `Open`, `Taken`, `Resolved`, `Rejected`; the bot creates the
+missing ones if it has Manage Channels there, otherwise the log names them.
+
+Commands (registered only while at least one switch is on):
+
+- `/cases panel publish` (head admin) publishes the panel, or edits the published message in
+  place. After that the bot keeps it up to date by itself when switches change.
+- `/cases find` (any staff role), `/cases reopen` and `/cases subject` (head admin).
+- `/language` and the panel's language button store a person's language choice. Without a
+  choice the bot follows the language of their Discord client.
+
+Case numbers start at 2001, above the numbers of the old ticket bot.
+
+With every switch off no command, daemon, listener or database write of this feature runs. A
+panel published earlier keeps its buttons; they answer that the feature is unavailable. Remove
+that message by hand if the switch-off is permanent.
+
+Flow modules are written against the [flow and transport contract](src/xcore_discord_bot/cases/README.md);
+[`tests/cases_dummy_flow.py`](tests/cases_dummy_flow.py) is a complete minimal flow.

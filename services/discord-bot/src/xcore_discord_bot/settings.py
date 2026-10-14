@@ -91,6 +91,116 @@ class Settings(BaseSettings):
         validation_alias="ADMIN_RECONCILE_INTERVAL_SECONDS",
     )
 
+    cases_reports_enabled: bool = Field(
+        default=False, validation_alias="CASES_REPORTS_ENABLED"
+    )
+    cases_appeals_enabled: bool = Field(
+        default=False, validation_alias="CASES_APPEALS_ENABLED"
+    )
+    cases_badges_enabled: bool = Field(
+        default=False, validation_alias="CASES_BADGES_ENABLED"
+    )
+    cases_complaints_enabled: bool = Field(
+        default=False, validation_alias="CASES_COMPLAINTS_ENABLED"
+    )
+    cases_maps_enabled: bool = Field(
+        default=False, validation_alias="CASES_MAPS_ENABLED"
+    )
+    cases_panel_channel_id: int = Field(
+        default=0, validation_alias="CASES_PANEL_CHANNEL_ID"
+    )
+    cases_staff_forum_id: int = Field(
+        default=0, validation_alias="CASES_STAFF_FORUM_ID"
+    )
+    cases_senior_forum_id: int = Field(
+        default=0, validation_alias="CASES_SENIOR_FORUM_ID"
+    )
+    cases_complaint_thread_channel_id: int = Field(
+        default=0, validation_alias="CASES_COMPLAINT_THREAD_CHANNEL_ID"
+    )
+    cases_blacklist_role_id: int = Field(
+        default=0, validation_alias="CASES_BLACKLIST_ROLE_ID"
+    )
+    cases_staff_locale: Literal["en", "ru", "uk"] = Field(
+        default="en", validation_alias="CASES_STAFF_LOCALE"
+    )
+    cases_open_cooldown_seconds: int = Field(
+        default=60, validation_alias="CASES_OPEN_COOLDOWN_SECONDS"
+    )
+    cases_max_open_per_user: int = Field(
+        default=3, validation_alias="CASES_MAX_OPEN_PER_USER"
+    )
+    cases_report_burst_limit: int = Field(
+        default=20, validation_alias="CASES_REPORT_BURST_LIMIT"
+    )
+    cases_report_burst_window_seconds: int = Field(
+        default=600, validation_alias="CASES_REPORT_BURST_WINDOW_SECONDS"
+    )
+    cases_appeal_cooldown_days: int = Field(
+        default=14, validation_alias="CASES_APPEAL_COOLDOWN_DAYS"
+    )
+    cases_badges_requestable: str = Field(
+        default="translator,map-maker,contributor,bug-finder,event-winner,veteran,developer",
+        validation_alias="CASES_BADGES_REQUESTABLE",
+    )
+    cases_evidence_retention_days: int = Field(
+        default=180, validation_alias="CASES_EVIDENCE_RETENTION_DAYS"
+    )
+    cases_notice_ttl_days: int = Field(
+        default=30, validation_alias="CASES_NOTICE_TTL_DAYS"
+    )
+    discord_maps_forum_id: int = Field(
+        default=0, validation_alias="DISCORD_MAPS_FORUM_ID"
+    )
+    maps_tag_waiting: str = Field(
+        default="Waiting", validation_alias="MAPS_TAG_WAITING"
+    )
+    maps_tag_accepted: str = Field(
+        default="Accepted", validation_alias="MAPS_TAG_ACCEPTED"
+    )
+    maps_tag_rejected: str = Field(
+        default="Rejected", validation_alias="MAPS_TAG_REJECTED"
+    )
+    maps_ignored_tags: str = Field(
+        default="Report a map,Balance a map", validation_alias="MAPS_IGNORED_TAGS"
+    )
+    maps_tag_profiles: str = Field(
+        default="Tower Defence=tower-defense,PvP=pvp,Survival=survival,Attack=attack",
+        validation_alias="MAPS_TAG_PROFILES",
+    )
+    maps_max_file_bytes: int = Field(
+        default=4194304, validation_alias="MAPS_MAX_FILE_BYTES"
+    )
+    discord_map_maker_role_id: int = Field(
+        default=0, validation_alias="DISCORD_MAP_MAKER_ROLE_ID"
+    )
+
+    @field_validator(
+        "cases_panel_channel_id",
+        "cases_staff_forum_id",
+        "cases_senior_forum_id",
+        "cases_complaint_thread_channel_id",
+        "cases_blacklist_role_id",
+        "discord_maps_forum_id",
+        "discord_map_maker_role_id",
+        mode="before",
+    )
+    @classmethod
+    def _blank_case_id_as_zero(cls, value: object) -> object:
+        return 0 if isinstance(value, str) and not value.strip() else value
+
+    @property
+    def cases_enabled(self) -> bool:
+        return any(
+            (
+                self.cases_reports_enabled,
+                self.cases_appeals_enabled,
+                self.cases_badges_enabled,
+                self.cases_complaints_enabled,
+                self.cases_maps_enabled,
+            )
+        )
+
     @field_validator(
         "discord_general_admin_role_id",
         "discord_map_reviewer_role_id",

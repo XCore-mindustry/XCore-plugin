@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime
 from typing import Any
 
@@ -75,7 +75,13 @@ class _Store:
             expire_date=datetime(2026, 12, 31, 15, 0, tzinfo=UTC),
         )
 
-    async def delete_ban(self, *, uuid: str, ip: str | None) -> int:
+    async def ensure_ban_id(self, *, uuid: str, ip: str | None) -> BanRecord | None:
+        ban = await self.find_ban(uuid=uuid, ip=ip)
+        return replace(ban, ban_id=1, uuid=uuid, ip=ip) if ban is not None else None
+
+    async def delete_ban(
+        self, *, uuid: str, ip: str | None, ban_id: int | None = None
+    ) -> int:
         return 1
 
     async def find_mute(self, *, uuid: str) -> MuteRecord | None:
@@ -98,7 +104,9 @@ class _Store:
 
 
 class _NoActiveStore(_Store):
-    async def delete_ban(self, *, uuid: str, ip: str | None) -> int:
+    async def delete_ban(
+        self, *, uuid: str, ip: str | None, ban_id: int | None = None
+    ) -> int:
         return 0
 
     async def delete_mute(self, *, uuid: str) -> int:

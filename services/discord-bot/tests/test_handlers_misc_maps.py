@@ -74,7 +74,6 @@ class _RemoveMapBot:
         return "removed"
 
 
-@pytest.mark.asyncio
 async def test_cmd_maps_reports_timeout() -> None:
     bot = _MapsBot(fail=True)
     interaction = _Interaction()
@@ -91,7 +90,6 @@ async def test_cmd_maps_reports_timeout() -> None:
     ]
 
 
-@pytest.mark.asyncio
 async def test_cmd_maps_reports_empty_server_map_list() -> None:
     bot = _MapsBot(maps=[])
     interaction = _Interaction()
@@ -104,7 +102,6 @@ async def test_cmd_maps_reports_empty_server_map_list() -> None:
     ]
 
 
-@pytest.mark.asyncio
 async def test_cmd_maps_renders_rating_metadata() -> None:
     bot = _MapsBot(
         maps=[
@@ -142,7 +139,6 @@ async def test_cmd_maps_renders_rating_metadata() -> None:
     assert isinstance(view, MapsListView)
 
 
-@pytest.mark.asyncio
 async def test_cmd_maps_defaults_to_reputation_sort() -> None:
     bot = _MapsBot(
         maps=[
@@ -172,7 +168,6 @@ async def test_cmd_maps_defaults_to_reputation_sort() -> None:
     assert embed.description.splitlines()[0].startswith("• HighRep")
 
 
-@pytest.mark.asyncio
 async def test_perform_remove_map_returns_duplicate_message() -> None:
     bot = _RemoveMapBot(claim=False)
 
@@ -188,7 +183,6 @@ async def test_perform_remove_map_returns_duplicate_message() -> None:
     assert bot.remove_calls == []
 
 
-@pytest.mark.asyncio
 async def test_perform_remove_map_returns_timeout_message() -> None:
     bot = _RemoveMapBot(claim=True, fail=True)
 
@@ -203,7 +197,6 @@ async def test_perform_remove_map_returns_timeout_message() -> None:
     assert bot.remove_calls == [("mini-pvp", "arena.msav", 9876)]
 
 
-@pytest.mark.asyncio
 async def test_maps_show_distinct_file_author_creator_and_submitter() -> None:
     bot = _MapsBot(
         maps=[
@@ -279,7 +272,6 @@ def test_contributor_name_cannot_escape_profile_link(name: str) -> None:
     assert "\\]" in text or "\\[" in text
 
 
-@pytest.mark.asyncio
 async def test_creator_filter_only_keeps_maps_declared_by_selected_user() -> None:
     from types import SimpleNamespace
 

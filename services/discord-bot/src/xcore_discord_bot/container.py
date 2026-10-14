@@ -3,7 +3,15 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from .cases import flows  # noqa: F401 -- importing modules registers flow definitions
+from .cases.notify import CaseNotifier
+from .cases.panel import CasePanel
+from .cases.registry import flow_registry
+from .cases.service import CaseService
+from .cases.store import CaseStore
+from .cases.threads import CaseThreads
 from .daemons.admin_sync_daemon import AdminSyncDaemon
+from .daemons.cases_reconcile_daemon import CasesReconcileDaemon
 from .daemons.presence_daemon import PresenceDaemon
 from .daemons.rating_merge_daemon import RatingMergeDaemon
 from .daemons.staff_sync_daemon import StaffSyncDaemon
@@ -40,6 +48,9 @@ class ServiceContainer:
     rating_merge_daemon: RatingMergeDaemon
     stream_supervisor: StreamSupervisor
     staff_sync_daemon: StaffSyncDaemon | None = None
+    cases: CaseService | None = None
+    case_panel: CasePanel | None = None
+    cases_reconcile_daemon: CasesReconcileDaemon | None = None
 
     @classmethod
     def create(
@@ -70,6 +81,18 @@ class ServiceContainer:
         )
         rating_merge_daemon = RatingMergeDaemon(bot=bot, ratings=rating_service)
         stream_supervisor = StreamSupervisor(bot=bot)
+        case_store = CaseStore(store)
+
+        cases = CaseService(
+            store=case_store,
+            settings=settings,
+            registry=flow_registry.copy(),
+            threads=CaseThreads(bot, settings),
+            notifier=CaseNotifier(bot, settings, find_player=store.find_player_by_uuid),
+            claims=bus,
+            players=store,
+        )
+        case_panel = CasePanel(cases, bot)
 
         return cls(
             settings=settings,
@@ -86,6 +109,9 @@ class ServiceContainer:
             admin_sync_daemon=admin_sync_daemon,
             rating_merge_daemon=rating_merge_daemon,
             stream_supervisor=stream_supervisor,
+            cases=cases,
+            case_panel=case_panel,
+            cases_reconcile_daemon=CasesReconcileDaemon(bot, cases, case_panel),
             staff_sync_daemon=(
                 StaffSyncDaemon(bot, store, rpc, settings)
                 if settings.permissions_mode == "roles"

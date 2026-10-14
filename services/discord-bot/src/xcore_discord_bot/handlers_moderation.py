@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING, cast
 
@@ -7,12 +8,22 @@ import discord
 from discord import Interaction
 from xcore_protocol.generated.shared import ActorRefV1ActorType, VoteKickParticipantV1
 
-from .dto import MERGE_KEEP_PID_TARGET, PlayerRecord
+from .dto import MERGE_KEEP_PID_TARGET, BanRecord, PlayerRecord
 from .moderation_views import AccountMergeConfirmView, BanConfirmView, MuteUndoView
 from .player_pids import is_assigned, or_none
 from .presentation import build_merge_preview_embed, format_ban_expire_date
 from .redis_bus import RpcFailed
 from .retry import TRANSIENT_EXCEPTIONS
+from .staff_actions import (
+    Actor,
+    BanNotFound,
+    StaffActionError,
+    perform_mute,
+    perform_unban,
+)
+from .staff_actions import (
+    perform_ban as perform_staff_ban,
+)
 
 if TYPE_CHECKING:
     from .bot import XCoreDiscordBot
@@ -256,55 +267,21 @@ async def perform_ban(
     reason: str,
     duration: timedelta,
     player: PlayerRecord,
+    case_number: int | None = None,
 ) -> str:
-    uuid_value, ip_value = bot._player_identifiers(player)
-    if uuid_value is None and ip_value is None:
-        return "Cannot ban player: both UUID and IP are missing in player data."
-
-    key_uuid = uuid_value or "none"
-    key_ip = ip_value or "none"
-    claim_key = f"ban-confirm:{key_uuid}:{key_ip}:{period}:{reason}"
-    claimed = await bot.claim_idempotency(claim_key, ttl_seconds=600)
-    if not claimed:
-        return "This ban was already processed recently."
-
-    expire = await bot.now_utc() + duration
-    await bot.upsert_ban(
-        uuid=uuid_value or "",
-        ip=ip_value,
-        pid=player_id,
-        name=bot._player_name(player),
-        admin_name=actor_name,
-        admin_discord_id=actor_discord_id,
-        reason=reason,
-        expire_date=expire,
-    )
-    await _append_discord_moderation_audit(
-        bot,
-        interaction=None,
-        action="BAN",
-        player=player,
-        reason=reason,
-        actor_name=actor_name,
-        actor_discord_id=actor_discord_id,
-        duration=duration,
-        expires_at=expire,
-    )
-    await bot.publish_kick_banned(uuid_value=uuid_value or "", ip=ip_value)
-    await post_ban_log(
-        bot,
-        pid=player_id,
-        name=bot._player_name(player),
-        admin_name=actor_name,
-        admin_discord_id=actor_discord_id,
-        reason=reason,
-        expire=expire,
-    )
-    return (
-        f"Banned `{bot._player_name(player)}` until "
-        f"{discord.utils.format_dt(expire, style='f')} "
-        f"({discord.utils.format_dt(expire, style='R')})"
-    )
+    try:
+        result = await perform_staff_ban(
+            bot,
+            actor=Actor(actor_discord_id, actor_name),
+            player=replace(player, pid=player_id),
+            period=period,
+            reason=reason,
+            duration=duration,
+            case_number=case_number,
+        )
+    except StaffActionError as error:
+        return str(error)
+    return result.message
 
 
 async def cmd_unban(
@@ -333,21 +310,31 @@ async def cmd_unban(
         return
 
     ban_doc = await bot.find_ban(uuid=uuid_value or "", ip=ip_value)
-    deleted = await bot.delete_ban(uuid=uuid_value or "", ip=ip_value)
-    if deleted == 0:
+    # Keep the command's player snapshot for its audit and reply.
+    action_ban = (
+        replace(ban_doc, uuid=uuid_value, ip=ip_value)
+        if ban_doc is not None
+        else BanRecord(
+            uuid=uuid_value,
+            ip=ip_value,
+            pid=player_id,
+            name=bot._player_name(player),
+            admin_name="Unknown",
+            reason="Not Specified",
+            expire_date=None,
+        )
+    )
+    try:
+        await perform_unban(
+            bot,
+            action_ban,
+            Actor(str(interaction.user.id), interaction.user.display_name),
+            player=player,
+            request_id=str(interaction.id),
+        )
+    except BanNotFound:
         await interaction.response.send_message(MSG_NO_ACTIVE_BAN, ephemeral=True)
         return
-    if uuid_value is not None:
-        await bot.publish_pardon_player(uuid_value=uuid_value)
-    await _append_discord_moderation_audit(
-        bot,
-        interaction=interaction,
-        action="UNBAN",
-        player=player,
-        reason=ban_doc.reason if ban_doc is not None else "Not Specified",
-        actor_name=interaction.user.display_name,
-        actor_discord_id=str(interaction.user.id),
-    )
 
     embed = bot._build_moderation_reversal_embed(
         action_label="Unbanned",
@@ -429,37 +416,15 @@ async def cmd_mute(
     ):
         return
 
-    expire = await bot.now_utc() + duration
-    await bot.upsert_mute(
-        uuid=uuid_value,
-        pid=player_id,
-        name=bot._player_name(player),
-        admin_name=interaction.user.display_name,
-        admin_discord_id=str(interaction.user.id),
-        reason=reason,
-        expire_date=expire,
-    )
-    await _append_discord_moderation_audit(
+    result = await perform_mute(
         bot,
-        interaction=interaction,
-        action="MUTE",
-        player=player,
-        reason=reason,
-        actor_name=interaction.user.display_name,
-        actor_discord_id=str(interaction.user.id),
-        duration=duration,
-        expires_at=expire,
+        player,
+        duration,
+        reason,
+        Actor(str(interaction.user.id), interaction.user.display_name),
+        request_id=str(interaction.id),
     )
     player_name = bot._player_name(player)
-    await post_mute_log(
-        bot,
-        pid=player_id,
-        name=player_name,
-        admin_name=interaction.user.display_name,
-        admin_discord_id=str(interaction.user.id),
-        reason=reason,
-        expire=expire,
-    )
     view = MuteUndoView(
         requester_id=interaction.user.id,
         uuid=uuid_value,
@@ -467,8 +432,7 @@ async def cmd_mute(
         delete_mute=bot.delete_mute,
     )
     await interaction.response.send_message(
-        f"Muted `{player_name}` until {discord.utils.format_dt(expire, style='f')} "
-        f"({discord.utils.format_dt(expire, style='R')})",
+        result.message,
         view=view,
     )
     view.message = await interaction.original_response()
@@ -866,27 +830,66 @@ async def cmd_reset_password(
     )
 
 
+async def _case_log_secrets(
+    bot, number: int, supplied: tuple[str, ...], actor_id: str | None
+) -> tuple[str, ...]:
+    from .cases.cards import case_secrets
+
+    service = getattr(getattr(bot, "container", None), "cases", None)
+    if service is None:
+        return supplied
+    case = await service.get(number)
+    secrets = [*supplied, *case_secrets(case)]
+    if service.players is not None:
+        for uuid in case_secrets(case):
+            player = await service.players.find_player_by_uuid(uuid)
+            if player is not None and player.ip:
+                secrets.append(player.ip)
+        if actor_id:
+            for player in await service.players.find_players_by_discord_id(actor_id):
+                secrets.extend((player.uuid or "", player.ip or ""))
+    return tuple(secrets)
+
+
 async def post_ban_log(
     bot: XCoreDiscordBot,
     *,
-    pid: int,
+    pid: int | None,
     name: str,
     admin_name: str,
     admin_discord_id: str | None,
     reason: str,
     expire: datetime,
-) -> None:
+    ban_id: int | None = None,
+    case_number: int | None = None,
+    title: str = "Ban Issued",
+    privacy_secrets: tuple[str, ...] = (),
+) -> bool:
+    """Return whether a log was sent; legacy command callers may ignore the receipt."""
     from .bot import strip_mindustry_colors
 
     bans_channel_id = bot.bans_channel_id
     if not bans_channel_id:
-        return
+        return False
 
     channel = await bot._resolve_messageable_channel(
         bans_channel_id, context="ban logs"
     )
     if channel is None:
-        return
+        return False
+
+    # Old protocol events provide only a pid. New consumers can pass ban_id directly.
+    lookup_player = getattr(bot, "find_player_by_pid", None)
+    if ban_id is None and is_assigned(pid) and callable(lookup_player):
+        player = await lookup_player(pid)
+        if player is not None:
+            uuid_value, ip_value = bot._player_identifiers(player)
+            if uuid_value is not None or ip_value is not None:
+                ban = await bot.ensure_ban_id(uuid=uuid_value or "", ip=ip_value)
+                if ban is not None:
+                    ban_id = ban.ban_id
+                    if case_number is None:
+                        case_number = ban.case_number
 
     safe_name = strip_mindustry_colors(str(name).replace("`", "")).strip() or "Unknown"
     safe_admin_name = (
@@ -900,6 +903,23 @@ async def post_ban_log(
     if not safe_reason:
         safe_reason = "No reason provided"
 
+    if case_number is not None:
+        from .cases.cards import safe_text
+
+        secrets = await _case_log_secrets(
+            bot, case_number, privacy_secrets, admin_discord_id
+        )
+        safe_name = safe_text(name.replace("`", ""), secrets=secrets) or "Unknown"
+        safe_admin_name = (
+            safe_text(admin_name.replace("`", ""), secrets=secrets) or "Unknown"
+        )
+        admin_value = _format_admin_value(
+            admin_name=safe_admin_name, admin_discord_id=admin_discord_id
+        )
+        safe_reason = (
+            safe_text(reason.replace("`", ""), secrets=secrets) or "No reason provided"
+        )
+
     safe_pid = or_none(pid)
     violator_value = (
         f"{safe_name} (pid={safe_pid})" if safe_pid is not None else safe_name
@@ -910,12 +930,17 @@ async def post_ban_log(
         f"({discord.utils.format_dt(expire_utc, style='R')})"
     )
 
-    embed = discord.Embed(title="Ban Issued", color=discord.Color.red())
+    embed = discord.Embed(title=title, color=discord.Color.red())
+    if ban_id is not None:
+        embed.add_field(name="Ban", value=f"B-{ban_id}", inline=False)
+    if case_number is not None:
+        embed.add_field(name="Case", value=f"#{case_number}", inline=False)
     embed.add_field(name="Violator", value=violator_value, inline=False)
     embed.add_field(name="Admin", value=admin_value, inline=False)
     embed.add_field(name="Reason", value=safe_reason, inline=False)
     embed.add_field(name="Expires", value=unban_value, inline=False)
     await channel.send(embed=embed)
+    return True
 
 
 async def post_mute_log(
@@ -927,6 +952,8 @@ async def post_mute_log(
     admin_discord_id: str | None,
     reason: str,
     expire: datetime,
+    case_number: int | None = None,
+    privacy_secrets: tuple[str, ...] = (),
 ) -> None:
     from .bot import strip_mindustry_colors
 
@@ -952,6 +979,23 @@ async def post_mute_log(
     if not safe_reason:
         safe_reason = "No reason provided"
 
+    if case_number is not None:
+        from .cases.cards import safe_text
+
+        secrets = await _case_log_secrets(
+            bot, case_number, privacy_secrets, admin_discord_id
+        )
+        safe_name = safe_text(name.replace("`", ""), secrets=secrets) or "Unknown"
+        safe_admin_name = (
+            safe_text(admin_name.replace("`", ""), secrets=secrets) or "Unknown"
+        )
+        admin_value = _format_admin_value(
+            admin_name=safe_admin_name, admin_discord_id=admin_discord_id
+        )
+        safe_reason = (
+            safe_text(reason.replace("`", ""), secrets=secrets) or "No reason provided"
+        )
+
     safe_pid = or_none(pid)
     violator_value = (
         f"{safe_name} (pid={safe_pid})" if safe_pid is not None else safe_name
@@ -963,6 +1007,8 @@ async def post_mute_log(
     )
 
     embed = discord.Embed(title="Mute Issued", color=discord.Color.orange())
+    if case_number is not None:
+        embed.add_field(name="Case", value=f"#{case_number}", inline=False)
     embed.add_field(name="Violator", value=violator_value, inline=False)
     embed.add_field(name="Admin", value=admin_value, inline=False)
     embed.add_field(name="Reason", value=safe_reason, inline=False)

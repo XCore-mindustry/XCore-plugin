@@ -7,6 +7,11 @@ from discord import Interaction, app_commands
 from discord.ext import commands
 
 from .. import handlers_misc
+from ..cases.flows.maps import intake
+from ..cases.modals import error_text
+from ..cases.model import AccessDenied, ActionFailed, CaseKind
+from ..i18n import t
+from ..permissions import has_any_role, map_reviewer_role_ids
 from ..registry import server_registry
 from .autocomplete import _autocomplete_map_file
 from .checks import map_reviewer_check
@@ -38,6 +43,35 @@ class MapsCog(commands.Cog):
 
     def __init__(self, bot: XCoreDiscordBot) -> None:
         self.bot = bot
+
+    @map_group.command(name="review", description="Start map review in this forum post")
+    async def cmd_review_map(self, interaction: Interaction) -> None:
+        await interaction.response.defer(ephemeral=True, thinking=True)
+        service = self.bot.container.cases
+        locale = await service.store.remember_interaction(interaction)
+        try:
+            service.registry.require(CaseKind.MAP)
+            if not has_any_role(
+                interaction.user, map_reviewer_role_ids(service.settings)
+            ):
+                raise AccessDenied()
+            thread = interaction.channel
+            if (
+                getattr(thread, "parent_id", None)
+                != service.settings.discord_maps_forum_id
+            ):
+                raise ActionFailed(t(locale, "maps-review-in-post"))
+            if str(interaction.user.id) == str(thread.owner_id):
+                raise AccessDenied()
+            case = await intake(service, thread, manual=True)
+            await interaction.followup.send(
+                t(locale, "cases-updated", number=case.number)
+                if case
+                else t(locale, "maps-review-no-file"),
+                ephemeral=True,
+            )
+        except ValueError as error:
+            await interaction.followup.send(error_text(locale, error), ephemeral=True)
 
     @map_group.command(name="list", description="List maps on a server")
     @app_commands.describe(
