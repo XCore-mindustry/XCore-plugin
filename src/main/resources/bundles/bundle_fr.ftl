@@ -275,18 +275,28 @@ commands-announcement-description = Diffuse une annonce périodique par clé, ou
 commands-audit-description = Affiche l'historique et les actions de l'équipe et de la modération.
 ban-content = [scarlet]⚠ Banni[]
     [accent]{ $nickname }[white] — vous êtes banni définitivement de ce serveur.
+    [orange]» [accent]ID du joueur: [white]{ $pid }
     [lightgray]Pour faire appel, rendez-vous sur le salon Discord [gray]{ support-channel }[] :
     [cyan]{ $discordUrl }
 ban-cancelled = [accent]Le bannissement de [scarlet]{ $nickname }[accent] a été annulé
 tempban-content = [scarlet]⚠ Banni[]
-    [accent]{ $nickname }[white] — vous êtes banni temporairement de ce serveur.
+    { $permanent ->
+        [true] [accent]{ $nickname }[white] — vous êtes banni définitivement de ce serveur.
+       *[false] [accent]{ $nickname }[white] — vous êtes banni temporairement de ce serveur.
+    }
+    [orange]» [accent]Bannissement: [white]{ $banId }
+    [orange]» [accent]ID du joueur: [white]{ $pid }
     { "" }
     [orange]» [accent]Admin : [white]{ $adminName }
     [orange]» [accent]Raison : [gold]{ $reason }
-    [orange]» [accent]Temps restant : { DURATION($duration, style: "full", colored: "true", maxUnits: 2) }
-    [orange]» [accent]Fin : [white]{ DATETIME($expireDate, dateStyle: "medium", timeStyle: "short") }
+    { $permanent ->
+        [true] [orange]» [accent]{ audit-menu-duration-permanent }[]
+       *[false] [orange]» [accent]Temps restant : { DURATION($duration, style: "full", colored: "true", maxUnits: 2) }
+            { "" }[orange]» [accent]Fin : [white]{ DATETIME($expireDate, dateStyle: "medium", timeStyle: "short") }
+    }
     { "" }
     [lightgray]Pour faire appel, rendez-vous sur le salon Discord [gray]{ support-channel }[] :
+    [lightgray]Indiquez { $banId } dans votre appel.
     [cyan]{ $discordUrl }
 tempban-player-banned = [scarlet] L'admin { $adminName }[scarlet] a banni le joueur [gray]'[]{ $playerName }[gray]'
 you-are-muted-by =
@@ -309,7 +319,7 @@ kick-admintools-outdated =
     [scarlet]Votre version d'AdminTools : [grey]{ $version }[]
     { "" }
     [cyan]Mettez à jour AdminTools pour rejoindre ce serveur.
-support-channel = #reports-appeals
+support-channel = #tickets
 # ==============================================================================
 # Voting (VoteKick)
 # ==============================================================================

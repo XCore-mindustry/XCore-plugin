@@ -34,12 +34,13 @@ public final class ModerationProtocolMapper {
 
     public static ModerationBanCreatedV1 toBanCreated(BanData ban, String server, Instant occurredAt) {
         return new ModerationBanCreatedV1(
-                new PlayerRefV1(ban.uuid, null, ban.name, normalizeOptional(ban.ip)),
+                new PlayerRefV1(ban.uuid, normalizeOptionalPid(ban.pid), ban.name, normalizeOptional(ban.ip)),
                 new ActorRefV1(resolveActorName(ban.adminName), normalizeOptional(ban.adminDiscordId), resolveActorType(ban.adminDiscordId)),
                 resolveReason(ban.reason),
                 toExpirationInfo(ban),
                 normalizeOptional(server),
-                occurredAt.toString()
+                occurredAt.toString(),
+                ban.banId
         );
     }
 

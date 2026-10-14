@@ -3,25 +3,26 @@ package org.xcore.plugin.event;
 import arc.util.Log;
 import io.avaje.inject.PostConstruct;
 import io.avaje.inject.PreDestroy;
-import org.xcore.plugin.startup.ShutdownOrder;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import mindustry.core.Version;
 import mindustry.game.EventType;
 import mindustry.gen.Groups;
 import mindustry.net.Administration;
-import org.xcore.protocol.generated.messages.server.ServerMessages.ServerActionV1;
-import org.xcore.protocol.generated.messages.server.ServerMessages.ServerHeartbeatV1;
+import org.xcore.plugin.concurrent.ScheduledTasks;
+import org.xcore.plugin.concurrent.StorageExecutor;
 import org.xcore.plugin.config.TomlXcoreConfig;
+import org.xcore.plugin.event.transport.CasesTransportHandler;
 import org.xcore.plugin.event.transport.ChatTransportHandler;
 import org.xcore.plugin.event.transport.DiscordLinkTransportHandler;
 import org.xcore.plugin.event.transport.MapTransportHandler;
+import org.xcore.plugin.event.transport.ModerationTransportHandler;
 import org.xcore.plugin.event.transport.RatingTransportHandler;
 import org.xcore.plugin.event.transport.SecurityTransportHandler;
-import org.xcore.plugin.event.transport.ModerationTransportHandler;
-import org.xcore.plugin.concurrent.ScheduledTasks;
-import org.xcore.plugin.concurrent.StorageExecutor;
 import org.xcore.plugin.service.NetworkService;
+import org.xcore.plugin.startup.ShutdownOrder;
+import org.xcore.protocol.generated.messages.server.ServerMessages.ServerActionV1;
+import org.xcore.protocol.generated.messages.server.ServerMessages.ServerHeartbeatV1;
 
 import java.io.InputStream;
 import java.net.HttpURLConnection;
@@ -54,6 +55,8 @@ public class TransportService {
     private volatile long nextPublicHostResolveAttemptAtMs;
     private final AtomicBoolean hostResolveInFlight = new AtomicBoolean();
 
+    private final CasesTransportHandler casesTransportHandler;
+
     @Inject
     public TransportService(ChatTransportHandler chatTransportHandler,
                             DiscordLinkTransportHandler discordLinkTransportHandler,
@@ -63,7 +66,9 @@ public class TransportService {
                             SecurityTransportHandler securityTransportHandler,
                             NetworkService network,
                             TomlXcoreConfig config,
-                            StorageExecutor storageExecutor) {
+                            StorageExecutor storageExecutor,
+                            CasesTransportHandler casesTransportHandler) {
+        this.casesTransportHandler = casesTransportHandler;
         this.chatTransportHandler = chatTransportHandler;
         this.discordLinkTransportHandler = discordLinkTransportHandler;
         this.moderationTransportHandler = moderationTransportHandler;
@@ -73,6 +78,14 @@ public class TransportService {
         this.network = network;
         this.config = config;
         this.storageExecutor = storageExecutor;
+    }
+
+    public TransportService(ChatTransportHandler chatTransportHandler, DiscordLinkTransportHandler discordLinkTransportHandler,
+                            ModerationTransportHandler moderationTransportHandler, MapTransportHandler mapTransportHandler,
+                            RatingTransportHandler ratingTransportHandler, SecurityTransportHandler securityTransportHandler,
+                            NetworkService network, TomlXcoreConfig config, StorageExecutor storageExecutor) {
+        this(chatTransportHandler, discordLinkTransportHandler, moderationTransportHandler, mapTransportHandler,
+                ratingTransportHandler, securityTransportHandler, network, config, storageExecutor, null);
     }
 
     @PostConstruct
@@ -139,6 +152,7 @@ public class TransportService {
         mapTransportHandler.registerListeners();
         ratingTransportHandler.registerListeners();
         securityTransportHandler.registerListeners();
+        if (casesTransportHandler != null) casesTransportHandler.registerListeners();
     }
 
     /**

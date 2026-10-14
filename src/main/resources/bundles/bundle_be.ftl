@@ -279,18 +279,28 @@ commands-announcement-description = Адпраўляе перыядычную а
 commands-audit-description = Паказвае гісторыю і дзеянні адміністрацыі і мадэрацыі.
 ban-content = [scarlet]⚠ Заблакаваны[]
     [accent]{ $nickname }[white] — вы назаўсёды заблакаваныя на гэтым серверы.
+    [orange]» [accent]ID гульца: [white]{ $pid }
     [lightgray]Каб абскардзіць, зайдзіце ў канал Discord [gray]{ support-channel }[]:
     [cyan]{ $discordUrl }
 ban-cancelled = [accent]Блакіроўка гульца [scarlet]{ $nickname }[accent] адменена
 tempban-content = [scarlet]⚠ Заблакаваны[]
-    [accent]{ $nickname }[white] — вы часова заблакаваныя на гэтым серверы.
+    { $permanent ->
+        [true] [accent]{ $nickname }[white] — вы назаўсёды заблакаваныя на гэтым серверы.
+       *[false] [accent]{ $nickname }[white] — вы часова заблакаваныя на гэтым серверы.
+    }
+    [orange]» [accent]Блакіроўка: [white]{ $banId }
+    [orange]» [accent]ID гульца: [white]{ $pid }
     { "" }
     [orange]» [accent]Адмін: [white]{ $adminName }
     [orange]» [accent]Прычына: [gold]{ $reason }
-    [orange]» [accent]Засталося: { DURATION($duration, style: "full", colored: "true", maxUnits: 2) }
-    [orange]» [accent]Сканчаецца: [white]{ DATETIME($expireDate, dateStyle: "medium", timeStyle: "short") }
+    { $permanent ->
+        [true] [orange]» [accent]{ audit-menu-duration-permanent }[]
+       *[false] [orange]» [accent]Засталося: { DURATION($duration, style: "full", colored: "true", maxUnits: 2) }
+            { "" }[orange]» [accent]Сканчаецца: [white]{ DATETIME($expireDate, dateStyle: "medium", timeStyle: "short") }
+    }
     { "" }
     [lightgray]Каб абскардзіць, зайдзіце ў канал Discord [gray]{ support-channel }[]:
+    [lightgray]Пазначце { $banId } у звароце.
     [cyan]{ $discordUrl }
 tempban-player-banned = [scarlet] Адмін { $adminName }[scarlet] заблакаваў гульца [gray]'[]{ $playerName }[gray]'
 you-are-muted-by =
@@ -313,7 +323,7 @@ kick-admintools-outdated =
     [scarlet]Ваша версія AdminTools: [grey]{ $version }[]
     { "" }
     [cyan]Абнавіце AdminTools, каб зайсці на гэты сервер.
-support-channel = #reports-appeals
+support-channel = #tickets
 # ==============================================================================
 # Voting (VoteKick)
 # ==============================================================================

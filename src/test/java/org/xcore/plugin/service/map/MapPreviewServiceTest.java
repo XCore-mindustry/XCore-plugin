@@ -18,7 +18,7 @@ class MapPreviewServiceTest {
     @DisplayName("getCachedRegionName returns null when map preview is not in cache")
     void getCachedRegionName_returnsNullWhenNotCached() {
         XcoreImageService imageService = mock(XcoreImageService.class);
-        MapPreviewService service = new MapPreviewService(null, imageService);
+        MapPreviewService service = new MapPreviewService(null, imageService, new org.xcore.plugin.service.map.inspect.DetachedMapReadLock());
 
         arc.files.Fi file = mock(arc.files.Fi.class);
         when(file.name()).thenReturn("desert_crossing.msav");
@@ -31,7 +31,7 @@ class MapPreviewServiceTest {
     @DisplayName("requestPreview fast-path delivers cached region directly")
     void requestPreview_fastPathDeliversCachedRegion() {
         XcoreImageService imageService = mock(XcoreImageService.class);
-        MapPreviewService service = new MapPreviewService(null, imageService);
+        MapPreviewService service = new MapPreviewService(null, imageService, new org.xcore.plugin.service.map.inspect.DetachedMapReadLock());
 
         Player player = Player.create();
         player.name = "TestPlayer";

@@ -76,7 +76,7 @@ class MapTransportHandlerTest {
         MapService mapService = mock(MapService.class);
         MapDataRepository mapDataRepository = mock(MapDataRepository.class);
 
-        MapTransportHandler handler = new MapTransportHandler(network, config, mapService, mapDataRepository, async, uploadRepository);
+        MapTransportHandler handler = new MapTransportHandler(network, config, mapService, mapDataRepository, async, uploadRepository, mock(org.xcore.plugin.service.map.MapInspectionService.class));
 
         Map<Class<?>, Cons<?>> listeners = new HashMap<>();
         captureListeners(network, listeners);
@@ -113,7 +113,7 @@ class MapTransportHandlerTest {
                 // storage executor, then builds the response back on the game thread. Running
                 // the executor inline is the only way to observe the end of that chain from
                 // a test without sleeping.
-                new Async(InlineStorageExecutor.create(), Runnable::run), uploadRepository);
+                new Async(InlineStorageExecutor.create(), Runnable::run), uploadRepository, mock(org.xcore.plugin.service.map.MapInspectionService.class));
 
         Map<Class<?>, Cons<?>> listeners = new HashMap<>();
         captureListeners(network, listeners);
@@ -155,7 +155,7 @@ class MapTransportHandlerTest {
         when(Vars.state.rules.mode()).thenReturn(Gamemode.pvp);
 
         MapTransportHandler handler = new MapTransportHandler(network, config, mapService, mapDataRepository,
-                new Async(InlineStorageExecutor.create(), Runnable::run), uploadRepository);
+                new Async(InlineStorageExecutor.create(), Runnable::run), uploadRepository, mock(org.xcore.plugin.service.map.MapInspectionService.class));
 
         Map<Class<?>, Cons<?>> listeners = new HashMap<>();
         captureListeners(network, listeners);
@@ -192,7 +192,7 @@ class MapTransportHandlerTest {
         when(Vars.state.rules.mode()).thenReturn(Gamemode.pvp);
 
         MapTransportHandler handler = new MapTransportHandler(network, config, mapService, mapDataRepository,
-                new Async(InlineStorageExecutor.create(), Runnable::run), uploadRepository);
+                new Async(InlineStorageExecutor.create(), Runnable::run), uploadRepository, mock(org.xcore.plugin.service.map.MapInspectionService.class));
 
         Map<Class<?>, Cons<?>> listeners = new HashMap<>();
         captureListeners(network, listeners);
@@ -232,7 +232,7 @@ class MapTransportHandlerTest {
         MapService mapService = mock(MapService.class);
         MapDataRepository mapDataRepository = mock(MapDataRepository.class);
 
-        MapTransportHandler handler = new MapTransportHandler(network, config, mapService, mapDataRepository, async, uploadRepository);
+        MapTransportHandler handler = new MapTransportHandler(network, config, mapService, mapDataRepository, async, uploadRepository, mock(org.xcore.plugin.service.map.MapInspectionService.class));
 
         Map<Class<?>, Cons<?>> listeners = new HashMap<>();
         captureListeners(network, listeners);
@@ -267,7 +267,7 @@ class MapTransportHandlerTest {
         Maps maps = mock(Maps.class);
         Vars.maps = maps;
 
-        MapTransportHandler handler = new MapTransportHandler(network, config, mapService, mapDataRepository, async, uploadRepository);
+        MapTransportHandler handler = new MapTransportHandler(network, config, mapService, mapDataRepository, async, uploadRepository, mock(org.xcore.plugin.service.map.MapInspectionService.class));
 
         Map<Class<?>, Cons<?>> listeners = new HashMap<>();
         captureListeners(network, listeners);
@@ -306,7 +306,7 @@ class MapTransportHandlerTest {
         // Stands in for a game thread that has not come back around yet.
         java.util.List<Runnable> marshalled = new java.util.ArrayList<>();
         MapTransportHandler handler = new MapTransportHandler(network, config, mapService, mapDataRepository,
-                new Async(InlineStorageExecutor.create(), marshalled::add), uploadRepository);
+                new Async(InlineStorageExecutor.create(), marshalled::add), uploadRepository, mock(org.xcore.plugin.service.map.MapInspectionService.class));
 
         Map<Class<?>, Cons<?>> listeners = new HashMap<>();
         captureListeners(network, listeners);
@@ -339,7 +339,7 @@ class MapTransportHandlerTest {
         MapService mapService = mock(MapService.class);
         MapDataRepository mapDataRepository = mock(MapDataRepository.class);
 
-        MapTransportHandler handler = new MapTransportHandler(network, config, mapService, mapDataRepository, async, uploadRepository);
+        MapTransportHandler handler = new MapTransportHandler(network, config, mapService, mapDataRepository, async, uploadRepository, mock(org.xcore.plugin.service.map.MapInspectionService.class));
 
         Map<Class<?>, Cons<?>> listeners = new HashMap<>();
         captureListeners(network, listeners);
@@ -391,7 +391,7 @@ class MapTransportHandlerTest {
                 }).when(request).submit(any());
             }
             var handler = new MapTransportHandler(network, config, service, repository,
-                    new Async(InlineStorageExecutor.create(), Runnable::run), uploadRepository);
+                    new Async(InlineStorageExecutor.create(), Runnable::run), uploadRepository, mock(org.xcore.plugin.service.map.MapInspectionService.class));
             Map<Class<?>, Cons<?>> listeners = new HashMap<>();
             captureListeners(network, listeners);
             handler.registerListeners();
@@ -449,7 +449,7 @@ class MapTransportHandlerTest {
                 when(request.error(any())).thenAnswer(call -> { errors.put(url, call.getArgument(0)); return request; });
                 doAnswer(call -> { success.put(url, call.getArgument(0)); return null; }).when(request).submit(any());
             }
-            var handler = new MapTransportHandler(network, config, service, repository, new Async(InlineStorageExecutor.create(), Runnable::run), uploadRepository);
+            var handler = new MapTransportHandler(network, config, service, repository, new Async(InlineStorageExecutor.create(), Runnable::run), uploadRepository, mock(org.xcore.plugin.service.map.MapInspectionService.class));
             Map<Class<?>, Cons<?>> listeners = new HashMap<>();
             captureListeners(network, listeners);
             handler.registerListeners();
@@ -487,7 +487,7 @@ class MapTransportHandlerTest {
         when(uploadRepository.save(anyString(), anyString(), any()))
                 .thenAnswer(call -> { writes.add(call.getArgument(1)); return true; });
         var handler = new MapTransportHandler(mock(NetworkService.class), new TomlXcoreConfig(), mock(MapService.class),
-                repository, new Async(storage, Runnable::run), uploadRepository);
+                repository, new Async(storage, Runnable::run), uploadRepository, mock(org.xcore.plugin.service.map.MapInspectionService.class));
         var older = handler.enqueueDiscordUpload("Arena", "arena.msav", "Author", "pvp", "old", null, () -> true);
         var newer = handler.enqueueDiscordUpload("Arena", "arena.msav", "Author", "pvp", "new", null, () -> true);
         var other = handler.enqueueDiscordUpload("Other", "other.msav", "Author", "pvp", "other", null, () -> true);
@@ -511,7 +511,7 @@ class MapTransportHandlerTest {
         when(uploadRepository.save(anyString(), anyString(), any()))
                 .thenThrow(new IllegalStateException("storage unavailable")).thenReturn(true);
         var handler = new MapTransportHandler(mock(NetworkService.class), new TomlXcoreConfig(), mock(MapService.class),
-                repository, new Async(storage, Runnable::run), uploadRepository);
+                repository, new Async(storage, Runnable::run), uploadRepository, mock(org.xcore.plugin.service.map.MapInspectionService.class));
         handler.enqueueDiscordUpload("Arena", "arena.msav", "Author", "pvp", "stale", null, () -> false);
         handler.enqueueDiscordUpload("Arena", "arena.msav", "Author", "pvp", "failed", null, () -> true);
         var newest = handler.enqueueDiscordUpload("Arena", "arena.msav", "Author", "pvp", "current", null, () -> true);
@@ -554,7 +554,7 @@ class MapTransportHandlerTest {
                 doAnswer(call -> { success.put(url, call.getArgument(0)); return null; }).when(download).submit(any());
             }
             var handler = new MapTransportHandler(network, config, service, repository,
-                    new Async(InlineStorageExecutor.create(), Runnable::run), uploadRepository);
+                    new Async(InlineStorageExecutor.create(), Runnable::run), uploadRepository, mock(org.xcore.plugin.service.map.MapInspectionService.class));
             Map<Class<?>, Cons<?>> listeners = new HashMap<>();
             captureListeners(network, listeners);
             handler.registerListeners();
@@ -616,7 +616,7 @@ class MapTransportHandlerTest {
                     return null;
                 }).when(Vars.maps).removeMap(installed);
                 when(uploadRepository.save(org.mockito.ArgumentMatchers.eq("arena.msav"), org.mockito.ArgumentMatchers.isNull(), org.mockito.ArgumentMatchers.isNull())).thenReturn(true);
-                var handler = new MapTransportHandler(network, config, service, mock(MapDataRepository.class), new Async(storage, main::add), uploadRepository);
+                var handler = new MapTransportHandler(network, config, service, mock(MapDataRepository.class), new Async(storage, main::add), uploadRepository, mock(org.xcore.plugin.service.map.MapInspectionService.class));
                 Map<Class<?>, Cons<?>> listeners = new HashMap<>();
                 captureListeners(network, listeners);
                 handler.registerListeners();

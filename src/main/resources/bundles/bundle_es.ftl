@@ -275,18 +275,28 @@ commands-announcement-description = Emite un anuncio periódico por clave o el s
 commands-audit-description = Muestra el historial y las acciones del staff y la moderación.
 ban-content = [scarlet]⚠ Baneado[]
     [accent]{ $nickname }[white] — estás baneado de forma permanente en este servidor.
+    [orange]» [accent]ID del jugador: [white]{ $pid }
     [lightgray]Para apelar, visita el canal de Discord [gray]{ support-channel }[]:
     [cyan]{ $discordUrl }
 ban-cancelled = [accent]Se ha cancelado el baneo de [scarlet]{ $nickname }[accent]
 tempban-content = [scarlet]⚠ Baneado[]
-    [accent]{ $nickname }[white] — estás baneado temporalmente en este servidor.
+    { $permanent ->
+        [true] [accent]{ $nickname }[white] — estás baneado de forma permanente en este servidor.
+       *[false] [accent]{ $nickname }[white] — estás baneado temporalmente en este servidor.
+    }
+    [orange]» [accent]Bloqueo: [white]{ $banId }
+    [orange]» [accent]ID del jugador: [white]{ $pid }
     { "" }
     [orange]» [accent]Admin: [white]{ $adminName }
     [orange]» [accent]Motivo: [gold]{ $reason }
-    [orange]» [accent]Tiempo restante: { DURATION($duration, style: "full", colored: "true", maxUnits: 2) }
-    [orange]» [accent]Termina: [white]{ DATETIME($expireDate, dateStyle: "medium", timeStyle: "short") }
+    { $permanent ->
+        [true] [orange]» [accent]{ audit-menu-duration-permanent }[]
+       *[false] [orange]» [accent]Tiempo restante: { DURATION($duration, style: "full", colored: "true", maxUnits: 2) }
+            { "" }[orange]» [accent]Termina: [white]{ DATETIME($expireDate, dateStyle: "medium", timeStyle: "short") }
+    }
     { "" }
     [lightgray]Para apelar, visita el canal de Discord [gray]{ support-channel }[]:
+    [lightgray]Indica { $banId } en tu apelación.
     [cyan]{ $discordUrl }
 tempban-player-banned = [scarlet] El admin { $adminName }[scarlet] ha baneado al jugador [gray]'[]{ $playerName }[gray]'
 you-are-muted-by =
@@ -309,7 +319,7 @@ kick-admintools-outdated =
     [scarlet]Tu versión de AdminTools: [grey]{ $version }[]
     { "" }
     [cyan]Actualiza AdminTools para entrar en este servidor.
-support-channel = #reports-appeals
+support-channel = #tickets
 # ==============================================================================
 # Voting (VoteKick)
 # ==============================================================================

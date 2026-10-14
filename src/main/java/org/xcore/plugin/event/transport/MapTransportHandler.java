@@ -25,6 +25,8 @@ import org.xcore.plugin.security.MapFileNameSanitizer;
 import org.xcore.plugin.service.MapService;
 import org.xcore.plugin.service.NetworkService;
 import org.xcore.plugin.service.network.MapsProtocolMapper;
+import org.xcore.plugin.service.map.MapInspectionService;
+import org.xcore.protocol.generated.messages.maps.MapsMessages.MapsInspectRequestV1;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
@@ -36,6 +38,7 @@ import java.util.concurrent.CompletionStage;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.TimeUnit;
 
 import static mindustry.Vars.customMapDirectory;
 import static mindustry.Vars.maps;
@@ -52,6 +55,9 @@ public class MapTransportHandler {
     private final MapDataRepository mapDataRepository;
     private final Async async;
     private final MapUploadRepository uploadRepository;
+    private final MapInspectionService inspection;
+    private final AtomicInteger inspectionsInFlight = new AtomicInteger();
+    private static final int MAX_INSPECTIONS = 4;
     private final Object[] fileLocks = java.util.stream.IntStream.range(0, 64).mapToObj(i -> new Object()).toArray();
     private final ConcurrentHashMap<String, DownloadedMap> installations = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, Integer> activeUploads = new ConcurrentHashMap<>();
@@ -64,13 +70,14 @@ public class MapTransportHandler {
                                TomlXcoreConfig config,
                                MapService mapService,
                                MapDataRepository mapDataRepository,
-                               Async async, MapUploadRepository uploadRepository) {
+                               Async async, MapUploadRepository uploadRepository, MapInspectionService inspection) {
         this.network = network;
         this.config = config;
         this.mapService = mapService;
         this.mapDataRepository = mapDataRepository;
         this.async = async;
         this.uploadRepository = uploadRepository;
+        this.inspection = inspection;
     }
 
     /** A map plus the identity fields read from the engine, captured on the game thread. */
@@ -111,6 +118,7 @@ public class MapTransportHandler {
     }
 
     public void registerListeners() {
+        network.subscribe(MapsInspectRequestV1.class, this::inspect);
         // The map registry, the active ruleset and the engine's Map objects are all game
         // state, and NetworkService.subscribe invokes this on a redis-sub-* virtual thread.
         // The per-map repository lookups are MongoDB round trips, so only those run off
@@ -200,6 +208,49 @@ public class MapTransportHandler {
         network.subscribe(MapsLoadCommandV1.class, command -> {
             if (!config.server.name.equals(command.server())) return;
             uploadFiles(command.files(), results -> info("Map upload results: @", results));
+        });
+    }
+
+    /** Redis callbacks are workers; registry capture is the only game-thread step. */
+    void inspect(MapsInspectRequestV1 request) {
+        if (!config.server.name.equals(request.server())) return;
+        if (inspectionsInFlight.incrementAndGet() > MAX_INSPECTIONS) {
+            inspectionsInFlight.decrementAndGet();
+            network.respondError(request, "REJECTED", "Map inspection is busy");
+            return;
+        }
+        var started = new AtomicBoolean();
+        async.supply(() -> {
+            started.set(true);
+            try {
+                var captured = new CompletableFuture<MapInspectionService.Context>();
+                async.main(() -> {
+                    if (captured.isDone()) return;
+                    try { captured.complete(inspection.capture()); }
+                    catch (RuntimeException error) { captured.completeExceptionally(error); }
+                });
+                MapInspectionService.Context context;
+                try { context = captured.get(5, TimeUnit.SECONDS); }
+                catch (Exception error) {
+                    captured.cancel(false);
+                    if (error instanceof InterruptedException) Thread.currentThread().interrupt();
+                    network.respondError(request, "FAILED", "Map inspection registry could not be captured");
+                    return null;
+                }
+                var result = inspection.inspect(request.file(), request.profile(), context);
+                network.respond(request, MapsProtocolMapper.toInspectResponse(request.server(), result));
+            } catch (RuntimeException error) {
+                Log.warn("Map inspection failed: @", error.toString());
+                try { network.respondError(request, "FAILED", "Map inspection failed"); }
+                catch (RuntimeException publishError) { Log.warn("Could not publish map inspection error: @", publishError.toString()); }
+            } finally { inspectionsInFlight.decrementAndGet(); }
+            return null;
+        }).future().whenComplete((ignored, error) -> {
+            // A rejected task never entered the worker. This continuation stays on its Redis caller.
+            if (error != null && !started.get()) {
+                inspectionsInFlight.decrementAndGet();
+                network.respondError(request, "REJECTED", "Map inspection storage is busy");
+            }
         });
     }
 

@@ -183,6 +183,47 @@ public final class ConfigTomlTemplateWriter {
         [maps.voting]
         switch_delay_seconds = 10
 
+        [maps.checks]
+        # Limits for detached map inspection; the running world is never loaded from a submission.
+        max_file_bytes = 4194304
+        max_tiles = 360000
+        # Optional finding code -> error/warning/info. Example: { "td-road-floor-mixed" = "warning" }
+        # Levels are trimmed and case-insensitive. An unknown code or level is ignored with a
+        # warning in the server log at start-up, and the default severity applies.
+        severities = {}
+
+        [maps.checks.profiles.tower-defense]
+        # Empty road floor allows any single floor type; empty border wall disables that check.
+        road_floor = "metal-tiles-2"
+        border_wall = "metal-wall-2"
+        border_tolerance = 0.05
+        require_drop_zone_radius_zero = true
+        # Map size in tiles, inclusive; 0 = no bound. Any profile may carry its own bounds, for example
+        # [maps.checks.profiles.pvp]. A negative value is treated as 0, and a maximum below its minimum
+        # is raised to that minimum; both are reported with a warning in the server log at start-up.
+        min_width = 0
+        max_width = 0
+        min_height = 0
+        max_height = 0
+
+        [cases.reports]
+        # Shared flow switch. Server-local runtime.disabled_features may also contain "reports".
+        enabled = false
+        cooldown_seconds = 60
+        same_target_cooldown_minutes = 30
+        daily_limit = 10
+        # Per-address account-rotation breaker, across ten minutes. Addresses stay on the server.
+        network_burst_limit = 6
+        min_play_time_minutes = 0
+        chat_lines = 30
+        chat_window_minutes = 10
+        block_window_seconds = 600
+        recent_leaver_minutes = 10
+
+        [cases.notices]
+        # Durable outcome notices shown after login on any server with cases enabled.
+        max_per_join = 5
+
         [pagination]
         events_per_page = 10
         maps_per_page = 10

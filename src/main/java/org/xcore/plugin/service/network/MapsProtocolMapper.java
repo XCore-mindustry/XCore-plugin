@@ -7,6 +7,12 @@ import org.xcore.protocol.generated.messages.maps.MapsMessages.MapsListResponseV
 import org.xcore.protocol.generated.shared.MapEntryV1;
 
 import java.util.List;
+import org.xcore.plugin.service.map.inspect.MapInspectionResult;
+import org.xcore.protocol.generated.messages.maps.MapsMessages.MapsInspectResponseV1;
+import org.xcore.protocol.generated.messages.maps.MapsInspectResponseV1Status;
+import org.xcore.protocol.generated.shared.MapInspectInfoV1;
+import org.xcore.protocol.generated.shared.MapInspectFindingV1;
+import org.xcore.protocol.generated.shared.MapInspectFindingV1Severity;
 
 public final class MapsProtocolMapper {
     private MapsProtocolMapper() {
@@ -18,6 +24,27 @@ public final class MapsProtocolMapper {
 
     public static MapsRemoveResponseV1 toMapsRemoveResponse(String server, String result) {
         return new MapsRemoveResponseV1(server, result);
+    }
+
+    public static MapsInspectResponseV1 toInspectResponse(String server, MapInspectionResult result) {
+        MapInspectInfoV1 info = null;
+        if (result.snapshot() != null) {
+            var snapshot = result.snapshot();
+            var meta = snapshot.metadata();
+            var rules = meta.rules();
+            java.util.Map<String, Object> cores = new java.util.TreeMap<>();
+            snapshot.coresByTeam().forEach(cores::put);
+            info = new MapInspectInfoV1(meta.name(), meta.author(), meta.description(), meta.width(), meta.height(),
+                    meta.saveVersion(), meta.build(), rules.gameMode(), result.profile(),
+                    snapshot.tilesAvailable() ? snapshot.spawnCount() : null, snapshot.tilesAvailable() ? cores : null,
+                    rules.waves(), rules.waveTimer(), rules.spawnGroupCount(), rules.dropZoneRadius(), meta.mods(),
+                    meta.sha256(), meta.sizeBytes());
+        }
+        var findings = result.findings().stream().map(finding -> new MapInspectFindingV1(finding.code(),
+                MapInspectFindingV1Severity.valueOf(finding.severity().name()), finding.detail(),
+                finding.x(), finding.y(), finding.count())).toList();
+        return new MapsInspectResponseV1(server, MapsInspectResponseV1Status.valueOf(result.status().name()),
+                result.detail(), info, findings);
     }
 
     public static MapEntryV1 toMapEntry(Map map, String currentGameMode, MapData persistedMap,
