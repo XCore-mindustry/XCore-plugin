@@ -4,10 +4,11 @@
 
 ## Overview
 
-- **Message Families:** 5
-- **Total Messages:** 31
-- **Total Routes:** 28
-- **Shared Types:** 10
+- **Protocol Version:** 0.15.0
+- **Message Families:** 11
+- **Total Messages:** 64
+- **Total Routes:** 49
+- **Shared Types:** 23
 - **Envelope Schemas:** 6
 
 ## Shared Types
@@ -15,36 +16,62 @@
 | Type | Fields |
 |------|--------|
 | `ActorRefV1` | required: actorName; optional: actorDiscordId, actorType |
+| `CaseBlockAreaV1` | required: x1, y1, x2, y2 |
+| `CaseBlockEntryV1` | required: block, built, destroyed |
+| `CaseBlockSummaryV1` | required: windowSeconds, built, destroyed, configured, truncated, topBlocks; optional: area, lastActionSecondsAgo |
+| `CaseChatLineV1` | required: sentAt, playerName, role, text; optional: playerPid, team |
 | `DiscordIdentityRefV1` | required: discordId; optional: discordUsername |
 | `ExpirationInfoV1` | optional: expiresAt, permanent |
-| `MapEntryV1` | required: name, fileName, author; optional: width, height, fileSizeBytes, like, dislike, reputation, popularity, interest, gameMode |
-| `MapFileSourceV1` | required: url, fileName |
+| `MapDiscordUploadV1` | required: uploadedBy, uploadedAt; optional: creator, uploadedByHandle, creatorHandle |
+| `MapEntryV1` | required: name, fileName, author; optional: width, height, fileSizeBytes, like, dislike, reputation, popularity, interest, gameMode, discordUpload |
+| `MapFileSourceV1` | required: url, fileName; optional: discordUpload |
+| `MapInspectFindingV1` | required: code, severity; optional: detail, x, y, count |
+| `MapInspectInfoV1` | required: name, width, height, sha256, sizeBytes; optional: author, description, saveVersion, build, gameMode, profile, spawnCount, coresByTeam, waves, waveTimer, spawnGroupCount, dropZoneRadius, mods |
+| `MapUploadResultV1` | required: fileName, status; optional: detail |
 | `MetricSampleV1` | required: name, type, labels; optional: help, unit, value, buckets, counts, count, sum |
 | `ModerationTargetRefV1` | optional: playerUuid, playerPid, playerName, ip |
 | `PlayerCommandTargetV1` | optional: playerUuid, playerPid, playerName, ip |
 | `PlayerRefV1` | required: playerUuid, playerName; optional: playerPid, ip |
+| `SeasonPodiumEntryV1` | required: place, player, rating, league, matches, wins; optional: discord, prizes |
+| `SeasonPrizeV1` | required: placeFrom, placeTo, kind, value; optional: description |
+| `SeasonRefV1` | required: ladder, season, name, startsAt, endsAt |
+| `SeasonSummaryV1` | required: participants, matches |
+| `ServerRefV1` | required: server |
 | `VoteKickParticipantV1` | required: playerName; optional: playerPid, discordId |
 
 ## Envelope Schemas
 
 | Envelope | Fields |
 |----------|--------|
-| `CommandEnvelopeV1` | required: schema_version, message_kind, message_type, message_version, message_id, producer, target, created_at, expires_at, content_type, payload_json; optional: correlation_id, causation_id, schema_ref |
-| `DlqEnvelopeV1` | required: schema_version, message_kind, message_type, message_version, message_id, producer, created_at, content_type, payload_json, source_stream, source_group, source_id, failed_at, attempts, failure_reason; optional: correlation_id, causation_id, target, expires_at, schema_ref |
 | `EnvelopeBaseV1` | required: schema_version, message_kind, message_type, message_version, message_id, producer, created_at, content_type, payload_json; optional: correlation_id, causation_id, target, expires_at, schema_ref |
 | `EventEnvelopeV1` | required: schema_version, message_kind, message_type, message_version, message_id, producer, created_at, expires_at, content_type, payload_json; optional: correlation_id, causation_id, target, schema_ref |
+| `CommandEnvelopeV1` | required: schema_version, message_kind, message_type, message_version, message_id, producer, target, created_at, expires_at, content_type, payload_json; optional: correlation_id, causation_id, schema_ref |
 | `RpcRequestEnvelopeV1` | required: schema_version, message_kind, message_type, message_version, message_id, correlation_id, producer, target, created_at, expires_at, content_type, payload_json, reply_to, timeout_ms; optional: causation_id, schema_ref |
 | `RpcResponseEnvelopeV1` | required: schema_version, message_kind, message_type, message_version, message_id, correlation_id, producer, created_at, content_type, payload_json, status, responded_at; optional: causation_id, target, expires_at, schema_ref, error_code, error_message |
+| `DlqEnvelopeV1` | required: schema_version, message_kind, message_type, message_version, message_id, producer, created_at, content_type, payload_json, source_stream, source_group, source_id, failed_at, attempts, failure_reason; optional: correlation_id, causation_id, target, expires_at, schema_ref |
 
 ## Maps Messages
 
 | Message | Schema File | Fields |
 |---------|-------------|--------|
+| `MapsInspectRequestV1` | `urn:xcore:protocol:messages:maps:maps.inspect.request:v1` | required: messageType, messageVersion, server, file; optional: profile |
+| `MapsInspectResponseV1` | `urn:xcore:protocol:messages:maps:maps.inspect.response:v1` | required: messageType, messageVersion, server, status, findings; optional: detail, info |
 | `MapsListRequestV1` | `urn:xcore:protocol:messages:maps:maps.list.request:v1` | required: messageType, messageVersion, server |
 | `MapsListResponseV1` | `urn:xcore:protocol:messages:maps:maps.list.response:v1` | required: messageType, messageVersion, server, maps |
 | `MapsLoadCommandV1` | `urn:xcore:protocol:messages:maps:maps.load.command:v1` | required: messageType, messageVersion, server, files |
 | `MapsRemoveRequestV1` | `urn:xcore:protocol:messages:maps:maps.remove.request:v1` | required: messageType, messageVersion, server, fileName |
 | `MapsRemoveResponseV1` | `urn:xcore:protocol:messages:maps:maps.remove.response:v1` | required: messageType, messageVersion, server, result |
+| `MapsUploadRequestV1` | `urn:xcore:protocol:messages:maps:maps.upload.request:v1` | required: messageType, messageVersion, server, files |
+| `MapsUploadResponseV1` | `urn:xcore:protocol:messages:maps:maps.upload.response:v1` | required: messageType, messageVersion, server, results |
+
+## Cases Messages
+
+| Message | Schema File | Fields |
+|---------|-------------|--------|
+| `CasesEvidenceRequestV1` | `urn:xcore:protocol:messages:cases:cases.evidence.request:v1` | required: messageType, messageVersion, server, playerUuid; optional: chatLines, windowSeconds |
+| `CasesEvidenceResponseV1` | `urn:xcore:protocol:messages:cases:cases.evidence.response:v1` | required: messageType, messageVersion, server, targetOnline, chat, capturedAt; optional: mapName, gameMode, blockSummary |
+| `CasesNoticeCommandV1` | `urn:xcore:protocol:messages:cases:cases.notice.command:v1` | required: messageType, messageVersion, server, noticeId, playerUuid; optional: requestedAt |
+| `CasesReportSubmittedV1` | `urn:xcore:protocol:messages:cases:cases.report.submitted:v1` | required: messageType, messageVersion, submissionId, server, reporter, target, targetOnline, reason, chat, occurredAt; optional: comment, reporterLocale, mapName, mapFileName, gameMode, sameNetwork, blockSummary |
 
 ## Chat Messages
 
@@ -54,16 +81,36 @@
 | `ChatGlobalV1` | `urn:xcore:protocol:messages:chat:chat.global:v1` | required: messageType, messageVersion, authorName, message, server |
 | `ChatMessageV1` | `urn:xcore:protocol:messages:chat:chat.message:v1` | required: messageType, messageVersion, authorName, message, server |
 | `ChatPrivateV1` | `urn:xcore:protocol:messages:chat:chat.private:v1` | required: messageType, messageVersion, fromUuid, fromPid, fromName, toUuid, toPid, message, server |
+
+## Identity Messages
+
+| Message | Schema File | Fields |
+|---------|-------------|--------|
 | `PlayerActiveBadgeChangedCommandV1` | `urn:xcore:protocol:messages:chat:player.active-badge.changed.command:v1` | required: messageType, messageVersion, playerUuid, activeBadge, server |
 | `PlayerBadgeInventoryChangedCommandV1` | `urn:xcore:protocol:messages:chat:player.badge-inventory.changed.command:v1` | required: messageType, messageVersion, playerUuid, activeBadge, unlockedBadges, server |
 | `PlayerBadgeSymbolColorModeChangedCommandV1` | `urn:xcore:protocol:messages:chat:player.badge-symbol-color-mode.changed.command:v1` | required: messageType, messageVersion, playerUuid, badgeSymbolColorMode, server |
 | `PlayerCustomNicknameChangedCommandV1` | `urn:xcore:protocol:messages:chat:player.custom-nickname.changed.command:v1` | required: messageType, messageVersion, playerUuid, customNickname, server |
-| `PlayerDataCacheReloadCommandV1` | `urn:xcore:protocol:messages:chat:player-data-cache.reload.command:v1` | required: messageType, messageVersion, server |
 | `PlayerJoinLeaveV1` | `urn:xcore:protocol:messages:chat:player.join-leave:v1` | required: messageType, messageVersion, playerName, server, joined |
-| `PlayerPasswordResetCommandV1` | `urn:xcore:protocol:messages:chat:player.password-reset.command:v1` | required: messageType, messageVersion, playerUuid, server |
+
+## Server Messages
+
+| Message | Schema File | Fields |
+|---------|-------------|--------|
+| `PlayerDataCacheReloadCommandV1` | `urn:xcore:protocol:messages:chat:player-data-cache.reload.command:v1` | required: messageType, messageVersion, server |
+| `ServerCommandExecuteCommandV1` | `urn:xcore:protocol:messages:chat:server-command.execute.command:v1` | required: messageType, messageVersion, command, targetServers, exclusion; optional: sourceServer |
 | `ServerActionV1` | `urn:xcore:protocol:messages:chat:server.action:v1` | required: messageType, messageVersion, message, server |
-| `ServerCommandExecuteCommandV1` | `urn:xcore:protocol:messages:chat:server-command.execute.command:v1` | required: messageType, messageVersion, command, targetServers, exclusion |
-| `ServerHeartbeatV1` | `urn:xcore:protocol:messages:chat:server.heartbeat:v1` | required: messageType, messageVersion, serverName, discordChannelId, players, maxPlayers, version; optional: host, port |
+| `ServerHeartbeatV1` | `urn:xcore:protocol:messages:chat:server.heartbeat:v1` | required: messageType, messageVersion, serverName, discordChannelId, players, maxPlayers, version; optional: host, port, description, map, wave, mode, tps |
+
+## Security Messages
+
+| Message | Schema File | Fields |
+|---------|-------------|--------|
+| `PlayerPasswordResetCommandV1` | `urn:xcore:protocol:messages:chat:player.password-reset.command:v1` | required: messageType, messageVersion, playerUuid, server |
+| `SecurityPermissionsChangedV1` | `urn:xcore:protocol:messages:security:security.permissions.changed:v1` | required: messageType, messageVersion, playerUuid, revision; optional: sourceServer, occurredAt |
+| `SecurityStaffResetPasswordRequestV1` | `urn:xcore:protocol:messages:security:security.staff.reset-password.request:v1` | required: messageType, messageVersion, server, operationId, playerUuid |
+| `SecurityStaffResetPasswordResponseV1` | `urn:xcore:protocol:messages:security:security.staff.reset-password.response:v1` | required: messageType, messageVersion, server, operationId, changed |
+| `SecurityStaffSyncRequestV1` | `urn:xcore:protocol:messages:security:security.staff.sync.request:v1` | required: messageType, messageVersion, server, operationId, playerUuid, discordId, roleIds, complete |
+| `SecurityStaffSyncResponseV1` | `urn:xcore:protocol:messages:security:security.staff.sync.response:v1` | required: messageType, messageVersion, server, operationId, revision, changed |
 
 ## Discord Messages
 
@@ -80,7 +127,7 @@
 | Message | Schema File | Fields |
 |---------|-------------|--------|
 | `ModerationAuditAppendedV1` | `urn:xcore:protocol:messages:moderation:moderation.audit.appended:v1` | required: messageType, messageVersion, entryType, target, actor, reason; optional: server, occurredAt, details |
-| `ModerationBanCreatedV1` | `urn:xcore:protocol:messages:moderation:moderation.ban.created:v1` | required: messageType, messageVersion, target, actor, reason; optional: expiration, server, occurredAt |
+| `ModerationBanCreatedV1` | `urn:xcore:protocol:messages:moderation:moderation.ban.created:v1` | required: messageType, messageVersion, target, actor, reason; optional: expiration, server, occurredAt, banId |
 | `ModerationKickBannedCommandV1` | `urn:xcore:protocol:messages:moderation:moderation.kick-banned.command:v1` | required: messageType, messageVersion, target, server; optional: requestedAt |
 | `ModerationMuteCreatedV1` | `urn:xcore:protocol:messages:moderation:moderation.mute.created:v1` | required: messageType, messageVersion, target, actor, reason; optional: expiration, server, occurredAt |
 | `ModerationPardonCommandV1` | `urn:xcore:protocol:messages:moderation:moderation.pardon.command:v1` | required: messageType, messageVersion, target, server; optional: requestedAt |
@@ -92,50 +139,113 @@
 |---------|-------------|--------|
 | `MetricsSnapshotV1` | `urn:xcore:protocol:messages:telemetry:metrics.snapshot:v1` | required: schemaVersion, server, nodeId, producer, createdAtUnixMs, startTimeUnixMs, sequence, intervalMs, samples |
 
+## Sentinel Messages
+
+| Message | Schema File | Fields |
+|---------|-------------|--------|
+| `SentinelSubnetRulesCheckRequestV1` | `urn:xcore:protocol:messages:sentinel:sentinel.subnet-rules.check.request:v1` | required: messageType, messageVersion, request, targetServer, ip |
+| `SentinelSubnetRulesCheckResponseV1` | `urn:xcore:protocol:messages:sentinel:sentinel.subnet-rules.check.response:v1` | required: messageType, messageVersion, request, targetServer, allowed, matchedRules |
+| `SentinelSubnetRulesCommandV1` | `urn:xcore:protocol:messages:sentinel:sentinel.subnet-rules.command:v1` | required: messageType, messageVersion, request, idempotency, actor, operation, rules; optional: targetServer, source, reason, expiresAt |
+| `SentinelSubnetRulesInvalidatedV1` | `urn:xcore:protocol:messages:sentinel:sentinel.subnet-rules.invalidated:v1` | required: messageType, messageVersion; optional: reason, sourceServer, occurredAt |
+| `SentinelSubnetRulesListRequestV1` | `urn:xcore:protocol:messages:sentinel:sentinel.subnet-rules.list.request:v1` | required: messageType, messageVersion, request, targetServer |
+| `SentinelSubnetRulesListResponseV1` | `urn:xcore:protocol:messages:sentinel:sentinel.subnet-rules.list.response:v1` | required: messageType, messageVersion, request, targetServer, rules |
+| `SentinelSubnetRulesResponseV1` | `urn:xcore:protocol:messages:sentinel:sentinel.subnet-rules.response:v1` | required: messageType, messageVersion, request, success; optional: targetServer, error, rules |
+| `SentinelSubnetSweepCommandV1` | `urn:xcore:protocol:messages:sentinel:sentinel.subnet-sweep.command:v1` | required: messageType, messageVersion; optional: actor, reason, occurredAt |
+
+## Rating Messages
+
+| Message | Schema File | Fields |
+|---------|-------------|--------|
+| `RatingAccountsMergeRequestV1` | `urn:xcore:protocol:messages:rating:rating.accounts.merge.request:v1` | required: messageType, messageVersion, server, sourceUuid, targetUuid |
+| `RatingAccountsMergeResponseV1` | `urn:xcore:protocol:messages:rating:rating.accounts.merge.response:v1` | required: messageType, messageVersion, server, standingsMerged |
+| `RatingPrizeGrantUpdateRequestV1` | `urn:xcore:protocol:messages:rating:rating.prize.grant.update.request:v1` | required: messageType, messageVersion, server, ladder, season, place, status, actor; optional: playerPid, note |
+| `RatingPrizeGrantUpdateResponseV1` | `urn:xcore:protocol:messages:rating:rating.prize.grant.update.response:v1` | required: messageType, messageVersion, server, season, place, updated |
+| `RatingSeasonEndedV1` | `urn:xcore:protocol:messages:rating:rating.season.ended:v1` | required: messageType, messageVersion, season, podium, summary, server, occurredAt |
+| `RatingSeasonEndingSoonV1` | `urn:xcore:protocol:messages:rating:rating.season.ending-soon:v1` | required: messageType, messageVersion, season, notice, server, occurredAt; optional: prizes |
+| `RatingSeasonPrizesSetRequestV1` | `urn:xcore:protocol:messages:rating:rating.season.prizes.set.request:v1` | required: messageType, messageVersion, server, ladder, operation, actor; optional: prize, placeFrom, placeTo, requestId |
+| `RatingSeasonPrizesSetResponseV1` | `urn:xcore:protocol:messages:rating:rating.season.prizes.set.response:v1` | required: messageType, messageVersion, server, season, prizes |
+| `RatingSeasonRescheduleRequestV1` | `urn:xcore:protocol:messages:rating:rating.season.reschedule.request:v1` | required: messageType, messageVersion, server, ladder, operation, actor; optional: extendSeconds, endsAt, reason, requestId |
+| `RatingSeasonRescheduleResponseV1` | `urn:xcore:protocol:messages:rating:rating.season.reschedule.response:v1` | required: messageType, messageVersion, server, season, previousEndsAt, ended |
+| `RatingSeasonRescheduledV1` | `urn:xcore:protocol:messages:rating:rating.season.rescheduled:v1` | required: messageType, messageVersion, season, previousEndsAt, actor, server, occurredAt; optional: reason |
+| `RatingSeasonStartedV1` | `urn:xcore:protocol:messages:rating:rating.season.started:v1` | required: messageType, messageVersion, season, server, occurredAt; optional: previousSeason |
+
 ## Route Manifest Summary
 
 | Message | Kind | Stream | TTL | Replayable | Response |
 |---------|------|--------|-----|------------|----------|
-| `ChatDiscordIngressCommandV1` | command | xcore:cmd:discord-message:{server} | 60000ms | False | `—` |
-| `ChatGlobalV1` | event | xcore:evt:chat:global | 60000ms | True | `—` |
-| `ChatMessageV1` | event | xcore:evt:chat:message | 60000ms | True | `—` |
-| `ChatPrivateV1` | event | xcore:evt:chat:private | 60000ms | True | `—` |
-| `DiscordAdminAccessChangedCommandV1` | command | xcore:cmd:discord-admin-access:{server} | 120000ms | False | `—` |
-| `DiscordLinkCodeCreatedV1` | event | xcore:evt:discord:link-code | 120000ms | True | `—` |
-| `DiscordLinkConfirmCommandV1` | command | xcore:cmd:discord-link-confirm:{server} | 120000ms | False | `—` |
-| `DiscordLinkStatusChangedV1` | event | xcore:evt:discord:link-status | 120000ms | True | `—` |
-| `DiscordUnlinkCommandV1` | command | xcore:cmd:discord-unlink:{server} | 120000ms | False | `—` |
 | `MapsListRequestV1` | rpc-request | xcore:rpc:req:{server} | 10000ms | False | `MapsListResponseV1` |
-| `MapsLoadCommandV1` | command | xcore:cmd:maps-load:{server} | 300000ms | False | `—` |
 | `MapsRemoveRequestV1` | rpc-request | xcore:rpc:req:{server} | 10000ms | False | `MapsRemoveResponseV1` |
-| `ModerationAuditAppendedV1` | event | xcore:evt:moderation:audit | 120000ms | True | `—` |
-| `ModerationBanCreatedV1` | event | xcore:evt:moderation:ban | 120000ms | True | `—` |
-| `ModerationKickBannedCommandV1` | command | xcore:cmd:kick-banned:{server} | 120000ms | False | `—` |
-| `ModerationMuteCreatedV1` | event | xcore:evt:moderation:mute | 120000ms | True | `—` |
-| `ModerationPardonCommandV1` | command | xcore:cmd:pardon-player:{server} | 120000ms | False | `—` |
-| `ModerationVoteKickCreatedV1` | event | xcore:evt:moderation:votekick | 120000ms | True | `—` |
+| `MapsLoadCommandV1` | command | xcore:cmd:maps-load:{server} | 300000ms | False | `—` |
+| `MapsUploadRequestV1` | rpc-request | xcore:rpc:req:{server} | 180000ms | False | `MapsUploadResponseV1` |
+| `MapsInspectRequestV1` | rpc-request | xcore:rpc:req:{server} | 60000ms | False | `MapsInspectResponseV1` |
+| `CasesReportSubmittedV1` | event | xcore:evt:cases:report | 604800000ms | True | `—` |
+| `CasesNoticeCommandV1` | command | xcore:cmd:cases-notice:{server} | 120000ms | False | `—` |
+| `CasesEvidenceRequestV1` | rpc-request | xcore:rpc:req:{server} | 15000ms | False | `CasesEvidenceResponseV1` |
+| `ChatMessageV1` | event | xcore:evt:chat:message | 60000ms | True | `—` |
+| `ChatGlobalV1` | event | xcore:evt:chat:global | 60000ms | True | `—` |
+| `ChatDiscordIngressCommandV1` | command | xcore:cmd:discord-message:{server} | 60000ms | False | `—` |
+| `ChatPrivateV1` | event | xcore:evt:chat:private | 60000ms | True | `—` |
+| `PlayerJoinLeaveV1` | event | xcore:evt:player:joinleave | 60000ms | True | `—` |
+| `PlayerCustomNicknameChangedCommandV1` | command | xcore:cmd:player-custom-nickname:{server} | 120000ms | False | `—` |
 | `PlayerActiveBadgeChangedCommandV1` | command | xcore:cmd:player-active-badge:{server} | 120000ms | False | `—` |
 | `PlayerBadgeInventoryChangedCommandV1` | command | xcore:cmd:player-badge-inventory:{server} | 120000ms | False | `—` |
 | `PlayerBadgeSymbolColorModeChangedCommandV1` | command | xcore:cmd:player-badge-symbol-color-mode:{server} | 120000ms | False | `—` |
-| `PlayerCustomNicknameChangedCommandV1` | command | xcore:cmd:player-custom-nickname:{server} | 120000ms | False | `—` |
-| `PlayerDataCacheReloadCommandV1` | command | xcore:cmd:reload-cache:{server} | 120000ms | False | `—` |
-| `PlayerJoinLeaveV1` | event | xcore:evt:player:joinleave | 60000ms | True | `—` |
-| `PlayerPasswordResetCommandV1` | command | xcore:cmd:player-password-reset:{server} | 120000ms | False | `—` |
 | `ServerActionV1` | event | xcore:evt:server:action | 60000ms | True | `—` |
 | `ServerCommandExecuteCommandV1` | command | xcore:cmd:execute-command:broadcast | 120000ms | False | `—` |
+| `PlayerDataCacheReloadCommandV1` | command | xcore:cmd:reload-cache:{server} | 120000ms | False | `—` |
 | `ServerHeartbeatV1` | event | xcore:evt:server:heartbeat | 60000ms | True | `—` |
+| `PlayerPasswordResetCommandV1` | command | xcore:cmd:player-password-reset:{server} | 120000ms | False | `—` |
+| `SecurityPermissionsChangedV1` | event | xcore:evt:security:permissions-changed | 300000ms | True | `—` |
+| `SecurityStaffSyncRequestV1` | rpc-request | xcore:rpc:req:{server} | 10000ms | False | `SecurityStaffSyncResponseV1` |
+| `SecurityStaffResetPasswordRequestV1` | rpc-request | xcore:rpc:req:{server} | 10000ms | False | `SecurityStaffResetPasswordResponseV1` |
+| `DiscordLinkCodeCreatedV1` | event | xcore:evt:discord:link-code | 120000ms | True | `—` |
+| `DiscordLinkConfirmCommandV1` | command | xcore:cmd:discord-link-confirm:{server} | 120000ms | False | `—` |
+| `DiscordUnlinkCommandV1` | command | xcore:cmd:discord-unlink:{server} | 120000ms | False | `—` |
+| `DiscordLinkStatusChangedV1` | event | xcore:evt:discord:link-status | 120000ms | True | `—` |
+| `DiscordAdminAccessChangedCommandV1` | command | xcore:cmd:discord-admin-access:{server} | 120000ms | False | `—` |
+| `ModerationBanCreatedV1` | event | xcore:evt:moderation:ban | 120000ms | True | `—` |
+| `ModerationMuteCreatedV1` | event | xcore:evt:moderation:mute | 120000ms | True | `—` |
+| `ModerationVoteKickCreatedV1` | event | xcore:evt:moderation:votekick | 120000ms | True | `—` |
+| `ModerationKickBannedCommandV1` | command | xcore:cmd:kick-banned:{server} | 120000ms | False | `—` |
+| `ModerationPardonCommandV1` | command | xcore:cmd:pardon-player:{server} | 120000ms | False | `—` |
+| `ModerationAuditAppendedV1` | event | xcore:evt:moderation:audit | 120000ms | True | `—` |
+| `SentinelSubnetRulesInvalidatedV1` | event | xcore:evt:sentinel:subnet:invalidated | 60000ms | True | `—` |
+| `SentinelSubnetSweepCommandV1` | command | xcore:cmd:sentinel:subnet:sweep:broadcast | 60000ms | False | `—` |
+| `SentinelSubnetRulesCommandV1` | rpc-request | xcore:rpc:req:{targetServer} | 10000ms | False | `SentinelSubnetRulesResponseV1` |
+| `SentinelSubnetRulesListRequestV1` | rpc-request | xcore:rpc:req:{targetServer} | 10000ms | False | `SentinelSubnetRulesListResponseV1` |
+| `SentinelSubnetRulesCheckRequestV1` | rpc-request | xcore:rpc:req:{targetServer} | 10000ms | False | `SentinelSubnetRulesCheckResponseV1` |
+| `RatingSeasonStartedV1` | event | xcore:evt:rating:season-started | 86400000ms | True | `—` |
+| `RatingSeasonEndingSoonV1` | event | xcore:evt:rating:season-ending-soon | 86400000ms | True | `—` |
+| `RatingSeasonEndedV1` | event | xcore:evt:rating:season-ended | 86400000ms | True | `—` |
+| `RatingSeasonRescheduledV1` | event | xcore:evt:rating:season-rescheduled | 86400000ms | True | `—` |
+| `RatingSeasonRescheduleRequestV1` | rpc-request | xcore:rpc:req:{server} | 10000ms | False | `RatingSeasonRescheduleResponseV1` |
+| `RatingAccountsMergeRequestV1` | rpc-request | xcore:rpc:req:{server} | 10000ms | False | `RatingAccountsMergeResponseV1` |
+| `RatingSeasonPrizesSetRequestV1` | rpc-request | xcore:rpc:req:{server} | 10000ms | False | `RatingSeasonPrizesSetResponseV1` |
+| `RatingPrizeGrantUpdateRequestV1` | rpc-request | xcore:rpc:req:{server} | 10000ms | False | `RatingPrizeGrantUpdateResponseV1` |
 
 ## Generated Artifacts
 
 | Language | Output Directory |
 |----------|------------------|
-| Python | `python/src/xcore/protocol/maps/` |
+| Python | `python/xcore_protocol/generated/maps.py` |
 | Java | `java/core/src/main/java/org/xcore/protocol/generated/messages/maps/` |
-| Python | `python/src/xcore/protocol/chat/` |
+| Python | `python/xcore_protocol/generated/cases.py` |
+| Java | `java/core/src/main/java/org/xcore/protocol/generated/messages/cases/` |
+| Python | `python/xcore_protocol/generated/chat.py` |
 | Java | `java/core/src/main/java/org/xcore/protocol/generated/messages/chat/` |
-| Python | `python/src/xcore/protocol/discord/` |
+| Python | `python/xcore_protocol/generated/identity.py` |
+| Java | `java/core/src/main/java/org/xcore/protocol/generated/messages/identity/` |
+| Python | `python/xcore_protocol/generated/server.py` |
+| Java | `java/core/src/main/java/org/xcore/protocol/generated/messages/server/` |
+| Python | `python/xcore_protocol/generated/security.py` |
+| Java | `java/core/src/main/java/org/xcore/protocol/generated/messages/security/` |
+| Python | `python/xcore_protocol/generated/discord.py` |
 | Java | `java/core/src/main/java/org/xcore/protocol/generated/messages/discord/` |
-| Python | `python/src/xcore/protocol/moderation/` |
+| Python | `python/xcore_protocol/generated/moderation.py` |
 | Java | `java/core/src/main/java/org/xcore/protocol/generated/messages/moderation/` |
-| Python | `python/src/xcore/protocol/telemetry/` |
+| Python | `python/xcore_protocol/generated/telemetry.py` |
 | Java | `java/core/src/main/java/org/xcore/protocol/generated/messages/telemetry/` |
+| Python | `python/xcore_protocol/generated/sentinel.py` |
+| Java | `java/core/src/main/java/org/xcore/protocol/generated/messages/sentinel/` |
+| Python | `python/xcore_protocol/generated/rating.py` |
+| Java | `java/core/src/main/java/org/xcore/protocol/generated/messages/rating/` |

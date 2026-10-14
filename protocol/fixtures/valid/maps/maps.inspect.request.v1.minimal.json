@@ -1,0 +1,9 @@
+{
+  "messageType": "maps.inspect.request",
+  "messageVersion": 1,
+  "server": "mini-pvp",
+  "file": {
+    "url": "https://cdn.example.test/maps/ancient-caldera.msav",
+    "fileName": "ancient-caldera.msav"
+  }
+}

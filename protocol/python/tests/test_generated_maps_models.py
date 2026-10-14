@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+from pathlib import Path
+
+import pytest
+
 from xcore_protocol.generated import (
     MAPS_LIST_REQUEST_V1,
     MAPS_LOAD_COMMAND_V1,
@@ -140,3 +144,49 @@ def test_upload_rpc_fixtures_and_constraints() -> None:
     ):
         with pytest.raises(ValueError):
             MapDiscordUploadV1.from_payload(payload)
+
+
+@pytest.mark.parametrize(
+    "fixture_path",
+    sorted((fixtures_root() / "valid" / "maps").glob("maps.inspect.*.json")),
+    ids=lambda path: path.name,
+)
+def test_inspect_models_roundtrip(fixture_path: Path) -> None:
+    from xcore_protocol.generated import MapsInspectRequestV1, MapsInspectResponseV1
+
+    payload = load_json(fixture_path)
+    model_type = MapsInspectRequestV1 if payload["messageType"].endswith("request") else MapsInspectResponseV1
+    model = model_type.from_payload(payload)
+    assert model.to_payload() == payload
+    validate_instance(spec_root() / "messages/maps" / f"{model.MESSAGE_TYPE}.v1.json", model.to_payload())
+
+
+def test_inspect_models_keep_finding_codes_open_and_enums_strict() -> None:
+    from xcore_protocol.generated import MapInspectFindingV1, MapInspectFindingV1Severity, MapsInspectResponseV1
+
+    finding = MapInspectFindingV1(code="future-check-v2", severity=MapInspectFindingV1Severity.INFO)
+    assert finding.code == "future-check-v2"
+    assert finding.severity is MapInspectFindingV1Severity.INFO
+    with pytest.raises(ValueError):
+        MapInspectFindingV1(code="future_check", severity=MapInspectFindingV1Severity.INFO)
+    with pytest.raises(ValueError):
+        MapsInspectResponseV1.from_payload({"messageType": "maps.inspect.response", "messageVersion": 1, "server": "mini-pvp", "status": "pending", "findings": []})
+
+
+def test_inspect_route_resolves_spec_streams() -> None:
+    from xcore_protocol.generated import MAPS_INSPECT_REQUEST_V1, MapsInspectRequestV1, MapsInspectResponseV1, ROUTES_BY_MESSAGE
+
+    route = MAPS_INSPECT_REQUEST_V1
+    assert ROUTES_BY_MESSAGE[("maps.inspect.request", 1)] is route
+    assert route.payloadType is MapsInspectRequestV1
+    assert route.kind == "rpc-request"
+    assert route.stream.format(server="mini-pvp") == "xcore:rpc:req:mini-pvp"
+    assert route.bindings == {"server": "payload.server"}
+    assert route.targetScope == "server"
+    assert route.ttlMs == 60000 and not route.replayable
+    assert route.owner == "maps"
+    assert route.response.messageType == "maps.inspect.response"
+    assert route.response.messageVersion == 1
+    assert route.response.payloadType is MapsInspectResponseV1
+    assert route.response.stream.format(requester="discord") == "xcore:rpc:resp:discord"
+    assert route.response.bindings == {"requester": "rpc.requester"}

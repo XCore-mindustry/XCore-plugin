@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:xcore:protocol:shared:types:map-inspect-info:v1",
+  "title": "MapInspectInfoV1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "name",
+    "width",
+    "height",
+    "sha256",
+    "sizeBytes"
+  ],
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "author": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "width": {
+      "type": "integer"
+    },
+    "height": {
+      "type": "integer"
+    },
+    "saveVersion": {
+      "type": "integer"
+    },
+    "build": {
+      "type": "integer"
+    },
+    "gameMode": {
+      "type": "string"
+    },
+    "profile": {
+      "type": "string"
+    },
+    "spawnCount": {
+      "type": "integer"
+    },
+    "coresByTeam": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "integer"
+      }
+    },
+    "waves": {
+      "type": "boolean"
+    },
+    "waveTimer": {
+      "type": "boolean"
+    },
+    "spawnGroupCount": {
+      "type": "integer"
+    },
+    "dropZoneRadius": {
+      "type": "number"
+    },
+    "mods": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[a-fA-F0-9]{64}$"
+    },
+    "sizeBytes": {
+      "type": "integer"
+    }
+  }
+}

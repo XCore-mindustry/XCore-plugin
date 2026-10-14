@@ -1,0 +1,39 @@
+{
+  "messageType": "cases.evidence.response",
+  "messageVersion": 1,
+  "server": "mini-pvp",
+  "mapName": "Ancient Caldera",
+  "gameMode": "pvp",
+  "chat": [
+    {
+      "sentAt": 1791892800000,
+      "playerName": "Alice",
+      "playerPid": 12,
+      "role": "reporter",
+      "text": "Please stop destroying the base.",
+      "team": true
+    }
+  ],
+  "blockSummary": {
+    "windowSeconds": 300,
+    "built": 5,
+    "destroyed": 8,
+    "configured": 2,
+    "truncated": false,
+    "topBlocks": [
+      {
+        "block": "copper-wall",
+        "built": 5,
+        "destroyed": 8
+      }
+    ],
+    "area": {
+      "x1": 4,
+      "y1": 5,
+      "x2": 20,
+      "y2": 30
+    },
+    "lastActionSecondsAgo": 2
+  },
+  "capturedAt": "2026-10-13T12:00:00Z"
+}

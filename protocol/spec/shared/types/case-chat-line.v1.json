@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:xcore:protocol:shared:types:case-chat-line:v1",
+  "title": "CaseChatLineV1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "sentAt",
+    "playerName",
+    "role",
+    "text"
+  ],
+  "properties": {
+    "sentAt": {
+      "type": "integer",
+      "format": "int64"
+    },
+    "playerName": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "playerPid": {
+      "type": "integer"
+    },
+    "role": {
+      "type": "string",
+      "enum": [
+        "target",
+        "reporter",
+        "other"
+      ]
+    },
+    "text": {
+      "type": "string",
+      "maxLength": 256
+    },
+    "team": {
+      "type": "boolean"
+    }
+  }
+}

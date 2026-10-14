@@ -32,6 +32,10 @@
     "occurredAt": {
       "type": "string",
       "format": "date-time"
+    },
+    "banId": {
+      "type": "integer",
+      "minimum": 1
     }
   }
 }

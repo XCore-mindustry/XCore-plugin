@@ -156,6 +156,202 @@ class ActorRefV1:
         return payload
 
 @dataclass(frozen=True, slots=True)
+class CaseBlockAreaV1:
+    x1: int
+    y1: int
+    x2: int
+    y2: int
+
+    def __post_init__(self) -> None:
+        _expect_int(self.x1, 'x1')
+        _expect_int(self.y1, 'y1')
+        _expect_int(self.x2, 'x2')
+        _expect_int(self.y2, 'y2')
+
+    @classmethod
+    def from_payload(cls, payload: Mapping[str, Any]) -> "CaseBlockAreaV1":
+        mapping = _expect_mapping(payload, "CaseBlockAreaV1")
+        _expect_exact_keys(
+            mapping,
+            required=frozenset(('x1', 'y1', 'x2', 'y2')),
+            allowed=frozenset(('x1', 'y1', 'x2', 'y2')),
+            model_name="CaseBlockAreaV1",
+        )
+        return cls(
+            x1=_expect_int(mapping['x1'], 'x1'),
+            y1=_expect_int(mapping['y1'], 'y1'),
+            x2=_expect_int(mapping['x2'], 'x2'),
+            y2=_expect_int(mapping['y2'], 'y2'),
+        )
+
+    def to_payload(self) -> dict[str, Any]:
+        payload: dict[str, Any] = {}
+        payload['x1'] = self.x1
+        payload['y1'] = self.y1
+        payload['x2'] = self.x2
+        payload['y2'] = self.y2
+        return payload
+
+@dataclass(frozen=True, slots=True)
+class CaseBlockEntryV1:
+    block: str
+    built: int
+    destroyed: int
+
+    def __post_init__(self) -> None:
+        _expect_str(self.block, 'block')
+        _expect_int(self.built, 'built')
+        _expect_int(self.destroyed, 'destroyed')
+
+    @classmethod
+    def from_payload(cls, payload: Mapping[str, Any]) -> "CaseBlockEntryV1":
+        mapping = _expect_mapping(payload, "CaseBlockEntryV1")
+        _expect_exact_keys(
+            mapping,
+            required=frozenset(('block', 'built', 'destroyed')),
+            allowed=frozenset(('block', 'built', 'destroyed')),
+            model_name="CaseBlockEntryV1",
+        )
+        return cls(
+            block=_expect_str(mapping['block'], 'block'),
+            built=_expect_int(mapping['built'], 'built'),
+            destroyed=_expect_int(mapping['destroyed'], 'destroyed'),
+        )
+
+    def to_payload(self) -> dict[str, Any]:
+        payload: dict[str, Any] = {}
+        payload['block'] = self.block
+        payload['built'] = self.built
+        payload['destroyed'] = self.destroyed
+        return payload
+
+@dataclass(frozen=True, slots=True)
+class CaseBlockSummaryV1:
+    windowSeconds: int
+    built: int
+    destroyed: int
+    configured: int
+    truncated: bool
+    topBlocks: tuple[CaseBlockEntryV1, ...]
+    area: CaseBlockAreaV1 | None = None
+    lastActionSecondsAgo: int | None = None
+
+    def __post_init__(self) -> None:
+        _expect_int(self.windowSeconds, 'windowSeconds')
+        if self.windowSeconds < 1:
+            raise ValueError("windowSeconds must be >= 1")
+        _expect_int(self.built, 'built')
+        if self.built < 0:
+            raise ValueError("built must be >= 0")
+        _expect_int(self.destroyed, 'destroyed')
+        if self.destroyed < 0:
+            raise ValueError("destroyed must be >= 0")
+        _expect_int(self.configured, 'configured')
+        if self.configured < 0:
+            raise ValueError("configured must be >= 0")
+        _expect_bool(self.truncated, 'truncated')
+        if not isinstance(self.topBlocks, tuple):
+            raise TypeError("topBlocks must be a tuple")
+        for item in self.topBlocks:
+            _expect_instance(item, 'topBlocks[]', CaseBlockEntryV1)
+        if self.area is not None:
+            _expect_instance(self.area, 'area', CaseBlockAreaV1)
+        if self.lastActionSecondsAgo is not None:
+            _expect_int(self.lastActionSecondsAgo, 'lastActionSecondsAgo')
+            if self.lastActionSecondsAgo < 0:
+                raise ValueError("lastActionSecondsAgo must be >= 0")
+
+    @classmethod
+    def from_payload(cls, payload: Mapping[str, Any]) -> "CaseBlockSummaryV1":
+        mapping = _expect_mapping(payload, "CaseBlockSummaryV1")
+        _expect_exact_keys(
+            mapping,
+            required=frozenset(('windowSeconds', 'built', 'destroyed', 'configured', 'truncated', 'topBlocks')),
+            allowed=frozenset(('windowSeconds', 'built', 'destroyed', 'configured', 'truncated', 'topBlocks', 'area', 'lastActionSecondsAgo')),
+            model_name="CaseBlockSummaryV1",
+        )
+        return cls(
+            windowSeconds=_expect_int(mapping['windowSeconds'], 'windowSeconds'),
+            built=_expect_int(mapping['built'], 'built'),
+            destroyed=_expect_int(mapping['destroyed'], 'destroyed'),
+            configured=_expect_int(mapping['configured'], 'configured'),
+            truncated=_expect_bool(mapping['truncated'], 'truncated'),
+            topBlocks=tuple(CaseBlockEntryV1.from_payload(_expect_mapping(item, 'topBlocks[]')) for item in _expect_list(mapping['topBlocks'], 'topBlocks')),
+            area=(CaseBlockAreaV1.from_payload(_expect_mapping(mapping['area'], 'area')) if 'area' in mapping else None),
+            lastActionSecondsAgo=(_expect_int(mapping['lastActionSecondsAgo'], 'lastActionSecondsAgo') if 'lastActionSecondsAgo' in mapping else None),
+        )
+
+    def to_payload(self) -> dict[str, Any]:
+        payload: dict[str, Any] = {}
+        payload['windowSeconds'] = self.windowSeconds
+        payload['built'] = self.built
+        payload['destroyed'] = self.destroyed
+        payload['configured'] = self.configured
+        payload['truncated'] = self.truncated
+        payload['topBlocks'] = [item.to_payload() for item in self.topBlocks]
+        if self.area is not None:
+            payload['area'] = self.area.to_payload()
+        if self.lastActionSecondsAgo is not None:
+            payload['lastActionSecondsAgo'] = self.lastActionSecondsAgo
+        return payload
+
+class CaseChatLineV1Role(StrEnum):
+    TARGET = 'target'
+    REPORTER = 'reporter'
+    OTHER = 'other'
+
+@dataclass(frozen=True, slots=True)
+class CaseChatLineV1:
+    sentAt: int
+    playerName: str
+    role: CaseChatLineV1Role
+    text: str
+    playerPid: int | None = None
+    team: bool | None = None
+
+    def __post_init__(self) -> None:
+        _expect_int(self.sentAt, 'sentAt')
+        _expect_str(self.playerName, 'playerName')
+        if len(self.playerName) < 1:
+            raise ValueError("playerName is too short")
+        if self.playerPid is not None:
+            _expect_int(self.playerPid, 'playerPid')
+        _expect_instance(self.role, 'role', CaseChatLineV1Role)
+        _expect_str(self.text, 'text')
+        if self.team is not None:
+            _expect_bool(self.team, 'team')
+
+    @classmethod
+    def from_payload(cls, payload: Mapping[str, Any]) -> "CaseChatLineV1":
+        mapping = _expect_mapping(payload, "CaseChatLineV1")
+        _expect_exact_keys(
+            mapping,
+            required=frozenset(('sentAt', 'playerName', 'role', 'text')),
+            allowed=frozenset(('sentAt', 'playerName', 'playerPid', 'role', 'text', 'team')),
+            model_name="CaseChatLineV1",
+        )
+        return cls(
+            sentAt=_expect_int(mapping['sentAt'], 'sentAt'),
+            playerName=_expect_str(mapping['playerName'], 'playerName'),
+            playerPid=(_expect_int(mapping['playerPid'], 'playerPid') if 'playerPid' in mapping else None),
+            role=_expect_enum(mapping['role'], 'role', CaseChatLineV1Role),
+            text=_expect_str(mapping['text'], 'text'),
+            team=(_expect_bool(mapping['team'], 'team') if 'team' in mapping else None),
+        )
+
+    def to_payload(self) -> dict[str, Any]:
+        payload: dict[str, Any] = {}
+        payload['sentAt'] = self.sentAt
+        payload['playerName'] = self.playerName
+        if self.playerPid is not None:
+            payload['playerPid'] = self.playerPid
+        payload['role'] = str(self.role)
+        payload['text'] = self.text
+        if self.team is not None:
+            payload['team'] = self.team
+        return payload
+
+@dataclass(frozen=True, slots=True)
 class DiscordIdentityRefV1:
     discordId: str
     discordUsername: str | None = None
@@ -418,6 +614,190 @@ class MapFileSourceV1:
         payload['fileName'] = self.fileName
         if self.discordUpload is not None:
             payload['discordUpload'] = self.discordUpload.to_payload()
+        return payload
+
+class MapInspectFindingV1Severity(StrEnum):
+    ERROR = 'error'
+    WARNING = 'warning'
+    INFO = 'info'
+
+@dataclass(frozen=True, slots=True)
+class MapInspectFindingV1:
+    code: str
+    severity: MapInspectFindingV1Severity
+    detail: str | None = None
+    x: int | None = None
+    y: int | None = None
+    count: int | None = None
+
+    def __post_init__(self) -> None:
+        _expect_str(self.code, 'code')
+        if re.search('^[a-z0-9]+(-[a-z0-9]+)*$', self.code) is None:
+            raise ValueError("code does not match its pattern")
+        _expect_instance(self.severity, 'severity', MapInspectFindingV1Severity)
+        if self.detail is not None:
+            _expect_str(self.detail, 'detail')
+        if self.x is not None:
+            _expect_int(self.x, 'x')
+        if self.y is not None:
+            _expect_int(self.y, 'y')
+        if self.count is not None:
+            _expect_int(self.count, 'count')
+
+    @classmethod
+    def from_payload(cls, payload: Mapping[str, Any]) -> "MapInspectFindingV1":
+        mapping = _expect_mapping(payload, "MapInspectFindingV1")
+        _expect_exact_keys(
+            mapping,
+            required=frozenset(('code', 'severity')),
+            allowed=frozenset(('code', 'severity', 'detail', 'x', 'y', 'count')),
+            model_name="MapInspectFindingV1",
+        )
+        return cls(
+            code=_expect_str(mapping['code'], 'code'),
+            severity=_expect_enum(mapping['severity'], 'severity', MapInspectFindingV1Severity),
+            detail=(_expect_str(mapping['detail'], 'detail') if 'detail' in mapping else None),
+            x=(_expect_int(mapping['x'], 'x') if 'x' in mapping else None),
+            y=(_expect_int(mapping['y'], 'y') if 'y' in mapping else None),
+            count=(_expect_int(mapping['count'], 'count') if 'count' in mapping else None),
+        )
+
+    def to_payload(self) -> dict[str, Any]:
+        payload: dict[str, Any] = {}
+        payload['code'] = self.code
+        payload['severity'] = str(self.severity)
+        if self.detail is not None:
+            payload['detail'] = self.detail
+        if self.x is not None:
+            payload['x'] = self.x
+        if self.y is not None:
+            payload['y'] = self.y
+        if self.count is not None:
+            payload['count'] = self.count
+        return payload
+
+@dataclass(frozen=True, slots=True)
+class MapInspectInfoV1:
+    name: str
+    width: int
+    height: int
+    sha256: str
+    sizeBytes: int
+    author: str | None = None
+    description: str | None = None
+    saveVersion: int | None = None
+    build: int | None = None
+    gameMode: str | None = None
+    profile: str | None = None
+    spawnCount: int | None = None
+    coresByTeam: dict[str, Any] | None = None
+    waves: bool | None = None
+    waveTimer: bool | None = None
+    spawnGroupCount: int | None = None
+    dropZoneRadius: float | None = None
+    mods: tuple[str, ...] | None = None
+
+    def __post_init__(self) -> None:
+        _expect_str(self.name, 'name')
+        if self.author is not None:
+            _expect_str(self.author, 'author')
+        if self.description is not None:
+            _expect_str(self.description, 'description')
+        _expect_int(self.width, 'width')
+        _expect_int(self.height, 'height')
+        if self.saveVersion is not None:
+            _expect_int(self.saveVersion, 'saveVersion')
+        if self.build is not None:
+            _expect_int(self.build, 'build')
+        if self.gameMode is not None:
+            _expect_str(self.gameMode, 'gameMode')
+        if self.profile is not None:
+            _expect_str(self.profile, 'profile')
+        if self.spawnCount is not None:
+            _expect_int(self.spawnCount, 'spawnCount')
+        if self.coresByTeam is not None:
+            _expect_json_object(self.coresByTeam, 'coresByTeam', allowed_types=('integer',), allow_null=False)
+        if self.waves is not None:
+            _expect_bool(self.waves, 'waves')
+        if self.waveTimer is not None:
+            _expect_bool(self.waveTimer, 'waveTimer')
+        if self.spawnGroupCount is not None:
+            _expect_int(self.spawnGroupCount, 'spawnGroupCount')
+        if self.dropZoneRadius is not None:
+            _expect_number(self.dropZoneRadius, 'dropZoneRadius')
+        if self.mods is not None:
+            if not isinstance(self.mods, tuple):
+                raise TypeError("mods must be a tuple")
+            for item in self.mods:
+                _expect_str(item, 'mods[]')
+        _expect_str(self.sha256, 'sha256')
+        if re.search('^[a-fA-F0-9]{64}$', self.sha256) is None:
+            raise ValueError("sha256 does not match its pattern")
+        _expect_int(self.sizeBytes, 'sizeBytes')
+
+    @classmethod
+    def from_payload(cls, payload: Mapping[str, Any]) -> "MapInspectInfoV1":
+        mapping = _expect_mapping(payload, "MapInspectInfoV1")
+        _expect_exact_keys(
+            mapping,
+            required=frozenset(('name', 'width', 'height', 'sha256', 'sizeBytes')),
+            allowed=frozenset(('name', 'author', 'description', 'width', 'height', 'saveVersion', 'build', 'gameMode', 'profile', 'spawnCount', 'coresByTeam', 'waves', 'waveTimer', 'spawnGroupCount', 'dropZoneRadius', 'mods', 'sha256', 'sizeBytes')),
+            model_name="MapInspectInfoV1",
+        )
+        return cls(
+            name=_expect_str(mapping['name'], 'name'),
+            author=(_expect_str(mapping['author'], 'author') if 'author' in mapping else None),
+            description=(_expect_str(mapping['description'], 'description') if 'description' in mapping else None),
+            width=_expect_int(mapping['width'], 'width'),
+            height=_expect_int(mapping['height'], 'height'),
+            saveVersion=(_expect_int(mapping['saveVersion'], 'saveVersion') if 'saveVersion' in mapping else None),
+            build=(_expect_int(mapping['build'], 'build') if 'build' in mapping else None),
+            gameMode=(_expect_str(mapping['gameMode'], 'gameMode') if 'gameMode' in mapping else None),
+            profile=(_expect_str(mapping['profile'], 'profile') if 'profile' in mapping else None),
+            spawnCount=(_expect_int(mapping['spawnCount'], 'spawnCount') if 'spawnCount' in mapping else None),
+            coresByTeam=(_expect_json_object(mapping['coresByTeam'], 'coresByTeam', allowed_types=('integer',), allow_null=False) if 'coresByTeam' in mapping else None),
+            waves=(_expect_bool(mapping['waves'], 'waves') if 'waves' in mapping else None),
+            waveTimer=(_expect_bool(mapping['waveTimer'], 'waveTimer') if 'waveTimer' in mapping else None),
+            spawnGroupCount=(_expect_int(mapping['spawnGroupCount'], 'spawnGroupCount') if 'spawnGroupCount' in mapping else None),
+            dropZoneRadius=(_expect_number(mapping['dropZoneRadius'], 'dropZoneRadius') if 'dropZoneRadius' in mapping else None),
+            mods=(tuple(_expect_str(item, 'mods[]') for item in _expect_list(mapping['mods'], 'mods')) if 'mods' in mapping else None),
+            sha256=_expect_str(mapping['sha256'], 'sha256'),
+            sizeBytes=_expect_int(mapping['sizeBytes'], 'sizeBytes'),
+        )
+
+    def to_payload(self) -> dict[str, Any]:
+        payload: dict[str, Any] = {}
+        payload['name'] = self.name
+        if self.author is not None:
+            payload['author'] = self.author
+        if self.description is not None:
+            payload['description'] = self.description
+        payload['width'] = self.width
+        payload['height'] = self.height
+        if self.saveVersion is not None:
+            payload['saveVersion'] = self.saveVersion
+        if self.build is not None:
+            payload['build'] = self.build
+        if self.gameMode is not None:
+            payload['gameMode'] = self.gameMode
+        if self.profile is not None:
+            payload['profile'] = self.profile
+        if self.spawnCount is not None:
+            payload['spawnCount'] = self.spawnCount
+        if self.coresByTeam is not None:
+            payload['coresByTeam'] = dict(self.coresByTeam)
+        if self.waves is not None:
+            payload['waves'] = self.waves
+        if self.waveTimer is not None:
+            payload['waveTimer'] = self.waveTimer
+        if self.spawnGroupCount is not None:
+            payload['spawnGroupCount'] = self.spawnGroupCount
+        if self.dropZoneRadius is not None:
+            payload['dropZoneRadius'] = float(self.dropZoneRadius)
+        if self.mods is not None:
+            payload['mods'] = [item for item in self.mods]
+        payload['sha256'] = self.sha256
+        payload['sizeBytes'] = self.sizeBytes
         return payload
 
 class MapUploadResultV1Status(StrEnum):
@@ -961,11 +1341,17 @@ class VoteKickParticipantV1:
 
 __all__ = [
     "ActorRefV1",
+    "CaseBlockAreaV1",
+    "CaseBlockEntryV1",
+    "CaseBlockSummaryV1",
+    "CaseChatLineV1",
     "DiscordIdentityRefV1",
     "ExpirationInfoV1",
     "MapDiscordUploadV1",
     "MapEntryV1",
     "MapFileSourceV1",
+    "MapInspectFindingV1",
+    "MapInspectInfoV1",
     "MapUploadResultV1",
     "MetricSampleV1",
     "ModerationTargetRefV1",
@@ -977,6 +1363,8 @@ __all__ = [
     "SeasonSummaryV1",
     "VoteKickParticipantV1",
     "ActorRefV1ActorType",
+    "CaseChatLineV1Role",
+    "MapInspectFindingV1Severity",
     "MapUploadResultV1Status",
     "MetricSampleV1Type",
     "SeasonPrizeV1Kind",

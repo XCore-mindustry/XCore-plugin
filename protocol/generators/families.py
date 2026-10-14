@@ -45,6 +45,15 @@ FAMILY_CONFIGS: tuple[FamilyConfig, ...] = (
         default_selected=True,
     ),
     FamilyConfig(
+        name="cases",
+        python_module="cases",
+        java_package="org.xcore.protocol.generated.messages.cases",
+        java_messages_class="CasesMessages",
+        java_routes_class="CasesRoutes",
+        includes=("cases",),
+        generated_model_test="python/tests/test_generated_cases_models.py",
+    ),
+    FamilyConfig(
         name="chat",
         python_module="chat",
         java_package="org.xcore.protocol.generated.messages.chat",

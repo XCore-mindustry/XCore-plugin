@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+from pathlib import Path
+
+import pytest
+
 from xcore_protocol.paths import fixtures_root, spec_root
 from xcore_protocol.schema_validation import assert_invalid, assert_valid
 
@@ -92,3 +96,23 @@ def test_invalid_discord_upload_fixtures_fail() -> None:
     schema = spec_root() / "messages" / "maps" / "maps.load.command.v1.json"
     for suffix in ("missing-uploader", "invalid-time"):
         assert_invalid(schema, fixtures_root() / "invalid" / "maps" / f"maps.load.command.v1.{suffix}.json")
+
+
+@pytest.mark.parametrize(
+    "fixture_path",
+    sorted((fixtures_root() / "valid" / "maps").glob("maps.inspect.*.json")),
+    ids=lambda path: path.name,
+)
+def test_valid_inspect_fixtures_pass(fixture_path: Path) -> None:
+    name = fixture_path.name.split(".v1")[0]
+    assert_valid(spec_root() / "messages" / "maps" / f"{name}.v1.json", fixture_path)
+
+
+@pytest.mark.parametrize(
+    "fixture_path",
+    sorted((fixtures_root() / "invalid" / "maps").glob("maps.inspect.*.json")),
+    ids=lambda path: path.name,
+)
+def test_invalid_inspect_fixtures_fail(fixture_path: Path) -> None:
+    name = fixture_path.name.split(".v1")[0]
+    assert_invalid(spec_root() / "messages" / "maps" / f"{name}.v1.json", fixture_path)

@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:xcore:protocol:shared:types:case-block-area:v1",
+  "title": "CaseBlockAreaV1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "x1",
+    "y1",
+    "x2",
+    "y2"
+  ],
+  "properties": {
+    "x1": {
+      "type": "integer"
+    },
+    "y1": {
+      "type": "integer"
+    },
+    "x2": {
+      "type": "integer"
+    },
+    "y2": {
+      "type": "integer"
+    }
+  }
+}

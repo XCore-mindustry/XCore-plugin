@@ -200,6 +200,7 @@ class ModerationBanCreatedV1:
     expiration: ExpirationInfoV1 | None = None
     server: str | None = None
     occurredAt: str | None = None
+    banId: int | None = None
 
     MESSAGE_TYPE: ClassVar[str] = 'moderation.ban.created'
     MESSAGE_VERSION: ClassVar[int] = 1
@@ -217,6 +218,10 @@ class ModerationBanCreatedV1:
                 raise ValueError("server is too short")
         if self.occurredAt is not None:
             _expect_str(self.occurredAt, 'occurredAt')
+        if self.banId is not None:
+            _expect_int(self.banId, 'banId')
+            if self.banId < 1:
+                raise ValueError("banId must be >= 1")
 
     @classmethod
     def from_payload(cls, payload: Mapping[str, Any]) -> "ModerationBanCreatedV1":
@@ -224,7 +229,7 @@ class ModerationBanCreatedV1:
         _expect_exact_keys(
             mapping,
             required=frozenset(('messageType', 'messageVersion', 'target', 'actor', 'reason')),
-            allowed=frozenset(('messageType', 'messageVersion', 'target', 'actor', 'reason', 'expiration', 'server', 'occurredAt')),
+            allowed=frozenset(('messageType', 'messageVersion', 'target', 'actor', 'reason', 'expiration', 'server', 'occurredAt', 'banId')),
             model_name="ModerationBanCreatedV1",
         )
         if mapping['messageType'] != cls.MESSAGE_TYPE:
@@ -238,6 +243,7 @@ class ModerationBanCreatedV1:
             expiration=(ExpirationInfoV1.from_payload(_expect_mapping(mapping['expiration'], 'expiration')) if 'expiration' in mapping else None),
             server=(_expect_str(mapping['server'], 'server') if 'server' in mapping else None),
             occurredAt=(_expect_str(mapping['occurredAt'], 'occurredAt') if 'occurredAt' in mapping else None),
+            banId=(_expect_int(mapping['banId'], 'banId') if 'banId' in mapping else None),
         )
 
     def to_payload(self) -> dict[str, Any]:
@@ -254,6 +260,8 @@ class ModerationBanCreatedV1:
             payload['server'] = self.server
         if self.occurredAt is not None:
             payload['occurredAt'] = self.occurredAt
+        if self.banId is not None:
+            payload['banId'] = self.banId
         return payload
 
 @dataclass(frozen=True, slots=True)

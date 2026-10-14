@@ -9,6 +9,8 @@ Maps request/response contracts belong here.
 - `maps.remove.response` — return the server result for a remove request.
 - `maps.upload.request` — upload maps and await per-file installation/attribution results.
 - `maps.upload.response` — report installed, failed, superseded or rejected files in request order.
+- `maps.inspect.request` — inspect one `.msav` without installing it; an absent profile is inferred from map rules.
+- `maps.inspect.response` — return inspection status, optional map metadata and open-code findings.
 - `maps.load.command` — command one server to download and load uploaded `.msav` files.
 
 ## Field Policy

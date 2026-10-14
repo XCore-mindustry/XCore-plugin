@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:xcore:protocol:messages:maps:maps.inspect.response:v1",
+  "title": "MapsInspectResponseV1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "messageType",
+    "messageVersion",
+    "server",
+    "status",
+    "findings"
+  ],
+  "properties": {
+    "messageType": {
+      "const": "maps.inspect.response"
+    },
+    "messageVersion": {
+      "const": 1
+    },
+    "server": {
+      "type": "string",
+      "minLength": 1
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "ok",
+        "download_failed",
+        "invalid_map"
+      ]
+    },
+    "detail": {
+      "type": "string"
+    },
+    "info": {
+      "$ref": "urn:xcore:protocol:shared:types:map-inspect-info:v1"
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "$ref": "urn:xcore:protocol:shared:types:map-inspect-finding:v1"
+      }
+    }
+  }
+}

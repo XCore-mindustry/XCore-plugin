@@ -4,6 +4,7 @@ import static java.util.Map.entry;
 
 import java.util.Map;
 import org.xcore.protocol.generated.runtime.ProtocolPayload;
+import org.xcore.protocol.generated.messages.cases.CasesMessages;
 import org.xcore.protocol.generated.messages.chat.ChatMessages;
 import org.xcore.protocol.generated.messages.discord.DiscordMessages;
 import org.xcore.protocol.generated.messages.identity.IdentityMessages;
@@ -127,6 +128,86 @@ public final class ProtocolRoutes {
                     "maps.upload.response",
                     1,
                     MapsMessages.MapsUploadResponseV1.class,
+                    "xcore:rpc:resp:{requester}",
+                    Map.of("requester", "rpc.requester")
+            )
+    );
+
+    public static final RouteDescriptor MAPS_INSPECT_REQUEST_V1 = new RouteDescriptor(
+            "maps",
+            "mapsInspectRequestV1Route",
+            "maps.inspect.request",
+            1,
+            MapsMessages.MapsInspectRequestV1.class,
+            "rpc-request",
+            "xcore:rpc:req:{server}",
+            Map.of("server", "payload.server"),
+            "server",
+            60000,
+            false,
+            false,
+            "maps",
+            new RouteResponseDescriptor(
+                    "maps.inspect.response",
+                    1,
+                    MapsMessages.MapsInspectResponseV1.class,
+                    "xcore:rpc:resp:{requester}",
+                    Map.of("requester", "rpc.requester")
+            )
+    );
+
+    public static final RouteDescriptor CASES_REPORT_SUBMITTED_V1 = new RouteDescriptor(
+            "cases",
+            "casesReportSubmittedV1Route",
+            "cases.report.submitted",
+            1,
+            CasesMessages.CasesReportSubmittedV1.class,
+            "event",
+            "xcore:evt:cases:report",
+            Map.of(),
+            "broadcast",
+            604800000,
+            true,
+            true,
+            "cases",
+            null
+    );
+
+    public static final RouteDescriptor CASES_NOTICE_COMMAND_V1 = new RouteDescriptor(
+            "cases",
+            "casesNoticeCommandV1Route",
+            "cases.notice.command",
+            1,
+            CasesMessages.CasesNoticeCommandV1.class,
+            "command",
+            "xcore:cmd:cases-notice:{server}",
+            Map.of("server", "payload.server"),
+            "server",
+            120000,
+            false,
+            true,
+            "cases",
+            null
+    );
+
+    public static final RouteDescriptor CASES_EVIDENCE_REQUEST_V1 = new RouteDescriptor(
+            "cases",
+            "casesEvidenceRequestV1Route",
+            "cases.evidence.request",
+            1,
+            CasesMessages.CasesEvidenceRequestV1.class,
+            "rpc-request",
+            "xcore:rpc:req:{server}",
+            Map.of("server", "payload.server"),
+            "server",
+            15000,
+            false,
+            false,
+            "cases",
+            new RouteResponseDescriptor(
+                    "cases.evidence.response",
+                    1,
+                    CasesMessages.CasesEvidenceResponseV1.class,
                     "xcore:rpc:resp:{requester}",
                     Map.of("requester", "rpc.requester")
             )
@@ -888,6 +969,10 @@ public final class ProtocolRoutes {
             entry(key("maps.remove.request", 1), MAPS_REMOVE_REQUEST_V1),
             entry(key("maps.load.command", 1), MAPS_LOAD_COMMAND_V1),
             entry(key("maps.upload.request", 1), MAPS_UPLOAD_REQUEST_V1),
+            entry(key("maps.inspect.request", 1), MAPS_INSPECT_REQUEST_V1),
+            entry(key("cases.report.submitted", 1), CASES_REPORT_SUBMITTED_V1),
+            entry(key("cases.notice.command", 1), CASES_NOTICE_COMMAND_V1),
+            entry(key("cases.evidence.request", 1), CASES_EVIDENCE_REQUEST_V1),
             entry(key("chat.message", 1), CHAT_MESSAGE_V1),
             entry(key("chat.global", 1), CHAT_GLOBAL_V1),
             entry(key("chat.discord-ingress.command", 1), CHAT_DISCORD_INGRESS_COMMAND_V1),
@@ -937,6 +1022,10 @@ public final class ProtocolRoutes {
             entry((Class<? extends ProtocolPayload>) MapsMessages.MapsRemoveRequestV1.class, MAPS_REMOVE_REQUEST_V1),
             entry((Class<? extends ProtocolPayload>) MapsMessages.MapsLoadCommandV1.class, MAPS_LOAD_COMMAND_V1),
             entry((Class<? extends ProtocolPayload>) MapsMessages.MapsUploadRequestV1.class, MAPS_UPLOAD_REQUEST_V1),
+            entry((Class<? extends ProtocolPayload>) MapsMessages.MapsInspectRequestV1.class, MAPS_INSPECT_REQUEST_V1),
+            entry((Class<? extends ProtocolPayload>) CasesMessages.CasesReportSubmittedV1.class, CASES_REPORT_SUBMITTED_V1),
+            entry((Class<? extends ProtocolPayload>) CasesMessages.CasesNoticeCommandV1.class, CASES_NOTICE_COMMAND_V1),
+            entry((Class<? extends ProtocolPayload>) CasesMessages.CasesEvidenceRequestV1.class, CASES_EVIDENCE_REQUEST_V1),
             entry((Class<? extends ProtocolPayload>) ChatMessages.ChatMessageV1.class, CHAT_MESSAGE_V1),
             entry((Class<? extends ProtocolPayload>) ChatMessages.ChatGlobalV1.class, CHAT_GLOBAL_V1),
             entry((Class<? extends ProtocolPayload>) ChatMessages.ChatDiscordIngressCommandV1.class, CHAT_DISCORD_INGRESS_COMMAND_V1),

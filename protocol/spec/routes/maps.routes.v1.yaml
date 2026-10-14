@@ -63,3 +63,20 @@ messages:
       stream: xcore:rpc:resp:{requester}
       bindings:
         requester: rpc.requester
+  - messageType: maps.inspect.request
+    messageVersion: 1
+    kind: rpc-request
+    stream: xcore:rpc:req:{server}
+    bindings:
+      server: payload.server
+    targetScope: server
+    ttlMs: 60000
+    replayable: false
+    idempotentConsumerRecommended: false
+    owner: maps
+    response:
+      messageType: maps.inspect.response
+      messageVersion: 1
+      stream: xcore:rpc:resp:{requester}
+      bindings:
+        requester: rpc.requester
