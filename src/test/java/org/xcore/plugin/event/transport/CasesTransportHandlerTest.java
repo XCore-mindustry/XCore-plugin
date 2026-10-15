@@ -86,11 +86,13 @@ class CasesTransportHandlerTest {
     }
 
     @Test
-    void disabledFeatureDoesNotSubscribeAndQueuedWakeUpHasNoEffect() {
+    void disabledFeatureStillSubscribesAndQueuedWakeUpHasNoEffect() {
         world.secrets.cases.reports.enabled = false;
         handler.registerListeners();
+        verify(world.network).subscribe(eq(CasesNoticeCommandV1.class), any());
+        verify(world.network).subscribe(eq(CasesEvidenceRequestV1.class), any());
         handler.notice(new CasesNoticeCommandV1("survival", "n", "player", null));
-        verifyNoInteractions(world.network, notices);
+        verifyNoInteractions(notices);
         world.secrets.cases.reports.enabled = true;
         handler.notice(new CasesNoticeCommandV1("survival", "n", "player", null));
         world.config.runtime.disabledFeatures.add("reports");

@@ -48,7 +48,8 @@ public class CasesTransportHandler {
 
     public synchronized void registerListeners() {
         subscriptions.clear();
-        if (stopped || !feature.enabled()) return;
+        // Always subscribe: the feature can be toggled at runtime, and handlers check it per message.
+        if (stopped) return;
         subscriptions.subscribe(CasesNoticeCommandV1.class, this::notice);
         subscriptions.subscribe(CasesEvidenceRequestV1.class, this::evidence);
     }
