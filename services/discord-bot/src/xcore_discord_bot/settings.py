@@ -146,6 +146,9 @@ class Settings(BaseSettings):
     cases_evidence_retention_days: int = Field(
         default=180, validation_alias="CASES_EVIDENCE_RETENTION_DAYS"
     )
+    cases_reporter_cooldown_seconds: int = Field(
+        default=60, validation_alias="CASES_REPORTER_COOLDOWN_SECONDS"
+    )
     cases_notice_ttl_days: int = Field(
         default=30, validation_alias="CASES_NOTICE_TTL_DAYS"
     )

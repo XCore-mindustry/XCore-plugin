@@ -253,6 +253,24 @@ async def test_slash_unexpected_failure_uses_real_global_private_boundary(
     assert not db["case_notices"].docs or verb == "reopen"
 
 
+async def test_subject_command_refuses_a_case_that_is_not_a_complaint():
+    service, _, bot = await core(flow=DUMMY_FLOW)
+    case = await service.open(
+        kind=DUMMY_FLOW.kind,
+        origin=Origin("game", "submission", "en", "server"),
+        opener=Party(player_uuid="opener", player_pid=1, player_name="Reporter"),
+        subject=Party(player_uuid="target", player_pid=2, player_name="Target"),
+    )
+    interaction = slash_interaction(bot, CasesCog.subject, str(case.number))
+    await CasesCog.subject.callback(
+        CasesCog(bot), interaction, str(case.number), member(99, (20,))
+    )
+    assert (
+        interaction.events[-1][1] == "Only a complaint can have its staff member set."
+    )
+    assert (await service.get(case.number)).subject.player_uuid == "target"
+
+
 async def test_global_private_boundary_without_cog_marker_and_safe_delivery_failure(
     caplog,
 ):

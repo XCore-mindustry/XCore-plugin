@@ -187,6 +187,8 @@ Environment variables:
   `translator,map-maker,contributor,bug-finder,event-winner,veteran,developer`. Used by the
   badge flow.
 - `CASES_EVIDENCE_RETENTION_DAYS`: `180`. Chat evidence of a closed case is cleared after this.
+- `CASES_REPORTER_COOLDOWN_SECONDS`: `60`. Cross-server reporter cooldown. Keep it at or below every
+  server's `[cases.reports] cooldown_seconds`, or a report the server accepted is refused later.
 - `CASES_NOTICE_TTL_DAYS`: `30`. Lifetime of an undelivered in-game notice.
 - `DISCORD_MAPS_FORUM_ID`: `0`. The existing public maps forum.
 - `MAPS_TAG_WAITING`, `MAPS_TAG_ACCEPTED`, `MAPS_TAG_REJECTED`: `Waiting`, `Accepted`,

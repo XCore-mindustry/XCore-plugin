@@ -64,6 +64,7 @@ cases-user-thread-note = Звернення #{ $number } зареєстрова�
 cases-user-message = Нове повідомлення від { $name }: { $url }
 cases-registered = Звернення #{ $number } зареєстровано.
 cases-updated = Звернення #{ $number } оновлено.
+cases-subject-complaint-only = Співробітника можна вказати лише у скарзі на стафф.
 cases-found = Звернення #{ $number } · { $kind } · { $status }
 cases-outcome = Ваше звернення #{ $number } розглянуто.
 

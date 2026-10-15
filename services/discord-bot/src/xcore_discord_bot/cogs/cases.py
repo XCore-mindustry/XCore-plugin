@@ -9,7 +9,7 @@ from discord.ext import commands
 from ..cases.access import staff_roles
 from ..cases.ids import parse_case_number
 from ..cases.modals import error_text
-from ..cases.model import Party
+from ..cases.model import CaseKind, Party
 from ..cases.panel import LanguageView
 from ..i18n import t
 from ..permissions import has_any_role, head_admin_role_ids
@@ -154,8 +154,15 @@ class CasesCog(commands.Cog):
         if locale is None:
             return
         try:
+            number_value = parse_case_number(number)
+            # A report's subject is the in-game player; a Discord-only party would drop it.
+            if (await self.service.get(number_value)).kind != CaseKind.COMPLAINT:
+                await interaction.followup.send(
+                    t(locale, "cases-subject-complaint-only"), ephemeral=True
+                )
+                return
             case = await self.service.set_subject(
-                parse_case_number(number),
+                number_value,
                 interaction.user,
                 Party(discord_id=str(user.id), discord_name=user.display_name),
             )

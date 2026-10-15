@@ -62,6 +62,7 @@ cases-user-thread-note = Your request is registered as #{ $number }. Staff will 
 cases-user-message = New message from { $name }: { $url }
 cases-registered = Your request is registered as #{ $number }.
 cases-updated = Case #{ $number } updated.
+cases-subject-complaint-only = Only a complaint can have its staff member set.
 cases-found = Case #{ $number } · { $kind } · { $status }
 cases-outcome = Your request #{ $number } has been reviewed.
 

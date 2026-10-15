@@ -168,6 +168,9 @@ class Collection:
         self._unique(doc)
         self.docs.append(deepcopy(doc))
 
+    async def delete_many(self, query):
+        self.docs = [doc for doc in self.docs if not matches(doc, query)]
+
     async def find_one_and_update(
         self, query, update, *, upsert=False, return_document=ReturnDocument.BEFORE
     ):

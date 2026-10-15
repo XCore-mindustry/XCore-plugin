@@ -6,7 +6,7 @@ an open one joins it. Staff ban or mute from the card, or reject with a reason c
 issued anywhere else while the report is open closes it as handled.
 
 What this module keeps outside the case, in ``case_report_limits``: one row per reporter for the
-60 second cooldown (it names the submission that holds it, so a redelivery is never refused by
+cross-server cooldown (``CASES_REPORTER_COOLDOWN_SECONDS``) (it names the submission that holds it, so a redelivery is never refused by
 its own first attempt) and one row for the burst alert. Submission decisions have a bounded TTL. A cooldown
 row retains its last decision until the submission record is acknowledged, so a crash or
 lost write acknowledgement cannot turn a refusal into admission on redelivery.
@@ -78,7 +78,6 @@ GAME_REASONS = frozenset(
 UNRESOLVED = "subject_unresolved"
 # ``resolution.reason_code`` of a report closed by a sanction issued outside its card.
 EXTERNAL = "external"
-REPORTER_COOLDOWN_SECONDS = 60
 LIMITS = "case_report_limits"
 HISTORY_LIMIT = 10
 REPORTERS_SHOWN = 8
@@ -349,7 +348,10 @@ async def _admission_decision(service, event, reporter, *, merging: bool) -> str
             if not blocked and not held:
                 fields.update(
                     submission_id=event.submissionId,
-                    until=now + timedelta(seconds=REPORTER_COOLDOWN_SECONDS),
+                    until=now
+                    + timedelta(
+                        seconds=service.settings.cases_reporter_cooldown_seconds
+                    ),
                 )
             query = {
                 "_id": key,

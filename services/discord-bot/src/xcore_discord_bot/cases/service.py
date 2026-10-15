@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from collections.abc import Awaitable, Callable
+from collections.abc import AsyncIterator, Awaitable, Callable
+from contextlib import asynccontextmanager
 from dataclasses import asdict, replace
 from datetime import UTC, datetime, timedelta
 from typing import Any
@@ -88,7 +89,7 @@ class CaseService:
         self.players = players
         self.now = now or (lambda: datetime.now(UTC))
         self.started_at = self.now()
-        self._locks: dict[str, asyncio.Lock] = {}
+        self._locks: dict[str, tuple[asyncio.Lock, int]] = {}
         self.transport: CaseTransport = NoCaseTransport()
         self.storage_available = True
 
@@ -100,8 +101,20 @@ class CaseService:
     def set_transport(self, transport: CaseTransport) -> None:
         self.transport = transport
 
-    def _lock(self, key: str) -> asyncio.Lock:
-        return self._locks.setdefault(key, asyncio.Lock())
+    @asynccontextmanager
+    async def _lock(self, key: str) -> AsyncIterator[None]:
+        # Counted so a key is dropped once nobody holds or awaits it; keys are per case and player.
+        lock, users = self._locks.get(key, (asyncio.Lock(), 0))
+        self._locks[key] = (lock, users + 1)
+        try:
+            async with lock:
+                yield
+        finally:
+            users = self._locks[key][1] - 1
+            if users:
+                self._locks[key] = (lock, users)
+            else:
+                del self._locks[key]
 
     async def get(self, number: int) -> Case:
         case = await self.store.get(number)
@@ -973,6 +986,11 @@ class CaseService:
             except DuplicateKeyError as error:
                 # Another active case owns this dedup key; reopening must not break the index.
                 raise CaseRace() from error
+            # Outcome notice ids are per (case, player, kind): free them for the next decision
+            # and drop a stale undelivered one. The registration notice stays deduplicated.
+            await self.store.database["case_notices"].delete_many(
+                {"case_number": number, "kind": {"$ne": "report_received"}}
+            )
         # Re-renders the card, which unlocks and unarchives the post and the user thread.
         return await self.resume_creation(number)
 

@@ -711,6 +711,8 @@ async def test_reopen_runs_the_close_again_and_keeps_history():
     service, db, bot = await core(flow=DUMMY_FLOW)
     case = await opened(service, source="discord")
     await service.reject(case.number, member(), reason_code="no_evidence")
+    [rejected] = db["case_notices"].docs
+    rejected["delivered_at"] = NOW
     with pytest.raises(AccessDenied):
         await service.reopen(case.number, member())
     reopened = await service.reopen(case.number, member(200, (20,)))
@@ -723,6 +725,10 @@ async def test_reopen_runs_the_close_again_and_keeps_history():
     )
     assert final.status == CaseStatus.RESOLVED and final.progress["closed_done"]
     assert len(bot.users[42].messages) == 2 and len(db["cases"].docs) == 1
+    # The second decision reaches the game although the first notice was delivered.
+    [notice] = db["case_notices"].docs
+    assert notice["kind"] == "report_resolved" and notice["delivered_at"] is None
+    assert service._locks == {}
     assert event_types(final).count("rejected") == 1
     assert event_types(final).index("reopened") < event_types(final).index("action")
 
