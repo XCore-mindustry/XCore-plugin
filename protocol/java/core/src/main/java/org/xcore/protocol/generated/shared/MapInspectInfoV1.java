@@ -34,11 +34,22 @@ public record MapInspectInfoV1(
         if (description != null) {
             Objects.requireNonNull(description, "description must not be null");
         }
+        if (width < 0) {
+            throw new IllegalArgumentException("width must be >= 0");
+        }
+        if (height < 0) {
+            throw new IllegalArgumentException("height must be >= 0");
+        }
         if (gameMode != null) {
             Objects.requireNonNull(gameMode, "gameMode must not be null");
         }
         if (profile != null) {
             Objects.requireNonNull(profile, "profile must not be null");
+        }
+        if (spawnCount != null) {
+            if (spawnCount < 0) {
+                throw new IllegalArgumentException("spawnCount must be >= 0");
+            }
         }
         if (coresByTeam != null) {
             coresByTeam = Objects.requireNonNull(coresByTeam, "coresByTeam must not be null");
@@ -51,6 +62,11 @@ public record MapInspectInfoV1(
             }
             coresByTeam = Map.copyOf(coresByTeam);
         }
+        if (spawnGroupCount != null) {
+            if (spawnGroupCount < 0) {
+                throw new IllegalArgumentException("spawnGroupCount must be >= 0");
+            }
+        }
         if (mods != null) {
             mods = Objects.requireNonNull(mods, "mods must not be null");
             mods = List.copyOf(mods);
@@ -59,6 +75,9 @@ public record MapInspectInfoV1(
             }
         }
         Objects.requireNonNull(sha256, "sha256 must not be null");
+        if (sizeBytes < 0) {
+            throw new IllegalArgumentException("sizeBytes must be >= 0");
+        }
     }
 
     @Override

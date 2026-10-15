@@ -14,10 +14,12 @@
       "type": "string"
     },
     "built": {
-      "type": "integer"
+      "type": "integer",
+      "minimum": 0
     },
     "destroyed": {
-      "type": "integer"
+      "type": "integer",
+      "minimum": 0
     }
   }
 }

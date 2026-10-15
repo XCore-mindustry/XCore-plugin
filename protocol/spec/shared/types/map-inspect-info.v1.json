@@ -13,19 +13,24 @@
   ],
   "properties": {
     "name": {
-      "type": "string"
+      "type": "string",
+      "maxLength": 256
     },
     "author": {
-      "type": "string"
+      "type": "string",
+      "maxLength": 256
     },
     "description": {
-      "type": "string"
+      "type": "string",
+      "maxLength": 1024
     },
     "width": {
-      "type": "integer"
+      "type": "integer",
+      "minimum": 0
     },
     "height": {
-      "type": "integer"
+      "type": "integer",
+      "minimum": 0
     },
     "saveVersion": {
       "type": "integer"
@@ -40,12 +45,14 @@
       "type": "string"
     },
     "spawnCount": {
-      "type": "integer"
+      "type": "integer",
+      "minimum": 0
     },
     "coresByTeam": {
       "type": "object",
       "additionalProperties": {
-        "type": "integer"
+        "type": "integer",
+        "minimum": 0
       }
     },
     "waves": {
@@ -55,7 +62,8 @@
       "type": "boolean"
     },
     "spawnGroupCount": {
-      "type": "integer"
+      "type": "integer",
+      "minimum": 0
     },
     "dropZoneRadius": {
       "type": "number"
@@ -63,15 +71,18 @@
     "mods": {
       "type": "array",
       "items": {
-        "type": "string"
-      }
+        "type": "string",
+        "maxLength": 256
+      },
+      "maxItems": 32
     },
     "sha256": {
       "type": "string",
       "pattern": "^[a-fA-F0-9]{64}$"
     },
     "sizeBytes": {
-      "type": "integer"
+      "type": "integer",
+      "minimum": 0
     }
   }
 }

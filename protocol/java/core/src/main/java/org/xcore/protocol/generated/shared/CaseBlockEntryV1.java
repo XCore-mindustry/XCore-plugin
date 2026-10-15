@@ -12,6 +12,12 @@ public record CaseBlockEntryV1(
 ) implements ProtocolPayload {
     public CaseBlockEntryV1 {
         Objects.requireNonNull(block, "block must not be null");
+        if (built < 0) {
+            throw new IllegalArgumentException("built must be >= 0");
+        }
+        if (destroyed < 0) {
+            throw new IllegalArgumentException("destroyed must be >= 0");
+        }
     }
 
     @Override

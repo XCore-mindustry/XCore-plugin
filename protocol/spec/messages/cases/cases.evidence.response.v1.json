@@ -36,7 +36,8 @@
       "type": "array",
       "items": {
         "$ref": "urn:xcore:protocol:shared:types:case-chat-line:v1"
-      }
+      },
+      "maxItems": 30
     },
     "blockSummary": {
       "$ref": "urn:xcore:protocol:shared:types:case-block-summary:v1"

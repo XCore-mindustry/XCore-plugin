@@ -201,7 +201,11 @@ class CaseBlockEntryV1:
     def __post_init__(self) -> None:
         _expect_str(self.block, 'block')
         _expect_int(self.built, 'built')
+        if self.built < 0:
+            raise ValueError("built must be >= 0")
         _expect_int(self.destroyed, 'destroyed')
+        if self.destroyed < 0:
+            raise ValueError("destroyed must be >= 0")
 
     @classmethod
     def from_payload(cls, payload: Mapping[str, Any]) -> "CaseBlockEntryV1":
@@ -704,7 +708,11 @@ class MapInspectInfoV1:
         if self.description is not None:
             _expect_str(self.description, 'description')
         _expect_int(self.width, 'width')
+        if self.width < 0:
+            raise ValueError("width must be >= 0")
         _expect_int(self.height, 'height')
+        if self.height < 0:
+            raise ValueError("height must be >= 0")
         if self.saveVersion is not None:
             _expect_int(self.saveVersion, 'saveVersion')
         if self.build is not None:
@@ -715,6 +723,8 @@ class MapInspectInfoV1:
             _expect_str(self.profile, 'profile')
         if self.spawnCount is not None:
             _expect_int(self.spawnCount, 'spawnCount')
+            if self.spawnCount < 0:
+                raise ValueError("spawnCount must be >= 0")
         if self.coresByTeam is not None:
             _expect_json_object(self.coresByTeam, 'coresByTeam', allowed_types=('integer',), allow_null=False)
         if self.waves is not None:
@@ -723,6 +733,8 @@ class MapInspectInfoV1:
             _expect_bool(self.waveTimer, 'waveTimer')
         if self.spawnGroupCount is not None:
             _expect_int(self.spawnGroupCount, 'spawnGroupCount')
+            if self.spawnGroupCount < 0:
+                raise ValueError("spawnGroupCount must be >= 0")
         if self.dropZoneRadius is not None:
             _expect_number(self.dropZoneRadius, 'dropZoneRadius')
         if self.mods is not None:
@@ -734,6 +746,8 @@ class MapInspectInfoV1:
         if re.search('^[a-fA-F0-9]{64}$', self.sha256) is None:
             raise ValueError("sha256 does not match its pattern")
         _expect_int(self.sizeBytes, 'sizeBytes')
+        if self.sizeBytes < 0:
+            raise ValueError("sizeBytes must be >= 0")
 
     @classmethod
     def from_payload(cls, payload: Mapping[str, Any]) -> "MapInspectInfoV1":
