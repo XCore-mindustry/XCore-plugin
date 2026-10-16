@@ -293,18 +293,29 @@ def case_view(registry: FlowRegistry, case: Case, locale: str) -> discord.ui.Vie
     return view
 
 
+PANEL_ORDER = ("report", "appeal", "badge", "complaint")
+
+
+def panel_flows(registry: FlowRegistry) -> list:
+    """Active flows with a panel button, the most used first."""
+    flows = [flow for flow in registry.active_flows() if flow.panel]
+    return sorted(
+        flows,
+        key=lambda f: PANEL_ORDER.index(f.kind) if f.kind in PANEL_ORDER else 99,
+    )
+
+
 def panel_view(registry: FlowRegistry) -> discord.ui.View:
     """One message for everyone: emoji and an English word on every button (8.6)."""
     view = discord.ui.View(timeout=None)
-    for flow in registry.active_flows():
-        if flow.panel:
-            view.add_item(
-                PanelButton(
-                    flow.kind,
-                    label=t("en", flow.panel.label_key)[:80],
-                    emoji=flow.panel.emoji or "📝",
-                )
+    for flow in panel_flows(registry):
+        view.add_item(
+            PanelButton(
+                flow.kind,
+                label=t("en", flow.panel.label_key)[:80],
+                emoji=flow.panel.emoji or "📝",
             )
+        )
     if view.children:
         view.add_item(PanelButton(label=t("en", "cases-panel-language")))
     return view

@@ -68,7 +68,12 @@ cases-outcome = Your request #{ $number } has been reviewed.
 
 # The public panel
 
-cases-panel-text = Choose what you need with the buttons below. Staff will review your request in a private thread. Press 🌐 to choose the language of replies.
+cases-panel-title = Contact the staff
+cases-panel-text = Staff will answer in a private thread that only you and the staff can see. Press 🌐 **Language** to choose the language of replies.
+cases-panel-hint-report = a player is breaking the rules
+cases-panel-hint-appeal = you think your ban was a mistake
+cases-panel-hint-badge = ask for a badge you have earned
+cases-panel-hint-complaint = a staff member treated you unfairly
 cases-panel-language = Language
 cases-panel-empty = No request type with a panel button is enabled.
 cases-panel-published = Cases panel updated: { $url }

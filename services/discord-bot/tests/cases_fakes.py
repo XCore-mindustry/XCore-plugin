@@ -299,6 +299,7 @@ class Message:
         self.content = changes.get("content", self.content)
         if "embed" in changes:
             self.embeds = [changes["embed"]]
+        self.embeds = changes.get("embeds", self.embeds)
         self.view = changes.get("view", self.view)
         self.bot.failures.hit(label, after=True)
         return self
@@ -350,6 +351,7 @@ class TextChannel:
             kwargs.get("embed"),
             kwargs.get("view"),
         )
+        message.embeds = kwargs.get("embeds", message.embeds)
         self.messages.append(message)
         self.bot.failures.hit("panel_send", after=True)
         return message
