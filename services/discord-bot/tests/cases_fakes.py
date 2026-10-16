@@ -450,6 +450,7 @@ class Thread(TextChannel):
             kwargs.get("embed"),
             kwargs.get("view"),
         )
+        message.file = kwargs.get("file")
         self.messages.append(message)
         self.bot.failures.hit(label, after=True)
         return message

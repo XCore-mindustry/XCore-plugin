@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 from dataclasses import replace
 from datetime import timedelta
 from types import SimpleNamespace
@@ -17,7 +18,7 @@ from cases_maps_fakes import (
     map_core,
     reviewer,
 )
-from test_cases_msav import msav
+from test_cases_msav import msav, v13_assets
 
 from xcore_discord_bot.cases.flows import maps
 from xcore_discord_bot.cases.model import (
@@ -187,6 +188,27 @@ async def test_deep_checks_never_use_mismatched_or_malformed_inspection(mutation
     if mutation in {"hash", "size"}:
         with pytest.raises(ActionFailed):
             await do_accept(service, case)
+
+
+async def test_data_patches_are_attached_once_as_json():
+    service, _, _, _, _, _, _, thread, _, attachment = await map_core()
+    attachment.data = msav(
+        meta={"name": "Arena"},
+        tail=v13_assets((0, "patch.json", b'{"rules": {"x": 1}}'), (0, "raw", b"a: b")),
+    )
+    attachment.size = len(attachment.data)
+    service.transport.rpc_inspect_map = AsyncMock(
+        return_value=inspect_payload(attachment)
+    )
+    await maps.on_thread_create(service, thread)
+    case = await service.store.by_submission(f"map:{thread.id}")
+    await maps._refresh(service, await service.get(case.number))
+    sent = [m for m in thread.messages if getattr(m, "file", None)]
+    assert len(sent) == 1 and sent[0].file.filename == "arena-patches.json"
+    assert json.loads(sent[0].file.fp.read()) == {
+        "patch.json": {"rules": {"x": 1}},
+        "raw": "a: b",
+    }
 
 
 async def test_unreadable_map_is_a_finding_not_a_pending_check():

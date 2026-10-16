@@ -5,7 +5,12 @@ import zlib
 
 import pytest
 
-from xcore_discord_bot.cases.msav import MAX_INFLATED_BYTES, InvalidMsav, validate_msav
+from xcore_discord_bot.cases.msav import (
+    MAX_INFLATED_BYTES,
+    InvalidMsav,
+    data_patches,
+    validate_msav,
+)
 
 
 def mutf8(text):
@@ -132,3 +137,44 @@ def test_msav_rejects_duplicate_metadata_and_unconsumed_region_bytes():
     data = zlib.compress(b"MSAV" + struct.pack(">ii", 13, len(region)) + region)
     with pytest.raises(InvalidMsav, match="meta"):
         validate_msav(data, "a.msav")
+
+
+def region(body):
+    return struct.pack(">i", len(body)) + body
+
+
+def blob(data):
+    return struct.pack(">i", len(data)) + data
+
+
+def v13_assets(*assets):
+    """(type, path, embedded data or None) per asset."""
+    body = struct.pack(">ii", 0, len(assets))
+    for kind, path, data in assets:
+        body += struct.pack(">B", kind) + mutf8(path)
+        body += b"\x01" + blob(data) if data is not None else b"\x00" + bytes(32)
+    return region(body)
+
+
+def test_data_patches_of_each_asset_format():
+    patch = b'{"block": {"duo": {"health": 1}}}'
+    assert data_patches(
+        msav(
+            tail=v13_assets(
+                (0, "patch.json", patch),
+                (1, "content/unit.hjson", None),
+                (3, "image.png", b"png"),
+            )
+            + b"rest of the map"
+        )
+    ) == {"patch.json": patch.decode(), "content/unit.hjson": None}
+    v12 = region(struct.pack(">ii", 0, 1) + blob(b"a") + struct.pack(">i", 0))
+    assert data_patches(msav(version=12, tail=v12)) == {"patch-1": "a"}
+    v11 = region(b"content header") + region(b"\x02" + blob(b"a") + blob(b"b"))
+    assert data_patches(msav(version=11, tail=v11)) == {"patch-1": "a", "patch-2": "b"}
+    assert data_patches(msav(tail=v13_assets((3, "image.png", b"png")))) == {}
+    assert data_patches(msav(version=10)) == {}
+    with pytest.raises(InvalidMsav):
+        data_patches(msav(tail=v13_assets((0, "patch.json", b"x"))[:-1]))
+    with pytest.raises(InvalidMsav):
+        data_patches(msav(tail=region(struct.pack(">ii", 0, 1))))

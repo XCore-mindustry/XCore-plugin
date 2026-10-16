@@ -2,6 +2,7 @@
 
 The remaining inflated bytes are counted and discarded, never deserialized. Gameplay
 validation belongs to the server's detached inspection, not this reader.
+``data_patches`` also reads the asset region, to show reviewers the patches as text.
 """
 
 from __future__ import annotations
@@ -134,3 +135,79 @@ def validate_msav(
     if pos != length:
         raise InvalidMsav("meta")
     return MsavInfo(version, meta, hashlib.sha256(data).hexdigest(), len(data))
+
+
+def data_patches(data: bytes) -> dict[str, str | None]:
+    """Gameplay patch and content assets of a validated map, path -> text.
+
+    Only the regions up to the assets are inflated. An asset saved as a hash only
+    (not embedded in the file) maps to ``None``.
+    """
+    inflater = zlib.decompressobj()
+    buf = bytearray()
+    source = data
+
+    def need(size: int) -> None:
+        nonlocal source
+        if size > MAX_INFLATED_BYTES:
+            raise InvalidMsav("inflation")
+        while len(buf) < size:
+            block = inflater.decompress(source, size - len(buf))
+            source = inflater.unconsumed_tail
+            if not block and not source:
+                raise InvalidMsav("truncated")
+            buf.extend(block)
+
+    def region(start: int) -> tuple[int, int]:
+        need(start + 4)
+        (length,) = struct.unpack_from(">i", buf, start)
+        if length < 0:
+            raise InvalidMsav("assets")
+        need(start + 4 + length)
+        return start + 4, start + 4 + length
+
+    try:
+        need(8)
+        version = struct.unpack_from(">i", buf, 4)[0]
+        if version < 11:
+            return {}
+        _, end = region(8)  # metadata
+        if version == 11:
+            _, end = region(end)  # content header
+        start, end = region(end)
+        r = memoryview(buf)[start:end]
+        pos = 0
+
+        def take(size: int) -> bytes:
+            nonlocal pos
+            if pos + size > len(r):
+                raise InvalidMsav("assets")
+            pos += size
+            return bytes(r[pos - size : pos])
+
+        def number(fmt: str) -> int:
+            return struct.unpack(fmt, take(struct.calcsize(fmt)))[0]
+
+        def text() -> str:
+            return take(number(">i")).decode("utf-8", "replace")
+
+        if version == 11:
+            return {f"patch-{i + 1}": text() for i in range(number(">B"))}
+        number(">i")  # asset format revision
+        count = number(">i")
+        if version == 12:
+            return {f"patch-{i + 1}": text() for i in range(count)}
+        found: dict[str, str | None] = {}
+        for _ in range(count):
+            kind = number(">B")
+            path = _mutf8(take(number(">H")))
+            if number(">B"):  # embedded
+                value = text()
+            else:
+                take(32)  # hash of a file kept outside the map
+                value = None
+            if kind <= 1:  # patch, content
+                found[path] = value
+        return found
+    except (struct.error, zlib.error) as error:
+        raise InvalidMsav("assets") from error
