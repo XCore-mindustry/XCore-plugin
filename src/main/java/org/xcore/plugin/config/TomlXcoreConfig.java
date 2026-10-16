@@ -359,7 +359,8 @@ public class TomlXcoreConfig implements SelfNormalizing {
         public List<String> messages = new ArrayList<>(List.of(
                 "announcement-hub",
                 "announcement-discord",
-                "announcement-help"
+                "announcement-help",
+                "announcement-report"
         ));
 
         public void normalize() {
@@ -373,7 +374,8 @@ public class TomlXcoreConfig implements SelfNormalizing {
                 messages = new ArrayList<>(List.of(
                         "announcement-hub",
                         "announcement-discord",
-                        "announcement-help"
+                        "announcement-help",
+                        "announcement-report"
                 ));
             }
         }

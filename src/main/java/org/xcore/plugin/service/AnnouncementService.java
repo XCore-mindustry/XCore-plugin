@@ -31,7 +31,8 @@ public class AnnouncementService {
     public static final List<String> DEFAULT_ANNOUNCEMENTS = List.of(
             "announcement-hub",
             "announcement-discord",
-            "announcement-help"
+            "announcement-help",
+            "announcement-report"
     );
 
     @Inject

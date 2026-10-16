@@ -277,18 +277,28 @@ commands-announcement-description = Odešle pravidelné oznámení podle klíče
 commands-audit-description = Zobrazí historii a akce týmu a moderace.
 ban-content = [scarlet]⚠ Zabanován[]
     [accent]{ $nickname }[white] — na tomto serveru máš trvalý ban.
+    [orange]» [accent]ID hráče: [white]{ $pid }
     [lightgray]Pro odvolání navštiv Discord kanál [gray]{ support-channel }[]:
     [cyan]{ $discordUrl }
 ban-cancelled = [accent]Ban hráče [scarlet]{ $nickname }[accent] byl zrušen
 tempban-content = [scarlet]⚠ Zabanován[]
-    [accent]{ $nickname }[white] — na tomto serveru máš dočasný ban.
+    { $permanent ->
+        [true] [accent]{ $nickname }[white] — na tomto serveru máš trvalý ban.
+       *[false] [accent]{ $nickname }[white] — na tomto serveru máš dočasný ban.
+    }
+    [orange]» [accent]Ban: [white]{ $banId }
+    [orange]» [accent]ID hráče: [white]{ $pid }
     { "" }
     [orange]» [accent]Admin: [white]{ $adminName }
     [orange]» [accent]Důvod: [gold]{ $reason }
-    [orange]» [accent]Zbývá: { DURATION($duration, style: "full", colored: "true", maxUnits: 2) }
-    [orange]» [accent]Vyprší: [white]{ DATETIME($expireDate, dateStyle: "medium", timeStyle: "short") }
+    { $permanent ->
+        [true] [orange]» [accent]{ audit-menu-duration-permanent }[]
+       *[false] [orange]» [accent]Zbývá: { DURATION($duration, style: "full", colored: "true", maxUnits: 2) }
+            { "" }[orange]» [accent]Vyprší: [white]{ DATETIME($expireDate, dateStyle: "medium", timeStyle: "short") }
+    }
     { "" }
     [lightgray]Pro odvolání navštiv Discord kanál [gray]{ support-channel }[]:
+    [lightgray]V odvolání uveďte { $banId }.
     [cyan]{ $discordUrl }
 tempban-player-banned = [scarlet] Admin { $adminName }[scarlet] zabanoval hráče [gray]'[]{ $playerName }[gray]'
 you-are-muted-by =
@@ -311,7 +321,7 @@ kick-admintools-outdated =
     [scarlet]Tvoje verze AdminTools: [grey]{ $version }[]
     { "" }
     [cyan]Aktualizuj AdminTools, aby ses mohl připojit k tomuto serveru.
-support-channel = #reports-appeals
+support-channel = #tickets
 # ==============================================================================
 # Voting (VoteKick)
 # ==============================================================================
@@ -1251,6 +1261,9 @@ announcement-discord =
 announcement-help =
     [gold]★ [accent]Nápověda XCore [lightgray]» [white]Potřebuješ pomoc nebo seznam příkazů?
     [lightgray]Napiš [accent]/help[lightgray] a uvidíš všechny dostupné příkazy!
+announcement-report =
+    [gold]★ [accent]Nahlášení XCore [lightgray]» [white]Někdo griefuje nebo porušuje pravidla?
+    [lightgray]Nahlas ho příkazem [accent]/report[lightgray] — tým se na to podívá!
 
 
 error-only-players = [scarlet]⚠ Tento příkaz mohou používat pouze hráči.

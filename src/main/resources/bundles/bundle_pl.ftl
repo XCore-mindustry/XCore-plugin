@@ -279,18 +279,28 @@ commands-announcement-description = Nadaje cykliczne ogłoszenie po kluczu albo 
 commands-audit-description = Pokazuje historię i działania administracji oraz moderacji.
 ban-content = [scarlet]⚠ Zbanowany[]
     [accent]{ $nickname }[white] — masz stały ban na tym serwerze.
+    [orange]» [accent]ID gracza: [white]{ $pid }
     [lightgray]Aby się odwołać, odwiedź kanał Discord [gray]{ support-channel }[]:
     [cyan]{ $discordUrl }
 ban-cancelled = [accent]Ban gracza [scarlet]{ $nickname }[accent] został anulowany
 tempban-content = [scarlet]⚠ Zbanowany[]
-    [accent]{ $nickname }[white] — masz tymczasowy ban na tym serwerze.
+    { $permanent ->
+        [true] [accent]{ $nickname }[white] — masz stały ban na tym serwerze.
+       *[false] [accent]{ $nickname }[white] — masz tymczasowy ban na tym serwerze.
+    }
+    [orange]» [accent]Blokada: [white]{ $banId }
+    [orange]» [accent]ID gracza: [white]{ $pid }
     { "" }
     [orange]» [accent]Admin: [white]{ $adminName }
     [orange]» [accent]Powód: [gold]{ $reason }
-    [orange]» [accent]Pozostało: { DURATION($duration, style: "full", colored: "true", maxUnits: 2) }
-    [orange]» [accent]Wygasa: [white]{ DATETIME($expireDate, dateStyle: "medium", timeStyle: "short") }
+    { $permanent ->
+        [true] [orange]» [accent]{ audit-menu-duration-permanent }[]
+       *[false] [orange]» [accent]Pozostało: { DURATION($duration, style: "full", colored: "true", maxUnits: 2) }
+            { "" }[orange]» [accent]Wygasa: [white]{ DATETIME($expireDate, dateStyle: "medium", timeStyle: "short") }
+    }
     { "" }
     [lightgray]Aby się odwołać, odwiedź kanał Discord [gray]{ support-channel }[]:
+    [lightgray]Podaj { $banId } w odwołaniu.
     [cyan]{ $discordUrl }
 tempban-player-banned = [scarlet] Admin { $adminName }[scarlet] zbanował gracza [gray]'[]{ $playerName }[gray]'
 you-are-muted-by =
@@ -313,7 +323,7 @@ kick-admintools-outdated =
     [scarlet]Twoja wersja AdminTools: [grey]{ $version }[]
     { "" }
     [cyan]Zaktualizuj AdminTools, aby dołączyć do tego serwera.
-support-channel = #reports-appeals
+support-channel = #tickets
 # ==============================================================================
 # Voting (VoteKick)
 # ==============================================================================
@@ -1263,6 +1273,9 @@ announcement-discord =
 announcement-help =
     [gold]★ [accent]Pomoc XCore [lightgray]» [white]Potrzebujesz pomocy lub listy komend?
     [lightgray]Wpisz [accent]/help[lightgray], aby zobaczyć wszystkie dostępne komendy!
+announcement-report =
+    [gold]★ [accent]Zgłoszenia XCore [lightgray]» [white]Ktoś griefuje lub łamie zasady?
+    [lightgray]Zgłoś go komendą [accent]/report[lightgray] — administracja to sprawdzi!
 
 
 error-only-players = [scarlet]⚠ To polecenie może użyć tylko gracz.

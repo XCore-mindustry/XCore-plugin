@@ -275,18 +275,28 @@ commands-announcement-description = Broadcasts a periodic announcement by key, o
 commands-audit-description = View staff and moderation audit history and actions.
 ban-content = [scarlet]⚠ Banned[]
     [accent]{ $nickname }[white] — you are permanently banned from this server.
+    [orange]» [accent]Player ID: [white]{ $pid }
     [lightgray]To appeal, visit Discord channel [gray]{ support-channel }[]:
     [cyan]{ $discordUrl }
 ban-cancelled = [accent]Player [scarlet]{ $nickname }[accent] ban has been cancelled
 tempban-content = [scarlet]⚠ Banned[]
-    [accent]{ $nickname }[white] — you are temporarily banned from this server.
+    { $permanent ->
+        [true] [accent]{ $nickname }[white] — you are permanently banned from this server.
+       *[false] [accent]{ $nickname }[white] — you are temporarily banned from this server.
+    }
+    [orange]» [accent]Ban: [white]{ $banId }
+    [orange]» [accent]Player ID: [white]{ $pid }
     { "" }
     [orange]» [accent]Admin: [white]{ $adminName }
     [orange]» [accent]Reason: [gold]{ $reason }
-    [orange]» [accent]Time left: { DURATION($duration, style: "full", colored: "true", maxUnits: 2) }
-    [orange]» [accent]Expires: [white]{ DATETIME($expireDate, dateStyle: "medium", timeStyle: "short") }
+    { $permanent ->
+        [true] [orange]» [accent]{ audit-menu-duration-permanent }[]
+       *[false] [orange]» [accent]Time left: { DURATION($duration, style: "full", colored: "true", maxUnits: 2) }
+            { "" }[orange]» [accent]Expires: [white]{ DATETIME($expireDate, dateStyle: "medium", timeStyle: "short") }
+    }
     { "" }
     [lightgray]To appeal, visit Discord channel [gray]{ support-channel }[]:
+    [lightgray]Quote { $banId } in your appeal.
     [cyan]{ $discordUrl }
 tempban-player-banned = [scarlet] Admin { $adminName }[scarlet] banned player [gray]'[]{ $playerName }[gray]'
 you-are-muted-by =
@@ -309,7 +319,58 @@ kick-admintools-outdated =
     [scarlet]Your AdminTools version: [grey]{ $version }[]
     { "" }
     [cyan]Please update your AdminTools to join this server.
-support-channel = #reports-appeals
+support-channel = #tickets
+# ==============================================================================
+# Cases: player reports, in-game notices and the /report menu
+# ==============================================================================
+report-menu-title = [orange]{ -xcore } — Report a player
+report-menu-pick-player = Pick a player
+report-menu-left-recently = Left recently
+report-menu-left-ago = { $minutes } min ago
+report-menu-empty = Nobody to report
+report-menu-staff-hint = [lightgray]Complaints about staff go through Discord.
+report-menu-pick-reason = Pick a reason
+report-menu-comment = Comment (optional)
+report-menu-comment-required = A comment is required for "Other".
+report-menu-confirm-title = Confirm report
+report-menu-confirm-note = [lightgray]Recent chat and building history are attached. False reports are punished.
+report-menu-next = Next
+report-menu-back = Back
+report-menu-send = Send
+report-menu-close = Close
+report-result-sent = [green]Report sent. Thank you!
+report-result-cooldown = [scarlet]Wait [accent]{ $seconds } s[scarlet] before the next report.
+report-result-same-target = [scarlet]You have already reported this player recently.
+report-result-daily-limit = [scarlet]Daily report limit reached. Try again tomorrow.
+report-result-invalid-target = [scarlet]This player cannot be reported.
+report-result-playtime = [scarlet]Play for another [accent]{ $minutes } min[scarlet] before sending reports.
+report-result-disabled = [scarlet]Reports are disabled on this server.
+report-result-failed = [scarlet]Could not send the report. Try again.
+report-reason-griefing = Griefing
+report-reason-toxicity = Toxicity
+report-reason-cheating = Cheating
+report-reason-nsfw = NSFW
+report-reason-evasion = Ban evasion
+report-reason-other = Other
+case-notice-report-received = [lightgray]Report registered as [accent]#{ $number }[lightgray]. Thank you!
+case-notice-report-resolved = [lightgray]Report [accent]#{ $number }[lightgray] reviewed: [green]action was taken[lightgray]. Thank you.
+case-notice-report-rejected =
+    { $reason ->
+        [no_violation] [lightgray]Report [accent]#{ $number }[lightgray] reviewed: no rule violation was found. Thank you.
+        [no_evidence] [lightgray]Report [accent]#{ $number }[lightgray] reviewed: there was not enough evidence. Thank you.
+        [already_handled] [lightgray]Report [accent]#{ $number }[lightgray] closed: this had already been dealt with. Thank you.
+        [duplicate] [lightgray]Report [accent]#{ $number }[lightgray] closed: this had already been reported. Thank you.
+        [abuse] [lightgray]Report [accent]#{ $number }[lightgray] rejected: [scarlet]the report itself broke the server rules.
+       *[other] [lightgray]Report [accent]#{ $number }[lightgray] reviewed: no action was taken. Thank you.
+    }
+case-notice-report-not-accepted = [scarlet]Your report was not accepted.
+case-notice-appeal-accepted = [lightgray]Appeal [accent]#{ $number }[lightgray] accepted: the ban was lifted.
+case-notice-appeal-shortened = [lightgray]Appeal [accent]#{ $number }[lightgray] accepted: the ban was shortened.
+case-notice-badge-granted = [lightgray]Badge request [accent]#{ $number }[lightgray] approved: [green]{ $badge }[lightgray] granted.
+case-notice-badge-rejected = [lightgray]Badge request [accent]#{ $number }[lightgray] was rejected.
+case-notice-map-accepted = [lightgray]Map review [accent]#{ $number }[lightgray]: [green]{ $map }[lightgray] was accepted.
+case-notice-map-rejected = [lightgray]Map review [accent]#{ $number }[lightgray]: [scarlet]{ $map }[lightgray] was rejected.
+case-notice-complaint-closed = [lightgray]Complaint [accent]#{ $number }[lightgray] is closed. Thank you.
 # ==============================================================================
 # Voting (VoteKick)
 # ==============================================================================
@@ -1239,6 +1300,9 @@ announcement-discord =
 announcement-help =
     [gold]★ [accent]XCore Help [lightgray]» [white]Need assistance or command list?
     [lightgray]Type [accent]/help[lightgray] to view all available commands!
+announcement-report =
+    [gold]★ [accent]XCore Reports [lightgray]» [white]Someone griefing or breaking the rules?
+    [lightgray]Report them with [accent]/report[lightgray] — staff will take a look!
 
 
 error-only-players = [scarlet]⚠ This command can only be used by a player.

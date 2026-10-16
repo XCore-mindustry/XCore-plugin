@@ -2,6 +2,7 @@ package org.xcore.plugin.database.repository;
 
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.Filters;
+import com.mongodb.client.model.IndexOptions;
 import com.mongodb.client.model.Projections;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
@@ -52,6 +53,7 @@ public class AuditRecordRepository extends DataRepository<AuditRecord> {
                 .append("created_at_epoch_ms", -1)
                 .append("audit_id", -1));
         collection.createIndex(new Document("origin.request_id", 1));
+        collection.createIndex(new Document("details.extra.ban_id", 1), new IndexOptions().sparse(true));
         collection.createIndex(new Document("related_audit_id", 1));
         collection.createIndex(new Document("supersedes_audit_id", 1));
         collection.createIndex(new Document("integrity.dedupe_key", 1));

@@ -272,18 +272,28 @@ commands-announcement-description = Sendet eine regelmäßige Ankündigung nach 
 commands-audit-description = Zeigt den Verlauf und die Aktionen von Team und Moderation.
 ban-content = [scarlet]⚠ Gesperrt[]
     [accent]{ $nickname }[white] — du bist dauerhaft von diesem Server gesperrt.
+    [orange]» [accent]Spieler-ID: [white]{ $pid }
     [lightgray]Für einen Einspruch besuche den Discord-Kanal [gray]{ support-channel }[]:
     [cyan]{ $discordUrl }
 ban-cancelled = [accent]Die Sperre von [scarlet]{ $nickname }[accent] wurde aufgehoben
 tempban-content = [scarlet]⚠ Gesperrt[]
-    [accent]{ $nickname }[white] — du bist vorübergehend von diesem Server gesperrt.
+    { $permanent ->
+        [true] [accent]{ $nickname }[white] — du bist dauerhaft von diesem Server gesperrt.
+       *[false] [accent]{ $nickname }[white] — du bist vorübergehend von diesem Server gesperrt.
+    }
+    [orange]» [accent]Sperre: [white]{ $banId }
+    [orange]» [accent]Spieler-ID: [white]{ $pid }
     { "" }
     [orange]» [accent]Admin: [white]{ $adminName }
     [orange]» [accent]Grund: [gold]{ $reason }
-    [orange]» [accent]Verbleibend: { DURATION($duration, style: "full", colored: "true", maxUnits: 2) }
-    [orange]» [accent]Endet: [white]{ DATETIME($expireDate, dateStyle: "medium", timeStyle: "short") }
+    { $permanent ->
+        [true] [orange]» [accent]{ audit-menu-duration-permanent }[]
+       *[false] [orange]» [accent]Verbleibend: { DURATION($duration, style: "full", colored: "true", maxUnits: 2) }
+            { "" }[orange]» [accent]Endet: [white]{ DATETIME($expireDate, dateStyle: "medium", timeStyle: "short") }
+    }
     { "" }
     [lightgray]Für einen Einspruch besuche den Discord-Kanal [gray]{ support-channel }[]:
+    [lightgray]Nenne { $banId } im Einspruch.
     [cyan]{ $discordUrl }
 tempban-player-banned = [scarlet] Admin { $adminName }[scarlet] hat den Spieler [gray]'[]{ $playerName }[gray]' gesperrt
 you-are-muted-by =
@@ -306,7 +316,7 @@ kick-admintools-outdated =
     [scarlet]Deine AdminTools-Version: [grey]{ $version }[]
     { "" }
     [cyan]Bitte aktualisiere AdminTools, um diesem Server beizutreten.
-support-channel = #reports-appeals
+support-channel = #tickets
 # ==============================================================================
 # Voting (VoteKick)
 # ==============================================================================
@@ -1236,6 +1246,9 @@ announcement-discord =
 announcement-help =
     [gold]★ [accent]XCore-Hilfe [lightgray]» [white]Brauchst du Hilfe oder die Befehlsliste?
     [lightgray]Gib [accent]/help[lightgray] ein, um alle verfügbaren Befehle zu sehen!
+announcement-report =
+    [gold]★ [accent]XCore Meldungen [lightgray]» [white]Jemand griefet oder bricht die Regeln?
+    [lightgray]Melde ihn mit [accent]/report[lightgray] — das Team kümmert sich darum!
 
 
 error-only-players = [scarlet]⚠ Dieser Befehl kann nur von Spielern verwendet werden.

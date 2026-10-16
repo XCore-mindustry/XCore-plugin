@@ -7,11 +7,12 @@ import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import mindustry.gen.Groups;
 import mindustry.gen.Player;
+import org.xcore.plugin.cases.RecentChatBuffer;
+import org.xcore.plugin.common.PLog;
 import org.xcore.plugin.concurrent.Async;
 import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.localization.TranslationProvider;
 import org.xcore.plugin.localization.TranslationResult;
-import org.xcore.plugin.common.PLog;
 import org.xcore.plugin.session.SessionService;
 
 import java.util.ArrayList;
@@ -31,6 +32,8 @@ public class TranslatorService {
     private final TranslationMetricsService translationMetricsService;
     private final Async async;
 
+    private final RecentChatBuffer recentChat;
+
     @Inject
     public TranslatorService(TomlXcoreConfig config,
                              SessionService sessionService,
@@ -39,7 +42,9 @@ public class TranslatorService {
                              TranslationFallbackService translationFallbackService,
                              TranslationCacheService translationCacheService,
                              TranslationMetricsService translationMetricsService,
-                             Async async) {
+                             Async async,
+                             RecentChatBuffer recentChat) {
+        this.recentChat = recentChat;
         this.config = config;
         this.sessionService = sessionService;
         this.chatFormatService = chatFormatService;
@@ -48,6 +53,14 @@ public class TranslatorService {
         this.translationCacheService = translationCacheService;
         this.translationMetricsService = translationMetricsService;
         this.async = async;
+    }
+
+    public TranslatorService(TomlXcoreConfig config, SessionService sessionService,
+                             ChatFormatService chatFormatService, ClientCompatibilityService clientCompatibilityService,
+                             TranslationFallbackService translationFallbackService, TranslationCacheService translationCacheService,
+                             TranslationMetricsService translationMetricsService, Async async) {
+        this(config, sessionService, chatFormatService, clientCompatibilityService, translationFallbackService,
+                translationCacheService, translationMetricsService, async, null);
     }
 
     public void translate(String text, String from, String to, Cons<String> result, Runnable error) {
@@ -152,6 +165,7 @@ public class TranslatorService {
     private record TeamRecipient(Player player, String message, boolean foosCompatible) {}
 
     public void translateTeamChat(Player author, String text) {
+        if (recentChat != null) recentChat.record(author, text, true);
         Map<String, List<TeamRecipient>> langToRecipients = new LinkedHashMap<>();
 
         for (var session : sessionService.findByTeam(author.team())) {

@@ -254,18 +254,28 @@ commands-announcement-description = Надіслати періодичне ог
 commands-audit-description = Відкрити журнал аудиту дій персоналу та модераторів.
 ban-content = [scarlet]⚠ Доступ заборонено[]
     [accent]{ $nickname }[white] — вас назавжди заблоковано на цьому сервері.
+    [orange]» [accent]ID гравця: [white]{ $pid }
     [lightgray]Щоб оскаржити блокування, перейдіть у Discord-канал [gray]{ support-channel }[]:
     [cyan]{ $discordUrl }
 ban-cancelled = [accent]Блокування гравця [scarlet]{ $nickname }[accent] було скасовано
 tempban-content = [scarlet]⚠ Доступ заборонено[]
-    [accent]{ $nickname }[white] — вас тимчасово заблоковано на цьому сервері.
+    { $permanent ->
+        [true] [accent]{ $nickname }[white] — вас назавжди заблоковано на цьому сервері.
+       *[false] [accent]{ $nickname }[white] — вас тимчасово заблоковано на цьому сервері.
+    }
+    [orange]» [accent]Блокування: [white]{ $banId }
+    [orange]» [accent]ID гравця: [white]{ $pid }
     { "" }
     [orange]» [accent]Адміністратор: [white]{ $adminName }
     [orange]» [accent]Причина: [gold]{ $reason }
-    [orange]» [accent]До розблокування: { DURATION($duration, style: "full", colored: "true", maxUnits: 2) }
-    [orange]» [accent]Спливає: [white]{ DATETIME($expireDate, dateStyle: "medium", timeStyle: "short") }
+    { $permanent ->
+        [true] [orange]» [accent]{ audit-menu-duration-permanent }[]
+       *[false] [orange]» [accent]До розблокування: { DURATION($duration, style: "full", colored: "true", maxUnits: 2) }
+            { "" }[orange]» [accent]Спливає: [white]{ DATETIME($expireDate, dateStyle: "medium", timeStyle: "short") }
+    }
     { "" }
     [lightgray]Щоб оскаржити блокування, перейдіть у Discord-канал [gray]{ support-channel }[]:
+    [lightgray]Вкажіть { $banId } у зверненні.
     [cyan]{ $discordUrl }
 tempban-player-banned = [scarlet] Адміністратор { $adminName }[scarlet] заблокував гравця [gray]'[]{ $playerName }[gray]'
 you-are-muted-by =
@@ -288,7 +298,58 @@ kick-admintools-outdated =
     [scarlet]Ваша версія AdminTools: [grey]{ $version }[]
     { "" }
     [cyan]Будь ласка, оновіть AdminTools для входу на сервер.
-support-channel = #reports-appeals
+support-channel = #tickets
+# ==============================================================================
+# Скарги: сповіщення та меню /report
+# ==============================================================================
+report-menu-title = [orange]{ -xcore } — Скарга на гравця
+report-menu-pick-player = Оберіть гравця
+report-menu-left-recently = Нещодавно вийшли
+report-menu-left-ago = { $minutes } хв тому
+report-menu-empty = Немає гравців для скарги
+report-menu-staff-hint = [lightgray]Скарги на адміністрацію — у Discord.
+report-menu-pick-reason = Оберіть причину
+report-menu-comment = Коментар (необов’язково)
+report-menu-comment-required = Для причини «Інше» потрібен коментар.
+report-menu-confirm-title = Підтвердіть скаргу
+report-menu-confirm-note = [lightgray]Додамо останній чат та історію будівництва. Неправдиві скарги караються.
+report-menu-next = Далі
+report-menu-back = Назад
+report-menu-send = Надіслати
+report-menu-close = Закрити
+report-result-sent = [green]Скаргу надіслано. Дякуємо!
+report-result-cooldown = [scarlet]Зачекайте [accent]{ $seconds } с[scarlet] до наступної скарги.
+report-result-same-target = [scarlet]Ви нещодавно вже скаржилися на цього гравця.
+report-result-daily-limit = [scarlet]Денний ліміт скарг вичерпано. Спробуйте завтра.
+report-result-invalid-target = [scarlet]На цього гравця не можна поскаржитися.
+report-result-playtime = [scarlet]Щоб надсилати скарги, награйте ще [accent]{ $minutes } хв.
+report-result-disabled = [scarlet]Скарги вимкнено на цьому сервері.
+report-result-failed = [scarlet]Не вдалося надіслати скаргу. Спробуйте ще раз.
+report-reason-griefing = Грифінг
+report-reason-toxicity = Токсичність
+report-reason-cheating = Читерство
+report-reason-nsfw = NSFW
+report-reason-evasion = Обхід бану
+report-reason-other = Інше
+case-notice-report-received = [lightgray]Скаргу зареєстровано під номером [accent]#{ $number }[lightgray]. Дякуємо!
+case-notice-report-resolved = [lightgray]Скаргу [accent]#{ $number }[lightgray] розглянуто: [green]вжито заходів[lightgray]. Дякуємо!
+case-notice-report-rejected =
+    { $reason ->
+        [no_violation] [lightgray]Скаргу [accent]#{ $number }[lightgray] розглянуто: порушень не виявлено. Дякуємо!
+        [no_evidence] [lightgray]Скаргу [accent]#{ $number }[lightgray] розглянуто: доказів недостатньо. Дякуємо!
+        [already_handled] [lightgray]Скаргу [accent]#{ $number }[lightgray] закрито: з цим випадком уже розібралися. Дякуємо!
+        [duplicate] [lightgray]Скаргу [accent]#{ $number }[lightgray] закрито: про це вже повідомили раніше. Дякуємо!
+        [abuse] [lightgray]Скаргу [accent]#{ $number }[lightgray] відхилено: [scarlet]вона сама порушує правила сервера.
+       *[other] [lightgray]Скаргу [accent]#{ $number }[lightgray] розглянуто: заходів не вжито. Дякуємо!
+    }
+case-notice-report-not-accepted = [scarlet]Вашу скаргу не прийнято.
+case-notice-appeal-accepted = [lightgray]Апеляцію [accent]#{ $number }[lightgray] прийнято: блокування знято.
+case-notice-appeal-shortened = [lightgray]Апеляцію [accent]#{ $number }[lightgray] прийнято: строк блокування скорочено.
+case-notice-badge-granted = [lightgray]Запит на значок [accent]#{ $number }[lightgray] схвалено: значок [green]{ $badge }[lightgray] видано.
+case-notice-badge-rejected = [lightgray]Запит на значок [accent]#{ $number }[lightgray] відхилено.
+case-notice-map-accepted = [lightgray]Перевірка карти [accent]#{ $number }[lightgray]: карту [green]{ $map }[lightgray] прийнято.
+case-notice-map-rejected = [lightgray]Перевірка карти [accent]#{ $number }[lightgray]: карту [scarlet]{ $map }[lightgray] відхилено.
+case-notice-complaint-closed = [lightgray]Звернення [accent]#{ $number }[lightgray] закрито. Дякуємо!
 # ==============================================================================
 # Voting (VoteKick)
 # ==============================================================================
@@ -1241,6 +1302,9 @@ announcement-discord =
 announcement-help =
     [gold]★ [accent]Допомога XCore [lightgray]» [white]Потрібні всі доступні команди?
     [lightgray]Введіть [accent]/help[lightgray], щоб переглянути всі команди!
+announcement-report =
+    [gold]★ [accent]Скарги XCore [lightgray]» [white]Хтось гриферить або порушує правила?
+    [lightgray]Поскаржтеся командою [accent]/report[lightgray] — адміністрація розбереться!
 
 
 error-only-players = [scarlet]⚠ Цю команду можуть використовувати лише гравці.

@@ -11,11 +11,11 @@ import mindustry.io.MapIO;
 import mindustry.maps.Map;
 import org.xcore.plugin.concurrent.Async;
 import org.xcore.plugin.ui.XcoreImageService;
+import org.xcore.plugin.service.map.inspect.DetachedMapReadLock;
 
 import java.util.LinkedHashMap;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.BiConsumer;
 
 /**
@@ -36,7 +36,7 @@ public class MapPreviewService {
 
     private final Async async;
     private final XcoreImageService imageService;
-    private final ReentrantLock previewGenerationLock = new ReentrantLock();
+    private final DetachedMapReadLock previewGenerationLock;
 
     // Map file name -> Streamed region name ("net-xcore_<hash16>")
     private final java.util.Map<String, String> fileNameToRegion = new ConcurrentHashMap<>();
@@ -50,9 +50,10 @@ public class MapPreviewService {
     };
 
     @Inject
-    public MapPreviewService(Async async, XcoreImageService imageService) {
+    public MapPreviewService(Async async, XcoreImageService imageService, DetachedMapReadLock previewGenerationLock) {
         this.async = async;
         this.imageService = imageService;
+        this.previewGenerationLock = previewGenerationLock;
     }
 
     /**
@@ -135,7 +136,8 @@ public class MapPreviewService {
                 return new PngResult(previewFi.readBytes(), null);
             }
 
-            // 2. Generate preview under mutex lock to protect global world/content state
+            // 2. Serialize worker map reads. The lock does not protect game-thread readers;
+            // inspection uses an immutable registry and never installs a temporary content mapper.
             previewGenerationLock.lock();
             Pixmap pixmap = null;
             try {
