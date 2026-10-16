@@ -110,6 +110,17 @@ async def validate_flow(service, kind: CaseKind) -> list[str]:
             for role in guild.roles
             if role.is_bot_managed() and role.id in member_role_ids(guild.me)
         }
+        # Administrator overrides every channel overwrite, so such roles cannot be hidden;
+        # configured staff roles are still checked below even if they have it.
+        admin_override_ids = {
+            role.id for role in guild.roles if role.permissions.administrator
+        } - senior_ids
+        if kind == CaseKind.COMPLAINT and admin_override_ids:
+            logger.warning(
+                "Roles with Administrator can see complaints: %s",
+                ", ".join(str(i) for i in sorted(admin_override_ids)),
+            )
+        exempt_ids = bot_role_ids | admin_override_ids
         if kind == CaseKind.COMPLAINT and senior_ids & set(admin_role_ids(settings)):
             reasons.append(
                 "Complaints require a senior role distinct from the ordinary admin role"
@@ -131,7 +142,7 @@ async def validate_flow(service, kind: CaseKind) -> list[str]:
             for role in guild.roles:
                 if (
                     role.id not in senior_ids
-                    and role.id not in bot_role_ids
+                    and role.id not in exempt_ids
                     and role != guild.default_role
                     and forum.permissions_for(role).view_channel
                 ):
@@ -182,7 +193,7 @@ async def validate_flow(service, kind: CaseKind) -> list[str]:
                         )
                     if (
                         role.id not in senior_ids
-                        and role.id not in bot_role_ids
+                        and role.id not in exempt_ids
                         and parent.permissions_for(role).manage_threads
                     ):
                         reasons.append(

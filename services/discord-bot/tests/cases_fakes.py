@@ -249,8 +249,9 @@ def member(discord_id=101, roles=(10,)):
 
 
 class Role:
-    def __init__(self, id, bot=False):
+    def __init__(self, id, bot=False, admin=False):
         self.id, self.bot = id, bot
+        self.permissions = discord.Permissions(administrator=admin)
 
     def is_bot_managed(self):
         return self.bot
