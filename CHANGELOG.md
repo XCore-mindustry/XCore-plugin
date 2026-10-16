@@ -18,6 +18,7 @@ All notable changes to this project will be documented in this file.
 - The MiniPvP HUD is localized (`pvp-hud-status` was defined but unused) and shows team names in each player's language instead of internal names like `sharded`.
 - The language a player selects in settings now applies to every message sent through the shared bundle, including messages from dependent plugins such as HexedCore (`SessionLocaleResolver`).
 - Cloud captions read message placeholders from the loaded bundle instead of re-parsing FTL files; `BundlePlaceholderRegistry` is removed.
+- Map inspection no longer rejects maps with data patches or embedded content as `invalid_map`. It skips them, runs the usual checks and adds a `data-patches` warning with their count.
 - Complete translations for Belarusian, Czech, German, Spanish, French and Polish (previously 9–174 of 905 keys), and the remaining Ukrainian permission names. Belarusian, Czech, German, Spanish, French and Polish bundles now follow the English file's order and section headers.
 
 ### Added

@@ -15,7 +15,7 @@ import java.util.zip.Inflater;
 /**
  * Mindustry v160 save formats 1..13, decoded without engine readers or callbacks.
  * Region and tile/building framing is checked; entity, marker and subclass building payloads are opaque.
- * Embedded gameplay patches/content are rejected: applying them would require mutating engine content.
+ * Embedded gameplay patches/content are counted and skipped: applying them would require mutating engine content.
  * See v160 SaveVersion, LegacySaveVersion, ShortChunkSaveVersion and BuildingComp.readBase.
  */
 public final class DetachedMsavReader {
@@ -33,14 +33,14 @@ public final class DetachedMsavReader {
             var tags = readMetadata(region(input, 1024 * 1024));
             int width = dimension(tags, "width"), height = dimension(tags, "height");
             boolean oversized = (long) width * height > settings.maxTiles();
+            int dataPatches = version >= 12 ? readAssets(region(input, InspectionSettings.MAX_REGION_BYTES), version) : 0;
+            var unknown = new TreeSet<String>();
+            var mapping = readContent(region(input, 4 * 1024 * 1024), registry, unknown, !oversized);
+            if (version == 11) dataPatches = readAssets(region(input, InspectionSettings.MAX_REGION_BYTES), version);
             var metadata = new MapSnapshot.Metadata(tags.getOrDefault("name", ""), tags.get("author"),
                     tags.get("description"), width, height, version, optionalInt(tags.get("build")),
                     readRules(tags.getOrDefault("rules", "{}"), registry.defaults()),
-                    readMods(tags.getOrDefault("mods", "[]")), sha256, (int) size);
-            if (version >= 12) readAssets(region(input, InspectionSettings.MAX_REGION_BYTES), version);
-            var unknown = new TreeSet<String>();
-            var mapping = readContent(region(input, 4 * 1024 * 1024), registry, unknown, !oversized);
-            if (version == 11) readAssets(region(input, InspectionSettings.MAX_REGION_BYTES), version);
+                    readMods(tags.getOrDefault("mods", "[]")), sha256, (int) size, dataPatches);
             var map = region(input, InspectionSettings.MAX_REGION_BYTES);
             int mapWidth = map.data.readUnsignedShort(), mapHeight = map.data.readUnsignedShort();
             if (mapWidth != width || mapHeight != height) throw new IOException("Metadata and map dimensions disagree");
@@ -384,14 +384,17 @@ public final class DetachedMsavReader {
 
     private static String at(int index, int width) { return index % width + "," + index / width; }
 
-    private static void readAssets(Region region, int version) throws IOException {
+    /** Skips the embedded assets and returns how many of them are gameplay patches or content. */
+    private static int readAssets(Region region, int version) throws IOException {
+        // Patches are not applied: the checks see the map as the vanilla content would load it.
+        int gameplay = 0;
         if (version == 11) {
-            int count = region.data.readUnsignedByte();
-            if (count != 0) throw new IOException("Embedded gameplay patches are unsupported by detached inspection");
+            gameplay = region.data.readUnsignedByte();
+            for (int i = 0; i < gameplay; i++) nestedRegion(region).discard();
         } else if (version == 12) {
             region.data.readInt(); // asset format revision
-            int patches = region.data.readInt();
-            if (patches != 0) throw new IOException("Embedded gameplay patches are unsupported by detached inspection");
+            gameplay = count(region);
+            for (int i = 0; i < gameplay; i++) nestedRegion(region).discard();
             int images = count(region);
             for (int i = 0; i < images; i++) {
                 region.data.readUTF();
@@ -407,12 +410,13 @@ public final class DetachedMsavReader {
                 region.data.readUTF();
                 int embedded = region.data.readUnsignedByte();
                 if (embedded > 1) throw new IOException("Invalid embedded asset flag");
-                if (type <= 1) throw new IOException("Gameplay patches/content are unsupported by detached inspection");
+                if (type <= 1) gameplay++; // patch or content
                 if (embedded == 1) nestedRegion(region).discard();
                 else region.skip(32);
             }
         }
         region.end();
+        return gameplay;
     }
 
     private static void readCustom(Region region) throws IOException {

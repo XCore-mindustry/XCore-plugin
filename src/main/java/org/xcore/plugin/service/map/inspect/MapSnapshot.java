@@ -53,7 +53,8 @@ public final class MapSnapshot {
 
     public record Core(int x, int y, int size, int team) {}
     public record Metadata(String name, String author, String description, int width, int height, int saveVersion,
-                           Integer build, MapRules rules, List<String> mods, String sha256, int sizeBytes) {
+                           Integer build, MapRules rules, List<String> mods, String sha256, int sizeBytes,
+                           int dataPatches) {
         public Metadata { mods = List.copyOf(mods); }
     }
 }

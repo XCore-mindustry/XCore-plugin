@@ -10,9 +10,9 @@ The ZIP uses stored entries in path order with fixed timestamps, preserving the
 original compressed map bytes. ZIP SHA-256:
 `7b0d70aeb2bedc8a2a1ae734a62e36bae5f3a7baadb69cbf642c925ba4c9fba8`.
 
-`BundledMsavInspectionTest` checks all 114 files: 111 decode and run both inferred
+`BundledMsavInspectionTest` checks all 114 files: 113 decode and run both inferred
 and Tower Defence checks; `default/canyon.msav` is explicitly rejected for ambiguous
-unknown legacy block framing, and `serpulo/hidden/242.msav` plus
-`serpulo/littoralShipyard.msav` are explicitly rejected for gameplay patches.
+unknown legacy block framing. `serpulo/hidden/242.msav` and
+`serpulo/littoralShipyard.msav` contain gameplay patches, which are counted and skipped.
 The corpus covers save versions 2, 4, 5, 7, 8, 11 and 13. Generated fixtures cover
 every version from 1 through 13 and all 24 v160 build-plan config wire types.

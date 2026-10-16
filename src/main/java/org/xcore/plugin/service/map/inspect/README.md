@@ -116,10 +116,12 @@ pins this with a wall chunk. Closing it needs the exact `read` length of every b
 class and revision, which is outside detached inspection. The check result is advisory
 for staff; a map should still be loaded on a server once before it enters rotation.
 
-Gameplay patches and embedded/external gameplay content assets are rejected with
-`invalid_map`. Applying their changes would violate detached inspection, while
-silently ignoring them could produce misleading core/road findings. Image, bundle,
-sound and music asset framing is accepted without applying assets or fetching hashes.
+Gameplay patches and embedded/external gameplay content assets are skipped, not
+applied: applying them would violate detached inspection. The map gets a
+`data-patches` warning with their count, because the other findings describe the map
+as vanilla content loads it and may be wrong for what the patches change. Content
+the patches add shows up as `unknown-content`. Image, bundle, sound and music asset
+framing is accepted without applying assets or fetching hashes.
 Versions 1–3 with unknown block names are rejected because their unflagged building
 format cannot safely be determined. In modern versions, missing names remain unknown
 instead of being silently replaced with native content ID zero.
@@ -138,7 +140,7 @@ Requested profiles are used verbatim; absent profiles use `Rules.mode()`'s prior
 (`pvp`, `editor`, `attack`, `sandbox`, `survival`). Tower Defence requires an explicit
 `tower-defense` profile. Unknown profile names receive common checks only.
 
-All profiles warn for `missing-name` / `missing-author` and error for
+All profiles warn for `missing-name` / `missing-author` / `data-patches` and error for
 `size-out-of-range`, `requires-mods`, `unknown-content`, `no-core`. Required mod names
 and missing/incompatible content names are included in diagnostics. `no-core` uses
 the saved default team; `no-spawn` applies to survival and Tower Defence. PvP requires
@@ -257,11 +259,11 @@ plus `bundled-v160.zip` and their `README.md` provenance note. The original thre
 maps use save version 4. The full corpus has versions 2, 4, 5, 7, 8, 11 and 13;
 versions 1–13 are additionally exercised by the generated wire fixtures.
 
-The corpus has three deliberately unsupported maps: `default/canyon.msav` uses
-unknown legacy block names whose building framing is ambiguous;
-`serpulo/hidden/242.msav` and `serpulo/littoralShipyard.msav` contain gameplay patches.
-Those fail closed with `invalid_map`; the other 111 decode completely and run both
-inferred-profile and Tower Defence checks. Work remains uncommitted on `feat/cases`;
+The corpus has one deliberately unsupported map: `default/canyon.msav` uses
+unknown legacy block names whose building framing is ambiguous, and fails closed with
+`invalid_map`. The other 113 decode completely and run both inferred-profile and Tower
+Defence checks; `serpulo/hidden/242.msav` and `serpulo/littoralShipyard.msav` contain
+gameplay patches and get `data-patches`. Work remains uncommitted on `feat/cases`;
 the existing P0/P1/P2/P3 edits were retained.
 
 Validation after the review corrections (2026-10-13): `./gradlew test --console=plain`

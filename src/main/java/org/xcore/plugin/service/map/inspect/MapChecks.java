@@ -39,6 +39,8 @@ public final class MapChecks {
                 meta.width() + " x " + meta.height() + " " + String.join("; ", dimensions)));
         if (!meta.mods().isEmpty()) findings.add(new MapFinding("requires-mods", ERROR,
                 "Required mods: " + String.join(", ", meta.mods()), null, null, meta.mods().size()));
+        if (meta.dataPatches() > 0) findings.add(new MapFinding("data-patches", WARNING,
+                "The map changes gameplay with data patches; these checks ignored them", null, null, meta.dataPatches()));
         if (!snapshot.unknownContent().isEmpty()) findings.add(new MapFinding("unknown-content", ERROR,
                 "Unavailable or incompatible content: " + String.join(", ", snapshot.unknownContent()),
                 null, null, snapshot.unknownContent().size()));

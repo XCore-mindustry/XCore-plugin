@@ -319,16 +319,24 @@ class DetachedMsavReaderTest {
     }
 
     @Test
-    void nonGameplayAssetsAreBoundedAndGameplayPatchesAreRejected() throws Exception {
+    void assetsAreBoundedAndGameplayPatchesAreCountedAndSkipped() throws Exception {
         var fixture = new MsavFixture();
         fixture.assets = MsavFixture.bytes(a -> { a.writeInt(0); a.writeInt(1); a.writeByte(3); a.writeUTF("image.png"); a.writeBoolean(true); a.writeInt(3); a.write(new byte[3]); });
         assertThat(read(fixture.compressed()).tilesAvailable()).isTrue();
+        assertThat(read(fixture.compressed()).metadata().dataPatches()).isZero();
         fixture.assets = MsavFixture.bytes(a -> { a.writeInt(0); a.writeInt(1); a.writeByte(3); a.writeUTF("image.png"); a.writeBoolean(true); a.writeInt(-1); });
         assertInvalid(fixture.compressed());
-        fixture.assets = MsavFixture.bytes(a -> { a.writeInt(0); a.writeInt(1); a.writeByte(0); a.writeUTF("patch.json"); a.writeBoolean(true); a.writeInt(0); });
-        assertThatThrownBy(() -> read(fixture.compressed())).isInstanceOf(IOException.class).hasMessageContaining("unsupported");
+        fixture.assets = MsavFixture.bytes(a -> { a.writeInt(0); a.writeInt(3);
+            a.writeByte(0); a.writeUTF("patch.json"); a.writeBoolean(true); a.writeInt(2); a.write(new byte[2]);
+            a.writeByte(1); a.writeUTF("content.json"); a.writeBoolean(false); a.write(new byte[32]);
+            a.writeByte(2); a.writeUTF("bundle.properties"); a.writeBoolean(true); a.writeInt(0); });
+        assertThat(read(fixture.compressed()).metadata().dataPatches()).isEqualTo(2);
         fixture.version = 11; fixture.assets = new byte[]{1}; assertInvalid(fixture.compressed());
+        fixture.assets = MsavFixture.bytes(a -> { a.writeByte(1); a.writeInt(2); a.write(new byte[2]); });
+        assertThat(read(fixture.compressed()).metadata().dataPatches()).isEqualTo(1);
         fixture.version = 12; fixture.assets = MsavFixture.bytes(a -> { a.writeInt(0); a.writeInt(1); }); assertInvalid(fixture.compressed());
+        fixture.assets = MsavFixture.bytes(a -> { a.writeInt(0); a.writeInt(1); a.writeInt(2); a.write(new byte[2]); a.writeInt(0); });
+        assertThat(read(fixture.compressed()).metadata().dataPatches()).isEqualTo(1);
         fixture.assets = MsavFixture.bytes(a -> { a.writeInt(0); a.writeInt(0); a.writeInt(1); a.writeUTF("image"); a.writeShort(8); a.writeShort(8); a.writeInt(3); a.write(new byte[3]); });
         assertThat(read(fixture.compressed()).tilesAvailable()).isTrue();
     }

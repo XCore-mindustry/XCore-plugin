@@ -163,7 +163,7 @@ public class TomlSecretsConfig implements SelfNormalizing {
 
         public static class ChecksConfig {
             public static final Set<String> FINDING_CODES = Set.of(
-                    "missing-name", "missing-author", "size-out-of-range", "requires-mods", "unknown-content", "no-core",
+                    "missing-name", "missing-author", "size-out-of-range", "requires-mods", "data-patches", "unknown-content", "no-core",
                     "no-spawn", "pvp-single-team", "attack-no-enemy-core", "td-road-floor-mixed", "td-road-floor-unexpected",
                     "td-road-disconnected", "td-spawn-not-at-road-start", "td-border-wall-missing", "td-drop-zone-radius",
                     "td-waves-enabled");
