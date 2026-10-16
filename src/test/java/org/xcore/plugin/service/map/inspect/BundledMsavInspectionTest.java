@@ -22,9 +22,9 @@ import static org.assertj.core.api.Assertions.*;
 class BundledMsavInspectionTest {
     @TempDir Path directory;
     private static final Map<String, String> UNSUPPORTED = Map.of(
-            "default/canyon.msav", "Unknown legacy block has ambiguous building format",
-            "serpulo/hidden/242.msav", "Gameplay patches/content are unsupported",
-            "serpulo/littoralShipyard.msav", "Gameplay patches/content are unsupported");
+            "default/canyon.msav", "Unknown legacy block has ambiguous building format");
+    private static final java.util.Set<String> PATCHED = java.util.Set.of(
+            "serpulo/hidden/242.msav", "serpulo/littoralShipyard.msav");
 
     @TestFactory
     Stream<DynamicTest> everyBundledV160MapIsDecodedOrExplicitlyRejectedWithoutLoadingTheWorld() throws Exception {
@@ -64,6 +64,7 @@ class BundledMsavInspectionTest {
                 assertThat(snapshot.tileCount()).isEqualTo(snapshot.metadata().width() * snapshot.metadata().height()).isPositive();
                 assertThat(snapshot.metadata().sha256()).isEqualTo(hash);
                 assertThat(snapshot.metadata().sizeBytes()).isEqualTo(bytes.length);
+                assertThat(snapshot.metadata().dataPatches() > 0).isEqualTo(PATCHED.contains(name));
                 var checks = new MapChecks();
                 for (String profile : new String[]{MapChecks.profile(snapshot, null), "tower-defense"}) {
                     var findings = checks.check(snapshot, profile, MsavFixture.settings());

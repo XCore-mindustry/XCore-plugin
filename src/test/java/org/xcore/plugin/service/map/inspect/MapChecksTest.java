@@ -24,6 +24,8 @@ class MapChecksTest {
                 new Scenario("missing-author", WARNING, "survival", f -> f.tags.put("author", "[scarlet][]")),
                 new Scenario("size-out-of-range", ERROR, "survival", f -> { f.tags.put("width", "1000"); f.tags.put("height", "1000"); f.width = 1000; f.height = 1000; }),
                 new Scenario("requires-mods", ERROR, "survival", f -> f.tags.put("mods", "[\"mod-alpha:1.2\"]")),
+                // One embedded, empty v13 patch asset named "p".
+                new Scenario("data-patches", WARNING, "survival", f -> f.assets = new byte[]{0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 'p', 1, 0, 0, 0, 0}),
                 new Scenario("unknown-content", ERROR, "survival", f -> f.names.add("missing-mod-block")),
                 new Scenario("no-core", ERROR, "survival", f -> f.teams[14] = 2),
                 new Scenario("no-spawn", ERROR, "survival", f -> f.overlays[10] = 0),
