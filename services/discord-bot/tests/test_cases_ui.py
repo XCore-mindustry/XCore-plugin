@@ -14,6 +14,7 @@ from test_cases_service import opened
 from xcore_discord_bot.cases.cards import (
     base_card,
     evidence_messages,
+    safe_text,
     sanitize_card,
     split_evidence,
     thread_title,
@@ -825,7 +826,7 @@ def test_registry_refuses_flows_the_core_cannot_show():
 
 
 @pytest.mark.parametrize("kind", list(CaseKind))
-@pytest.mark.parametrize("discord_id", ["101", None])
+@pytest.mark.parametrize("discord_id", ["530103444946812929", None])
 async def test_assignee_card_uses_mention_or_sanitized_name(kind, discord_id):
     service, _, _ = await core(flow=DUMMY_FLOW)
     case = replace(
@@ -835,4 +836,17 @@ async def test_assignee_card_uses_mention_or_sanitized_name(kind, discord_id):
     )
     card = sanitize_card(base_card(case, "en"), case)
     value = next(f.value for f in card.fields if f.name == t("en", "cases-assignee"))
-    assert value == ("<@101>" if discord_id else "Admin …")
+    assert value == (f"<@{discord_id}>" if discord_id else "Admin …")
+
+
+async def test_card_keeps_party_mentions_and_shows_a_self_case_once():
+    service, _, _ = await core(flow=DUMMY_FLOW)
+    me = Party(player_name="Me", player_pid=1, discord_id="530103444946812929")
+    case = replace(await opened(service), opener=me, subject=me)
+    embed = base_card(case, "en")
+    embed.add_field(name="text", value=safe_text("<@530103444946812929>"))
+    card = sanitize_card(embed, case)
+    fields = {f.name: f.value for f in card.fields}
+    assert fields[t("en", "cases-opener")].endswith(" · <@530103444946812929>")
+    assert t("en", "cases-subject") not in fields
+    assert fields["text"] == "<@\u200b530103444946812929>"
