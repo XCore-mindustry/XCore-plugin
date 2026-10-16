@@ -7,7 +7,9 @@ import json
 import discord
 
 from ..i18n import SUPPORTED, t
-from .views import panel_view
+from .views import panel_flows, panel_view
+
+PANEL_COLOR = discord.Color.blurple()
 
 
 class LanguageSelect(discord.ui.Select):
@@ -58,11 +60,27 @@ class CasePanel:
         self._lock = asyncio.Lock()
 
     def render(self):
-        content = "\n\n".join(t(locale, "cases-panel-text") for locale in SUPPORTED)
+        """One embed per language: what each button is for, then how replies arrive."""
+        flows = panel_flows(self.service.registry)
+        embeds = [
+            discord.Embed(
+                title=t(locale, "cases-panel-title"),
+                description="\n".join(
+                    [
+                        f"{flow.panel.emoji or '📝'} **{t('en', flow.panel.label_key)}**:"
+                        f" {t(locale, 'cases-panel-hint-' + flow.kind)}"
+                        for flow in flows
+                    ]
+                    + ["", t(locale, "cases-panel-text")]
+                ).strip(),
+                color=PANEL_COLOR,
+            )
+            for locale in SUPPORTED
+        ]
         view = panel_view(self.service.registry)
         fingerprint = json.dumps(
             {
-                "content": content,
+                "embeds": [embed.to_dict() for embed in embeds],
                 "buttons": [
                     (item.item.custom_id, item.item.label, str(item.item.emoji))
                     for item in view.children
@@ -70,7 +88,7 @@ class CasePanel:
             },
             sort_keys=True,
         )
-        return content, view, hashlib.sha256(fingerprint.encode()).hexdigest()
+        return embeds, view, hashlib.sha256(fingerprint.encode()).hexdigest()
 
     async def refresh(self) -> bool:
         """Edit a published panel in place when flags or texts changed. No Discord call
@@ -87,7 +105,7 @@ class CasePanel:
         await self.publish()
         return True
 
-    async def _find(self, channel, content: str):
+    async def _find(self, channel, embeds):
         """A panel whose id was never stored: the send succeeded and the write did not."""
         async for candidate in channel.history(limit=100):
             if candidate.author.id != self.bot.user.id:
@@ -97,7 +115,8 @@ class CasePanel:
                 for row in candidate.components
                 for component in getattr(row, "children", ())
             ]
-            if candidate.content == content or any(
+            titles = [embed.title for embed in candidate.embeds]
+            if titles == [embed.title for embed in embeds] or any(
                 value and value.startswith("xc:1:panel:") for value in ids
             ):
                 return candidate
@@ -111,7 +130,7 @@ class CasePanel:
             channel = await self.service.threads.channel(channel_id)
             if channel.type != discord.ChannelType.text:
                 raise ValueError("CASES_PANEL_CHANNEL_ID must be a text channel")
-            content, view, rendered_hash = self.render()
+            embeds, view, rendered_hash = self.render()
             stored = await self.service.store.get_panel()
             if stored and stored["channel_id"] != str(channel_id):
                 # Keep the old message and its history, but remove its interactive projection.
@@ -131,15 +150,18 @@ class CasePanel:
                 except discord.NotFound:
                     pass
             if message is None:
-                message = await self._find(channel, content)
+                message = await self._find(channel, embeds)
                 stored = None
             if message is None:
                 message = await channel.send(
-                    content, view=view, allowed_mentions=discord.AllowedMentions.none()
+                    embeds=embeds,
+                    view=view,
+                    allowed_mentions=discord.AllowedMentions.none(),
                 )
             elif not stored or stored["rendered_hash"] != rendered_hash:
                 await message.edit(
-                    content=content,
+                    content=None,
+                    embeds=embeds,
                     view=view,
                     allowed_mentions=discord.AllowedMentions.none(),
                 )

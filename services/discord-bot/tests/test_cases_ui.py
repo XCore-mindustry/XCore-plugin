@@ -87,8 +87,15 @@ async def test_panel_publish_then_edit_in_place_and_adopt_failed_send():
         "xc:1:panel:open:report",
         "xc:1:panel:lang",
     ]
-    # One message for everyone: the text in every language, English words on the buttons.
-    assert all(t(locale, "cases-panel-text") in message.content for locale in SUPPORTED)
+    # One message for everyone: an embed per language, English words on the buttons.
+    assert [e.title for e in message.embeds] == [
+        t(locale, "cases-panel-title") for locale in SUPPORTED
+    ]
+    assert all(
+        f"📣 **Report**: {t(locale, 'cases-panel-hint-report')}" in embed.description
+        and t(locale, "cases-panel-text") in embed.description
+        for locale, embed in zip(SUPPORTED, message.embeds, strict=True)
+    )
     assert [item.item.label for item in message.view.children] == ["Report", "Language"]
     assert str(message.view.children[0].item.emoji) == "📣"
     bot.calls.clear()
@@ -99,6 +106,22 @@ async def test_panel_publish_then_edit_in_place_and_adopt_failed_send():
     assert await panel.refresh() is True
     assert message.view.children == [] and len(bot.channels[100].messages) == 1
     assert len(db["case_panels"].docs) == 1
+
+
+async def test_panel_lists_reports_first_and_language_last():
+    from xcore_discord_bot.cases import flows  # noqa: F401 -- registers the real flows
+    from xcore_discord_bot.cases.registry import flow_registry
+
+    registry = flow_registry.copy()
+    for kind in (CaseKind.COMPLAINT, CaseKind.BADGE, CaseKind.APPEAL, CaseKind.REPORT):
+        registry.enable(kind)
+    assert [item.item.custom_id for item in panel_view(registry).children] == [
+        "xc:1:panel:open:report",
+        "xc:1:panel:open:appeal",
+        "xc:1:panel:open:badge",
+        "xc:1:panel:open:complaint",
+        "xc:1:panel:lang",
+    ]
 
 
 async def test_panel_moves_with_the_setting_and_survives_a_deleted_message():

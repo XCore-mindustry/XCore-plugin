@@ -70,7 +70,12 @@ cases-outcome = Ваше обращение #{ $number } рассмотрено.
 
 # Общая панель
 
-cases-panel-text = Выберите тип обращения кнопкой ниже. Администрация рассмотрит его в закрытой ветке. Язык ответов можно сменить кнопкой 🌐.
+cases-panel-title = Связь с администрацией
+cases-panel-text = Ответ придёт в закрытую ветку, её видите только вы и администрация. Кнопка 🌐 **Language** меняет язык ответов.
+cases-panel-hint-report = игрок нарушает правила
+cases-panel-hint-appeal = вы считаете бан ошибкой
+cases-panel-hint-badge = запросить заслуженный значок
+cases-panel-hint-complaint = сотрудник поступил с вами несправедливо
 cases-panel-language = Language
 cases-panel-empty = Не включён ни один тип обращений с кнопкой на панели.
 cases-panel-published = Панель обращений обновлена: { $url }

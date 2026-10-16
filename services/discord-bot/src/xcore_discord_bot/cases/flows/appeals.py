@@ -767,7 +767,7 @@ APPEAL_FLOW = flow_registry.register(
     Flow(
         kind=CaseKind.APPEAL,
         card_builder=card_builder,
-        panel=PanelEntry("appeals-panel", emoji="⚖️", handler=panel_handler),
+        panel=PanelEntry("appeals-panel", emoji="🔓", handler=panel_handler),
         actions=(
             Action(
                 "unban", "cases-button-unban", unban, style=discord.ButtonStyle.success
