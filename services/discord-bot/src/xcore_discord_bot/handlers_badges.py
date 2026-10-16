@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 from discord import Interaction
 
 from .badges import get_badge
+from .staff_actions import Actor, StaffActionError, perform_badge_grant
 
 if TYPE_CHECKING:
     from .bot import XCoreDiscordBot
@@ -68,6 +69,23 @@ async def _cmd_badge_change(
     if uuid_value is None:
         return
 
+    if grant:
+        try:
+            result = await perform_badge_grant(
+                bot,
+                player,
+                badge_id,
+                Actor(
+                    str(getattr(interaction.user, "id", "")) or None,
+                    interaction.user.display_name,
+                ),
+            )
+        except StaffActionError as error:
+            await interaction.response.send_message(str(error), ephemeral=True)
+            return
+        await interaction.response.send_message(result.message)
+        return
+
     badge = get_badge(badge_id)
     if badge is None:
         await interaction.response.send_message(
@@ -83,11 +101,7 @@ async def _cmd_badge_change(
         )
         return
 
-    changed = (
-        await bot.grant_badge(uuid=uuid_value, badge_id=badge.id)
-        if grant
-        else await bot.revoke_badge(uuid=uuid_value, badge_id=badge.id)
-    )
+    changed = await bot.revoke_badge(uuid=uuid_value, badge_id=badge.id)
 
     if changed:
         updated_player = await bot.find_player_by_uuid(uuid_value)
@@ -99,17 +113,10 @@ async def _cmd_badge_change(
             )
 
     player_name = bot._player_name(player)
-    if grant:
-        message = (
-            f"Granted badge `{badge.id}` to `{player_name}`"
-            if changed
-            else f"Player already has badge `{badge.id}`"
-        )
-    else:
-        message = (
-            f"Revoked badge `{badge.id}` from `{player_name}`"
-            if changed
-            else f"Player does not have badge `{badge.id}`"
-        )
+    message = (
+        f"Revoked badge `{badge.id}` from `{player_name}`"
+        if changed
+        else f"Player does not have badge `{badge.id}`"
+    )
 
     await interaction.response.send_message(message)

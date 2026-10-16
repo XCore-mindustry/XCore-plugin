@@ -7,11 +7,17 @@ import logging
 import time
 import uuid
 from collections.abc import Awaitable, Callable, Mapping
+from contextvars import ContextVar
 from typing import Any, cast
 
 from redis.asyncio import Redis
 from redis.exceptions import RedisError, ResponseError
+from xcore_protocol.generated.cases import (
+    CasesEvidenceResponseV1,
+    CasesReportSubmittedV1,
+)
 from xcore_protocol.generated.maps import (
+    MapsInspectResponseV1,
     MapsListRequestV1,
     MapsListResponseV1,
     MapsRemoveRequestV1,
@@ -75,10 +81,13 @@ from .contracts import (
     parse_vote_kick_payload,
 )
 from .protocol_outbound import (
+    build_case_evidence_request,
+    build_case_notice_command,
     build_chat_discord_ingress_command,
     build_discord_admin_access_changed_command,
     build_discord_link_confirm_command,
     build_discord_unlink_command,
+    build_maps_inspect_request,
     build_maps_list_request,
     build_maps_load_command,
     build_maps_remove_request,
@@ -110,6 +119,36 @@ MAXLEN_DLQ = 100_000
 RECLAIM_INTERVAL_SEC = 10
 RECLAIM_MIN_IDLE_MS = 15_000
 MAX_ATTEMPTS_EVT = 5
+CASE_REPORT_STREAM = "xcore:evt:cases:report"
+CASE_REPORT_GROUP_SUFFIX = "discord-case-report"
+CASE_EVIDENCE_TTL_MS = 15_000
+MAP_INSPECT_TTL_MS = 60_000
+
+
+def _validate_case_evidence(event: Any) -> None:
+    # Strict generated nested decoders reject identifiers/addresses in chat. Complete
+    # the schema bounds that the current generator does not emit.
+    if len(event.chat) > 30:
+        raise ValueError("Case evidence has more than 30 chat lines")
+    for line in event.chat:
+        if len(line.playerName) > 64 or len(line.text) > 256:
+            raise ValueError("Case chat line exceeds the protocol limits")
+    if event.blockSummary is not None and len(event.blockSummary.topBlocks) > 8:
+        raise ValueError("Case block summary exceeds the protocol limits")
+
+
+def parse_case_report_payload(payload: dict[str, Any]) -> CasesReportSubmittedV1:
+    event = CasesReportSubmittedV1.from_payload(payload)
+    # PlayerRef allows IPs elsewhere; the report schema explicitly forbids them,
+    # including an IP key whose value is null. Do not silently strip leaked data.
+    if any("ip" in payload[party] for party in ("reporter", "target")):
+        raise ValueError("Case report parties must omit ip")
+    for name, limit in (("submissionId", 64), ("comment", 300), ("reporterLocale", 16)):
+        value = getattr(event, name)
+        if value is not None and len(value) > limit:
+            raise ValueError(f"{name} exceeds the protocol limit")
+    _validate_case_evidence(event)
+    return event
 
 
 class RpcError(RuntimeError):
@@ -138,6 +177,10 @@ class RedisBus:
         self._settings = settings
         self._redis: Redis | None = None
         self._conn_lock = asyncio.Lock()
+        self._ban_log_lock = asyncio.Lock()
+        self._ban_log_delivery: ContextVar[
+            tuple[ModerationBanCreatedV1, str] | None
+        ] = ContextVar("ban_log_delivery", default=None)
         self._last_reclaim_at: dict[str, float] = {}
 
     async def connect(self) -> None:
@@ -300,6 +343,20 @@ class RedisBus:
             callback=callback,
         )
 
+    async def consume_case_reports(
+        self,
+        callback: Callable[[CasesReportSubmittedV1], Awaitable[None]],
+        *,
+        is_active: Callable[[], bool] | None = None,
+    ) -> None:
+        await self._consume_events(
+            stream=CASE_REPORT_STREAM,
+            group_suffix=CASE_REPORT_GROUP_SUFFIX,
+            parse_payload=parse_case_report_payload,
+            callback=callback,
+            is_active=is_active,
+        )
+
     async def consume_mutes(
         self, callback: Callable[[ModerationMuteCreatedV1], Awaitable[None]]
     ) -> None:
@@ -380,13 +437,19 @@ class RedisBus:
         parse_fields: Callable[[dict[str, Any]], Any] | None = None,
         skip_discord_producer: bool = False,
         max_attempts: int = MAX_ATTEMPTS_EVT,
+        is_active: Callable[[], bool] | None = None,
     ) -> None:
         redis = self._require_redis()
         group = f"{self._settings.redis_group_prefix}:{group_suffix}"
         consumer = self._settings.redis_consumer_name
+        while is_active is not None and not is_active():
+            await asyncio.sleep(1)
         await self._ensure_group(stream=stream, group=group)
 
         while True:
+            if is_active is not None and not is_active():
+                await asyncio.sleep(1)
+                continue
             now = time.monotonic()
             last_reclaim = self._last_reclaim_at.get(group, 0.0)
             if now - last_reclaim >= RECLAIM_INTERVAL_SEC:
@@ -399,9 +462,12 @@ class RedisBus:
                     parse_fields=parse_fields,
                     skip_discord_producer=skip_discord_producer,
                     max_attempts=max_attempts,
+                    is_active=is_active,
                 )
                 self._last_reclaim_at[group] = now
 
+            if is_active is not None and not is_active():
+                continue
             data = await redis.xreadgroup(
                 groupname=group,
                 consumername=consumer,
@@ -415,6 +481,10 @@ class RedisBus:
 
             for found_stream, messages in cast(Any, data):
                 for message_id, fields in cast(Any, messages):
+                    if is_active is not None and not is_active():
+                        # A flag may change while XREADGROUP is blocked. Leave this
+                        # batch pending, without counting failures or ACKing it.
+                        break
                     await self._process_event_message(
                         stream=cast(Any, found_stream),
                         group=group,
@@ -439,11 +509,14 @@ class RedisBus:
         parse_fields: Callable[[dict[str, Any]], Any] | None,
         skip_discord_producer: bool,
         max_attempts: int,
+        is_active: Callable[[], bool] | None = None,
     ) -> None:
         redis = self._require_redis()
         cursor = "0-0"
 
         while True:
+            if is_active is not None and not is_active():
+                return
             claimed = await redis.xautoclaim(
                 name=stream,
                 groupname=group,
@@ -462,6 +535,8 @@ class RedisBus:
                 return
 
             for message_id, fields in messages:
+                if is_active is not None and not is_active():
+                    return
                 await self._process_event_message(
                     stream=stream,
                     group=group,
@@ -531,7 +606,21 @@ class RedisBus:
             return
 
         try:
-            await callback(parsed)
+            delivery = None
+            if isinstance(parsed, ModerationBanCreatedV1):
+                event_id = self._field_str(cast(Any, fields), "event_id").strip()
+                identity = (
+                    ["event", event_id]
+                    if event_id
+                    else ["stream", self._to_text(stream), self._to_text(message_id)]
+                )
+                delivery = (parsed, json.dumps(identity, separators=(",", ":")))
+            token = self._ban_log_delivery.set(delivery)
+            try:
+                # Keep the public callback API as the generated event alone.
+                await callback(parsed)
+            finally:
+                self._ban_log_delivery.reset(token)
         except Exception as error:
             attempts = await self._increment_failure_counter(
                 stream=stream, group=group, message_id=message_id
@@ -887,6 +976,92 @@ class RedisBus:
             nx=True,
         )
         return bool(claimed)
+
+    async def run_ban_log_once(
+        self,
+        event: ModerationBanCreatedV1,
+        callback: Callable[[], Awaitable[None]],
+    ) -> None:
+        """Checkpoint only the log for this stream delivery, not the case callback.
+
+        Mark only after success so a failed Discord send is retryable. As with stream
+        ACKs, a process death between sending and recording completion can redeliver.
+        Direct calls without stream metadata have no checkpoint: payload equality
+        cannot distinguish redelivery from independent legacy bans.
+        """
+        delivery = self._ban_log_delivery.get()
+        if delivery is None or delivery[0] is not event:
+            await callback()
+            return
+        digest = hashlib.sha256(delivery[1].encode()).hexdigest()
+        key = f"ban-event-log:{digest}"
+        async with self._ban_log_lock:
+            if await self._require_redis().exists(f"xcore:idmp:{key}"):
+                return
+            await callback()
+            await self.claim_idempotency(key, ttl_seconds=604_800)
+
+    async def publish_case_notice(
+        self, *, notice_id: str, player_uuid: str, server: str
+    ) -> None:
+        request = build_case_notice_command(
+            server=server, notice_id=notice_id, player_uuid=player_uuid
+        )
+        await self._publish_event(
+            stream=f"xcore:cmd:cases-notice:{server}",
+            event_type=request.MESSAGE_TYPE,
+            ttl_ms=120_000,
+            server=server,
+            payload=request.to_payload(),
+            idempotency_prefix="cases.notice",
+        )
+
+    async def rpc_case_evidence(
+        self,
+        *,
+        server: str,
+        player_uuid: str,
+        chat_lines: int = 30,
+        window_seconds: int = 600,
+    ) -> CasesEvidenceResponseV1:
+        request = build_case_evidence_request(
+            server=server,
+            player_uuid=player_uuid,
+            chat_lines=chat_lines,
+            window_seconds=window_seconds,
+        )
+        body = await self._rpc_request(
+            server=server,
+            rpc_type=request.MESSAGE_TYPE,
+            payload=request.to_payload(),
+            timeout_ms=CASE_EVIDENCE_TTL_MS,
+        )
+        response = CasesEvidenceResponseV1.from_payload(
+            json.loads(body.get("payload_json", "{}"))
+        )
+        if response.server != server:
+            raise ValueError("Case evidence response does not match request server")
+        _validate_case_evidence(response)
+        return response
+
+    async def rpc_inspect_map(
+        self, *, server: str, url: str, file_name: str, profile: str | None = None
+    ) -> MapsInspectResponseV1:
+        request = build_maps_inspect_request(
+            server=server, url=url, file_name=file_name, profile=profile
+        )
+        body = await self._rpc_request(
+            server=server,
+            rpc_type=request.MESSAGE_TYPE,
+            payload=request.to_payload(),
+            timeout_ms=MAP_INSPECT_TTL_MS,
+        )
+        response = MapsInspectResponseV1.from_payload(
+            json.loads(body.get("payload_json", "{}"))
+        )
+        if response.server != server:
+            raise ValueError("Map inspection response does not match request server")
+        return response
 
     async def rpc_staff_sync(
         self,

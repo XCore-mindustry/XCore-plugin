@@ -15,7 +15,10 @@ from discord.ext import commands
 from xcore_protocol.generated.maps import MapsUploadResponseV1
 from xcore_protocol.generated.shared import ActorRefV1ActorType
 
+from .cases._privacy import private_case_command
+from .cases.views import CaseActionButton, PanelButton
 from .cogs import AdminCog, InfoCog, LinkingCog, MapsCog, SeasonsCog, SubnetCog
+from .cogs.cases import CasesCog
 from .dto import (
     MERGE_KEEP_PID_TARGET,
     AccountMergeResult,
@@ -24,6 +27,7 @@ from .dto import (
     MuteRecord,
     PlayerRecord,
 )
+from .i18n import XCoreTranslator
 from .moderation_modals import StatsBanModal, StatsMuteModal
 from .moderation_views import (
     BanConfirmView,
@@ -106,6 +110,12 @@ class XCoreDiscordBot(commands.Bot):
         self.container = ServiceContainer.create(
             settings, self, store=self._store, bus=self._bus
         )
+        if settings.cases_enabled:
+            from .cases.redis_transport import RedisCaseTransport
+
+            self.container.cases.set_transport(
+                RedisCaseTransport(self._bus, self.container.rpc)
+            )
         self._chat_consumer_task: asyncio.Task[None] | None = None
         self._global_chat_consumer_task: asyncio.Task[None] | None = None
         self._join_leave_consumer_task: asyncio.Task[None] | None = None
@@ -126,6 +136,12 @@ class XCoreDiscordBot(commands.Bot):
                 self.container = ServiceContainer.create(
                     settings, self, store=self._store, bus=self._bus
                 )
+                if settings.cases_enabled:
+                    from .cases.redis_transport import RedisCaseTransport
+
+                    self.container.cases.set_transport(
+                        RedisCaseTransport(self._bus, self.container.rpc)
+                    )
         return self.container
 
     @property
@@ -292,6 +308,8 @@ class XCoreDiscordBot(commands.Bot):
         admin_discord_id: str | None,
         reason: str,
         expire_date: datetime,
+        case_number: int | None = None,
+        ban_id: int | None = None,
     ) -> None:
         await self._store.upsert_ban(
             uuid=uuid,
@@ -302,6 +320,8 @@ class XCoreDiscordBot(commands.Bot):
             admin_discord_id=admin_discord_id,
             reason=reason,
             expire_date=expire_date,
+            ban_id=ban_id,
+            **({"case_number": case_number} if case_number is not None else {}),
         )
 
     async def publish_kick_banned(self, *, uuid_value: str, ip: str | None) -> None:
@@ -315,8 +335,26 @@ class XCoreDiscordBot(commands.Bot):
     ) -> BanRecord | None:
         return await self._store.find_ban(uuid=uuid, ip=ip)
 
-    async def delete_ban(self, *, uuid: str, ip: str | None) -> int:
-        return await self._store.delete_ban(uuid=uuid, ip=ip)
+    async def next_ban_id(self) -> int:
+        return await self._store.next_ban_id()
+
+    async def find_ban_by_id(self, ban_id: int) -> BanRecord | None:
+        return await self._store.find_ban_by_id(ban_id)
+
+    async def ensure_ban_id(self, *, uuid: str, ip: str | None) -> BanRecord | None:
+        return await self._store.ensure_ban_id(uuid=uuid, ip=ip)
+
+    async def update_ban_expiry(self, *, ban_id: int, new_expiry: datetime) -> bool:
+        return await self._store.update_ban_expiry(ban_id=ban_id, new_expiry=new_expiry)
+
+    async def delete_ban(
+        self, *, uuid: str, ip: str | None, ban_id: int | None = None
+    ) -> int:
+        return await self._store.delete_ban(
+            uuid=uuid,
+            ip=ip,
+            **({"ban_id": ban_id} if ban_id is not None else {}),
+        )
 
     async def publish_pardon_player(self, *, uuid_value: str) -> None:
         await self._bus.publish_pardon_player(uuid_value=uuid_value)
@@ -331,6 +369,7 @@ class XCoreDiscordBot(commands.Bot):
         admin_discord_id: str | None,
         reason: str,
         expire_date: datetime,
+        case_number: int | None = None,
     ) -> None:
         await self._store.upsert_mute(
             uuid=uuid,
@@ -340,6 +379,7 @@ class XCoreDiscordBot(commands.Bot):
             admin_discord_id=admin_discord_id,
             reason=reason,
             expire_date=expire_date,
+            **({"case_number": case_number} if case_number is not None else {}),
         )
 
     async def delete_mute(self, *, uuid: str) -> int:
@@ -509,6 +549,7 @@ class XCoreDiscordBot(commands.Bot):
         related_audit_id: str | None = None,
         supersedes_audit_id: str | None = None,
         request_id: str | None = None,
+        extra: dict[str, object] | None = None,
     ) -> str:
         return await self._store.append_moderation_audit(
             action=action,
@@ -525,6 +566,7 @@ class XCoreDiscordBot(commands.Bot):
             related_audit_id=related_audit_id,
             supersedes_audit_id=supersedes_audit_id,
             request_id=request_id,
+            **({"extra": extra} if extra else {}),
         )
 
     async def find_discord_link_code(self, code: str) -> dict[str, object] | None:
@@ -879,6 +921,14 @@ class XCoreDiscordBot(commands.Bot):
     ) -> None:
         await self._bus.consume_bans(callback)
 
+    async def consume_case_reports_stream(
+        self,
+        callback: Callable[..., Awaitable[None]],
+        *,
+        is_active: Callable[[], bool] | None = None,
+    ) -> None:
+        await self._bus.consume_case_reports(callback, is_active=is_active)
+
     async def consume_mutes_stream(
         self, callback: Callable[..., Awaitable[None]]
     ) -> None:
@@ -921,6 +971,13 @@ class XCoreDiscordBot(commands.Bot):
         await self.add_cog(MapsCog(self))
         await self.add_cog(SubnetCog(self))
         await self.add_cog(SeasonsCog(self))
+        if self._settings.cases_enabled:
+            # /cases and /language exist only while at least one flow is switched on.
+            await self.add_cog(CasesCog(self))
+        # Always registered: a button left on an old card answers "not available" instead
+        # of "interaction failed" after its flow is switched off.
+        self.add_dynamic_items(CaseActionButton, PanelButton)
+        await self.tree.set_translator(XCoreTranslator())
 
         @self.tree.error
         async def _on_app_command_error(
@@ -931,6 +988,17 @@ class XCoreDiscordBot(commands.Bot):
 
         await self._bus.connect()
         await self._store.connect()
+        container = self._ensure_container()
+        if self._settings.cases_enabled:
+            try:
+                await container.cases.store.load_locale_prefs()
+                await container.cases.store.ensure_indexes()
+            except Exception:
+                logger.exception(
+                    "Cases storage initialization failed; flows stay disabled"
+                )
+                container.cases.storage_available = False
+            container.cases_reconcile_daemon.start()
 
         self._ensure_container().stream_supervisor.start()
         self._ensure_container().presence_daemon.start()
@@ -982,6 +1050,7 @@ class XCoreDiscordBot(commands.Bot):
         """Used for game chat bridge and DM-based account linking."""
         if message.author.bot:
             return
+        await self._dispatch_case_hook("on_message", message)
 
         if isinstance(message.channel, discord.DMChannel):
             code = message.content.strip().upper()
@@ -1033,8 +1102,37 @@ class XCoreDiscordBot(commands.Bot):
             source_message_id=str(message.id),
         )
 
+    async def _dispatch_case_hook(self, hook: str, value: object) -> None:
+        # With every cases flag off no flow is enabled and the registry returns at once.
+        cases = getattr(getattr(self, "container", None), "cases", None)
+        if cases is not None:
+            await cases.registry.dispatch(hook, cases, value)
+
+    async def on_interaction(self, interaction: Interaction) -> None:
+        # An observer, not a response handler: it never delays a modal or command
+        # acknowledgement. It keeps the ``auto`` language row fresh for later DMs.
+        cases = getattr(getattr(self, "container", None), "cases", None)
+        if (
+            cases is None
+            or not self._settings.cases_enabled
+            or interaction.type == discord.InteractionType.autocomplete
+        ):
+            return
+        try:
+            await cases.store.remember_interaction(interaction)
+        except Exception:
+            logger.exception("Could not refresh Discord locale preference")
+
+    async def on_thread_create(self, thread: discord.Thread) -> None:
+        await self._dispatch_case_hook("on_thread_create", thread)
+
+    async def on_raw_thread_delete(self, payload: discord.RawThreadDeleteEvent) -> None:
+        await self._dispatch_case_hook("on_thread_delete", payload)
+
     async def close(self) -> None:
         if hasattr(self, "container"):
+            if self.container.cases_reconcile_daemon is not None:
+                await self.container.cases_reconcile_daemon.stop()
             self.container.presence_daemon.stop()
             self.container.admin_sync_daemon.stop()
             if self.container.staff_sync_daemon is not None:
@@ -1185,6 +1283,33 @@ class XCoreDiscordBot(commands.Bot):
         interaction: Interaction,
         error: app_commands.AppCommandError,
     ) -> None:
+        if await private_case_command(self, interaction):
+            # No exception arguments, tracebacks, namespace values or actor names may leave
+            # a complaint/unknown cases command. The reference is the entire diagnostic.
+            error_id = secrets.token_hex(4)
+            logger.error("Private cases command failed [ref=%s]", error_id)
+            message = f"Command failed (ref: {error_id}). Report this to an admin if the issue persists."
+            try:
+                if interaction.response.is_done():
+                    await interaction.followup.send(message, ephemeral=True)
+                else:
+                    await interaction.response.send_message(message, ephemeral=True)
+                channel_id = self._settings.discord_error_log_channel_id
+                if channel_id:
+                    # Avoid the ordinary channel resolver's exception-text diagnostics.
+                    channel = self.get_channel(channel_id)
+                    if channel is None:
+                        channel = await self.fetch_channel(channel_id)
+                    embed = discord.Embed(
+                        title="Application Command Error",
+                        description="Private cases command failed.",
+                        color=discord.Color.red(),
+                    )
+                    embed.add_field(name="Error ID", value=error_id, inline=False)
+                    await channel.send(embed=embed)
+            except Exception:
+                logger.error("Private cases error delivery failed [ref=%s]", error_id)
+            return
         if isinstance(error, app_commands.CheckFailure):
             message = str(error) or "Missing permissions"
             if interaction.response.is_done():

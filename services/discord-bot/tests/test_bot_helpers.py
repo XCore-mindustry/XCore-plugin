@@ -267,6 +267,9 @@ class _BanStore:
     def now_utc(self) -> datetime:
         return datetime(2026, 1, 1, tzinfo=UTC)
 
+    async def next_ban_id(self) -> int:
+        return len(self.bans) + 1
+
     async def upsert_ban(
         self,
         *,
@@ -278,9 +281,11 @@ class _BanStore:
         admin_discord_id: str | None,
         reason: str,
         expire_date: datetime,
+        ban_id: int | None = None,
     ) -> None:
         self.bans.append(
             {
+                "ban_id": ban_id,
                 "uuid": uuid,
                 "ip": ip,
                 "pid": pid,
@@ -354,6 +359,8 @@ async def test_perform_ban_idempotent_by_entity_key() -> None:
         admin_discord_id: str | None,
         reason: str,
         expire: datetime,
+        ban_id: int | None = None,
+        case_number: int | None = None,
     ) -> None:
         await fake_post_ban_log(
             pid=pid,

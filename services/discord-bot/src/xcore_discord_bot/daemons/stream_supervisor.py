@@ -62,6 +62,14 @@ class StreamSupervisor:
             ),
         )
 
+        if runtime_consumers.case_reports_configured(self._bot):
+            consumers += (
+                (
+                    runtime_consumers.consume_case_reports(self._bot),
+                    "redis-case-report-consumer",
+                ),
+            )
+
         for coroutine, name in consumers:
             self._tasks.append(asyncio.create_task(coroutine, name=name))
 

@@ -3,8 +3,6 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
-import pytest
-
 from xcore_discord_bot.bot import XCoreDiscordBot
 from xcore_discord_bot.handlers_misc import cmd_upload_map
 
@@ -90,7 +88,6 @@ class _Settings:
     discord_map_reviewer_role_id = 200
 
 
-@pytest.mark.asyncio
 async def test_upload_map_requires_valid_msav_files() -> None:
     bot = object.__new__(XCoreDiscordBot)
     bot._settings = _Settings()
@@ -114,7 +111,6 @@ async def test_upload_map_requires_valid_msav_files() -> None:
     assert bot._bus.maps_calls == []
 
 
-@pytest.mark.asyncio
 async def test_upload_map_publishes_msav_files() -> None:
     bot = object.__new__(XCoreDiscordBot)
     bot._settings = _Settings()
@@ -149,7 +145,6 @@ async def test_upload_map_publishes_msav_files() -> None:
         assert "creator" not in item["discordUpload"]
 
 
-@pytest.mark.asyncio
 async def test_upload_map_records_selected_creator_for_all_files() -> None:
     bot = object.__new__(XCoreDiscordBot)
     bot._settings = _Settings()
@@ -176,7 +171,6 @@ async def test_upload_map_records_selected_creator_for_all_files() -> None:
     assert "✅ Installed; attribution saved" in interaction.replies[-1]
 
 
-@pytest.mark.asyncio
 async def test_upload_creator_overrides_follow_original_attachment_positions() -> None:
     bot = object.__new__(XCoreDiscordBot)
     bot._settings = _Settings()
@@ -204,7 +198,6 @@ async def test_upload_creator_overrides_follow_original_attachment_positions() -
     ]
 
 
-@pytest.mark.asyncio
 async def test_upload_timeout_reports_uncertainty_without_claiming_failure_or_retrying() -> (
     None
 ):
@@ -226,7 +219,6 @@ async def test_upload_timeout_reports_uncertainty_without_claiming_failure_or_re
     assert bot.rpc_upload_maps.await_count == 1
 
 
-@pytest.mark.asyncio
 async def test_upload_formats_partial_result_and_disables_mentions() -> None:
     from unittest.mock import AsyncMock
 
@@ -266,7 +258,6 @@ async def test_upload_formats_partial_result_and_disables_mentions() -> None:
     assert "mini-pvp" not in bot._map_cache
 
 
-@pytest.mark.asyncio
 async def test_malformed_response_invalidates_cached_map_list_and_finishes_message() -> (
     None
 ):
@@ -288,7 +279,6 @@ async def test_malformed_response_invalidates_cached_map_list_and_finishes_messa
     assert "mini-pvp" not in bot._map_cache
 
 
-@pytest.mark.asyncio
 async def test_invalid_upload_is_rejected_before_rpc_or_uploading_message() -> None:
     bot = object.__new__(XCoreDiscordBot)
     bot._settings = _Settings()
@@ -306,7 +296,6 @@ async def test_invalid_upload_is_rejected_before_rpc_or_uploading_message() -> N
     assert not interaction.replies
 
 
-@pytest.mark.asyncio
 async def test_attachment_only_discord_message_is_not_published_as_empty_chat(
     monkeypatch,
 ) -> None:

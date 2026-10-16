@@ -8,7 +8,7 @@ from typing import Any
 
 from bson.errors import InvalidBSON
 from pydantic import BaseModel, ConfigDict
-from pymongo import DESCENDING, AsyncMongoClient
+from pymongo import DESCENDING, AsyncMongoClient, ReturnDocument
 from pymongo.asynchronous.database import AsyncDatabase
 from pymongo.errors import PyMongoError
 
@@ -29,8 +29,12 @@ from .store_mappers import (
     mute_record_from_doc,
     player_record_from_doc,
 )
+from .utils.mindustry_colors import strip_mindustry_colors
 
 logger = logging.getLogger(__name__)
+# Rows read to find two players with a name: a bracketed group that is not a colour tag
+# also matches the query, and the check after it drops those.
+EXACT_NAME_CANDIDATES = 10
 
 
 def _to_int(value: Any, default: int = 0) -> int:
@@ -89,6 +93,8 @@ class PlayerDoc(_MongoDoc):
 
 
 class BanDoc(_MongoDoc):
+    ban_id: int | None = None
+    case_number: int | None = None
     uuid: str | None = None
     ip: str | None = None
     pid: int | None = None
@@ -100,6 +106,7 @@ class BanDoc(_MongoDoc):
 
 
 class MuteDoc(_MongoDoc):
+    case_number: int | None = None
     uuid: str
     pid: int | None = None
     name: str
@@ -153,6 +160,12 @@ class MongoStore:
         )
         self._db = self._client[self._settings.mongo_db_name]
         await self._db.command("ping")
+        await self._db["bans"].create_index(
+            "ban_id", unique=True, partialFilterExpression={"ban_id": {"$type": "int"}}
+        )
+        await self._db["moderation_audit"].create_index(
+            "details.extra.ban_id", sparse=True
+        )
 
     async def close(self) -> None:
         if self._client is not None:
@@ -177,6 +190,59 @@ class MongoStore:
         return player_record_from_doc(
             PlayerDoc.model_validate(raw).model_dump(mode="python")
         )
+
+    async def find_players_by_exact_name(self, name: str) -> list[PlayerRecord]:
+        """Players whose nickname, custom nickname or username is ``name``, ignoring case
+        and colour tags (the game stores the coloured nickname).
+
+        At most two: the caller only needs to know whether the name is unambiguous.
+        """
+        wanted = name.strip().casefold()
+        if not wanted:
+            return []
+        # Any bracketed group may sit between the letters; the check below keeps only names
+        # that read the same once their colour tags are removed.
+        tags = r"(?:\[[^\[\]]*\])*"
+        pattern = {
+            "$regex": "^"
+            + tags
+            + tags.join(re.escape(c) for c in name.strip())
+            + tags
+            + "$",
+            "$options": "i",
+        }
+        cursor = (
+            self._db_required()["players"]
+            .find(
+                {
+                    "$or": [
+                        {field: pattern}
+                        for field in ("nickname", "custom_nickname", "username")
+                    ]
+                }
+            )
+            .limit(EXACT_NAME_CANDIDATES)
+        )
+        candidates = [row async for row in cursor]
+        rows = [
+            row
+            for row in candidates
+            if any(
+                strip_mindustry_colors(str(row.get(field) or "")).strip().casefold()
+                == wanted
+                for field in ("nickname", "custom_nickname", "username")
+            )
+        ]
+        # A bounded raw regex scan can be saturated by non-colour tags such as [VIP].
+        # One filtered match does not prove uniqueness when a later real match may exist.
+        if len(candidates) == EXACT_NAME_CANDIDATES and len(rows) < 2:
+            return []
+        return [
+            player_record_from_doc(
+                PlayerDoc.model_validate(row).model_dump(mode="python")
+            )
+            for row in rows[:2]
+        ]
 
     async def find_player_by_uuid(self, uuid: str) -> PlayerRecord | None:
         raw = await self._db_required()["players"].find_one({"uuid": uuid})
@@ -337,6 +403,10 @@ class MongoStore:
                         "$project": {
                             "uuid": 1,
                             "ip": 1,
+                            "pid": 1,
+                            "ban_id": 1,
+                            "case_number": 1,
+                            "admin_discord_id": 1,
                             "name": 1,
                             "admin_name": 1,
                             "reason": 1,
@@ -367,6 +437,10 @@ class MongoStore:
                 sanitized.append(
                     ban_record_from_doc(
                         {
+                            "ban_id": row.get("ban_id"),
+                            "case_number": row.get("case_number"),
+                            "pid": row.get("pid"),
+                            "admin_discord_id": row.get("admin_discord_id"),
                             "uuid": row.get("uuid"),
                             "ip": row.get("ip"),
                             "name": row.get("name"),
@@ -398,10 +472,14 @@ class MongoStore:
         admin_discord_id: str | None,
         reason: str,
         expire_date: datetime,
+        case_number: int | None = None,
+        ban_id: int | None = None,
     ) -> None:
         query = self._ban_lookup_query(uuid=uuid, ip=ip)
 
         payload = BanDoc(
+            ban_id=ban_id if ban_id is not None else await self.next_ban_id(),
+            case_number=case_number,
             uuid=uuid,
             ip=ip,
             pid=pid,
@@ -413,8 +491,12 @@ class MongoStore:
         ).model_dump(mode="python")
         await self._db_required()["bans"].replace_one(query, payload, upsert=True)
 
-    async def delete_ban(self, *, uuid: str, ip: str | None) -> int:
+    async def delete_ban(
+        self, *, uuid: str, ip: str | None, ban_id: int | None = None
+    ) -> int:
         query = self._ban_lookup_query(uuid=uuid, ip=ip)
+        if ban_id is not None:
+            query["ban_id"] = ban_id
 
         result = await self._db_required()["bans"].delete_many(query)
         return result.deleted_count
@@ -427,6 +509,53 @@ class MongoStore:
             return None
         return ban_record_from_doc(BanDoc.model_validate(raw).model_dump(mode="python"))
 
+    async def next_ban_id(self) -> int:
+        row = await self._db_required()["counters"].find_one_and_update(
+            {"_id": "ban_id"},
+            {"$inc": {"seq": 1}},
+            upsert=True,
+            return_document=ReturnDocument.AFTER,
+        )
+        return int(row["seq"])
+
+    async def find_ban_by_id(self, ban_id: int) -> BanRecord | None:
+        raw = await self._db_required()["bans"].find_one({"ban_id": ban_id})
+        if raw is None:
+            return None
+        return ban_record_from_doc(BanDoc.model_validate(raw).model_dump(mode="python"))
+
+    async def ensure_ban_id(self, *, uuid: str, ip: str | None) -> BanRecord | None:
+        bans = self._db_required()["bans"]
+        raw = await bans.find_one(self._ban_lookup_query(uuid=uuid, ip=ip))
+        if raw is None:
+            return None
+        if raw.get("ban_id") is None:
+            ban_id = await self.next_ban_id()
+            missing_id = {"$exists": False} if "ban_id" not in raw else None
+            updated = await bans.find_one_and_update(
+                {"_id": raw["_id"], "ban_id": missing_id},
+                {"$set": {"ban_id": ban_id}},
+                return_document=ReturnDocument.AFTER,
+            )
+            # Another reader may have won the assignment; return its id.
+            raw = updated or await bans.find_one({"_id": raw["_id"]})
+            if raw is None:
+                return None
+        return ban_record_from_doc(BanDoc.model_validate(raw).model_dump(mode="python"))
+
+    async def update_ban_expiry(self, *, ban_id: int, new_expiry: datetime) -> bool:
+        result = await self._db_required()["bans"].update_one(
+            {
+                "ban_id": ban_id,
+                "$or": [
+                    {"expire_date": None},
+                    {"expire_date": {"$gt": new_expiry}},
+                ],
+            },
+            {"$set": {"expire_date": new_expiry}},
+        )
+        return result.modified_count > 0
+
     async def upsert_mute(
         self,
         *,
@@ -437,8 +566,10 @@ class MongoStore:
         admin_discord_id: str | None,
         reason: str,
         expire_date: datetime,
+        case_number: int | None = None,
     ) -> None:
         payload = MuteDoc(
+            case_number=case_number,
             uuid=uuid,
             pid=pid,
             name=name,

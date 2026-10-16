@@ -43,7 +43,6 @@ class _CachedMapsBot:
         return await self._bus.rpc_maps_list(server, timeout_ms)
 
 
-@pytest.mark.asyncio
 async def test_get_cached_maps_uses_ttl(monkeypatch: pytest.MonkeyPatch) -> None:
     bus = _MapsBus()
     bot = _CachedMapsBot(_bus=bus, _map_cache={})
@@ -71,7 +70,6 @@ async def test_get_cached_maps_uses_ttl(monkeypatch: pytest.MonkeyPatch) -> None
     assert cast(Any, bus).calls == 2
 
 
-@pytest.mark.asyncio
 async def test_get_cached_maps_returns_stale_cache_on_timeout(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -99,7 +97,6 @@ async def test_get_cached_maps_returns_stale_cache_on_timeout(
     assert maps == [{"name": "Gladius Arena", "file_name": "gladius.msav"}]
 
 
-@pytest.mark.asyncio
 async def test_get_cached_maps_retries_transient_timeout(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -145,7 +142,6 @@ class _Interaction:
     namespace: Any
 
 
-@pytest.mark.asyncio
 async def test_autocomplete_map_file_filters_and_formats() -> None:
     interaction: Any = _Interaction(
         client=_AutocompleteBot(
@@ -164,7 +160,6 @@ async def test_autocomplete_map_file_filters_and_formats() -> None:
     assert choices[0].value == "glacier.msav"
 
 
-@pytest.mark.asyncio
 async def test_autocomplete_map_file_returns_empty_without_server() -> None:
     interaction: Any = _Interaction(
         client=_AutocompleteBot(maps=[]),

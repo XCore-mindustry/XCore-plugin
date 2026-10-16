@@ -103,6 +103,8 @@ def player_record_from_doc(doc: Mapping[str, object]) -> PlayerRecord:
 
 def ban_record_from_doc(doc: Mapping[str, object]) -> BanRecord:
     return BanRecord(
+        ban_id=_int_or_default(doc.get("ban_id")) or None,
+        case_number=_int_or_default(doc.get("case_number")) or None,
         uuid=_normalized_optional_str(doc.get("uuid")),
         ip=_normalized_optional_str(doc.get("ip")),
         pid=or_none(_int_or_default(doc.get("pid"), default=NO_PID)),
@@ -116,6 +118,7 @@ def ban_record_from_doc(doc: Mapping[str, object]) -> BanRecord:
 
 def mute_record_from_doc(doc: Mapping[str, object]) -> MuteRecord:
     return MuteRecord(
+        case_number=_int_or_default(doc.get("case_number")) or None,
         uuid=_normalized_optional_str(doc.get("uuid")),
         pid=or_none(_int_or_default(doc.get("pid"), default=NO_PID)),
         name=_normalized_optional_str(doc.get("name")) or "Unknown",

@@ -44,6 +44,8 @@ class PlayerRecord:
 
 @dataclass(frozen=True, kw_only=True)
 class BanRecord:
+    ban_id: int | None = None
+    case_number: int | None = None
     name: str
     admin_name: str
     reason: str
@@ -59,6 +61,7 @@ class BanRecord:
 
 @dataclass(frozen=True, kw_only=True)
 class MuteRecord:
+    case_number: int | None = None
     name: str
     admin_name: str
     reason: str

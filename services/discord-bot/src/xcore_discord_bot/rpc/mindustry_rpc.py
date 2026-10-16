@@ -5,7 +5,8 @@ import uuid
 from collections.abc import Awaitable, Callable
 from typing import Any, TypeVar
 
-from xcore_protocol.generated.maps import MapsUploadResponseV1
+from xcore_protocol.generated.cases import CasesEvidenceResponseV1
+from xcore_protocol.generated.maps import MapsInspectResponseV1, MapsUploadResponseV1
 from xcore_protocol.generated.rating import (
     RatingAccountsMergeResponseV1,
     RatingPrizeGrantUpdateResponseV1,
@@ -239,6 +240,40 @@ class MindustryRpcClient:
                 timeout_ms=timeout_ms,
             )
         )
+
+    async def rpc_case_evidence(
+        self,
+        *,
+        server: str,
+        player_uuid: str,
+        chat_lines: int = 30,
+        window_seconds: int = 600,
+    ) -> CasesEvidenceResponseV1:
+        # Evidence belongs to this server's recent chat/history; another server
+        # cannot answer for it. An offline target is a valid typed response.
+        return await self._bus.rpc_case_evidence(
+            server=server,
+            player_uuid=player_uuid,
+            chat_lines=chat_lines,
+            window_seconds=window_seconds,
+        )
+
+    async def rpc_inspect_map(
+        self,
+        *,
+        url: str,
+        file_name: str,
+        profile: str | None = None,
+        server: str | None = None,
+    ) -> MapsInspectResponseV1:
+        async def inspect(name: str) -> MapsInspectResponseV1:
+            return await self._bus.rpc_inspect_map(
+                server=name, url=url, file_name=file_name, profile=profile
+            )
+
+        if server is not None:
+            return await inspect(server)
+        return await self.on_any_live_server(inspect)
 
     async def rpc_subnet_rules_command(self, **kwargs: Any) -> Any:
         return await self._bus.rpc_subnet_rules_command(**kwargs)
