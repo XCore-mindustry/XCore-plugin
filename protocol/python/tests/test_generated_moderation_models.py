@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import pytest
+
 from jsonschema import ValidationError
 
 from xcore_protocol.generated import (
@@ -35,6 +37,25 @@ def test_generated_moderation_ban_roundtrip_matches_fixture() -> None:
     assert model.expiration.to_payload() == payload["expiration"]
     assert model.to_payload() == payload
     validate_instance(spec_root() / "messages" / "moderation" / "moderation.ban.created.v1.json", model.to_payload())
+
+
+@pytest.mark.parametrize("suffix", ("", ".ban-id"))
+def test_ban_id_is_optional_and_roundtrips(suffix: str) -> None:
+    payload = load_json(fixtures_root() / "valid/moderation" / f"moderation.ban.created.v1{suffix}.json")
+    model = ModerationBanCreatedV1.from_payload(payload)
+    assert model.banId == payload.get("banId")
+    assert model.to_payload() == payload
+    validate_instance(spec_root() / "messages/moderation/moderation.ban.created.v1.json", payload)
+
+
+@pytest.mark.parametrize("suffix", ("zero-ban-id", "negative-ban-id", "string-ban-id"))
+def test_invalid_ban_ids_fail_schema_and_generated_model(suffix: str) -> None:
+    from xcore_protocol.schema_validation import assert_invalid
+
+    fixture = fixtures_root() / "invalid/moderation" / f"moderation.ban.created.v1.{suffix}.json"
+    assert_invalid(spec_root() / "messages/moderation/moderation.ban.created.v1.json", fixture)
+    with pytest.raises((TypeError, ValueError)):
+        ModerationBanCreatedV1.from_payload(load_json(fixture))
 
 
 def test_generated_moderation_mute_roundtrip_matches_fixture() -> None:

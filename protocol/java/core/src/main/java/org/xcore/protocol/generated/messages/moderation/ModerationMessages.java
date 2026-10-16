@@ -91,7 +91,8 @@ public final class ModerationMessages {
             String reason,
             ExpirationInfoV1 expiration,
             String server,
-            String occurredAt
+            String occurredAt,
+            Integer banId
     ) implements ProtocolPayload {
     public static final String MESSAGE_TYPE = "moderation.ban.created";
     public static final int MESSAGE_VERSION = 1;
@@ -115,6 +116,11 @@ public final class ModerationMessages {
             if (occurredAt != null) {
                 Objects.requireNonNull(occurredAt, "occurredAt must not be null");
             }
+            if (banId != null) {
+                if (banId < 1) {
+                    throw new IllegalArgumentException("banId must be >= 1");
+                }
+            }
         }
 
         @Override
@@ -133,6 +139,9 @@ public final class ModerationMessages {
             }
             if (occurredAt != null) {
                 payload.put("occurredAt", occurredAt);
+            }
+            if (banId != null) {
+                payload.put("banId", banId);
             }
             return payload;
         }

@@ -22,6 +22,36 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class ProtocolPayloadTest {
 
+    @Test
+    void moderationBanIdIsOptionalAndPositive() {
+        var target = new PlayerRefV1("uuid", 12, "Alice", null);
+        var actor = new ActorRefV1("admin", null, null);
+        var oldPayload = new ModerationBanCreatedV1(target, actor, "spam", null, null, null, null).toPayload();
+        assertFalse(oldPayload.containsKey("banId"));
+        var newPayload = new ModerationBanCreatedV1(target, actor, "spam", null, null, null, 1).toPayload();
+        assertEquals(1, newPayload.get("banId"));
+        assertThrows(IllegalArgumentException.class,
+                () -> new ModerationBanCreatedV1(target, actor, "spam", null, null, null, 0));
+        assertThrows(IllegalArgumentException.class,
+                () -> new ModerationBanCreatedV1(target, actor, "spam", null, null, null, -1));
+    }
+
+    @Test
+    void caseChatPreservesEpochMillisecondsAndSignedPids() {
+        var line = new CaseChatLineV1(1791892800000L, "Alice", -12, CaseChatLineV1Role.REPORTER, "", null);
+        assertEquals(1791892800000L, line.toPayload().get("sentAt"));
+        assertEquals(-12, line.toPayload().get("playerPid"));
+        assertEquals("reporter", line.toPayload().get("role"));
+        assertFalse(line.toPayload().containsKey("team"));
+    }
+
+    @Test
+    void inspectFindingCodesRemainOpen() {
+        var finding = new MapInspectFindingV1("future-check-v2", MapInspectFindingV1Severity.INFO, null, null, null, null);
+        assertEquals("future-check-v2", finding.toPayload().get("code"));
+        assertEquals("info", finding.toPayload().get("severity"));
+    }
+
     // ── Shared types ────────────────────────────────────────────────
 
     @Test
@@ -254,7 +284,7 @@ class ProtocolPayloadTest {
         var target = new PlayerRefV1("uuid-1", 12, "bad", "1.2.3.4");
         var actor = new ActorRefV1("admin", "123", ActorRefV1ActorType.DISCORD);
         var expiration = new ExpirationInfoV1("2026-01-01T00:00:00Z", false);
-        var ban = new ModerationBanCreatedV1(target, actor, "spam", expiration, "alpha", "2026-01-01T00:00:00Z");
+        var ban = new ModerationBanCreatedV1(target, actor, "spam", expiration, "alpha", "2026-01-01T00:00:00Z", null);
         var payload = ban.toPayload();
 
         assertEquals("moderation.ban.created", payload.get("messageType"));

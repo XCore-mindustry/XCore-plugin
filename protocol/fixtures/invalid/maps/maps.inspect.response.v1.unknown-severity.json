@@ -1,0 +1,50 @@
+{
+  "messageType": "maps.inspect.response",
+  "messageVersion": 1,
+  "server": "mini-pvp",
+  "status": "ok",
+  "info": {
+    "name": "Ancient Caldera",
+    "author": "Alice",
+    "description": "",
+    "width": 120,
+    "height": 80,
+    "saveVersion": 8,
+    "build": 160,
+    "gameMode": "pvp",
+    "profile": "pvp",
+    "spawnCount": 2,
+    "coresByTeam": {
+      "sharded": 1,
+      "crux": 2
+    },
+    "waves": false,
+    "waveTimer": false,
+    "spawnGroupCount": 0,
+    "dropZoneRadius": 300.5,
+    "mods": [
+      "example-mod"
+    ],
+    "sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+    "sizeBytes": 2048
+  },
+  "findings": [
+    {
+      "code": "future-check-v2",
+      "severity": "critical"
+    },
+    {
+      "code": "core-near-spawn",
+      "severity": "warning",
+      "detail": "Core near enemy spawn.",
+      "x": 10,
+      "y": 20,
+      "count": 1
+    },
+    {
+      "code": "missing-core",
+      "severity": "error",
+      "detail": ""
+    }
+  ]
+}

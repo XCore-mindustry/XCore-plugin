@@ -1,0 +1,6 @@
+{
+  "messageType": "cases.evidence.request",
+  "messageVersion": 1,
+  "server": "mini-pvp",
+  "playerUuid": "uuid-target"
+}

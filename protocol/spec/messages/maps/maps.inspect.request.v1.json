@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:xcore:protocol:messages:maps:maps.inspect.request:v1",
+  "title": "MapsInspectRequestV1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "messageType",
+    "messageVersion",
+    "server",
+    "file"
+  ],
+  "properties": {
+    "messageType": {
+      "const": "maps.inspect.request"
+    },
+    "messageVersion": {
+      "const": 1
+    },
+    "server": {
+      "type": "string",
+      "minLength": 1
+    },
+    "file": {
+      "$ref": "urn:xcore:protocol:shared:types:map-file-source:v1"
+    },
+    "profile": {
+      "type": "string"
+    }
+  }
+}

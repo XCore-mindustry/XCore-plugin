@@ -1,6 +1,7 @@
 package org.xcore.protocol.generated;
 
 import org.junit.jupiter.api.Test;
+import org.xcore.protocol.generated.messages.cases.CasesMessages.*;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.*;
 import org.xcore.protocol.generated.messages.discord.DiscordLinkStatusChangedV1Action;
 import org.xcore.protocol.generated.messages.discord.DiscordMessages.*;
@@ -9,6 +10,7 @@ import org.xcore.protocol.generated.messages.moderation.ModerationMessages.*;
 import org.xcore.protocol.generated.messages.rating.RatingMessages.*;
 import org.xcore.protocol.generated.messages.sentinel.SentinelMessages.*;
 import org.xcore.protocol.generated.routes.MapsRoutes;
+import org.xcore.protocol.generated.routes.CasesRoutes;
 import org.xcore.protocol.generated.routes.ProtocolRoutes;
 import org.xcore.protocol.generated.shared.*;
 
@@ -18,7 +20,7 @@ class ProtocolRoutesTest {
 
     @Test
     void aggregateCatalogIncludesAllRoutes() {
-        assertEquals(45, ProtocolRoutes.ROUTES_BY_MESSAGE.size(), "expected 45 total routes");
+        assertEquals(49, ProtocolRoutes.ROUTES_BY_MESSAGE.size(), "expected 49 total routes");
         assertNotNull(ProtocolRoutes.ROUTES_BY_MESSAGE.get(new ProtocolRoutes.MessageKey("chat.message", 1)));
         assertNotNull(ProtocolRoutes.ROUTES_BY_MESSAGE.get(new ProtocolRoutes.MessageKey("maps.list.request", 1)));
         assertNotNull(ProtocolRoutes.ROUTES_BY_MESSAGE.get(new ProtocolRoutes.MessageKey("discord.link.status-changed", 1)));
@@ -71,7 +73,8 @@ class ProtocolRoutesTest {
                 "spam",
                 new ExpirationInfoV1("2026-01-01T00:00:00Z", false),
                 "alpha",
-                "2026-01-01T00:00:00Z"
+                "2026-01-01T00:00:00Z",
+                null
         );
         var moderationRoute = ProtocolRoutes.routeFor(moderationPayload);
         assertNotNull(moderationRoute);
@@ -94,6 +97,44 @@ class ProtocolRoutesTest {
         var familyRoute = MapsRoutes.MAPS_LIST_REQUEST_V1;
         assertNotNull(familyRoute.response());
         assertEquals("maps.list.response", familyRoute.response().messageType());
+    }
+
+    @Test
+    void casesAndInspectRoutesMatchSpecStreams() {
+        var report = ProtocolRoutes.CASES_REPORT_SUBMITTED_V1;
+        assertEquals(CasesReportSubmittedV1.class, report.payloadType());
+        assertEquals("event", report.kind());
+        assertEquals("xcore:evt:cases:report", report.stream());
+        assertEquals("broadcast", report.targetScope());
+        assertEquals(604800000, report.ttlMs());
+        assertTrue(report.replayable());
+        assertTrue(report.idempotentConsumerRecommended());
+        assertEquals("cases", report.owner());
+        assertEquals(report.stream(), CasesRoutes.CASES_REPORT_SUBMITTED_V1.stream());
+
+        var notice = new CasesNoticeCommandV1("mini-pvp", "42:uuid:report_received", "uuid", null);
+        var noticeRoute = ProtocolRoutes.routeFor(notice);
+        assertEquals("xcore:cmd:cases-notice:mini-pvp", noticeRoute.stream().replace("{server}", notice.server()));
+        assertEquals("payload.server", noticeRoute.bindings().get("server"));
+        assertEquals("command", noticeRoute.kind());
+        assertEquals(120000, noticeRoute.ttlMs());
+        assertFalse(noticeRoute.replayable());
+
+        var evidence = ProtocolRoutes.CASES_EVIDENCE_REQUEST_V1;
+        assertEquals("xcore:rpc:req:mini-pvp", evidence.stream().replace("{server}", "mini-pvp"));
+        assertEquals("payload.server", evidence.bindings().get("server"));
+        assertEquals(15000, evidence.ttlMs());
+        assertEquals(CasesEvidenceResponseV1.class, evidence.response().payloadType());
+        assertEquals("xcore:rpc:resp:discord", evidence.response().stream().replace("{requester}", "discord"));
+        assertEquals("rpc.requester", evidence.response().bindings().get("requester"));
+
+        var inspect = ProtocolRoutes.MAPS_INSPECT_REQUEST_V1;
+        assertEquals("xcore:rpc:req:mini-pvp", inspect.stream().replace("{server}", "mini-pvp"));
+        assertEquals(60000, inspect.ttlMs());
+        assertEquals(MapsInspectRequestV1.class, inspect.payloadType());
+        assertEquals(MapsInspectResponseV1.class, inspect.response().payloadType());
+        assertEquals("xcore:rpc:resp:discord", inspect.response().stream().replace("{requester}", "discord"));
+        assertEquals(inspect.stream(), MapsRoutes.MAPS_INSPECT_REQUEST_V1.stream());
     }
 
     @Test

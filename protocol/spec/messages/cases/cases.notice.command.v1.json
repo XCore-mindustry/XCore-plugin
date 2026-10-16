@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:xcore:protocol:messages:cases:cases.notice.command:v1",
+  "title": "CasesNoticeCommandV1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "messageType",
+    "messageVersion",
+    "server",
+    "noticeId",
+    "playerUuid"
+  ],
+  "properties": {
+    "messageType": {
+      "const": "cases.notice.command"
+    },
+    "messageVersion": {
+      "const": 1
+    },
+    "server": {
+      "type": "string",
+      "minLength": 1
+    },
+    "noticeId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "playerUuid": {
+      "type": "string",
+      "minLength": 1
+    },
+    "requestedAt": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}

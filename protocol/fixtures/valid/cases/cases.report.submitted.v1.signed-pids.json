@@ -1,0 +1,34 @@
+{
+  "messageType": "cases.report.submitted",
+  "messageVersion": 1,
+  "submissionId": "mini-pvp:report-42",
+  "server": "mini-pvp",
+  "reporter": {
+    "playerUuid": "uuid-reporter",
+    "playerName": "Alice",
+    "playerPid": -12
+  },
+  "target": {
+    "playerUuid": "uuid-target",
+    "playerName": "Bob"
+  },
+  "targetOnline": false,
+  "reason": "future-reason",
+  "chat": [
+    {
+      "sentAt": 1791892800000,
+      "playerName": "Alice",
+      "playerPid": -12,
+      "role": "reporter",
+      "text": ""
+    },
+    {
+      "sentAt": 1791892801000,
+      "playerName": "Guest",
+      "playerPid": 0,
+      "role": "other",
+      "text": ""
+    }
+  ],
+  "occurredAt": "2026-10-13T12:00:00Z"
+}

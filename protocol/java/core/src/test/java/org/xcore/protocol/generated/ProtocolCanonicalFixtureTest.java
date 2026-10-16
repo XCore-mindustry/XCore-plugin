@@ -1,9 +1,11 @@
 package org.xcore.protocol.generated;
 
 import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.xcore.protocol.generated.messages.cases.CasesMessages;
 import org.xcore.protocol.generated.messages.chat.ChatMessages;
 import org.xcore.protocol.generated.messages.discord.DiscordMessages;
 import org.xcore.protocol.generated.messages.identity.IdentityMessages;
@@ -40,7 +42,19 @@ import static org.junit.jupiter.api.Assertions.fail;
 
 class ProtocolCanonicalFixtureTest {
 
-    private static final Gson GSON = new Gson();
+    // Preserve JSON integer tokens for generated integer-valued maps such as coresByTeam.
+    private static final Gson GSON = new GsonBuilder().setObjectToNumberStrategy(reader -> {
+        String token = reader.nextString();
+        if (token.contains(".") || token.contains("e") || token.contains("E")) {
+            return Double.valueOf(token);
+        }
+        long value = Long.parseLong(token);
+        if (value >= Integer.MIN_VALUE && value <= Integer.MAX_VALUE) {
+            return Integer.valueOf((int) value);
+        }
+        return Long.valueOf(value);
+    }).create();
+    private static final Gson NORMALIZATION_GSON = new Gson();
     private static final Type MAP_TYPE = new TypeToken<Map<String, Object>>() {
     }.getType();
     private static final String VALID_FIXTURES_ROOT = "fixtures/valid";
@@ -232,7 +246,7 @@ class ProtocolCanonicalFixtureTest {
         }
         if (Map.class.isAssignableFrom(rawType)) {
             assertInstanceOf(Map.class, value, () -> "Expected object value for field '" + fieldName + "'");
-            return normalizeMap((Map<String, Object>) value);
+            return new LinkedHashMap<>((Map<String, Object>) value);
         }
         if (List.class.isAssignableFrom(rawType)) {
             assertInstanceOf(List.class, value, () -> "Expected list value for field '" + fieldName + "'");
@@ -363,11 +377,12 @@ class ProtocolCanonicalFixtureTest {
     }
 
     private static Map<String, Object> normalizeMap(Map<String, Object> payload) {
-        return GSON.fromJson(GSON.toJson(payload), MAP_TYPE);
+        return NORMALIZATION_GSON.fromJson(NORMALIZATION_GSON.toJson(payload), MAP_TYPE);
     }
 
     private static Map<MessageKey, Class<? extends ProtocolPayload>> buildMessagePayloadIndex() {
         Map<MessageKey, Class<? extends ProtocolPayload>> index = new LinkedHashMap<>();
+        indexMessagePayloads(index, CasesMessages.class);
         indexMessagePayloads(index, MapsMessages.class);
         indexMessagePayloads(index, ChatMessages.class);
         indexMessagePayloads(index, IdentityMessages.class);

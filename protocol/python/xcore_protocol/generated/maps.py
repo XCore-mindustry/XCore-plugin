@@ -13,7 +13,10 @@ from .shared import (
     MapDiscordUploadV1,
     MapEntryV1,
     MapFileSourceV1,
+    MapInspectFindingV1,
+    MapInspectInfoV1,
     MapUploadResultV1,
+    MapInspectFindingV1Severity,
     MapUploadResultV1Status,
 )
 
@@ -115,6 +118,116 @@ def _expect_enum(value: Any, field_name: str, enum_type: type[StrEnum]) -> StrEn
 def _expect_instance(value: Any, field_name: str, expected_type: type[Any]) -> None:
     if not isinstance(value, expected_type):
         raise TypeError(f"{field_name} must be a {expected_type.__name__}")
+
+@dataclass(frozen=True, slots=True)
+class MapsInspectRequestV1:
+    server: str
+    file: MapFileSourceV1
+    profile: str | None = None
+
+    MESSAGE_TYPE: ClassVar[str] = 'maps.inspect.request'
+    MESSAGE_VERSION: ClassVar[int] = 1
+    def __post_init__(self) -> None:
+        _expect_str(self.server, 'server')
+        if len(self.server) < 1:
+            raise ValueError("server is too short")
+        _expect_instance(self.file, 'file', MapFileSourceV1)
+        if self.profile is not None:
+            _expect_str(self.profile, 'profile')
+
+    @classmethod
+    def from_payload(cls, payload: Mapping[str, Any]) -> "MapsInspectRequestV1":
+        mapping = _expect_mapping(payload, "MapsInspectRequestV1")
+        _expect_exact_keys(
+            mapping,
+            required=frozenset(('messageType', 'messageVersion', 'server', 'file')),
+            allowed=frozenset(('messageType', 'messageVersion', 'server', 'file', 'profile')),
+            model_name="MapsInspectRequestV1",
+        )
+        if mapping['messageType'] != cls.MESSAGE_TYPE:
+            raise ValueError('messageType' + " must equal " + repr(cls.MESSAGE_TYPE))
+        if mapping['messageVersion'] != cls.MESSAGE_VERSION:
+            raise ValueError('messageVersion' + " must equal " + repr(cls.MESSAGE_VERSION))
+        return cls(
+            server=_expect_str(mapping['server'], 'server'),
+            file=MapFileSourceV1.from_payload(_expect_mapping(mapping['file'], 'file')),
+            profile=(_expect_str(mapping['profile'], 'profile') if 'profile' in mapping else None),
+        )
+
+    def to_payload(self) -> dict[str, Any]:
+        payload: dict[str, Any] = {
+            'messageType': self.MESSAGE_TYPE,
+            'messageVersion': self.MESSAGE_VERSION,
+        }
+        payload['server'] = self.server
+        payload['file'] = self.file.to_payload()
+        if self.profile is not None:
+            payload['profile'] = self.profile
+        return payload
+
+class MapsInspectResponseV1Status(StrEnum):
+    OK = 'ok'
+    DOWNLOAD_FAILED = 'download_failed'
+    INVALID_MAP = 'invalid_map'
+
+@dataclass(frozen=True, slots=True)
+class MapsInspectResponseV1:
+    server: str
+    status: MapsInspectResponseV1Status
+    findings: tuple[MapInspectFindingV1, ...]
+    detail: str | None = None
+    info: MapInspectInfoV1 | None = None
+
+    MESSAGE_TYPE: ClassVar[str] = 'maps.inspect.response'
+    MESSAGE_VERSION: ClassVar[int] = 1
+    def __post_init__(self) -> None:
+        _expect_str(self.server, 'server')
+        if len(self.server) < 1:
+            raise ValueError("server is too short")
+        _expect_instance(self.status, 'status', MapsInspectResponseV1Status)
+        if self.detail is not None:
+            _expect_str(self.detail, 'detail')
+        if self.info is not None:
+            _expect_instance(self.info, 'info', MapInspectInfoV1)
+        if not isinstance(self.findings, tuple):
+            raise TypeError("findings must be a tuple")
+        for item in self.findings:
+            _expect_instance(item, 'findings[]', MapInspectFindingV1)
+
+    @classmethod
+    def from_payload(cls, payload: Mapping[str, Any]) -> "MapsInspectResponseV1":
+        mapping = _expect_mapping(payload, "MapsInspectResponseV1")
+        _expect_exact_keys(
+            mapping,
+            required=frozenset(('messageType', 'messageVersion', 'server', 'status', 'findings')),
+            allowed=frozenset(('messageType', 'messageVersion', 'server', 'status', 'detail', 'info', 'findings')),
+            model_name="MapsInspectResponseV1",
+        )
+        if mapping['messageType'] != cls.MESSAGE_TYPE:
+            raise ValueError('messageType' + " must equal " + repr(cls.MESSAGE_TYPE))
+        if mapping['messageVersion'] != cls.MESSAGE_VERSION:
+            raise ValueError('messageVersion' + " must equal " + repr(cls.MESSAGE_VERSION))
+        return cls(
+            server=_expect_str(mapping['server'], 'server'),
+            status=_expect_enum(mapping['status'], 'status', MapsInspectResponseV1Status),
+            detail=(_expect_str(mapping['detail'], 'detail') if 'detail' in mapping else None),
+            info=(MapInspectInfoV1.from_payload(_expect_mapping(mapping['info'], 'info')) if 'info' in mapping else None),
+            findings=tuple(MapInspectFindingV1.from_payload(_expect_mapping(item, 'findings[]')) for item in _expect_list(mapping['findings'], 'findings')),
+        )
+
+    def to_payload(self) -> dict[str, Any]:
+        payload: dict[str, Any] = {
+            'messageType': self.MESSAGE_TYPE,
+            'messageVersion': self.MESSAGE_VERSION,
+        }
+        payload['server'] = self.server
+        payload['status'] = str(self.status)
+        if self.detail is not None:
+            payload['detail'] = self.detail
+        if self.info is not None:
+            payload['info'] = self.info.to_payload()
+        payload['findings'] = [item.to_payload() for item in self.findings]
+        return payload
 
 @dataclass(frozen=True, slots=True)
 class MapsListRequestV1:
@@ -415,6 +528,8 @@ class MapsUploadResponseV1:
         return payload
 
 __all__ = [
+    "MapsInspectRequestV1",
+    "MapsInspectResponseV1",
     "MapsListRequestV1",
     "MapsListResponseV1",
     "MapsLoadCommandV1",
@@ -422,4 +537,5 @@ __all__ = [
     "MapsRemoveResponseV1",
     "MapsUploadRequestV1",
     "MapsUploadResponseV1",
+    "MapsInspectResponseV1Status",
 ]

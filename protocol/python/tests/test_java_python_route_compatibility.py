@@ -11,6 +11,8 @@ def test_generated_java_route_registries_match_python_route_surface() -> None:
     java_route_files = {
         "maps": repo_root()
         / "java/core/src/main/java/org/xcore/protocol/generated/routes/MapsRoutes.java",
+        "cases": repo_root()
+        / "java/core/src/main/java/org/xcore/protocol/generated/routes/CasesRoutes.java",
         "chat": repo_root()
         / "java/core/src/main/java/org/xcore/protocol/generated/routes/ChatRoutes.java",
         "discord": repo_root()
@@ -40,6 +42,9 @@ def _expected_route_surface_by_family() -> dict[str, dict[tuple[str, int], dict[
             "bindings": route.bindings,
             "targetScope": route.targetScope,
             "owner": route.owner,
+            "ttlMs": route.ttlMs,
+            "replayable": route.replayable,
+            "idempotentConsumerRecommended": route.idempotentConsumerRecommended,
             "response": None
             if route.response is None
             else {
@@ -88,6 +93,9 @@ def _parse_java_route_surface(java_file: Path) -> dict[tuple[str, int], dict[str
             "bindings": _parse_java_map(match.group("bindings")),
             "targetScope": match.group("target_scope"),
             "owner": match.group("owner"),
+            "ttlMs": int(match.group("ttl_ms")),
+            "replayable": match.group("replayable") == "true",
+            "idempotentConsumerRecommended": match.group("idempotent") == "true",
             "response": _parse_java_response(match.group("response")),
         }
 
