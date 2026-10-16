@@ -67,4 +67,6 @@ maps-upload-status-rejected = отклонена сервером
 maps-finding-missing-name = У карты нет названия
 maps-finding-missing-author = Автор карты не указан
 maps-finding-requires-mods = Для карты нужны моды
+maps-finding-data-patches = Карта меняет геймплей дата-патчами; остальные проверки их не учитывали
+maps-patches-attached = Дата-патчи этой карты ({ $count }), файл { $sha }:
 maps-finding-unknown-content = Карта использует неизвестный этому серверу контент

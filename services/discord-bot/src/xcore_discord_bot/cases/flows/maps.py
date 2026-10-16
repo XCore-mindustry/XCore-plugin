@@ -4,6 +4,9 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
+import io
+import json
+import logging
 from dataclasses import replace
 from datetime import timedelta
 from uuid import uuid4
@@ -34,10 +37,12 @@ from ..model import (
     Resolution,
     utc,
 )
-from ..msav import InvalidMsav, validate_msav
+from ..msav import InvalidMsav, data_patches, validate_msav
 from ..notify import Outcome
 from ..registry import Action, ActionContext, Flow, flow_registry
 from .badges import _linked, grant_map_maker
+
+logger = logging.getLogger(__name__)
 
 BADGE_WINDOW = timedelta(days=30)
 KNOWN_FINDINGS = frozenset(
@@ -45,6 +50,7 @@ KNOWN_FINDINGS = frozenset(
         "missing-name",
         "missing-author",
         "requires-mods",
+        "data-patches",
         "unknown-content",
         "size-out-of-range",
         "no-core",
@@ -314,6 +320,7 @@ async def _refresh(service, case, *, message=None):
             attachment.filename,
             max_file_bytes=service.settings.maps_max_file_bytes,
         )
+        await _post_patches(service, thread, case, data, local, attachment.filename)
         payload.update(
             sha256=local.sha256,
             info={
@@ -389,6 +396,42 @@ async def _refresh(service, case, *, message=None):
         set_fields={"payload": payload, "flags": flags},
         event=event("evidence_refreshed", None, service.now()),
     )
+
+
+async def _post_patches(service, thread, case, data, local, filename) -> None:
+    """Attach the map's data patches as JSON once per file, so reviewers can read them."""
+    try:
+        patches = await asyncio.to_thread(data_patches, data)
+    except InvalidMsav:
+        return
+    if not patches:
+        return
+    document = {}
+    for path, text in patches.items():
+        try:
+            document[path] = json.loads(text) if text is not None else None
+        except ValueError:
+            document[path] = text  # hjson and the like stay as text
+    raw = json.dumps(document, ensure_ascii=False, indent=2).encode()
+    content = t(
+        case.origin.locale,
+        "maps-patches-attached",
+        count=len(patches),
+        sha=local.sha256[:12],
+    )
+    try:
+        # shortcut: files over 8 MB are not attached; split them if maps ever carry that much.
+        if len(raw) > 8_000_000 or await service.threads._has_content(thread, content):
+            return
+        await thread.send(
+            content,
+            file=discord.File(
+                io.BytesIO(raw), filename=filename.rsplit(".", 1)[0] + "-patches.json"
+            ),
+            allowed_mentions=discord.AllowedMentions.none(),
+        )
+    except discord.HTTPException:
+        logger.warning("Could not attach data patches to case %s", case.number)
 
 
 async def on_created(service, case):

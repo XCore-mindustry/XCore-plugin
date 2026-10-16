@@ -67,4 +67,6 @@ maps-upload-status-rejected = rejected by the server
 maps-finding-missing-name = The map has no name
 maps-finding-missing-author = The map has no declared author
 maps-finding-requires-mods = The map requires mods
+maps-finding-data-patches = The map changes gameplay with data patches; the other checks ignored them
+maps-patches-attached = Data patches in this map ({ $count }), file { $sha }:
 maps-finding-unknown-content = The map uses content unknown to this server
