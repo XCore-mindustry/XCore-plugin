@@ -20,7 +20,13 @@ _UUID = re.compile(r"\b[0-9a-fA-F]{8}(?:-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}\b")
 _IPV6 = re.compile(r"(?<![\w:])(?:[0-9a-fA-F]{0,4}:){2,7}[0-9a-fA-F]{0,4}(?![\w:])")
 
 
-def safe_text(value: object, *, secrets: Iterable[str] = (), limit: int = 1024) -> str:
+def safe_text(
+    value: object,
+    *,
+    secrets: Iterable[str] = (),
+    limit: int = 1024,
+    keep_mentions: bool = False,
+) -> str:
     text = str(value or "").replace("\x00", "")
     for secret in secrets:
         if secret:
@@ -36,7 +42,7 @@ def safe_text(value: object, *, secrets: Iterable[str] = (), limit: int = 1024) 
         return "…"
 
     text = _IPV6.sub(hide_ipv6, text)
-    return discord.utils.escape_mentions(text)[:limit]
+    return (text if keep_mentions else discord.utils.escape_mentions(text))[:limit]
 
 
 def case_secrets(case: Case) -> tuple[str, ...]:
@@ -104,7 +110,8 @@ def base_card(
         value=party_text(case.opener, locale),
         inline=False,
     )
-    if case.subject:
+    # A badge request concerns its own opener; one line is enough then.
+    if case.subject and case.subject != case.opener:
         embed.add_field(
             name=t(locale, "cases-subject"),
             value=party_text(case.subject, locale),
@@ -181,8 +188,12 @@ def sanitize_card(embed: discord.Embed, case: Case) -> discord.Embed:
     fields = []
     for value in doc.get("fields", [])[:25]:
         name = safe_text(value["name"], secrets=secrets, limit=256) or "…"
+        # Embeds never ping; escaping here only broke the party and assignee mentions.
         text = safe_text(
-            value["value"], secrets=secrets, limit=min(1024, max(0, budget - len(name)))
+            value["value"],
+            secrets=secrets,
+            limit=min(1024, max(0, budget - len(name))),
+            keep_mentions=True,
         )
         if not text:
             break
