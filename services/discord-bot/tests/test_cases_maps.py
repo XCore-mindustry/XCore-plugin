@@ -189,6 +189,21 @@ async def test_deep_checks_never_use_mismatched_or_malformed_inspection(mutation
             await do_accept(service, case)
 
 
+async def test_unreadable_map_is_a_finding_not_a_pending_check():
+    service, _, _, _, _, _, _, thread, _, attachment = await map_core()
+    response = inspect_payload(attachment, status="invalid_map")
+    response.pop("info")
+    response["detail"] = "Gameplay patches/content are unsupported"
+    service.transport.rpc_inspect_map = AsyncMock(return_value=response)
+    await maps.on_thread_create(service, thread)
+    case = await service.store.by_submission(f"map:{thread.id}")
+    assert case.payload["profile"] == "pvp"
+    assert "deep_checks_pending" not in case.flags
+    assert "Gameplay patches/content are unsupported" in str(
+        maps.card_builder(case, "en").to_dict()
+    )
+
+
 @pytest.mark.parametrize(
     "requested,applied",
     [("pvp", "attack"), ("pvp", None), ("pvp", "pvp"), (None, "attack")],

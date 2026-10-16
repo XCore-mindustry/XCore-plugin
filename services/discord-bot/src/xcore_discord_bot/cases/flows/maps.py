@@ -341,11 +341,19 @@ async def _refresh(service, case, *, message=None):
             TypeError,
         ):
             response = None
-        if (
-            response is None
-            or response.status.value == "download_failed"
-            or payload["profile"] is not None
-            and (response.info is None or response.info.profile != payload["profile"])
+        if response is None or response.status.value == "download_failed":
+            pending = True
+        elif response.status.value == "invalid_map" and response.info is None:
+            # A final answer: it carries no info, so the profile check below would retry forever.
+            payload["findings"] = [
+                {
+                    "code": "invalid-map",
+                    "severity": "error",
+                    "detail": response.detail,
+                }
+            ]
+        elif payload["profile"] is not None and (
+            response.info is None or response.info.profile != payload["profile"]
         ):
             pending = True
         else:
