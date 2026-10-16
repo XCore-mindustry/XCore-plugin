@@ -109,6 +109,17 @@ async def test_startup_allows_safe_layout_bot_own_role_and_creates_named_tags():
     )
 
 
+async def test_startup_tolerates_unhideable_administrator_roles(caplog):
+    service, _, bot = await complaint_core()
+    bot.channels[300].guild.roles.append(Role(70, admin=True))
+    bot.channels[300].role_permissions[70] = discord.Permissions.all()
+    bot.channels[500].role_permissions[70] = discord.Permissions.all()
+    caplog.set_level(logging.WARNING)
+    await initialize_flows(service)
+    assert service.registry.enabled(CaseKind.COMPLAINT)
+    assert "Roles with Administrator can see complaints: 70" in caplog.text
+
+
 async def test_parent_fallback_requires_same_safe_layout():
     service, _, bot = await complaint_core(cases_complaint_thread_channel_id=0)
     for role in (10, 30):
