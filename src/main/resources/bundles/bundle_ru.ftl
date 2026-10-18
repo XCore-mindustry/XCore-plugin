@@ -1409,6 +1409,7 @@ match-history-reason-winner = победа
 match-history-reason-defeated = поражение
 match-history-reason-short-play = сыграл меньше половины матча
 match-history-reason-late-join = зашёл в конце
+match-history-reason-left-at-once = почти сразу вышел
 match-history-reason-match-unrated = матч без рейтинга
 match-history-reason-unknown = причина не записана
 match-history-skip-not-enough-players = мало игроков

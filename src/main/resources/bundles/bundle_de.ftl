@@ -1331,6 +1331,7 @@ match-history-reason-winner = gewonnen
 match-history-reason-defeated = verloren
 match-history-reason-short-play = weniger als die Hälfte des Matches gespielt
 match-history-reason-late-join = ganz am Ende beigetreten
+match-history-reason-left-at-once = fast sofort gegangen
 match-history-reason-match-unrated = das Match war ohne Wertung
 match-history-reason-unknown = kein Grund gespeichert
 match-history-skip-not-enough-players = zu wenige Spieler

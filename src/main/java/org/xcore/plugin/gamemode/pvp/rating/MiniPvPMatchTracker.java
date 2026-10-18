@@ -25,14 +25,22 @@ public class MiniPvPMatchTracker {
             String plainName,
             int teamId,
             long joinTime,
-            long leaveTime
+            long leaveTime,
+            long awayMs
     ) {
-        public ParticipantInfo withLeaveTime(long newLeaveTime) {
-            return new ParticipantInfo(uuid, plainName, teamId, joinTime, newLeaveTime);
+        public ParticipantInfo(String uuid, String plainName, int teamId, long joinTime, long leaveTime) {
+            this(uuid, plainName, teamId, joinTime, leaveTime, 0L);
         }
 
-        public ParticipantInfo withTeamId(int newTeamId) {
-            return new ParticipantInfo(uuid, plainName, newTeamId, joinTime, leaveTime);
+        /** Stops the play clock; the first stop wins, so spectating and then leaving is one absence. */
+        public ParticipantInfo away(long now) {
+            return leaveTime > 0 ? this : new ParticipantInfo(uuid, plainName, teamId, joinTime, now, awayMs);
+        }
+
+        /** Resumes the play clock, keeping the time spent away out of the play time. */
+        public ParticipantInfo back(long now) {
+            return leaveTime == 0 ? this
+                    : new ParticipantInfo(uuid, plainName, teamId, joinTime, 0L, awayMs + Math.max(0L, now - leaveTime));
         }
     }
 
@@ -89,16 +97,36 @@ public class MiniPvPMatchTracker {
             if (existing == null) {
                 return new ParticipantInfo(uuid, player.plainName(), player.team().id, now, 0L);
             }
-            // Reconnected player: clear leave time, but keep their original assigned team for rating integrity
-            return existing.withLeaveTime(0L);
+            // Reconnected player: keep their original assigned team for rating integrity
+            return existing.back(now);
         });
+    }
+
+    /** A spectator is away from the match: watching does not count as playing. */
+    public void onObserving(Player player, boolean observing) {
+        if (player == null || player.uuid() == null) return;
+        ParticipantInfo existing = participants.get(player.uuid());
+        if (existing == null) {
+            // Watched from the start and then picked a side: rated from now on.
+            if (!observing && inProgress) onPlayerJoin(player);
+            return;
+        }
+        if (observing == (existing.leaveTime() > 0)) return;
+        long now = System.currentTimeMillis();
+        participants.computeIfPresent(player.uuid(), (uuid, info) -> observing ? info.away(now) : info.back(now));
+    }
+
+    /** The team the player is rated for in the running match, or null. */
+    public Team teamOf(String uuid) {
+        ParticipantInfo info = inProgress && uuid != null ? participants.get(uuid) : null;
+        return info == null ? null : Team.get(info.teamId());
     }
 
     public void onPlayerLeave(Player player) {
         if (player == null || player.uuid() == null) return;
         long now = System.currentTimeMillis();
 
-        participants.computeIfPresent(player.uuid(), (uuid, existing) -> existing.withLeaveTime(now));
+        participants.computeIfPresent(player.uuid(), (uuid, existing) -> existing.away(now));
     }
 
     public void onTeamEliminated(int teamId, int remainingAliveTeams) {
@@ -147,7 +175,7 @@ public class MiniPvPMatchTracker {
             boolean isWinner = (teamPlacement == 1);
 
             long effectiveEnd = (p.leaveTime() > 0 && p.leaveTime() < endedAt) ? p.leaveTime() : endedAt;
-            long activePlayTimeMs = Math.max(0L, effectiveEnd - p.joinTime());
+            long activePlayTimeMs = Math.max(0L, effectiveEnd - p.joinTime() - p.awayMs());
             double rawParticipation = (double) activePlayTimeMs / matchDurationMs;
             rawParticipation = Math.clamp(rawParticipation, 0.0, 1.0);
 
@@ -156,16 +184,18 @@ public class MiniPvPMatchTracker {
             double effectiveParticipation;
             String reason;
             if (!isWinner) {
-                // On losing team:
-                // If player was present at the match start, played >= 25% of the round, or stayed for >= 15s:
-                // Full loss penalty (strictly prevents disconnect-dodging right before core destruction!)
-                if (presentAtStart || rawParticipation >= 0.25 || activePlayTimeMs >= 15_000L) {
-                    effectiveParticipation = 1.0;
-                    reason = MiniPvPMatchSnapshot.REASON_DEFEATED;
-                } else {
-                    // Truly joined at the very end on an already defeated team: exempt
+                // On losing team: leaving or spectating after the first 15s still costs the full loss
+                // (no disconnect-dodging before core destruction), unless the player only joined for
+                // the last quarter of the match.
+                if (!presentAtStart && rawParticipation < 0.25) {
                     effectiveParticipation = 0.0;
                     reason = MiniPvPMatchSnapshot.REASON_LATE_JOIN;
+                } else if (activePlayTimeMs < 15_000L) {
+                    effectiveParticipation = 0.0;
+                    reason = MiniPvPMatchSnapshot.REASON_LEFT_AT_ONCE;
+                } else {
+                    effectiveParticipation = 1.0;
+                    reason = MiniPvPMatchSnapshot.REASON_DEFEATED;
                 }
             } else {
                 // On winning team:

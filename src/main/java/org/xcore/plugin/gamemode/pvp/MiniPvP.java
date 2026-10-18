@@ -13,6 +13,7 @@ import io.avaje.inject.PostConstruct;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import mindustry.Vars;
+import mindustry.core.NetServer;
 import mindustry.game.EventType;
 import mindustry.game.Team;
 import mindustry.game.Teams.TeamData;
@@ -57,6 +58,7 @@ public class MiniPvP {
     private final MiniPvPRatingSettler ratingSettler;
 
     private long lastHudUpdate = 0L;
+    private NetServer.TeamAssigner vanillaAssigner;
 
     @Inject
     public MiniPvP(
@@ -128,9 +130,21 @@ public class MiniPvP {
             }
         });
 
+        if (Vars.netServer != null && matchTracker != null) {
+            vanillaAssigner = Vars.netServer.assigner;
+            // A reconnect returns to the team the match rates the player for, not the smallest one.
+            Vars.netServer.assigner = (player, players) -> {
+                Team team = matchTracker.teamOf(player.uuid());
+                return team != null && team.data().hasCore() ? team : vanillaAssigner.assign(player, players);
+            };
+        }
+
         subscriptions.run(EventType.Trigger.update, () -> {
             if (!roundHadMultipleTeams && Vars.state != null && Vars.state.isPlaying() && Vars.state.rules.pvp) {
                 updateRoundTeamsPresence();
+            }
+            if (matchTracker != null && Groups.player != null) {
+                Groups.player.each(p -> matchTracker.onObserving(p, observerService.isObserving(p)));
             }
             updateHud();
         });
@@ -323,5 +337,8 @@ public class MiniPvP {
     @PreDestroy(priority = ShutdownOrder.STOP_PRODUCERS)
     public void shutdownEventSubscriptions() {
         subscriptions.close();
+        if (vanillaAssigner != null && Vars.netServer != null) {
+            Vars.netServer.assigner = vanillaAssigner;
+        }
     }
 }
