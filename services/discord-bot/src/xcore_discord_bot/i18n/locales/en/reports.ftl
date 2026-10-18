@@ -57,6 +57,7 @@ reports-case-reference = case #{ $number }
 reports-confirm-ban = Ban { $player } for { $duration }?
 reports-confirm-mute = Mute { $player } for { $duration }?
 reports-error-other-player = This ID belongs to another player, not the one this report is about.
+reports-error-open-report = This player already has an open report #{ $number }. Decide or close it first.
 reports-history-title = Latest records for { $player }:
 reports-history-empty = There are no records for this player.
 reports-refreshed = Chat, block history and sanctions have been updated.

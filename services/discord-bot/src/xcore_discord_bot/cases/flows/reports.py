@@ -813,9 +813,21 @@ async def _target(context: ActionContext) -> PlayerRecord:
     if player is None or not player.uuid:
         raise ActionFailed(t(context.locale, "cases-error-player"))
     subject = context.case.subject
-    if subject and subject.player_uuid and subject.player_uuid != player.uuid:
-        raise ActionFailed(t(context.locale, "reports-error-other-player"))
+    if subject and subject.player_uuid:
+        if subject.player_uuid != player.uuid:
+            raise ActionFailed(t(context.locale, "reports-error-other-player"))
+        return player
+    # One open report per player: naming this one here would collide with the other report.
+    await _refuse_open_report(context, player.uuid)
     return player
+
+
+async def _refuse_open_report(context: ActionContext, uuid: str) -> None:
+    other = await context.service.store.by_dedup(CaseKind.REPORT, f"report:{uuid}")
+    if other is not None:
+        raise ActionFailed(
+            t(context.locale, "reports-error-open-report", number=other.number)
+        )
 
 
 async def sanction(context: ActionContext) -> Case | None:
@@ -862,6 +874,8 @@ async def sanction(context: ActionContext) -> Case | None:
                     action_token=token,
                 )
             except DuplicateKeyError as error:
+                # Another report on this player opened after the check in _target.
+                await _refuse_open_report(context, fresh.uuid)
                 raise CaseRace() from error
         elif case.subject.player_uuid != player.uuid:
             raise ActionFailed(t(context.locale, "reports-error-other-player"))

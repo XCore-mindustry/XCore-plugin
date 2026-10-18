@@ -653,7 +653,7 @@ async def _badge(service, case):
     )
     if result == "link_needed":
         await service.threads.post_note(
-            case, t(case.origin.locale, "badges-link-needed")
+            case, t(case.origin.locale, "maps-badge-link-needed")
         )
 
 

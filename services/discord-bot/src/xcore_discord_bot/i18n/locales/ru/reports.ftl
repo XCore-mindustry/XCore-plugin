@@ -57,6 +57,7 @@ reports-case-reference = дело #{ $number }
 reports-confirm-ban = Забанить игрока { $player } на { $duration }?
 reports-confirm-mute = Выдать мут игроку { $player } на { $duration }?
 reports-error-other-player = Этот ID принадлежит другому игроку, а не тому, на кого подана жалоба.
+reports-error-open-report = На этого игрока уже открыта жалоба #{ $number }. Сначала решите или закройте её.
 reports-history-title = Последние записи об игроке { $player }:
 reports-history-empty = Записей об этом игроке нет.
 reports-refreshed = Чат, история блоков и наказания обновлены.
