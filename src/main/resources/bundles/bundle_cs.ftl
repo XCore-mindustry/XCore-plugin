@@ -1346,6 +1346,7 @@ match-history-reason-winner = výhra
 match-history-reason-defeated = prohra
 match-history-reason-short-play = hrál méně než polovinu zápasu
 match-history-reason-late-join = připojil se až na konci
+match-history-reason-left-at-once = odešel téměř hned
 match-history-reason-match-unrated = zápas byl bez hodnocení
 match-history-reason-unknown = důvod nebyl zaznamenán
 match-history-skip-not-enough-players = málo hráčů

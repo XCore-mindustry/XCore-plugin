@@ -1334,6 +1334,7 @@ match-history-reason-winner = victoria
 match-history-reason-defeated = derrota
 match-history-reason-short-play = jugó menos de la mitad de la partida
 match-history-reason-late-join = entró al final
+match-history-reason-left-at-once = se fue casi enseguida
 match-history-reason-match-unrated = la partida no puntuaba
 match-history-reason-unknown = sin motivo registrado
 match-history-skip-not-enough-players = pocos jugadores

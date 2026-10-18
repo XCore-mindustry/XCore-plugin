@@ -21,6 +21,8 @@ public record MiniPvPMatchSnapshot(String matchId, long startedAt, long endedAt,
     public static final String REASON_SHORT_PLAY = "short_play";
     /** Joined a side that had already lost, at the very end. */
     public static final String REASON_LATE_JOIN = "late_join";
+    /** Left or turned spectator within the first seconds of playing. */
+    public static final String REASON_LEFT_AT_ONCE = "left_at_once";
 
     /**
      * @param participation share of the match that counts for rating, 0.0 for an exempt player

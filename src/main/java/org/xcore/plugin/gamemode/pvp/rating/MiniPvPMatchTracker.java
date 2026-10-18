@@ -94,6 +94,26 @@ public class MiniPvPMatchTracker {
         });
     }
 
+    /** A spectator is away from the match: watching does not count as playing. */
+    public void onObserving(Player player, boolean observing) {
+        if (player == null || player.uuid() == null) return;
+        ParticipantInfo existing = participants.get(player.uuid());
+        if (existing == null) {
+            // Watched from the start and then picked a side: rated from now on.
+            if (!observing && inProgress) onPlayerJoin(player);
+            return;
+        }
+        if (observing == (existing.leaveTime() > 0)) return;
+        participants.computeIfPresent(player.uuid(),
+                (uuid, info) -> info.withLeaveTime(observing ? System.currentTimeMillis() : 0L));
+    }
+
+    /** The team the player is rated for in the running match, or null. */
+    public Team teamOf(String uuid) {
+        ParticipantInfo info = inProgress && uuid != null ? participants.get(uuid) : null;
+        return info == null ? null : Team.get(info.teamId());
+    }
+
     public void onPlayerLeave(Player player) {
         if (player == null || player.uuid() == null) return;
         long now = System.currentTimeMillis();
@@ -156,16 +176,18 @@ public class MiniPvPMatchTracker {
             double effectiveParticipation;
             String reason;
             if (!isWinner) {
-                // On losing team:
-                // If player was present at the match start, played >= 25% of the round, or stayed for >= 15s:
-                // Full loss penalty (strictly prevents disconnect-dodging right before core destruction!)
-                if (presentAtStart || rawParticipation >= 0.25 || activePlayTimeMs >= 15_000L) {
-                    effectiveParticipation = 1.0;
-                    reason = MiniPvPMatchSnapshot.REASON_DEFEATED;
-                } else {
-                    // Truly joined at the very end on an already defeated team: exempt
+                // On losing team: leaving or spectating after the first 15s still costs the full loss
+                // (no disconnect-dodging before core destruction), unless the player only joined for
+                // the last quarter of the match.
+                if (!presentAtStart && rawParticipation < 0.25) {
                     effectiveParticipation = 0.0;
                     reason = MiniPvPMatchSnapshot.REASON_LATE_JOIN;
+                } else if (activePlayTimeMs < 15_000L) {
+                    effectiveParticipation = 0.0;
+                    reason = MiniPvPMatchSnapshot.REASON_LEFT_AT_ONCE;
+                } else {
+                    effectiveParticipation = 1.0;
+                    reason = MiniPvPMatchSnapshot.REASON_DEFEATED;
                 }
             } else {
                 // On winning team:

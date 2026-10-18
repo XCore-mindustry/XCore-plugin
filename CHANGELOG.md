@@ -18,6 +18,8 @@ All notable changes to this project will be documented in this file.
 - The MiniPvP HUD is localized (`pvp-hud-status` was defined but unused) and shows team names in each player's language instead of internal names like `sharded`.
 - The language a player selects in settings now applies to every message sent through the shared bundle, including messages from dependent plugins such as HexedCore (`SessionLocaleResolver`).
 - Cloud captions read message placeholders from the loaded bundle instead of re-parsing FTL files; `BundlePlaceholderRegistry` is removed.
+- MiniPvP rating: a player on the losing side is not rated if they left or turned spectator within their first 15 seconds of play (new reason `left_at_once`), or joined after the start and played less than a quarter of the match. Leaving or spectating later still counts as a loss. Time spent as a spectator no longer counts as play, and a spectator who joins a side mid-match is rated from then on.
+- MiniPvP: a player who reconnects during a match returns to the team they are rated for while it still has a core, instead of the team with the fewest players.
 - Map inspection no longer rejects maps with data patches or embedded content as `invalid_map`. It skips them, runs the usual checks and adds a `data-patches` warning with their count.
 - Complete translations for Belarusian, Czech, German, Spanish, French and Polish (previously 9–174 of 905 keys), and the remaining Ukrainian permission names. Belarusian, Czech, German, Spanish, French and Polish bundles now follow the English file's order and section headers.
 
