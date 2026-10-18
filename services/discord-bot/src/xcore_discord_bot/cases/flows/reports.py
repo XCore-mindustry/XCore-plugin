@@ -813,8 +813,18 @@ async def _target(context: ActionContext) -> PlayerRecord:
     if player is None or not player.uuid:
         raise ActionFailed(t(context.locale, "cases-error-player"))
     subject = context.case.subject
-    if subject and subject.player_uuid and subject.player_uuid != player.uuid:
-        raise ActionFailed(t(context.locale, "reports-error-other-player"))
+    if subject and subject.player_uuid:
+        if subject.player_uuid != player.uuid:
+            raise ActionFailed(t(context.locale, "reports-error-other-player"))
+        return player
+    # One open report per player: naming this one here would collide with the other report.
+    other = await context.service.store.by_dedup(
+        CaseKind.REPORT, f"report:{player.uuid}"
+    )
+    if other is not None:
+        raise ActionFailed(
+            t(context.locale, "reports-error-open-report", number=other.number)
+        )
     return player
 
 

@@ -705,7 +705,9 @@ async def test_badge_pending_retry_only_after_acceptance_and_stops_at_30_days(
     final = await do_accept(service, case)
     assert final.payload["pending_badge"] and final.progress["closed_done"]
     if state == "link_needed":
-        assert any(t("en", "badges-link-needed") == m.content for m in thread.messages)
+        assert any(
+            t("en", "maps-badge-link-needed") == m.content for m in thread.messages
+        )
     grant.reset_mock()
     grant.side_effect = None
     grant.return_value = "complete"

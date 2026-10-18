@@ -70,3 +70,4 @@ maps-finding-requires-mods = The map requires mods
 maps-finding-data-patches = The map changes gameplay with data patches; the other checks ignored them
 maps-patches-attached = Data patches in this map ({ $count }), file { $sha }:
 maps-finding-unknown-content = The map uses content unknown to this server
+maps-badge-link-needed = The map's author has no linked game account, so the Map maker badge is not granted yet. The bot grants it on its own once the account is linked (within 30 days).

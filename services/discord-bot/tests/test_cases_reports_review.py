@@ -36,6 +36,7 @@ from xcore_discord_bot.cases.flows import reports
 from xcore_discord_bot.cases.modals import CaseActionModal
 from xcore_discord_bot.cases.model import (
     AccessDenied,
+    ActionFailed,
     CaseKind,
     CaseRace,
     CaseStatus,
@@ -212,8 +213,11 @@ async def test_unresolved_subject_cannot_sanction_an_already_active_report(verb)
     service, _, bot = await reports_core()
     known = await open_report(service)
     _, unknown = await panel(service, bot, {"who": "unknown", "what": "grief"})
-    with pytest.raises(CaseRace):
+    with pytest.raises(ActionFailed) as refused:
         await sanction(service, unknown, verb)
+    assert refused.value.text == t(
+        "en", "reports-error-open-report", number=known.number
+    )
     current = await service.get(unknown.number)
     assert current.subject is None and current.dedup_key is None
     assert current.pending_action is None and current.actionable
