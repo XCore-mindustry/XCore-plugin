@@ -27,6 +27,7 @@ from .handlers_seasons import (
 from .player_pids import NO_PID
 from .retry import retry_reconnect_bus
 from .service_protocols import ConsumerRecoveryService, PlayerLookupService
+from .utils.mindustry_colors import strip_mindustry_colors
 
 if TYPE_CHECKING:
     from .bot import XCoreDiscordBot
@@ -89,16 +90,14 @@ async def consume_game_chat(bot: XCoreDiscordBot) -> None:
         if channel is None:
             return
 
-        safe_author = str(event.authorName).replace("`", "")
-        safe_message = str(event.message).replace("`", "")
+        safe_author = strip_mindustry_colors(str(event.authorName).replace("`", ""))
+        safe_message = strip_mindustry_colors(str(event.message).replace("`", ""))
         await channel.send(f"`{safe_author}: {safe_message}`")
 
     await run_consumer_forever(bot, "Game chat", bot.consume_game_chat_events, dispatch)
 
 
 async def consume_global_chat(bot: XCoreDiscordBot) -> None:
-    from .bot import strip_mindustry_colors
-
     async def dispatch(event: ChatGlobalV1) -> None:
         channel_id = bot._channel_id_for_server(event.server, context="global chat")
         if channel_id is None:

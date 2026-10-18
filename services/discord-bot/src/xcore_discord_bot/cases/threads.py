@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from datetime import timedelta
 
 import discord
 
@@ -32,6 +33,8 @@ KIND_TAGS = ("Report", "Appeal", "Badge", "Complaint")
 # A post or thread a failed attempt left behind is recent; older archives are not walked.
 ADOPT_ARCHIVED_LIMIT = 200
 WEEK_MINUTES = 10080
+# Messages a person writes in a row get one notice, linking to the first of them.
+USER_MESSAGE_BURST = timedelta(minutes=30)
 STATUS_TAGS = {
     CaseStatus.CREATING: "Open",
     CaseStatus.OPEN: "Open",
@@ -551,25 +554,36 @@ class CaseThreads:
             ),
             case.opener,
         )
-        thread = await self.channel(case.discord["thread_id"])
-        if thread.archived:
-            await thread.edit(archived=False)
-        await thread.send(
-            safe_text(
+        name = party_text(
+            author,
+            self.settings.cases_staff_locale,
+            secrets=case_secrets(case) if case.kind == CaseKind.COMPLAINT else (),
+        )
+
+        def notice(url: str) -> str:
+            # Nothing pings (AllowedMentions.none()), so the mention can stay readable.
+            return safe_text(
                 t(
                     self.settings.cases_staff_locale,
                     "cases-user-message",
-                    name=party_text(
-                        author,
-                        self.settings.cases_staff_locale,
-                        secrets=case_secrets(case)
-                        if case.kind == CaseKind.COMPLAINT
-                        else (),
-                    ),
-                    url=message.jump_url,
+                    name=name,
+                    url=url,
                 ),
                 secrets=case_secrets(case),
                 limit=1900,
-            ),
-            allowed_mentions=discord.AllowedMentions.none(),
+                keep_mentions=True,
+            )
+
+        thread = await self.channel(case.discord["thread_id"])
+        async for last in thread.history(limit=1):
+            if (
+                last.author.id == self.bot.user.id
+                and last.content.startswith(notice(""))
+                and discord.utils.utcnow() - last.created_at < USER_MESSAGE_BURST
+            ):
+                return
+        if thread.archived:
+            await thread.edit(archived=False)
+        await thread.send(
+            notice(message.jump_url), allowed_mentions=discord.AllowedMentions.none()
         )

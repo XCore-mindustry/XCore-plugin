@@ -150,7 +150,7 @@ def _format_vote_kick_participant(item: VoteKickParticipantV1) -> str:
         segments.append(f"pid={item.playerPid}")
     discord_id = str(item.discordId or "").strip()
     if discord_id:
-        segments.append(f"<@{discord_id}> ({discord_id})")
+        segments.append(f"<@{discord_id}>")
     return (
         f"{segments[0]} ({', '.join(segments[1:])})"
         if len(segments) > 1
@@ -1060,7 +1060,7 @@ async def post_vote_kick_log(
     )
     starter_mention = str(starter_discord_id or "").strip()
     if starter_mention:
-        starter_value = f"{starter_value} (<@{starter_mention}> / {starter_mention})"
+        starter_value = f"{starter_value} (<@{starter_mention}>)"
 
     embed = discord.Embed(title="Vote-kick Passed", color=discord.Color.blurple())
     embed.add_field(name="Target", value=target_value, inline=False)

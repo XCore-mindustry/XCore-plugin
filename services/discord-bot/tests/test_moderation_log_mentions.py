@@ -122,12 +122,10 @@ async def test_post_vote_kick_log_shows_initiator_reason_and_vote_lists() -> Non
     assert embed.title == "Vote-kick Passed"
     fields = {field.name: field.value for field in embed.fields}
     assert fields["Target"] == "Target (pid=42)"
-    assert fields["Initiator"] == "Starter (pid=7) (<@123456> / 123456)"
+    assert fields["Initiator"] == "Starter (pid=7) (<@123456>)"
     assert fields["Reason"] == "griefing"
-    assert fields["For (2)"] == (
-        "`Starter` (pid=7, <@123456> (123456))\n`mix` (pid=45410)"
-    )
-    assert fields["Against (1)"] == "`Voter2` (pid=8, <@654321> (654321))"
+    assert fields["For (2)"] == ("`Starter` (pid=7, <@123456>)\n`mix` (pid=45410)")
+    assert fields["Against (1)"] == "`Voter2` (pid=8, <@654321>)"
 
 
 @pytest.mark.asyncio

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from datetime import timedelta
 from types import SimpleNamespace
 
 import pytest
@@ -313,7 +314,9 @@ async def test_a_deleted_reporter_thread_is_made_again():
 async def test_only_the_owner_of_a_thread_is_announced_to_staff():
     service, _, bot = await reports_core()
     case = await open_report(service)
-    await panel(service, bot, {"who": "-5", "what": "me too"})
+    # A real-length id: mention escaping only matches 17-20 digits.
+    owner = 123456789012345678
+    await panel(service, bot, {"who": "-5", "what": "me too"}, user=member(owner, ()))
     [thread] = private_threads(bot)
     post = bot.channels[int(case.discord["thread_id"])]
 
@@ -327,13 +330,19 @@ async def test_only_the_owner_of_a_thread_is_announced_to_staff():
     before = len(post.messages)
     await service.threads.announce_user_message(service, message(STAFF))
     assert len(post.messages) == before
-    await service.threads.announce_user_message(service, message(301))
+    await service.threads.announce_user_message(service, message(owner))
     assert post.messages[-1].content == t(
         "en",
         "cases-user-message",
-        name="Staff 301 · <@301>",
-        url="https://discord.test/301",
+        name=f"Staff {owner} · <@{owner}>",
+        url=f"https://discord.test/{owner}",
     )
+    # A second message in a row is covered by the same notice, a later one gets its own.
+    await service.threads.announce_user_message(service, message(owner))
+    assert len(post.messages) == before + 1
+    post.messages[-1].created_at -= timedelta(minutes=31)
+    await service.threads.announce_user_message(service, message(owner))
+    assert len(post.messages) == before + 2
 
 
 async def test_the_conflict_rule_covers_a_discord_reporter():

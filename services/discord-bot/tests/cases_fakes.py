@@ -281,6 +281,7 @@ class Message:
     def __init__(self, bot, channel, id, content="", embed=None, view=None):
         self.bot, self.channel, self.id = bot, channel, id
         self.author = bot.user
+        self.created_at = discord.utils.utcnow()
         self.content = content
         self.embeds = [embed] if embed else []
         self.view = view

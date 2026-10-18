@@ -70,8 +70,8 @@ class _GameChatBot:
     async def consume_game_chat_events(self, callback) -> None:
         await callback(
             ChatMessageV1(
-                authorName="mod`name",
-                message="hello `world`",
+                authorName="[#ecececff]mod`name",
+                message="hello `[red]world`",
                 server="mini-pvp",
             )
         )
