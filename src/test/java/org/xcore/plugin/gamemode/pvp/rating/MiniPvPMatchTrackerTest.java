@@ -149,7 +149,18 @@ class MiniPvPMatchTrackerTest {
         assertThat(tracker.participants().get("spectator").leaveTime()).isGreaterThan(0L);
         assertThat(tracker.teamOf("spectator")).isEqualTo(Team.crux);
 
-        var crux = tracker.snapshot(Team.sharded, endedAt).teams().stream()
+        // Played 10s, spectated most of the match, came back for the win: under half, not rated.
+        tracker.trackParticipant(new MiniPvPMatchTracker.ParticipantInfo(
+                "returner", "Returner", Team.sharded.id, started, 0L)
+                .away(started + 10_000L).back(endedAt - 30_000L));
+
+        var snapshot = tracker.snapshot(Team.sharded, endedAt);
+        var sharded = snapshot.teams().stream()
+                .filter(team -> team.teamId() == Team.sharded.id).findFirst().orElseThrow();
+        assertThat(sharded.members()).filteredOn(member -> member.uuid().equals("returner"))
+                .extracting(MiniPvPMatchSnapshot.Member::reason)
+                .containsExactly(MiniPvPMatchSnapshot.REASON_SHORT_PLAY);
+        var crux = snapshot.teams().stream()
                 .filter(team -> team.teamId() == Team.crux.id).findFirst().orElseThrow();
         var reasons = crux.members().stream().collect(java.util.stream.Collectors.toMap(
                 MiniPvPMatchSnapshot.Member::uuid, MiniPvPMatchSnapshot.Member::reason));

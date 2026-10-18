@@ -25,14 +25,22 @@ public class MiniPvPMatchTracker {
             String plainName,
             int teamId,
             long joinTime,
-            long leaveTime
+            long leaveTime,
+            long awayMs
     ) {
-        public ParticipantInfo withLeaveTime(long newLeaveTime) {
-            return new ParticipantInfo(uuid, plainName, teamId, joinTime, newLeaveTime);
+        public ParticipantInfo(String uuid, String plainName, int teamId, long joinTime, long leaveTime) {
+            this(uuid, plainName, teamId, joinTime, leaveTime, 0L);
         }
 
-        public ParticipantInfo withTeamId(int newTeamId) {
-            return new ParticipantInfo(uuid, plainName, newTeamId, joinTime, leaveTime);
+        /** Stops the play clock; the first stop wins, so spectating and then leaving is one absence. */
+        public ParticipantInfo away(long now) {
+            return leaveTime > 0 ? this : new ParticipantInfo(uuid, plainName, teamId, joinTime, now, awayMs);
+        }
+
+        /** Resumes the play clock, keeping the time spent away out of the play time. */
+        public ParticipantInfo back(long now) {
+            return leaveTime == 0 ? this
+                    : new ParticipantInfo(uuid, plainName, teamId, joinTime, 0L, awayMs + Math.max(0L, now - leaveTime));
         }
     }
 
@@ -89,8 +97,8 @@ public class MiniPvPMatchTracker {
             if (existing == null) {
                 return new ParticipantInfo(uuid, player.plainName(), player.team().id, now, 0L);
             }
-            // Reconnected player: clear leave time, but keep their original assigned team for rating integrity
-            return existing.withLeaveTime(0L);
+            // Reconnected player: keep their original assigned team for rating integrity
+            return existing.back(now);
         });
     }
 
@@ -104,8 +112,8 @@ public class MiniPvPMatchTracker {
             return;
         }
         if (observing == (existing.leaveTime() > 0)) return;
-        participants.computeIfPresent(player.uuid(),
-                (uuid, info) -> info.withLeaveTime(observing ? System.currentTimeMillis() : 0L));
+        long now = System.currentTimeMillis();
+        participants.computeIfPresent(player.uuid(), (uuid, info) -> observing ? info.away(now) : info.back(now));
     }
 
     /** The team the player is rated for in the running match, or null. */
@@ -118,7 +126,7 @@ public class MiniPvPMatchTracker {
         if (player == null || player.uuid() == null) return;
         long now = System.currentTimeMillis();
 
-        participants.computeIfPresent(player.uuid(), (uuid, existing) -> existing.withLeaveTime(now));
+        participants.computeIfPresent(player.uuid(), (uuid, existing) -> existing.away(now));
     }
 
     public void onTeamEliminated(int teamId, int remainingAliveTeams) {
@@ -167,7 +175,7 @@ public class MiniPvPMatchTracker {
             boolean isWinner = (teamPlacement == 1);
 
             long effectiveEnd = (p.leaveTime() > 0 && p.leaveTime() < endedAt) ? p.leaveTime() : endedAt;
-            long activePlayTimeMs = Math.max(0L, effectiveEnd - p.joinTime());
+            long activePlayTimeMs = Math.max(0L, effectiveEnd - p.joinTime() - p.awayMs());
             double rawParticipation = (double) activePlayTimeMs / matchDurationMs;
             rawParticipation = Math.clamp(rawParticipation, 0.0, 1.0);
 
