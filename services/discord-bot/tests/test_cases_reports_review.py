@@ -227,6 +227,28 @@ async def test_unresolved_subject_cannot_sanction_an_already_active_report(verb)
     assert not bot.mutations["bans"].docs and not bot.mutations["mutes"].docs
 
 
+async def test_report_opened_on_the_player_during_a_ban_is_named(monkeypatch):
+    service, _, bot = await reports_core()
+    _, unknown = await panel(service, bot, {"who": "unknown", "what": "grief"})
+    other = await open_report(service)
+    lookup = service.store.by_dedup
+    calls = []
+
+    async def late(kind, key):
+        # Every check before the write misses the other report, as if it opened just after them.
+        calls.append(key)
+        return await lookup(kind, key) if len(calls) > 3 else None
+
+    monkeypatch.setattr(service.store, "by_dedup", late)
+    with pytest.raises(ActionFailed) as refused:
+        await sanction(service, unknown, "ban")
+    assert len(calls) == 4
+    assert refused.value.text == t(
+        "en", "reports-error-open-report", number=other.number
+    )
+    assert not bot.mutations["bans"].docs
+
+
 async def test_unknown_subject_claims_unique_key_in_guarded_checkpoint_before_mutation(
     monkeypatch,
 ):
