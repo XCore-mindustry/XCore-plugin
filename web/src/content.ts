@@ -1,5 +1,7 @@
 // Facts shared by every language: links, colours and sprites, mirrored from the plugins.
 
+import {formatErrors} from "next/dist/server/mcp/tools/utils/format-errors";
+
 export const links = {
   discord: "https://discord.gg/RUMCCa9QAC",
   rvbDiscord: "https://discord.gg/UdnuFetcNt",
@@ -140,6 +142,7 @@ export const modes: { id: ModeId; accent: Accent; glyph: string; sprites: { src:
 export const sample = {
   name: "Ferrum",
   id: 4821,
+  username: "ferrum",
   rating: 1487,
   hours: 212,
   matches: 46,

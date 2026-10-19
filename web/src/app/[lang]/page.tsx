@@ -96,7 +96,7 @@ export default async function Page({ params }: PageProps<"/[lang]">) {
                       </span>{" "}
                       {sample.name}
                     </p>
-                    <p className="player-id">#{sample.id}</p>
+                    <p className="player-id">@{sample.username} #{sample.id}</p>
                   </div>
                 </div>
                 <dl className="fields">
