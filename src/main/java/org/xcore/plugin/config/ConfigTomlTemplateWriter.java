@@ -111,12 +111,43 @@ public final class ConfigTomlTemplateWriter {
         [translation]
         enabled = true
         pipeline = ["google"]
-        preserve_original_message_on_failure = true
+
+        [translation.delivery]
+        # deadline: wait up to deadline_millis for the translation, then send the original and
+        #   the translation as a follow-up line if it arrives within late_translation_millis.
+        # original-first: always send the original at once, the translation as a follow-up.
+        # wait: send the translated line, or the original after late_translation_millis.
+        mode = "deadline"
+        deadline_millis = 1500
+        late_translation_millis = 10000
+
+        [translation.limits]
+        # Provider calls in flight at once; messages beyond that are delivered untranslated.
+        max_concurrent_requests = 16
+        # Per-author budget: burst of translated messages, refilled per minute.
+        author_burst = 5
+        author_refill_per_minute = 30
+        request_timeout_seconds = 45
+
+        [translation.prefilter]
+        enabled = true
+        # Messages with fewer letters (after colour tags and icons) are not translated.
+        min_letters = 2
+        # Whole messages that read the same in every language.
+        skip_words = ["gg", "ggwp", "wp", "gl", "hf", "glhf", "ok", "okay", "lol", "xd", "afk", "brb", "ez", "rip", "omg", "wtf", "pls", "plz", "thx", "ty", "np"]
+
+        [translation.channels]
+        # Translate chat relayed from other servers and from Discord as well.
+        remote_global = false
+        discord = false
 
         [translation.cache]
         enabled = true
         ttl_seconds = 1800
         max_text_length = 500
+        # In-process cache in front of Redis.
+        memory_entries = 2000
+        memory_ttl_seconds = 600
 
         [translation.metrics]
         enabled = true

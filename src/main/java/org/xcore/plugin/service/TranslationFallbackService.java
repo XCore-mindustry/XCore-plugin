@@ -1,18 +1,25 @@
 package org.xcore.plugin.service;
 
-import arc.func.Cons;
 import arc.util.Log;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import org.xcore.plugin.common.PLog;
 import org.xcore.plugin.localization.TranslationFailure;
+import org.xcore.plugin.localization.TranslationOutcome;
 import org.xcore.plugin.localization.TranslationProvider;
 import org.xcore.plugin.localization.TranslationProviderPipeline;
-import org.xcore.plugin.localization.TranslationResult;
 
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
+import java.util.concurrent.CompletionStage;
 import java.util.stream.Collectors;
 
+/**
+ * Runs the configured providers in order. Fallback is per target: only the targets the
+ * previous provider could not translate (or does not support) move on to the next one.
+ */
 @Singleton
 public class TranslationFallbackService implements TranslationProvider {
 
@@ -36,18 +43,22 @@ public class TranslationFallbackService implements TranslationProvider {
     }
 
     @Override
-    public void translate(Request request, Cons<TranslationResult> callback) {
+    public String signature() {
+        return pipelineSignature();
+    }
+
+    @Override
+    public CompletionStage<TranslationOutcome> translate(Request request) {
         if (translationProviders.isEmpty()) {
             translationMetricsService.incrementGlobal("unavailable_total");
-            Log.debug("[Translation] No providers configured for target '@'", request.targetLanguage());
-            callback.get(TranslationResult.failure(
+            Log.debug("[Translation] No providers configured for targets @", request.targetLanguages());
+            return CompletableFuture.completedFuture(TranslationOutcome.failed(request.targetLanguages(),
                     TranslationFailure.unavailable(name(), "translation is unavailable: no providers configured")));
-            return;
         }
 
-        Log.debug("[Translation] Starting fallback pipeline for '@' -> '@' using @ provider(s)",
-                request.sourceLanguage(), request.targetLanguage(), translationProviders.size());
-        translate(request, 0, callback);
+        Log.debug("[Translation] Starting fallback pipeline for '@' -> @ using @ provider(s)",
+                request.sourceLanguage(), request.targetLanguages(), translationProviders.size());
+        return translate(request, 0, new TranslationOutcome(null, Map.of(), Map.of()));
     }
 
     @Override
@@ -67,62 +78,78 @@ public class TranslationFallbackService implements TranslationProvider {
         }
 
         return translationProviders.stream()
-                .map(translationProvider -> translationProvider.name() + ":" + translationProvider.type())
+                .map(TranslationProvider::signature)
                 .collect(Collectors.joining(","));
     }
 
-    private void translate(Request request, int providerIndex, Cons<TranslationResult> callback) {
+    private CompletionStage<TranslationOutcome> translate(Request request, int providerIndex, TranslationOutcome accumulated) {
+        List<String> remaining = request.targetLanguages().stream()
+                .filter(target -> !accumulated.translations().containsKey(target))
+                .toList();
+        if (remaining.isEmpty()) {
+            return CompletableFuture.completedFuture(accumulated);
+        }
+
         if (providerIndex >= translationProviders.size()) {
             translationMetricsService.incrementGlobal("all_failed_total");
-            Log.debug("[Translation] All providers failed for '@' -> '@'", request.sourceLanguage(), request.targetLanguage());
-            callback.get(TranslationResult.failure(
-                    TranslationFailure.unavailable(name(), "all translation providers failed")));
-            return;
+            Log.debug("[Translation] All providers failed for @", remaining);
+            TranslationOutcome failed = TranslationOutcome.failed(remaining,
+                    TranslationFailure.unavailable(name(), "all translation providers failed"));
+            return CompletableFuture.completedFuture(accumulated.merge(failed));
         }
 
         TranslationProvider translationProvider = translationProviders.get(providerIndex);
-        if (!translationProvider.supports(request.targetLanguage())) {
-            Log.debug("[Translation] Skipping provider '@' for unsupported target '@'",
-                    translationProvider.name(), request.targetLanguage());
-            translate(request, providerIndex + 1, callback);
+        List<String> supported = remaining.stream().filter(translationProvider::supports).toList();
+        if (supported.isEmpty()) {
+            Log.debug("[Translation] Skipping provider '@' for unsupported targets @", translationProvider.name(), remaining);
+            return translate(request, providerIndex + 1, accumulated);
+        }
+
+        Log.debug("[Translation] Trying provider '@' (type='@') for @", translationProvider.name(), translationProvider.type(), supported);
+        translationMetricsService.incrementProvider(translationProvider.name(), "attempts_total");
+        long startNanos = System.nanoTime();
+        Request providerRequest = new Request(request.text(), request.sourceLanguage(), supported);
+
+        return invoke(translationProvider, providerRequest)
+                .thenCompose(outcome -> {
+                    record(translationProvider, outcome, elapsedMillis(startNanos));
+                    return translate(request, providerIndex + 1, accumulated.merge(outcome));
+                });
+    }
+
+    /** A provider that throws or completes exceptionally fails its targets instead of the pipeline. */
+    private CompletionStage<TranslationOutcome> invoke(TranslationProvider translationProvider, Request request) {
+        CompletionStage<TranslationOutcome> stage;
+        try {
+            stage = translationProvider.translate(request);
+        } catch (RuntimeException exception) {
+            stage = CompletableFuture.failedFuture(exception);
+        }
+
+        return stage.exceptionally(error -> TranslationOutcome.failed(request.targetLanguages(),
+                TranslationFailure.failed(translationProvider.name(), unwrap(error))));
+    }
+
+    private void record(TranslationProvider translationProvider, TranslationOutcome outcome, long latencyMs) {
+        String providerName = translationProvider.name();
+        translationMetricsService.recordProviderLatency(providerName, latencyMs);
+        if (outcome.allSucceeded()) {
+            translationMetricsService.incrementProvider(providerName, "success_total");
+            translationMetricsService.incrementGlobal("provider_success_total");
+            translationMetricsService.markProviderSuccess(providerName);
+            Log.debug("[Translation] Provider '@' succeeded in @ ms", providerName, latencyMs);
             return;
         }
 
-        Log.debug("[Translation] Trying provider '@' (type='@') for '@' -> '@'",
-                translationProvider.name(), translationProvider.type(), request.sourceLanguage(), request.targetLanguage());
-        translationMetricsService.incrementProvider(translationProvider.name(), "attempts_total");
-        long startNanos = System.nanoTime();
-        translationProvider.translate(request, result -> {
-            if (result instanceof TranslationResult.Success) {
-                long latencyMs = elapsedMillis(startNanos);
-                translationMetricsService.incrementProvider(translationProvider.name(), "success_total");
-                translationMetricsService.incrementGlobal("provider_success_total");
-                translationMetricsService.recordProviderLatency(translationProvider.name(), latencyMs);
-                translationMetricsService.markProviderSuccess(translationProvider.name());
-                Log.debug("[Translation] Provider '@' succeeded in @ ms for target '@'",
-                        translationProvider.name(), latencyMs, request.targetLanguage());
-                callback.get(result);
-                return;
-            }
+        String reason = outcome.failures().values().iterator().next().reason();
+        translationMetricsService.incrementProvider(providerName, "failure_total");
+        translationMetricsService.incrementGlobal("provider_failure_total");
+        translationMetricsService.markProviderFailure(providerName, reason);
+        Log.debug("[Translation] Provider '@' failed for @ in @ ms: @", providerName, outcome.failures().keySet(), latencyMs, reason);
+    }
 
-            long latencyMs = elapsedMillis(startNanos);
-            translationMetricsService.incrementProvider(translationProvider.name(), "failure_total");
-            translationMetricsService.incrementGlobal("provider_failure_total");
-            translationMetricsService.recordProviderLatency(translationProvider.name(), latencyMs);
-            if (result instanceof TranslationResult.Failure(var failure)) {
-                translationMetricsService.markProviderFailure(translationProvider.name(), failure.reason());
-                Log.debug("[Translation] Provider '@' failed in @ ms: @",
-                        translationProvider.name(), latencyMs, failure.reason());
-            } else {
-                translationMetricsService.markProviderFailure(translationProvider.name(), "unknown failure");
-                Log.debug("[Translation] Provider '@' failed in @ ms with unknown failure",
-                        translationProvider.name(), latencyMs);
-            }
-
-            Log.debug("[Translation] Falling back from provider '@' to next provider for target '@'",
-                    translationProvider.name(), request.targetLanguage());
-            translate(request, providerIndex + 1, callback);
-        });
+    private static Throwable unwrap(Throwable error) {
+        return error instanceof CompletionException && error.getCause() != null ? error.getCause() : error;
     }
 
     private long elapsedMillis(long startNanos) {

@@ -110,10 +110,23 @@ public final class ServerLocalConfigPathEditor {
 
         bind(bindings, "translation.enabled", ValueType.BOOLEAN);
         bind(bindings, "translation.pipeline", ValueType.STRING_LIST);
-        bind(bindings, "translation.preserve_original_message_on_failure", ValueType.BOOLEAN);
+        bind(bindings, "translation.delivery.mode", ValueType.STRING);
+        bind(bindings, "translation.delivery.deadline_millis", ValueType.INT);
+        bind(bindings, "translation.delivery.late_translation_millis", ValueType.INT);
+        bind(bindings, "translation.limits.max_concurrent_requests", ValueType.INT);
+        bind(bindings, "translation.limits.author_burst", ValueType.INT);
+        bind(bindings, "translation.limits.author_refill_per_minute", ValueType.INT);
+        bind(bindings, "translation.limits.request_timeout_seconds", ValueType.INT);
+        bind(bindings, "translation.prefilter.enabled", ValueType.BOOLEAN);
+        bind(bindings, "translation.prefilter.min_letters", ValueType.INT);
+        bind(bindings, "translation.prefilter.skip_words", ValueType.STRING_LIST);
+        bind(bindings, "translation.channels.remote_global", ValueType.BOOLEAN);
+        bind(bindings, "translation.channels.discord", ValueType.BOOLEAN);
         bind(bindings, "translation.cache.enabled", ValueType.BOOLEAN);
         bind(bindings, "translation.cache.ttl_seconds", ValueType.INT);
         bind(bindings, "translation.cache.max_text_length", ValueType.INT);
+        bind(bindings, "translation.cache.memory_entries", ValueType.INT);
+        bind(bindings, "translation.cache.memory_ttl_seconds", ValueType.INT);
         bind(bindings, "translation.metrics.enabled", ValueType.BOOLEAN);
         bind(bindings, "translation.metrics.minute_buckets_enabled", ValueType.BOOLEAN);
         bind(bindings, "translation.metrics.minute_bucket_ttl_seconds", ValueType.INT);

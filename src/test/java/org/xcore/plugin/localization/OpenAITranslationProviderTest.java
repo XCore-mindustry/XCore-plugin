@@ -15,7 +15,6 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -52,10 +51,9 @@ class OpenAITranslationProviderTest {
                 translationExecutor
         );
 
-        TranslationResult result = translate(provider, new TranslationProvider.Request("Hello", "en", "ru"));
+        TranslationOutcome result = translate(provider, TranslationProvider.Request.single("Hello", "en", "ru"));
 
-        assertThat(result).isInstanceOfSatisfying(TranslationResult.Success.class,
-                success -> assertThat(success.translatedText()).isEqualTo("Привет"));
+        assertThat(result.translations()).containsEntry("ru", "Привет");
         assertThat(authorizationHeader.get()).isEqualTo("Bearer test-key");
 
         JsonObject requestJson = JsonParser.parseString(requestBody.get()).getAsJsonObject();
@@ -67,7 +65,7 @@ class OpenAITranslationProviderTest {
     }
 
     @Test
-    @DisplayName("translate uses chat completions api and wraps plain text for structured output")
+    @DisplayName("translate uses chat completions api and accepts plain text for a single target")
     void translate_usesChatCompletionsApi_andWrapsPlainText() throws Exception {
         AtomicReference<String> requestBody = new AtomicReference<>();
         String baseUrl = startServer("/v1/chat/completions", exchange -> {
@@ -82,14 +80,55 @@ class OpenAITranslationProviderTest {
                 translationExecutor
         );
 
-        TranslationResult result = translate(provider, new TranslationProvider.Request("Hello", "en", "ru"));
+        TranslationOutcome result = translate(provider, TranslationProvider.Request.single("Hello", "en", "ru"));
 
-        assertThat(result).isInstanceOfSatisfying(TranslationResult.Success.class,
-                success -> assertThat(success.translatedText()).isEqualTo("Привет"));
+        assertThat(result.translations()).containsEntry("ru", "Привет");
 
         JsonObject requestJson = JsonParser.parseString(requestBody.get()).getAsJsonObject();
         assertThat(requestJson.getAsJsonArray("messages")).hasSize(2);
         assertThat(requestJson.has("response_format")).isFalse();
+    }
+
+    @Test
+    @DisplayName("translate asks for every target in one request with a per-target schema")
+    void translate_requestsAllTargetsAtOnce() throws Exception {
+        AtomicInteger requests = new AtomicInteger();
+        AtomicReference<String> requestBody = new AtomicReference<>();
+        String baseUrl = startServer("/v1/responses", exchange -> {
+            requests.incrementAndGet();
+            requestBody.set(readRequestBody(exchange));
+            writeJson(exchange, 200, "{\"output_text\":\"{\\\"detectedLanguage\\\":\\\"en\\\",\\\"translations\\\":{\\\"ru\\\":\\\"Привет\\\",\\\"de\\\":\\\"Hallo\\\"}}\"}");
+        });
+
+        OpenAITranslationProvider provider = new OpenAITranslationProvider(
+                "openai-main",
+                providerConfig(baseUrl, "responses"),
+                translationSafetyService(true),
+                translationExecutor
+        );
+
+        TranslationOutcome result = translate(provider, new TranslationProvider.Request("Hello", "auto", java.util.List.of("ru", "de")));
+
+        assertThat(requests.get()).isEqualTo(1);
+        assertThat(result.detectedSourceLanguage()).isEqualTo("en");
+        assertThat(result.translations()).containsEntry("ru", "Привет").containsEntry("de", "Hallo");
+        JsonObject schema = JsonParser.parseString(requestBody.get()).getAsJsonObject()
+                .getAsJsonObject("text").getAsJsonObject("format").getAsJsonObject("schema");
+        assertThat(schema.getAsJsonObject("properties").getAsJsonObject("translations")
+                .getAsJsonArray("required").toString()).isEqualTo("[\"ru\",\"de\"]");
+    }
+
+    @Test
+    @DisplayName("signature changes with the model so cached translations are not reused")
+    void signature_includesModel() {
+        TomlSecretsConfig.TranslationSection.ProviderConfig config = providerConfig("http://127.0.0.1:1/v1", "responses");
+        OpenAITranslationProvider first = new OpenAITranslationProvider("openai-main", config, translationSafetyService(true), translationExecutor);
+        TomlSecretsConfig.TranslationSection.ProviderConfig other = providerConfig("http://127.0.0.1:1/v1", "responses");
+        other.model = "gpt-other";
+        OpenAITranslationProvider second = new OpenAITranslationProvider("openai-main", other, translationSafetyService(true), translationExecutor);
+
+        assertThat(first.signature()).contains("gpt-test");
+        assertThat(first.signature()).isNotEqualTo(second.signature());
     }
 
     @Test
@@ -102,10 +141,9 @@ class OpenAITranslationProviderTest {
                 translationExecutor
         );
 
-        TranslationResult result = translate(provider, new TranslationProvider.Request("Hello", "en", "ru"));
+        TranslationOutcome result = translate(provider, TranslationProvider.Request.single("Hello", "en", "ru"));
 
-        assertThat(result).isInstanceOfSatisfying(TranslationResult.Failure.class,
-                failure -> assertThat(failure.failure().reason()).isEqualTo("provider is not configured"));
+        assertThat(result.failures().get("ru").reason()).isEqualTo("provider is not configured");
     }
 
     @Test
@@ -135,10 +173,9 @@ class OpenAITranslationProviderTest {
                 translationExecutor
         );
 
-        TranslationResult result = translate(provider, new TranslationProvider.Request("Hello", "en", "ru"));
+        TranslationOutcome result = translate(provider, TranslationProvider.Request.single("Hello", "en", "ru"));
 
-        assertThat(result).isInstanceOfSatisfying(TranslationResult.Success.class,
-                success -> assertThat(success.translatedText()).isEqualTo("Привет"));
+        assertThat(result.translations()).containsEntry("ru", "Привет");
         assertThat(attempts.get()).isEqualTo(2);
         assertThat(TimeUnit.NANOSECONDS.toMillis(secondAttemptAt.get() - firstAttemptAt.get())).isGreaterThanOrEqualTo(900L);
     }
@@ -156,15 +193,8 @@ class OpenAITranslationProviderTest {
         return "http://127.0.0.1:" + server.getAddress().getPort() + "/v1";
     }
 
-    private TranslationResult translate(OpenAITranslationProvider provider, TranslationProvider.Request request) throws Exception {
-        CountDownLatch latch = new CountDownLatch(1);
-        AtomicReference<TranslationResult> result = new AtomicReference<>();
-        provider.translate(request, translationResult -> {
-            result.set(translationResult);
-            latch.countDown();
-        });
-        assertThat(latch.await(5, TimeUnit.SECONDS)).isTrue();
-        return result.get();
+    private TranslationOutcome translate(OpenAITranslationProvider provider, TranslationProvider.Request request) throws Exception {
+        return provider.translate(request).toCompletableFuture().get(5, TimeUnit.SECONDS);
     }
 
     private TranslationSafetyService translationSafetyService(boolean structuredOutputRequired) {

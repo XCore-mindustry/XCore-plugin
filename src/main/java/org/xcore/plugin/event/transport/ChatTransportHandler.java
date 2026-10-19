@@ -7,6 +7,7 @@ import jakarta.inject.Singleton;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatDiscordIngressCommandV1;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatGlobalV1;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatPrivateV1;
+import org.xcore.plugin.chat.ChatDeliveryService;
 import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.concurrent.Async;
 import org.xcore.plugin.model.PrivateMessage;
@@ -14,6 +15,9 @@ import org.xcore.plugin.service.NetworkService;
 import org.xcore.plugin.service.PrivateMessageService;
 import org.xcore.plugin.session.Session;
 import org.xcore.plugin.session.SessionService;
+
+import java.util.Map;
+import java.util.function.Predicate;
 
 import static com.ospx.flubundle.Bundle.args;
 
@@ -25,18 +29,21 @@ public class ChatTransportHandler {
     private final PrivateMessageService privateMessageService;
     private final TomlXcoreConfig config;
     private final Async async;
+    private final ChatDeliveryService chatDeliveryService;
 
     @Inject
     public ChatTransportHandler(NetworkService network,
                                 SessionService sessionService,
                                 PrivateMessageService privateMessageService,
                                 TomlXcoreConfig config,
-                                Async async) {
+                                Async async,
+                                ChatDeliveryService chatDeliveryService) {
         this.network = network;
         this.sessionService = sessionService;
         this.privateMessageService = privateMessageService;
         this.config = config;
         this.async = async;
+        this.chatDeliveryService = chatDeliveryService;
     }
 
     /**
@@ -46,11 +53,13 @@ public class ChatTransportHandler {
      */
     public void registerListeners() {
         network.subscribe(ChatGlobalV1.class, e -> async.main(() -> {
-            sessionService.broadcastFiltered("global-chat-format", args(
-                    "server", e.server(),
-                    "author", e.authorName(),
-                    "message", e.message()
-            ), session -> !Boolean.FALSE.equals(session.data.globalChatVisible));
+            relay(config.translation.channels.remoteGlobal,
+                    "remote:" + e.server() + ":" + Strings.stripColors(e.authorName()),
+                    e.authorName(), e.message(), "global-chat-format", args(
+                            "server", e.server(),
+                            "author", e.authorName(),
+                            "message", e.message()
+                    ), session -> !Boolean.FALSE.equals(session.data.globalChatVisible));
             Log.infoTag("GLOBAL-" + e.server(), Strings.stripColors(e.authorName()) + ": " + e.message());
         }));
 
@@ -59,10 +68,12 @@ public class ChatTransportHandler {
                 return;
             }
 
-            sessionService.broadcastFiltered("discord-chat-format", args(
-                    "author", e.authorName(),
-                    "message", e.message()
-            ), session -> !Boolean.FALSE.equals(session.data.discordRelayVisible));
+            relay(config.translation.channels.discord,
+                    "discord:" + Strings.stripColors(e.authorName()),
+                    e.authorName(), e.message(), "discord-chat-format", args(
+                            "author", e.authorName(),
+                            "message", e.message()
+                    ), session -> !Boolean.FALSE.equals(session.data.discordRelayVisible));
             Log.infoTag("DISCORD-" + e.server(), Strings.stripColors(e.authorName()) + ": " + e.message());
         }));
 
@@ -88,5 +99,20 @@ public class ChatTransportHandler {
             privateMessageService.deliverIncoming(message, recipientSession);
             recipientSession.lastPrivateTargetPid = e.fromPid();
         }));
+    }
+
+    /** Relayed chat goes through translation only when its channel is enabled for it. */
+    private void relay(boolean translate,
+                       String authorKey,
+                       String authorName,
+                       String message,
+                       String bundleKey,
+                       Map<String, Object> args,
+                       Predicate<Session> filter) {
+        if (translate) {
+            chatDeliveryService.deliverRemote(authorKey, authorName, message, bundleKey, args, filter);
+        } else {
+            sessionService.broadcastFiltered(bundleKey, args, filter);
+        }
     }
 }

@@ -58,6 +58,18 @@ public class TranslationStatsController implements CloudServerController {
         Log.info("  cache_hits_total=@ cache_misses_total=@ cache_hit_ratio=@%", cacheHitsTotal, cacheMissesTotal, formatDouble(cacheHitRatio));
         Log.info("  unsupported_language_total=@ original_message_fallback_total=@", unsupportedTotal, originalFallbackTotal);
         Log.info("  all_failed_total=@ unavailable_total=@", allFailedTotal, unavailableTotal);
+        Log.info("  memory_cache_hits_total=@ inflight_shared_total=@",
+                longValue(totals, "memory_cache_hits_total"), longValue(totals, "inflight_shared_total"));
+        Log.info("  prefilter_skipped_total=@ same_language_skipped_total=@",
+                longValue(totals, "prefilter_skipped_total"), longValue(totals, "same_language_skipped_total"));
+        Log.info("  rate_limited_total=@ overloaded_total=@",
+                longValue(totals, "rate_limited_total"), longValue(totals, "overloaded_total"));
+        Log.info(" Delivery (mode=@, deadline=@ms, late=@ms):", config.translation.delivery.mode,
+                config.translation.delivery.deadlineMillis, config.translation.delivery.lateTranslationMillis);
+        Log.info("  delivery_deadline_missed_total=@ late_translation_sent_total=@ late_translation_dropped_total=@",
+                longValue(totals, "delivery_deadline_missed_total"),
+                longValue(totals, "late_translation_sent_total"),
+                longValue(totals, "late_translation_dropped_total"));
 
         Log.info(" Providers:");
         for (String providerId : config.translation.pipeline) {
