@@ -843,6 +843,7 @@ commands-ranks-footer = The amount of wins increases only when defeating a playe
 commands-top-description = Top players.
 commands-season-description = Rating season: time left, your standing and last season's winners.
 commands-matches-description = Your rated matches: results, rating changes and who you played with.
+commands-pvp-description = MiniPvP guide: the round, the server rules and how rating works.
 commands-top-hexed-content = [orange]{ $index }. { $nickname }[accent]: [blue]{ $rankName } [cyan]{ $points } []wins
 commands-top-pvp-content = [orange]{ $index }. { $nickname }[accent]: [cyan]{ $rating }
 top-menu-title = [orange]{ -xcore } — Top Players: [accent]{ $category }
@@ -955,6 +956,84 @@ season-menu-empty = There are no rating seasons yet.
 pvp-hud-status = [accent]MiniPvP[] | [stat]Alive:[] { $teams } | [gray]{ $time }[]
 pvp-leaderboard-content = [orange]{ $index }. { $nickname }[accent]:[cyan] { $rating } [accent]rating
 pvp-you-spectator = [scarlet]You have been eliminated. Please wait for the next game.
+
+# MiniPvP guide (/pvp info)
+pvp-guide-title = How to play here
+pvp-guide-subtitle = Regular Mindustry PvP: teams build bases and destroy each other's cores. Here is what sets this server apart and how rating works.
+pvp-guide-hint = Open again: [accent]/pvp info[]
+pvp-guide-join-hint = [lightgray]MiniPvP rules and rating:[] [accent]/pvp info[]
+pvp-guide-menu-button = How to play MiniPvP
+pvp-guide-tab-round = Round
+pvp-guide-tab-rules = Rules
+pvp-guide-tab-rating = Rating
+pvp-guide-stat-minutes = minutes played
+pvp-guide-stat-teams = teams in play
+pvp-guide-stat-players = players on teams
+pvp-guide-stat-zone = tiles around a core
+pvp-guide-stat-unitcap = unit cap
+pvp-guide-stat-banned = blocks banned
+pvp-guide-stat-start = starting rating
+pvp-guide-stat-top = top players
+pvp-guide-stat-matches = match history
+
+pvp-guide-now-title = Right now
+pvp-guide-now-map = Map: [accent]{ $map }[]
+pvp-guide-now-players = { $count } { $count ->
+        [one] player
+       *[other] players
+    }
+pvp-guide-win-title = How to win
+pvp-guide-win-text = Destroy every enemy core. The last team with cores and players left wins. A team with nobody left on it is out.
+pvp-guide-out-title = Out: watch until the end
+pvp-guide-out-text =
+    Your team lost its last core: you watch until the next round.
+    Left mid-round and came back: you return to the same team.
+pvp-guide-commands-title = Commands
+pvp-guide-cmd-info = this window
+pvp-guide-cmd-top = leaderboard
+pvp-guide-cmd-season = season and prizes
+pvp-guide-cmd-matches = your matches and their rating
+pvp-guide-cmd-rtv = vote to change the map
+pvp-guide-cmd-observer = watch from the side
+
+pvp-guide-zone-title = No building near enemy cores
+pvp-guide-zone-text = You cannot build within [accent]{ $tiles }[] tiles of an enemy core. To push forward, destroy that core first.
+pvp-guide-zone-polygon-title = The land is split between cores
+pvp-guide-zone-polygon-text = You can build only where the nearest core is yours. To take enemy land, destroy the core it belongs to.
+pvp-guide-unitcap-title = Unit cap
+pvp-guide-unitcap-text = A team starts with a cap of [accent]{ $cap }[], and every core raises it.
+pvp-guide-unitcap-fixed-title = Unit cap
+pvp-guide-unitcap-fixed-text = A team has at most [accent]{ $cap }[] units, however many cores it holds.
+pvp-guide-multipliers-title = Different balance
+pvp-guide-multipliers-text = On this map these numbers differ from the usual:
+pvp-guide-rule-unit-damage = Unit damage
+pvp-guide-rule-unit-health = Unit health
+pvp-guide-rule-unit-cost = Unit cost
+pvp-guide-rule-unit-build-speed = Unit production speed
+pvp-guide-rule-block-damage = Building damage
+pvp-guide-rule-block-health = Building health
+pvp-guide-rule-build-cost = Building cost
+pvp-guide-rule-build-speed = Build speed
+pvp-guide-banned-blocks-title = Banned blocks
+pvp-guide-banned-units-title = Banned units
+pvp-guide-other-title = Also
+pvp-guide-other-fog = Fog of war: you see only what your buildings and units see.
+pvp-guide-other-capture = A destroyed core goes to the team that destroyed it.
+pvp-guide-other-reactors = Reactors do not explode.
+pvp-guide-vanilla-title = Regular rules
+pvp-guide-vanilla-text = This map plays by the rules of regular Mindustry PvP.
+
+pvp-guide-elo-title = ELO rating
+pvp-guide-elo-text = Everyone starts at [accent]{ $start }[]. A win raises your rating, a loss lowers it. By how much depends on the rating of your team and of your opponents: beating stronger teams gives more.
+pvp-guide-leave-title = Leaving does not dodge a loss
+pvp-guide-leave-text = If your team loses, you lose the full rating, even if you left or turned spectator earlier. You lose nothing only if you played less than [accent]{ $seconds }[] s.
+pvp-guide-unrated-title = When rating does not change
+pvp-guide-unrated-text =
+    A round shorter than [accent]{ $seconds }[] s or with fewer than [accent]{ $players }[] rated players does not count.
+    A winner has to play at least [accent]{ $winner }%[] of the round, or the rating does not grow.
+    Joined a losing team late and played less than [accent]{ $late }%[] of the round: your rating does not drop.
+pvp-guide-seasons-title = Leagues and seasons
+pvp-guide-seasons-text = Your rating sets your league. Rating runs in seasons: at the end of a season the best players get prizes. Results of every match: [accent]/matches[].
 # ==============================================================================
 # Events & Notifications
 # ==============================================================================

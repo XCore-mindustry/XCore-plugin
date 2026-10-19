@@ -6,6 +6,7 @@ import org.xcore.plugin.cloud.CloudService;
 import org.xcore.plugin.command.controller.CloudClientController;
 import org.xcore.plugin.command.controller.CloudServerController;
 import org.xcore.plugin.command.controller.client.EventController;
+import org.xcore.plugin.command.controller.client.MiniPvPGuideController;
 import org.xcore.plugin.config.TomlXcoreConfig;
 
 import java.util.List;
@@ -64,5 +65,24 @@ class CloudCommandRegistrarTest {
         // Assert
         verify(cloudService, never()).registerClient(eventController);
         verify(cloudService).registerClient(genericController);
+    }
+
+    @Test
+    @DisplayName("init registers the MiniPvP guide only on the MiniPvP server")
+    void init_registersMiniPvPGuideOnlyOnMiniPvPServer() {
+        for (String server : List.of("mini-pvp", "event")) {
+            CloudService cloudService = mock(CloudService.class);
+            TomlXcoreConfig config = new TomlXcoreConfig();
+            config.server.name = server;
+            MiniPvPGuideController guideController = mock(MiniPvPGuideController.class);
+
+            new CloudCommandRegistrar(cloudService, config, List.of(guideController), List.of()).init();
+
+            if (server.equals("mini-pvp")) {
+                verify(cloudService).registerClient(guideController);
+            } else {
+                verify(cloudService, never()).registerClient(guideController);
+            }
+        }
     }
 }

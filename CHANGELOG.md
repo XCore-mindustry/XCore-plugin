@@ -32,6 +32,7 @@ All notable changes to this project will be documented in this file.
 - Match history texts in every bundle (en, ru, uk, be, cs, de, es, fr, pl).
 - Test that every translated message renders without errors the English message does not have.
 - Test that every translation uses the same `$variables` as the English bundle.
+- MiniPvP guide: `/pvp info` (also `/pvp`, `/pvp guide`) and a "How to play MiniPvP" button in the main menu open a guide on three tabs. "Round" shows the map, the teams with their players, how long the round has run, how to win and what happens when a team is out. "Rules" shows only what the current map changes from vanilla PvP: the no-build zone around enemy cores, the unit cap, rule multipliers, banned blocks and units, fog, core capture and reactors. "Rating" explains the ELO rating, the starting rating and when a round does or does not change it. The numbers are read from the live rules and the rating code, so the guide follows the map and any change to the rating thresholds. Players with fewer than 3 rated MiniPvP rounds see it when they join; others get a chat line naming the command. The command exists on the MiniPvP server only. Texts in every bundle.
 
 ## [5.0.0] - 2026-10-07
 

@@ -218,14 +218,7 @@ public class MiniPvP {
         long durationSeconds = Math.max(0L, (now - started) / 1000L);
         String timeStr = String.format("%02d:%02d", durationSeconds / 60, durationSeconds % 60);
 
-        Map<Team, Integer> alive = new LinkedHashMap<>();
-        if (Vars.state.teams != null) {
-            for (TeamData t : Vars.state.teams.getActive()) {
-                if (t.team == Team.derelict || observerService.isObserverTeam(t.team) || !t.isAlive()) continue;
-                alive.put(t.team, countActivePlayers(t.team));
-            }
-        }
-
+        Map<Team, Integer> alive = aliveTeams();
         if (alive.isEmpty()) {
             return;
         }
@@ -242,6 +235,28 @@ public class MiniPvP {
             } catch (Exception ignored) {
             }
         });
+    }
+
+    /** The teams still in the round, in the order the game lists them, with the players on each. */
+    public Map<Team, Integer> aliveTeams() {
+        Map<Team, Integer> alive = new LinkedHashMap<>();
+        if (Vars.state == null || Vars.state.teams == null) {
+            return alive;
+        }
+        for (TeamData t : Vars.state.teams.getActive()) {
+            if (t.team == Team.derelict || observerService.isObserverTeam(t.team) || !t.isAlive()) continue;
+            alive.put(t.team, countActivePlayers(t.team));
+        }
+        return alive;
+    }
+
+    /** How long the running round has been going, 0 between rounds. */
+    public int roundSeconds() {
+        if (matchTracker == null || !matchTracker.isInProgress()
+                || Vars.state == null || Vars.state.isMenu() || Vars.state.gameOver) {
+            return 0;
+        }
+        return (int) Math.max(0L, (System.currentTimeMillis() - matchTracker.startedAt()) / 1000L);
     }
 
     static String teamsLine(Map<Team, Integer> alive, Locale locale) {

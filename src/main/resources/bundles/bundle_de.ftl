@@ -789,6 +789,7 @@ commands-ranks-footer = Siege zählen nur, wenn du einen Spieler deines Rangs od
 commands-top-description = Die besten Spieler.
 commands-season-description = Wertungssaison: verbleibende Zeit, deine Platzierung und die Sieger der letzten Saison.
 commands-matches-description = Deine Wertungsmatches: Ergebnisse, Wertungsänderungen und mit wem du gespielt hast.
+commands-pvp-description = MiniPvP-Anleitung: die Runde, die Serverregeln und wie die Wertung funktioniert.
 commands-top-hexed-content = [orange]{ $index }. { $nickname }[accent]: [blue]{ $rankName } [cyan]{ $points } []Siege
 commands-top-pvp-content = [orange]{ $index }. { $nickname }[accent]: [cyan]{ $rating }
 top-menu-title = [orange]{ -xcore } — Beste Spieler: [accent]{ $category }
@@ -901,6 +902,84 @@ season-menu-empty = Es gibt noch keine Wertungssaisons.
 pvp-hud-status = [accent]MiniPvP[] | [stat]Am Leben:[] { $teams } | [gray]{ $time }[]
 pvp-leaderboard-content = [orange]{ $index }. { $nickname }[accent]:[cyan] { $rating } [accent]Wertung
 pvp-you-spectator = [scarlet]Du wurdest ausgeschaltet. Bitte warte auf das nächste Spiel.
+
+# MiniPvP guide (/pvp info)
+pvp-guide-title = So wird hier gespielt
+pvp-guide-subtitle = Normales Mindustry-PvP: Teams bauen Basen und zerstören die Kerne der anderen. Hier steht, was diesen Server unterscheidet und wie die Wertung funktioniert.
+pvp-guide-hint = Erneut öffnen: [accent]/pvp info[]
+pvp-guide-join-hint = [lightgray]MiniPvP-Regeln und Wertung:[] [accent]/pvp info[]
+pvp-guide-menu-button = So spielst du MiniPvP
+pvp-guide-tab-round = Runde
+pvp-guide-tab-rules = Regeln
+pvp-guide-tab-rating = Wertung
+pvp-guide-stat-minutes = Minuten gespielt
+pvp-guide-stat-teams = Teams im Spiel
+pvp-guide-stat-players = Spieler in Teams
+pvp-guide-stat-zone = Kacheln um einen Kern
+pvp-guide-stat-unitcap = Einheitenlimit
+pvp-guide-stat-banned = Blöcke verboten
+pvp-guide-stat-start = Startwertung
+pvp-guide-stat-top = beste Spieler
+pvp-guide-stat-matches = Matchverlauf
+
+pvp-guide-now-title = Gerade jetzt
+pvp-guide-now-map = Karte: [accent]{ $map }[]
+pvp-guide-now-players = { $count } { $count ->
+        [one] Spieler
+       *[other] Spieler
+    }
+pvp-guide-win-title = So gewinnst du
+pvp-guide-win-text = Zerstöre jeden gegnerischen Kern. Das letzte Team mit Kernen und Spielern gewinnt. Ein Team, in dem niemand mehr ist, scheidet aus.
+pvp-guide-out-title = Ausgeschieden: zuschauen bis zum Ende
+pvp-guide-out-text =
+    Dein Team hat seinen letzten Kern verloren: Du schaust bis zur nächsten Runde zu.
+    Mitten in der Runde gegangen und zurückgekommen: Du kommst ins selbe Team.
+pvp-guide-commands-title = Befehle
+pvp-guide-cmd-info = dieses Fenster
+pvp-guide-cmd-top = Bestenliste
+pvp-guide-cmd-season = Saison und Preise
+pvp-guide-cmd-matches = deine Matches und ihre Wertung
+pvp-guide-cmd-rtv = für einen Kartenwechsel stimmen
+pvp-guide-cmd-observer = von der Seite zuschauen
+
+pvp-guide-zone-title = Kein Bauen an fremden Kernen
+pvp-guide-zone-text = Näher als [accent]{ $tiles }[] Kacheln an einem gegnerischen Kern kannst du nicht bauen. Um vorzurücken, zerstöre zuerst diesen Kern.
+pvp-guide-zone-polygon-title = Das Land ist zwischen den Kernen aufgeteilt
+pvp-guide-zone-polygon-text = Du kannst nur dort bauen, wo der nächste Kern dir gehört. Um fremdes Land zu nehmen, zerstöre den Kern, zu dem es gehört.
+pvp-guide-unitcap-title = Einheitenlimit
+pvp-guide-unitcap-text = Ein Team beginnt mit einem Limit von [accent]{ $cap }[], und jeder Kern erhöht es.
+pvp-guide-unitcap-fixed-title = Einheitenlimit
+pvp-guide-unitcap-fixed-text = Ein Team hat höchstens [accent]{ $cap }[] Einheiten, egal wie viele Kerne es hält.
+pvp-guide-multipliers-title = Anderes Gleichgewicht
+pvp-guide-multipliers-text = Auf dieser Karte weichen diese Werte vom Üblichen ab:
+pvp-guide-rule-unit-damage = Schaden von Einheiten
+pvp-guide-rule-unit-health = Lebenspunkte von Einheiten
+pvp-guide-rule-unit-cost = Kosten von Einheiten
+pvp-guide-rule-unit-build-speed = Produktionstempo von Einheiten
+pvp-guide-rule-block-damage = Schaden von Gebäuden
+pvp-guide-rule-block-health = Lebenspunkte von Gebäuden
+pvp-guide-rule-build-cost = Kosten von Gebäuden
+pvp-guide-rule-build-speed = Bautempo
+pvp-guide-banned-blocks-title = Verbotene Blöcke
+pvp-guide-banned-units-title = Verbotene Einheiten
+pvp-guide-other-title = Außerdem
+pvp-guide-other-fog = Nebel des Krieges: Du siehst nur, was deine Gebäude und Einheiten sehen.
+pvp-guide-other-capture = Ein zerstörter Kern geht an das Team, das ihn zerstört hat.
+pvp-guide-other-reactors = Reaktoren explodieren nicht.
+pvp-guide-vanilla-title = Normale Regeln
+pvp-guide-vanilla-text = Auf dieser Karte gelten die Regeln von normalem Mindustry-PvP.
+
+pvp-guide-elo-title = ELO-Wertung
+pvp-guide-elo-text = Alle beginnen mit [accent]{ $start }[]. Ein Sieg hebt deine Wertung, eine Niederlage senkt sie. Um wie viel, hängt von der Wertung deines Teams und deiner Gegner ab: Ein Sieg gegen Stärkere bringt mehr.
+pvp-guide-leave-title = Gehen verhindert keine Niederlage
+pvp-guide-leave-text = Verliert dein Team, verlierst du die volle Wertung, auch wenn du vorher gegangen oder Zuschauer geworden bist. Nichts verlierst du nur, wenn du weniger als [accent]{ $seconds }[] s gespielt hast.
+pvp-guide-unrated-title = Wann sich die Wertung nicht ändert
+pvp-guide-unrated-text =
+    Eine Runde kürzer als [accent]{ $seconds }[] s oder mit weniger als [accent]{ $players }[] gewerteten Spielern zählt nicht.
+    Ein Sieger muss mindestens [accent]{ $winner }%[] der Runde spielen, sonst steigt die Wertung nicht.
+    Spät einem verlierenden Team beigetreten und weniger als [accent]{ $late }%[] der Runde gespielt: Deine Wertung sinkt nicht.
+pvp-guide-seasons-title = Ligen und Saisons
+pvp-guide-seasons-text = Deine Wertung bestimmt deine Liga. Die Wertung läuft in Saisons: Am Ende einer Saison bekommen die Besten Preise. Ergebnisse jedes Matches: [accent]/matches[].
 # ==============================================================================
 # Events & Notifications
 # ==============================================================================

@@ -6,6 +6,7 @@ import jakarta.inject.Singleton;
 import org.xcore.plugin.common.BuildInfo;
 import org.xcore.plugin.config.TomlSecretsConfig;
 import org.xcore.plugin.config.TomlXcoreConfig;
+import org.xcore.plugin.gamemode.pvp.guide.MiniPvPGuideService;
 import org.xcore.plugin.session.Session;
 import org.xcore.plugin.session.SessionService;
 import org.xcore.plugin.ui.MenuService;
@@ -32,11 +33,12 @@ public class InformationMenu extends Menu {
     private final EventMenu event;
     private final HelpMenu help;
     private final PlayerMenu player;
+    private final MiniPvPGuideService pvpGuide;
 
     @Inject
     public InformationMenu(TomlXcoreConfig config, TomlSecretsConfig secretsConfig, SessionService sessionService,
                            BuildInfo buildInfo, MenuService menuService, MapMenu map, EventMenu event,
-                           HelpMenu help, PlayerMenu player) {
+                           HelpMenu help, PlayerMenu player, MiniPvPGuideService pvpGuide) {
         super(secretsConfig, sessionService);
         this.config = config;
         this.buildInfo = buildInfo;
@@ -45,6 +47,7 @@ public class InformationMenu extends Menu {
         this.event = event;
         this.help = help;
         this.player = player;
+        this.pvpGuide = pvpGuide;
     }
 
     @PostConstruct
@@ -78,6 +81,7 @@ public class InformationMenu extends Menu {
             action("players", ctx -> openRoutedFromMain(ctx, () -> player.players(getUuid(ctx.session()), 1)));
             action("event-main", ctx -> openRoutedFromMain(ctx, () -> event.main(getUuid(ctx.session()))));
             action("event-list", ctx -> openRoutedFromMain(ctx, () -> event.events(getUuid(ctx.session()), 1)));
+            action("pvp-guide", ctx -> openRoutedFromMain(ctx, () -> pvpGuide.open(ctx.session())));
         }
 
         @Override
@@ -97,6 +101,9 @@ public class InformationMenu extends Menu {
                         MenuButton.of(local.t("event-menu-main"), "event-main"),
                         MenuButton.of(local.t("event-events"), "event-list")
                 );
+            }
+            if (pvpGuide.hostsMode()) {
+                grid.row(MenuButton.of(local.t("pvp-guide-menu-button"), "pvp-guide"));
             }
             grid.defaultNavigation(context.session(), local);
             return MenuScreen.normal(

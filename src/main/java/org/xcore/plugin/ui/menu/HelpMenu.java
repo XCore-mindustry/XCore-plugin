@@ -48,7 +48,7 @@ public class HelpMenu extends Menu {
     );
     private static final Set<String> GAME_COMMANDS = Set.of(
             "hub", "servers", "play", "maps", "map", "nominate", "sync",
-            "top", "leaderboard", "stats", "rank", "spectate", "join", "matches"
+            "top", "leaderboard", "stats", "rank", "spectate", "join", "matches", "pvp"
     );
 
     private final Provider<CloudService> cloud;

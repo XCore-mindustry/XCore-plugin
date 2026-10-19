@@ -797,6 +797,7 @@ commands-ranks-footer = Výhry se počítají jen za porážku hráče stejné n
 commands-top-description = Nejlepší hráči.
 commands-season-description = Hodnocená sezóna: zbývající čas, tvoje umístění a vítězové minulé sezóny.
 commands-matches-description = Tvoje hodnocené zápasy: výsledky, změny hodnocení a s kým jsi hrál.
+commands-pvp-description = Průvodce MiniPvP: kolo, pravidla serveru a jak funguje hodnocení.
 commands-top-hexed-content = [orange]{ $index }. { $nickname }[accent]: [blue]{ $rankName } [cyan]{ $points } []výher
 commands-top-pvp-content = [orange]{ $index }. { $nickname }[accent]: [cyan]{ $rating }
 top-menu-title = [orange]{ -xcore } — Nejlepší hráči: [accent]{ $category }
@@ -910,6 +911,86 @@ season-menu-empty = Zatím nejsou žádné hodnocené sezóny.
 pvp-hud-status = [accent]MiniPvP[] | [stat]Naživu:[] { $teams } | [gray]{ $time }[]
 pvp-leaderboard-content = [orange]{ $index }. { $nickname }[accent]:[cyan] { $rating } [accent]bodů hodnocení
 pvp-you-spectator = [scarlet]Byl jsi vyřazen. Počkej na další hru.
+
+# MiniPvP guide (/pvp info)
+pvp-guide-title = Jak se tu hraje
+pvp-guide-subtitle = Běžné PvP v Mindustry: týmy staví základny a ničí si navzájem jádra. Tady je, čím se tento server liší a jak funguje hodnocení.
+pvp-guide-hint = Otevřít znovu: [accent]/pvp info[]
+pvp-guide-join-hint = [lightgray]Pravidla a hodnocení MiniPvP:[] [accent]/pvp info[]
+pvp-guide-menu-button = Jak hrát MiniPvP
+pvp-guide-tab-round = Kolo
+pvp-guide-tab-rules = Pravidla
+pvp-guide-tab-rating = Hodnocení
+pvp-guide-stat-minutes = minut hraní
+pvp-guide-stat-teams = týmů ve hře
+pvp-guide-stat-players = hráčů v týmech
+pvp-guide-stat-zone = polí kolem jádra
+pvp-guide-stat-unitcap = limit jednotek
+pvp-guide-stat-banned = zakázaných bloků
+pvp-guide-stat-start = počáteční hodnocení
+pvp-guide-stat-top = nejlepší hráči
+pvp-guide-stat-matches = historie zápasů
+
+pvp-guide-now-title = Právě teď
+pvp-guide-now-map = Mapa: [accent]{ $map }[]
+pvp-guide-now-players = { $count } { $count ->
+        [one] hráč
+        [few] hráči
+        [many] hráče
+       *[other] hráčů
+    }
+pvp-guide-win-title = Jak vyhrát
+pvp-guide-win-text = Znič všechna nepřátelská jádra. Vyhrává poslední tým, kterému zůstala jádra i hráči. Tým, ve kterém nikdo nezůstal, vypadává.
+pvp-guide-out-title = Vyřazen: díváš se do konce
+pvp-guide-out-text =
+    Tvůj tým ztratil poslední jádro: díváš se až do dalšího kola.
+    Odešel jsi uprostřed kola a vrátil ses: dostaneš se do stejného týmu.
+pvp-guide-commands-title = Příkazy
+pvp-guide-cmd-info = toto okno
+pvp-guide-cmd-top = žebříček
+pvp-guide-cmd-season = sezóna a ceny
+pvp-guide-cmd-matches = tvoje zápasy a jejich hodnocení
+pvp-guide-cmd-rtv = hlasovat o změně mapy
+pvp-guide-cmd-observer = dívat se z boku
+
+pvp-guide-zone-title = Nestav u cizích jader
+pvp-guide-zone-text = Blíž než [accent]{ $tiles }[] polí k nepřátelskému jádru stavět nelze. Chceš-li postoupit, nejdřív to jádro znič.
+pvp-guide-zone-polygon-title = Území je rozdělené mezi jádra
+pvp-guide-zone-polygon-text = Stavět můžeš jen tam, kde je nejbližší jádro tvoje. Chceš-li zabrat cizí území, znič jádro, ke kterému patří.
+pvp-guide-unitcap-title = Limit jednotek
+pvp-guide-unitcap-text = Tým začíná s limitem [accent]{ $cap }[] a každé jádro ho zvyšuje.
+pvp-guide-unitcap-fixed-title = Limit jednotek
+pvp-guide-unitcap-fixed-text = Tým má nejvýš [accent]{ $cap }[] jednotek bez ohledu na počet jader.
+pvp-guide-multipliers-title = Jiné vyvážení
+pvp-guide-multipliers-text = Na této mapě se tyto hodnoty liší od obvyklých:
+pvp-guide-rule-unit-damage = Poškození jednotek
+pvp-guide-rule-unit-health = Odolnost jednotek
+pvp-guide-rule-unit-cost = Cena jednotek
+pvp-guide-rule-unit-build-speed = Rychlost výroby jednotek
+pvp-guide-rule-block-damage = Poškození budov
+pvp-guide-rule-block-health = Odolnost budov
+pvp-guide-rule-build-cost = Cena budov
+pvp-guide-rule-build-speed = Rychlost stavění
+pvp-guide-banned-blocks-title = Zakázané bloky
+pvp-guide-banned-units-title = Zakázané jednotky
+pvp-guide-other-title = Dále
+pvp-guide-other-fog = Mlha války: vidíš jen to, co vidí tvoje budovy a jednotky.
+pvp-guide-other-capture = Zničené jádro připadne týmu, který ho zničil.
+pvp-guide-other-reactors = Reaktory nevybuchují.
+pvp-guide-vanilla-title = Běžná pravidla
+pvp-guide-vanilla-text = Tato mapa se hraje podle pravidel běžného PvP v Mindustry.
+
+pvp-guide-elo-title = Hodnocení ELO
+pvp-guide-elo-text = Všichni začínají na [accent]{ $start }[]. Výhra hodnocení zvyšuje, prohra snižuje. O kolik, záleží na hodnocení tvého týmu a soupeřů: výhra nad silnějšími dává víc.
+pvp-guide-leave-title = Odchod prohru nezachrání
+pvp-guide-leave-text = Když tvůj tým prohraje, ztratíš celé hodnocení, i když jsi předtím odešel nebo přešel mezi diváky. Nic neztratíš, jen pokud jsi hrál méně než [accent]{ $seconds }[] s.
+pvp-guide-unrated-title = Kdy se hodnocení nemění
+pvp-guide-unrated-text =
+    Kolo kratší než [accent]{ $seconds }[] s nebo s méně než [accent]{ $players }[] hodnocenými hráči se nepočítá.
+    Vítěz musí odehrát aspoň [accent]{ $winner }%[] kola, jinak mu hodnocení neroste.
+    Přidal ses pozdě k týmu, který prohrál, a odehrál méně než [accent]{ $late }%[] kola: hodnocení ti neklesne.
+pvp-guide-seasons-title = Ligy a sezóny
+pvp-guide-seasons-text = Hodnocení určuje tvou ligu. Hodnocení běží po sezónách: na konci sezóny dostanou nejlepší ceny. Výsledky každého zápasu: [accent]/matches[].
 # ==============================================================================
 # Events & Notifications
 # ==============================================================================

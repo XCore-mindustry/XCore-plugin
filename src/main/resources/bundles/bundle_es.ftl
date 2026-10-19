@@ -792,6 +792,7 @@ commands-ranks-footer = Las victorias solo cuentan al derrotar a un jugador de t
 commands-top-description = Mejores jugadores.
 commands-season-description = Temporada clasificatoria: tiempo restante, tu posición y los ganadores de la temporada anterior.
 commands-matches-description = Tus partidas clasificatorias: resultados, cambios de puntuación y con quién jugaste.
+commands-pvp-description = Guía de MiniPvP: la ronda, las reglas del servidor y cómo funciona la puntuación.
 commands-top-hexed-content = [orange]{ $index }. { $nickname }[accent]: [blue]{ $rankName } [cyan]{ $points } []victorias
 commands-top-pvp-content = [orange]{ $index }. { $nickname }[accent]: [cyan]{ $rating }
 top-menu-title = [orange]{ -xcore } — Mejores jugadores: [accent]{ $category }
@@ -904,6 +905,84 @@ season-menu-empty = Todavía no hay temporadas clasificatorias.
 pvp-hud-status = [accent]MiniPvP[] | [stat]Vivos:[] { $teams } | [gray]{ $time }[]
 pvp-leaderboard-content = [orange]{ $index }. { $nickname }[accent]:[cyan] { $rating } [accent]puntos
 pvp-you-spectator = [scarlet]Has sido eliminado. Espera a la siguiente partida.
+
+# MiniPvP guide (/pvp info)
+pvp-guide-title = Cómo se juega aquí
+pvp-guide-subtitle = PvP normal de Mindustry: los equipos construyen bases y destruyen los núcleos de los demás. Aquí tienes qué distingue a este servidor y cómo funciona la puntuación.
+pvp-guide-hint = Abrir de nuevo: [accent]/pvp info[]
+pvp-guide-join-hint = [lightgray]Reglas y puntuación de MiniPvP:[] [accent]/pvp info[]
+pvp-guide-menu-button = Cómo jugar a MiniPvP
+pvp-guide-tab-round = Ronda
+pvp-guide-tab-rules = Reglas
+pvp-guide-tab-rating = Puntuación
+pvp-guide-stat-minutes = minutos jugados
+pvp-guide-stat-teams = equipos en juego
+pvp-guide-stat-players = jugadores en equipos
+pvp-guide-stat-zone = casillas alrededor del núcleo
+pvp-guide-stat-unitcap = límite de unidades
+pvp-guide-stat-banned = bloques prohibidos
+pvp-guide-stat-start = puntuación inicial
+pvp-guide-stat-top = mejores jugadores
+pvp-guide-stat-matches = historial de partidas
+
+pvp-guide-now-title = Ahora mismo
+pvp-guide-now-map = Mapa: [accent]{ $map }[]
+pvp-guide-now-players = { $count } { $count ->
+        [one] jugador
+       *[other] jugadores
+    }
+pvp-guide-win-title = Cómo ganar
+pvp-guide-win-text = Destruye todos los núcleos enemigos. Gana el último equipo al que le queden núcleos y jugadores. Un equipo sin nadie queda fuera.
+pvp-guide-out-title = Eliminado: mira hasta el final
+pvp-guide-out-text =
+    Tu equipo perdió su último núcleo: miras hasta la siguiente ronda.
+    Saliste a mitad de ronda y volviste: vuelves al mismo equipo.
+pvp-guide-commands-title = Comandos
+pvp-guide-cmd-info = esta ventana
+pvp-guide-cmd-top = clasificación
+pvp-guide-cmd-season = temporada y premios
+pvp-guide-cmd-matches = tus partidas y su puntuación
+pvp-guide-cmd-rtv = votar para cambiar de mapa
+pvp-guide-cmd-observer = mirar desde fuera
+
+pvp-guide-zone-title = No se construye junto a núcleos enemigos
+pvp-guide-zone-text = No puedes construir a menos de [accent]{ $tiles }[] casillas de un núcleo enemigo. Para avanzar, destruye primero ese núcleo.
+pvp-guide-zone-polygon-title = El terreno se reparte entre los núcleos
+pvp-guide-zone-polygon-text = Solo puedes construir donde el núcleo más cercano es tuyo. Para tomar terreno enemigo, destruye el núcleo al que pertenece.
+pvp-guide-unitcap-title = Límite de unidades
+pvp-guide-unitcap-text = Un equipo empieza con un límite de [accent]{ $cap }[], y cada núcleo lo aumenta.
+pvp-guide-unitcap-fixed-title = Límite de unidades
+pvp-guide-unitcap-fixed-text = Un equipo tiene como máximo [accent]{ $cap }[] unidades, tenga los núcleos que tenga.
+pvp-guide-multipliers-title = Otro equilibrio
+pvp-guide-multipliers-text = En este mapa estos valores son distintos de los habituales:
+pvp-guide-rule-unit-damage = Daño de unidades
+pvp-guide-rule-unit-health = Vida de unidades
+pvp-guide-rule-unit-cost = Coste de unidades
+pvp-guide-rule-unit-build-speed = Velocidad de producción de unidades
+pvp-guide-rule-block-damage = Daño de edificios
+pvp-guide-rule-block-health = Vida de edificios
+pvp-guide-rule-build-cost = Coste de edificios
+pvp-guide-rule-build-speed = Velocidad de construcción
+pvp-guide-banned-blocks-title = Bloques prohibidos
+pvp-guide-banned-units-title = Unidades prohibidas
+pvp-guide-other-title = Además
+pvp-guide-other-fog = Niebla de guerra: solo ves lo que ven tus edificios y unidades.
+pvp-guide-other-capture = Un núcleo destruido pasa al equipo que lo destruyó.
+pvp-guide-other-reactors = Los reactores no explotan.
+pvp-guide-vanilla-title = Reglas normales
+pvp-guide-vanilla-text = Este mapa usa las reglas del PvP normal de Mindustry.
+
+pvp-guide-elo-title = Puntuación ELO
+pvp-guide-elo-text = Todos empiezan con [accent]{ $start }[]. Ganar sube tu puntuación, perder la baja. Cuánto depende de la puntuación de tu equipo y de tus rivales: vencer a equipos más fuertes da más.
+pvp-guide-leave-title = Salir no evita la derrota
+pvp-guide-leave-text = Si tu equipo pierde, pierdes la puntuación completa, aunque hayas salido o pasado a espectador antes. Solo no pierdes nada si jugaste menos de [accent]{ $seconds }[] s.
+pvp-guide-unrated-title = Cuándo no cambia la puntuación
+pvp-guide-unrated-text =
+    Una ronda de menos de [accent]{ $seconds }[] s o con menos de [accent]{ $players }[] jugadores puntuados no cuenta.
+    Un ganador tiene que jugar al menos el [accent]{ $winner }%[] de la ronda, o su puntuación no sube.
+    Entraste tarde en un equipo que perdió y jugaste menos del [accent]{ $late }%[] de la ronda: tu puntuación no baja.
+pvp-guide-seasons-title = Ligas y temporadas
+pvp-guide-seasons-text = Tu puntuación decide tu liga. La puntuación va por temporadas: al final de cada una, los mejores reciben premios. Resultados de cada partida: [accent]/matches[].
 # ==============================================================================
 # Events & Notifications
 # ==============================================================================
