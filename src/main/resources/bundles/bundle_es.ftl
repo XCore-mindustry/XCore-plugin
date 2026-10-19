@@ -320,6 +320,59 @@ kick-admintools-outdated =
     { "" }
     [cyan]Actualiza AdminTools para entrar en este servidor.
 support-channel = #tickets
+
+# ==============================================================================
+# Cases: player reports, in-game notices and the /report menu
+# ==============================================================================
+report-menu-title = [orange]{ -xcore } — Reportar a un jugador
+report-menu-pick-player = Elige un jugador
+report-menu-left-recently = Salieron hace poco
+report-menu-left-ago = hace { $minutes } min
+report-menu-empty = No hay a quién reportar
+report-menu-staff-hint = [lightgray]Las quejas sobre el staff van por Discord.
+report-menu-pick-reason = Elige un motivo
+report-menu-comment = Comentario (opcional)
+report-menu-comment-required = Se requiere un comentario para "Otro".
+report-menu-confirm-title = Confirmar reporte
+report-menu-confirm-note = [lightgray]Se adjuntan el chat reciente y el historial de construcción. Los reportes falsos se sancionan.
+report-menu-next = Siguiente
+report-menu-back = Atrás
+report-menu-send = Enviar
+report-menu-close = Cerrar
+report-result-sent = [green]Reporte enviado. ¡Gracias!
+report-result-cooldown = [scarlet]Espera [accent]{ $seconds } s[scarlet] antes del siguiente reporte.
+report-result-same-target = [scarlet]Ya has reportado a este jugador recientemente.
+report-result-daily-limit = [scarlet]Límite diario de reportes alcanzado. Inténtalo mañana.
+report-result-invalid-target = [scarlet]No se puede reportar a este jugador.
+report-result-playtime = [scarlet]Juega [accent]{ $minutes } min[scarlet] más antes de enviar reportes.
+report-result-disabled = [scarlet]Los reportes están desactivados en este servidor.
+report-result-failed = [scarlet]No se pudo enviar el reporte. Inténtalo de nuevo.
+report-reason-griefing = Griefing
+report-reason-toxicity = Toxicidad
+report-reason-cheating = Trampas
+report-reason-nsfw = NSFW
+report-reason-evasion = Evasión de baneo
+report-reason-other = Otro
+case-notice-report-received = [lightgray]Reporte registrado como [accent]#{ $number }[lightgray]. ¡Gracias!
+case-notice-report-resolved = [lightgray]Reporte [accent]#{ $number }[lightgray] revisado: [green]se tomaron medidas[lightgray]. Gracias.
+case-notice-report-rejected =
+    { $reason ->
+        [no_violation] [lightgray]Reporte [accent]#{ $number }[lightgray] revisado: no se encontró infracción. Gracias.
+        [no_evidence] [lightgray]Reporte [accent]#{ $number }[lightgray] revisado: pruebas insuficientes. Gracias.
+        [already_handled] [lightgray]Reporte [accent]#{ $number }[lightgray] cerrado: ya se había gestionado. Gracias.
+        [duplicate] [lightgray]Reporte [accent]#{ $number }[lightgray] cerrado: ya había sido reportado. Gracias.
+        [abuse] [lightgray]Reporte [accent]#{ $number }[lightgray] rechazado: [scarlet]el propio reporte incumple las normas.
+       *[other] [lightgray]Reporte [accent]#{ $number }[lightgray] revisado: no se tomaron medidas. Gracias.
+    }
+case-notice-report-not-accepted = [scarlet]Tu reporte no fue aceptado.
+case-notice-appeal-accepted = [lightgray]Apelación [accent]#{ $number }[lightgray] aceptada: se ha retirado el baneo.
+case-notice-appeal-shortened = [lightgray]Apelación [accent]#{ $number }[lightgray] aceptada: se ha reducido el tiempo de baneo.
+case-notice-badge-granted = [lightgray]Solicitud de insignia [accent]#{ $number }[lightgray] aprobada: [green]{ $badge }[lightgray] concedida.
+case-notice-badge-rejected = [lightgray]Solicitud de insignia [accent]#{ $number }[lightgray] rechazada.
+case-notice-map-accepted = [lightgray]Revisión de mapa [accent]#{ $number }[lightgray]: [green]{ $map }[lightgray] fue aceptado.
+case-notice-map-rejected = [lightgray]Revisión de mapa [accent]#{ $number }[lightgray]: [scarlet]{ $map }[lightgray] fue rechazado.
+case-notice-complaint-closed = [lightgray]Reclamación [accent]#{ $number }[lightgray] cerrada. Gracias.
+
 # ==============================================================================
 # Voting (VoteKick)
 # ==============================================================================
@@ -1280,6 +1333,7 @@ yes = Sí
 no = No
 test = Prueba
 no-description = Sin descripción
+site = Sitio web
 discord = Discord
 github = Github
 donatello = Donatello

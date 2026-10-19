@@ -94,16 +94,18 @@ public class PlayerSettingsUiController implements UiController<PlayerSettingsUi
 
     /** The languages, each named in itself; "auto", the language of the player's client, is offered apart. */
     public static final List<LanguageOption> AVAILABLE_LANGUAGES = List.of(
-            new LanguageOption("uk_UA", "Українська"),
-            new LanguageOption("ru", "Русский"),
-            new LanguageOption("en", "English"),
-            new LanguageOption("pl", "Polski"),
+            new LanguageOption("be", "Беларуская"),
+            new LanguageOption("cs", "Čeština"),
             new LanguageOption("de", "Deutsch"),
+            new LanguageOption("en", "English"),
             new LanguageOption("es", "Español"),
             new LanguageOption("fr", "Français"),
-            new LanguageOption("be", "Беларуская"),
-            new LanguageOption("cs", "Čeština")
-    );
+            new LanguageOption("it", "Italiano"),
+            new LanguageOption("pl", "Polski"),
+            new LanguageOption("pt_BR", "Português (Brasil)"),
+            new LanguageOption("ru", "Русский"),
+            new LanguageOption("uk_UA", "Українська")
+            );
 
     private static final java.util.regex.Pattern HEX_COLOR_PATTERN =
             java.util.regex.Pattern.compile("\\[#([0-9a-fA-F]{6})");

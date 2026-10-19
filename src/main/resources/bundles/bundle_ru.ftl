@@ -15,9 +15,9 @@ help-menu-title = [orange]{ -xcore } — Команды
 help-menu-content =
     [gray]Страница [white]{ $page }[gray]/[white]{ $total }
     [lightgray]Выберите команду для подробной информации:
-help-menu-button = [accent]/{ $command } [gray]» [white]{ $description }
+help-menu-button = [accent]/{ $command } [gray]» Описание: [white]{ $description }
 help-command-with-overload-count = { $name } ({ $count })
-help-command-title = [orange]» [white]/{ $name }
+help-command-title = [orange]» Название: [white]/{ $name }
 help-command-header =
     [orange]» [accent]Синтаксис: [white]{ $syntax }
     [orange]» [accent]Описание: [lightgray]{ $description }
@@ -753,7 +753,7 @@ badge-season-champion-description = Выдаётся за место на под
 commands-lb-description = Включить/выключить таблицу лидеров
 commands-lb-success =
     { $leaderboardEnabled ->
-        [true] [accent]Таблица лидеров [scarlet]включена
+        [true] [accent]Таблица лидеров [green]включена
        *[other] [accent]Таблица лидеров [scarlet]выключена
     }
 leaderboard = [blue]Таблица лидеров
@@ -1199,16 +1199,16 @@ ban-menu-confirm-content =
     [white]Длительность: [accent]{ $duration }[]
     [white]Причина: [accent]{ $reason }[]
 ban-menu-confirm-action = [scarlet]Забанить игрока
-error-invalid-syntax = [scarlet]⚠ Неверный синтаксис команды. Использование: [lightgray]/{ $syntax }
-error-invalid-sender = [scarlet]⚠ Неверный отправитель команды. Требуется: [lightgray]{ $type }
-error-argument-parse-generic = [scarlet]⚠ Ошибка аргумента: { $error }
+error-invalid-syntax = [scarlet]⚠ Неверный синтаксис команды. Использование: [lightgray]/'{ $syntax }'.
+error-invalid-sender = [scarlet]⚠ Неверный отправитель команды. Требуется: '[lightgray]{ $type }[]'.
+error-argument-parse-generic = [scarlet]⚠ Ошибка аргумента: '{ $error }'.
 exception-unexpected = [scarlet]⚠ Внутренняя ошибка при выполнении команды.
 exception-invalid-argument = [scarlet]⚠ Неверный аргумент команды: '{ $cause }'.
 exception-no-such-command = [scarlet]⚠ Неизвестная команда.
 exception-no-permission = [scarlet]⚠ Доступ запрещен.
-exception-invalid-sender = [scarlet]⚠ '{ $actual }' не может выполнить эту команду. Требуется: [lightgray]{ $expected }.
-exception-invalid-sender-list = [scarlet]⚠ '{ $actual }' не может выполнить эту команду. Допустимые отправители: [lightgray]{ $expected }.
-exception-invalid-syntax = [scarlet]⚠ Неверный синтаксис команды. Использование: [lightgray]/{ $syntax }
+exception-invalid-sender = [scarlet]⚠ '{ $actual }' не может выполнить эту команду. Требуется: [lightgray]{ $expected }[].
+exception-invalid-sender-list = [scarlet]⚠ '{ $actual }' не может выполнить эту команду. Допустимые отправители: [lightgray]{ $expected }[].
+exception-invalid-syntax = [scarlet]⚠ Неверный синтаксис команды. Использование: [lightgray]/'{ $syntax }'.
 argument-parse-failure-boolean = [scarlet]⚠ Не удалось распознать '{ $input }' как логическое значение (true/false).
 argument-parse-failure-number = [scarlet]⚠ Число '{ $input }' вне допустимого диапазона [{ $min }, { $max }].
 argument-parse-failure-char = [scarlet]⚠ '{ $input }' не является допустимым символом.

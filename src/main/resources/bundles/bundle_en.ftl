@@ -11,7 +11,7 @@ menu-main-title = [orange]{ -xcore } — Main menu
 menu-main-content = Main server menu
 help-menu = Help menu
 commands-help-description = Open the interactive help menu.
-help-menu-title = [orange]{ -xcore } — Commads
+help-menu-title = [orange]{ -xcore } — Commands
 help-menu-content =
     [gray]Page [white]{ $page }[gray]/[white]{ $total }
     [lightgray]Select a command to see detailed usage:
@@ -1226,7 +1226,7 @@ error-event-not-found = [scarlet]⚠ Event not found! [accent]Use [cyan]/events[
 error-page-between = [scarlet]⚠ 'page' must be a number between[orange] 1[] and [orange]{ $totalPages }[].
 error-page-number = [scarlet]'page' must be a number.
 error-wrong-number = [scarlet]⚠ Wrong number format.
-error-wrong-period-format = [scarlet]⚠ Wrong period format- Example: 1h 30m, 30 ({ hours })
+error-wrong-period-format = [scarlet]⚠ Wrong period format. Example: 1h 30m, 30 ({ hours })
 error-invalid-id = [scarlet]⚠ Invalid player-id.
 error-spectator = [scarlet]⚠ You are a spectator and cannot use this command.
 error-admin-password-too-short = [scarlet]⚠ Admin password must be at least 8 characters long.
@@ -1331,7 +1331,7 @@ yes = Yes
 no = No
 test = Test
 no-description = No description
-site = Site
+site = Website
 discord = Discord
 github = Github
 donatello = Donatello

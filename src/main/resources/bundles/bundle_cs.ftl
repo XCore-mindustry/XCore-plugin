@@ -322,6 +322,59 @@ kick-admintools-outdated =
     { "" }
     [cyan]Aktualizuj AdminTools, aby ses mohl připojit k tomuto serveru.
 support-channel = #tickets
+
+# ==============================================================================
+# Cases: player reports, in-game notices and the /report menu
+# ==============================================================================
+report-menu-title = [orange]{ -xcore } — Nahlásit hráče
+report-menu-pick-player = Vyber hráče
+report-menu-left-recently = Nedávno odešli
+report-menu-left-ago = před { $minutes } min
+report-menu-empty = Není koho nahlásit
+report-menu-staff-hint = [lightgray]Stížnosti na administraci řeš přes Discord.
+report-menu-pick-reason = Vyber důvod
+report-menu-comment = Komentář (volitelné)
+report-menu-comment-required = Pro důvod „Jiné“ je komentář povinný.
+report-menu-confirm-title = Potvrdit nahlášení
+report-menu-confirm-note = [lightgray]Bude přiložen nedávný chat a historie stavění. Falešná nahlášení se trestají.
+report-menu-next = Další
+report-menu-back = Zpět
+report-menu-send = Odeslat
+report-menu-close = Zavřít
+report-result-sent = [green]Nahlášení odesláno. Děkujeme!
+report-result-cooldown = [scarlet]Počkej [accent]{ $seconds } s[scarlet] před dalším nahlášením.
+report-result-same-target = [scarlet]Tohoto hráče jsi nedávno už nahlásil.
+report-result-daily-limit = [scarlet]Denní limit nahlášení byl vyčerpán. Zkus to zítra.
+report-result-invalid-target = [scarlet]Tohoto hráče nelze nahlásit.
+report-result-playtime = [scarlet]Hraj ještě [accent]{ $minutes } min[scarlet], než budeš moci odesílat nahlášení.
+report-result-disabled = [scarlet]Nahlášení jsou na tomto serveru vypnutá.
+report-result-failed = [scarlet]Nahlášení se nepodařilo odeslat. Zkus to znovu.
+report-reason-griefing = Griefing
+report-reason-toxicity = Toxicita
+report-reason-cheating = Podvádění
+report-reason-nsfw = NSFW
+report-reason-evasion = Obcházení banu
+report-reason-other = Jiné
+case-notice-report-received = [lightgray]Nahlášení zaevidováno jako [accent]#{ $number }[lightgray]. Děkujeme!
+case-notice-report-resolved = [lightgray]Nahlášení [accent]#{ $number }[lightgray] vyřešeno: [green]byla podniknuta opatření[lightgray]. Děkujeme.
+case-notice-report-rejected =
+    { $reason ->
+        [no_violation] [lightgray]Nahlášení [accent]#{ $number }[lightgray] posouzeno: žádné porušení pravidel nebylo zjištěno. Děkujeme.
+        [no_evidence] [lightgray]Nahlášení [accent]#{ $number }[lightgray] posouzeno: nedostatek důkazů. Děkujeme.
+        [already_handled] [lightgray]Nahlášení [accent]#{ $number }[lightgray] uzavřeno: tento případ již byl vyřešen. Děkujeme.
+        [duplicate] [lightgray]Nahlášení [accent]#{ $number }[lightgray] uzavřeno: toto již bylo nahlášeno dříve. Děkujeme.
+        [abuse] [lightgray]Nahlášení [accent]#{ $number }[lightgray] zamítnuto: [scarlet]samotné nahlášení porušuje pravidla serveru.
+       *[other] [lightgray]Nahlášení [accent]#{ $number }[lightgray] posouzeno: nebyla podniknuta žádná opatření. Děkujeme.
+    }
+case-notice-report-not-accepted = [scarlet]Tvoje nahlášení nebylo přijato.
+case-notice-appeal-accepted = [lightgray]Odvolání [accent]#{ $number }[lightgray] přijato: ban byl zrušen.
+case-notice-appeal-shortened = [lightgray]Odvolání [accent]#{ $number }[lightgray] přijato: délka banu byla zkrácena.
+case-notice-badge-granted = [lightgray]Žádost o odznak [accent]#{ $number }[lightgray] schválena: udělen odznak [green]{ $badge }[lightgray].
+case-notice-badge-rejected = [lightgray]Žádost o odznak [accent]#{ $number }[lightgray] byla zamítnuta.
+case-notice-map-accepted = [lightgray]Kontrola mapy [accent]#{ $number }[lightgray]: mapa [green]{ $map }[lightgray] byla přijata.
+case-notice-map-rejected = [lightgray]Kontrola mapy [accent]#{ $number }[lightgray]: mapa [scarlet]{ $map }[lightgray] byla zamítnuta.
+case-notice-complaint-closed = [lightgray]Podání [accent]#{ $number }[lightgray] bylo uzavřeno. Děkujeme.
+
 # ==============================================================================
 # Voting (VoteKick)
 # ==============================================================================
@@ -1294,6 +1347,7 @@ yes = Ano
 no = Ne
 test = Test
 no-description = Bez popisu
+site = Web
 discord = Discord
 github = Github
 donatello = Donatello

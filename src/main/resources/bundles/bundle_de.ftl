@@ -317,6 +317,59 @@ kick-admintools-outdated =
     { "" }
     [cyan]Bitte aktualisiere AdminTools, um diesem Server beizutreten.
 support-channel = #tickets
+
+# ==============================================================================
+# Cases: player reports, in-game notices and the /report menu
+# ==============================================================================
+report-menu-title = [orange]{ -xcore } — Spieler melden
+report-menu-pick-player = Spieler auswählen
+report-menu-left-recently = Kürzlich verlassen
+report-menu-left-ago = vor { $minutes } Min.
+report-menu-empty = Niemand zum Melden da
+report-menu-staff-hint = [lightgray]Beschwerden über Teammitglieder bitte über Discord.
+report-menu-pick-reason = Grund auswählen
+report-menu-comment = Kommentar (optional)
+report-menu-comment-required = Für „Sonstiges“ ist ein Kommentar erforderlich.
+report-menu-confirm-title = Meldung bestätigen
+report-menu-confirm-note = [lightgray]Letzter Chat und Bauverlauf werden angehängt. Falschmeldungen werden bestraft.
+report-menu-next = Weiter
+report-menu-back = Zurück
+report-menu-send = Senden
+report-menu-close = Schließen
+report-result-sent = [green]Meldung gesendet. Danke!
+report-result-cooldown = [scarlet]Warte [accent]{ $seconds } s[scarlet] bis zur nächsten Meldung.
+report-result-same-target = [scarlet]Du hast diesen Spieler kürzlich bereits gemeldet.
+report-result-daily-limit = [scarlet]Tägliches Meldelimit erreicht. Versuche es morgen wieder.
+report-result-invalid-target = [scarlet]Dieser Spieler kann nicht gemeldet werden.
+report-result-playtime = [scarlet]Spiele noch [accent]{ $minutes } Min.[scarlet], bevor du Meldungen senden kannst.
+report-result-disabled = [scarlet]Meldungen sind auf diesem Server deaktiviert.
+report-result-failed = [scarlet]Meldung konnte nicht gesendet werden. Versuche es erneut.
+report-reason-griefing = Griefing
+report-reason-toxicity = Toxizität
+report-reason-cheating = Cheaten
+report-reason-nsfw = NSFW
+report-reason-evasion = Sperrumgehung
+report-reason-other = Sonstiges
+case-notice-report-received = [lightgray]Meldung unter [accent]#{ $number }[lightgray] registriert. Danke!
+case-notice-report-resolved = [lightgray]Meldung [accent]#{ $number }[lightgray] geprüft: [green]Maßnahmen wurden ergriffen[lightgray]. Danke.
+case-notice-report-rejected =
+    { $reason ->
+        [no_violation] [lightgray]Meldung [accent]#{ $number }[lightgray] geprüft: Kein Regelverstoß festgestellt. Danke.
+        [no_evidence] [lightgray]Meldung [accent]#{ $number }[lightgray] geprüft: Nicht genügend Beweise vorhanden. Danke.
+        [already_handled] [lightgray]Meldung [accent]#{ $number }[lightgray] geschlossen: Wurde bereits bearbeitet. Danke.
+        [duplicate] [lightgray]Meldung [accent]#{ $number }[lightgray] geschlossen: Wurde bereits gemeldet. Danke.
+        [abuse] [lightgray]Meldung [accent]#{ $number }[lightgray] abgelehnt: [scarlet]Die Meldung selbst verstößt gegen die Serverregeln.
+       *[other] [lightgray]Meldung [accent]#{ $number }[lightgray] geprüft: Keine Maßnahmen ergriffen. Danke.
+    }
+case-notice-report-not-accepted = [scarlet]Deine Meldung wurde nicht angenommen.
+case-notice-appeal-accepted = [lightgray]Einspruch [accent]#{ $number }[lightgray] angenommen: Die Sperre wurde aufgehoben.
+case-notice-appeal-shortened = [lightgray]Einspruch [accent]#{ $number }[lightgray] angenommen: Die Sperrdauer wurde verkürzt.
+case-notice-badge-granted = [lightgray]Abzeichen-Anfrage [accent]#{ $number }[lightgray] genehmigt: [green]{ $badge }[lightgray] erhalten.
+case-notice-badge-rejected = [lightgray]Abzeichen-Anfrage [accent]#{ $number }[lightgray] wurde abgelehnt.
+case-notice-map-accepted = [lightgray]Kartenprüfung [accent]#{ $number }[lightgray]: [green]{ $map }[lightgray] wurde angenommen.
+case-notice-map-rejected = [lightgray]Kartenprüfung [accent]#{ $number }[lightgray]: [scarlet]{ $map }[lightgray] wurde abgelehnt.
+case-notice-complaint-closed = [lightgray]Beschwerde [accent]#{ $number }[lightgray] ist geschlossen. Danke.
+
 # ==============================================================================
 # Voting (VoteKick)
 # ==============================================================================
@@ -1277,6 +1330,7 @@ yes = Ja
 no = Nein
 test = Test
 no-description = Keine Beschreibung
+site = Website
 discord = Discord
 github = Github
 donatello = Donatello

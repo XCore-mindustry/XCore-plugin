@@ -13,8 +13,8 @@ help-menu = Меню дапамогі
 commands-help-description = Адкрыццё інтэрактыўнага меню дапамогі
 help-menu-title = [orange]{ -xcore } — Каманды
 help-menu-content =
-    [gray]Старонка[white]{ $page }[gray]/[white]{ $total }
-    [lightgray]Выбраць каманду для дэталёвай інформацыі
+    [gray]Старонка [white]{ $page }[gray]/[white]{ $total }
+    [lightgray]Выбраць каманду для дэталёвай інфармацыі
 help-menu-button = [accent]/{ $command } [gray]» [white]{ $description }
 help-command-with-overload-count = { $name } ({ $count })
 help-command-title = [orange]» [white]/{ $name }
@@ -140,7 +140,7 @@ discord-menu-status-not-linked = [lightgray]не прывязаны[]
 discord-menu-status-linked = [green]{ $discordUsername }[] [gray]({ $discordId })[]
 discord-link-menu-title = [orange]{ -xcore } — Прывязка Discord акаўнта
 discord-link-menu-content =
-    [white]На нашым Discord серверы выклічце slash-каманту бота:
+    [white]На нашым Discord серверы выклічце slash-каманду бота:
     { "" }
     [accent]/link { $code }[]
     { "" }
@@ -324,6 +324,59 @@ kick-admintools-outdated =
     { "" }
     [cyan]Абнавіце AdminTools, каб зайсці на гэты сервер.
 support-channel = #tickets
+
+# ==============================================================================
+# Cases: player reports, in-game notices and the /report menu
+# ==============================================================================
+report-menu-title = [orange]{ -xcore } — Скарга на гульца
+report-menu-pick-player = Выберыце гульца
+report-menu-left-recently = Нядаўна выйшлі
+report-menu-left-ago = { $minutes } хв таму
+report-menu-empty = Няма гульцоў для скаргі
+report-menu-staff-hint = [lightgray]Скаргі на адміністрацыю падавайце ў Discord.
+report-menu-pick-reason = Выберыце прычыну
+report-menu-comment = Каментар (неабавязкова)
+report-menu-comment-required = Для прычыны «Іншае» патрэбен каментар.
+report-menu-confirm-title = Пацвердзіце скаргу
+report-menu-confirm-note = [lightgray]Дадасца апошні чат і гісторыя будаўніцтва. Несапраўдныя скаргі караюцца.
+report-menu-next = Далей
+report-menu-back = Назад
+report-menu-send = Адправіць
+report-menu-close = Закрыць
+report-result-sent = [green]Скарга адпраўлена. Дзякуй!
+report-result-cooldown = [scarlet]Пачакайце [accent]{ $seconds } с[scarlet] перад наступнай скаргай.
+report-result-same-target = [scarlet]Вы нядаўна ўжо скардзіліся на гэтага гульца.
+report-result-daily-limit = [scarlet]Дзённы ліміт скаргаў вычарпаны. Паспрабуйце заўтра.
+report-result-invalid-target = [scarlet]На гэтага гульца нельга паскардзіцца.
+report-result-playtime = [scarlet]Адгуляйце яшчэ [accent]{ $minutes } хв[scarlet], каб адпраўляць скаргі.
+report-result-disabled = [scarlet]Скаргі выключаны на гэтым серверы.
+report-result-failed = [scarlet]Не ўдалося адправіць скаргу. Паспрабуйце яшчэ раз.
+report-reason-griefing = Грыферства
+report-reason-toxicity = Таксічнасць
+report-reason-cheating = Чытэрства
+report-reason-nsfw = NSFW
+report-reason-evasion = Абыход блакіроўкі
+report-reason-other = Іншае
+case-notice-report-received = [lightgray]Скарга зарэгістравана пад нумарам [accent]#{ $number }[lightgray]. Дзякуй!`
+case-notice-report-resolved = [lightgray]Скарга [accent]#{ $number }[lightgray] разгледжана: [green]прыняты захады[lightgray]. Дзякуй.
+case-notice-report-rejected =
+    { $reason ->
+        [no_violation] [lightgray]Скарга [accent]#{ $number }[lightgray] разгледжана: парушэнняў не выяўлена. Дзякуй.
+        [no_evidence] [lightgray]Скарга [accent]#{ $number }[lightgray] разгледжана: недастаткова доказаў. Дзякуй.
+        [already_handled] [lightgray]Скарга [accent]#{ $number }[lightgray] закрыта: выпадак ужо вырашаны. Дзякуй.
+        [duplicate] [lightgray]Скарга [accent]#{ $number }[lightgray] закрыта: пра гэта ўжо паведамілі раней. Дзякуй.
+        [abuse] [lightgray]Скарга [accent]#{ $number }[lightgray] адхілена: [scarlet]яна сама парушае правілы сервера.
+       *[other] [lightgray]Скарга [accent]#{ $number }[lightgray] разгледжана: захадаў не прынята. Дзякуй.
+    }
+case-notice-report-not-accepted = [scarlet]Ваша скарга не прынята.
+case-notice-appeal-accepted = [lightgray]Апеляцыя [accent]#{ $number }[lightgray] прынята: блакіроўка знята.
+case-notice-appeal-shortened = [lightgray]Апеляцыя [accent]#{ $number }[lightgray] прынята: тэрмін блакіроўкі скарочаны.
+case-notice-badge-granted = [lightgray]Запыт на бэйдж [accent]#{ $number }[lightgray] ухвалены: бэйдж [green]{ $badge }[lightgray] выдадзены.
+case-notice-badge-rejected = [lightgray]Запыт на бэйдж [accent]#{ $number }[lightgray] адхілены.
+case-notice-map-accepted = [lightgray]Праверка карты [accent]#{ $number }[lightgray]: карта [green]{ $map }[lightgray] прынята.
+case-notice-map-rejected = [lightgray]Праверка карты [accent]#{ $number }[lightgray]: карта [scarlet]{ $map }[lightgray] адхілена.
+case-notice-complaint-closed = [lightgray]Зварот [accent]#{ $number }[lightgray] закрыты. Дзякуй.
+
 # ==============================================================================
 # Voting (VoteKick)
 # ==============================================================================
@@ -1204,10 +1257,10 @@ error-wrong-number = [scarlet]⚠ Няправільны фармат ліку.
 error-wrong-period-format = [scarlet]⚠ Няправільны фармат перыяду. Прыклад: 1h 30m, 30 ({ hours })
 error-invalid-id = [scarlet]⚠ Няправільны ID гульца.
 error-spectator = [scarlet]⚠ Вы глядач і не можаце выкарыстоўваць гэтую каманду.
-error-admin-password-too-short = [scarlet]⚠ Пароль адміністратора павін быць не карочкі за 8 сімвалаў.
+error-admin-password-too-short = [scarlet]⚠ пароль адміністратара павінен быць не карацейшы за 8 сімвалаў.
 error-wrong-admin-password = [scarlet]⚠ Няправільны пароль адміна.
 error-internal = [scarlet]Унутраная памылка.
-error-processing-request = [scarlet]Адбылася памылка пры апрацоўкі запыту.
+error-processing-request = [scarlet]Адбылася памылка пры апрацоўцы запыту.
 error-no-access = [scarlet]⚠ Няма доступу.
 error-nickname-too-long = [scarlet]⚠ Імя занадта доўгае. Максімум { $max } бачных сімвалаў.
 error-private-message-invalid-pid = [scarlet]⚠ Няправільны PID асабістага паведамлення. Фармат: [lightgray]#123[].
@@ -1306,6 +1359,7 @@ yes = Так
 no = Не
 test = Тэст
 no-description = Няма апісання
+site = Сайт
 discord = Discord
 github = Github
 donatello = Donatello

@@ -324,6 +324,59 @@ kick-admintools-outdated =
     { "" }
     [cyan]Zaktualizuj AdminTools, aby dołączyć do tego serwera.
 support-channel = #tickets
+
+# ==============================================================================
+# Cases: player reports, in-game notices and the /report menu
+# ==============================================================================
+report-menu-title = [orange]{ -xcore } — Zgłoś gracza
+report-menu-pick-player = Wybierz gracza
+report-menu-left-recently = Niedawno opuścili
+report-menu-left-ago = { $minutes } min temu
+report-menu-empty = Brak graczy do zgłoszenia
+report-menu-staff-hint = [lightgray]Skargi na administrację składaj na Discordzie.
+report-menu-pick-reason = Wybierz powód
+report-menu-comment = Komentarz (opcjonalnie)
+report-menu-comment-required = Dla powodu „Inne” wymagany jest komentarz.
+report-menu-confirm-title = Potwierdź zgłoszenie
+report-menu-confirm-note = [lightgray]Ostatni czat i historia budowy zostaną dołączone. Fałszywe zgłoszenia są karane.
+report-menu-next = Dalej
+report-menu-back = Wstecz
+report-menu-send = Wyślij
+report-menu-close = Zamknij
+report-result-sent = [green]Zgłoszenie wysłane. Dziękujemy!
+report-result-cooldown = [scarlet]Poczekaj [accent]{ $seconds } s[scarlet] przed kolejnym zgłoszeniem.
+report-result-same-target = [scarlet]Niedawno zgłosiłeś już tego gracza.
+report-result-daily-limit = [scarlet]Dzienny limit zgłoszeń został wyczerpany. Spróbuj jutro.
+report-result-invalid-target = [scarlet]Tego gracza nie można zgłosić.
+report-result-playtime = [scarlet]Graj jeszcze przez [accent]{ $minutes } min[scarlet], aby móc wysyłać zgłoszenia.
+report-result-disabled = [scarlet]Zgłoszenia są wyłączone na tym serwerze.
+report-result-failed = [scarlet]Nie udało się wysłać zgłoszenia. Spróbuj ponownie.
+report-reason-griefing = Griefing
+report-reason-toxicity = Toksyczność
+report-reason-cheating = Oszukiwanie
+report-reason-nsfw = NSFW
+report-reason-evasion = Omijanie bana
+report-reason-other = Inne
+case-notice-report-received = [lightgray]Zgłoszenie zarejestrowano jako [accent]#{ $number }[lightgray]. Dziękujemy!
+case-notice-report-resolved = [lightgray]Zgłoszenie [accent]#{ $number }[lightgray] rozpatrzone: [green]podjęto działania[lightgray]. Dziękujemy.
+case-notice-report-rejected =
+    { $reason ->
+        [no_violation] [lightgray]Zgłoszenie [accent]#{ $number }[lightgray] rozpatrzone: nie stwierdzono naruszenia zasad. Dziękujemy.
+        [no_evidence] [lightgray]Zgłoszenie [accent]#{ $number }[lightgray] rozpatrzone: niewystarczające dowody. Dziękujemy.
+        [already_handled] [lightgray]Zgłoszenie [accent]#{ $number }[lightgray] zamknięte: sprawa została już rozwiązana. Dziękujemy.
+        [duplicate] [lightgray]Zgłoszenie [accent]#{ $number }[lightgray] zamknięte: zostało już wcześniej zgłoszone. Dziękujemy.
+        [abuse] [lightgray]Zgłoszenie [accent]#{ $number }[lightgray] odrzucone: [scarlet]samo zgłoszenie narusza zasady serwera.
+       *[other] [lightgray]Zgłoszenie [accent]#{ $number }[lightgray] rozpatrzone: nie podjęto działań. Dziękujemy.
+    }
+case-notice-report-not-accepted = [scarlet]Twoje zgłoszenie nie zostało przyjęte.
+case-notice-appeal-accepted = [lightgray]Odwołanie [accent]#{ $number }[lightgray] przyjęte: ban został zdjęty.
+case-notice-appeal-shortened = [lightgray]Odwołanie [accent]#{ $number }[lightgray] przyjęte: czas bana został skrócony.
+case-notice-badge-granted = [lightgray]Wniosek o odznakę [accent]#{ $number }[lightgray] zatwierdzony: przyznano odznakę [green]{ $badge }[lightgray].
+case-notice-badge-rejected = [lightgray]Wniosek o odznakę [accent]#{ $number }[lightgray] został odrzucony.
+case-notice-map-accepted = [lightgray]Weryfikacja mapy [accent]#{ $number }[lightgray]: mapa [green]{ $map }[lightgray] została zaakceptowana.
+case-notice-map-rejected = [lightgray]Weryfikacja mapy [accent]#{ $number }[lightgray]: mapa [scarlet]{ $map }[lightgray] została odrzucona.
+case-notice-complaint-closed = [lightgray]Zgłoszenie [accent]#{ $number }[lightgray] zostało zamknięte. Dziękujemy.
+
 # ==============================================================================
 # Voting (VoteKick)
 # ==============================================================================
@@ -1306,6 +1359,7 @@ yes = Tak
 no = Nie
 test = Test
 no-description = Brak opisu
+site = Strona
 discord = Discord
 github = Github
 donatello = Donatello
