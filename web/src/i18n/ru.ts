@@ -1,4 +1,6 @@
-const ru = {
+import type { Dictionary } from "./en";
+
+const ru: Dictionary = {
   meta: {
     title: "XCore — сеть серверов Mindustry",
     description:
@@ -254,4 +256,3 @@ const ru = {
 };
 
 export default ru;
-export type Dictionary = typeof ru;

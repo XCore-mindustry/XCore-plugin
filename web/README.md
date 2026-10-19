@@ -25,7 +25,7 @@ PORT=3000 node .next/standalone/server.js
 ## Where things live
 
 - `src/content.ts`: facts shared by both languages: links, accents, badges, leagues, modes, the sample player.
-- `src/i18n/ru.ts`, `src/i18n/en.ts`: all copy. `en.ts` must match the shape of `ru.ts`.
+- `src/i18n/en.ts`, `src/i18n/uk.ts`, `src/i18n/ru.ts`: all copy. `uk.ts` and `ru.ts` must match the shape of `en.ts`.
 - `src/app/[lang]/globals.css`: the whole visual system. `DESIGN.md` describes it.
 - `PRODUCT.md`: what the site is for and the facts it may state.
 
