@@ -1235,6 +1235,7 @@ yes = Yes
 no = No
 test = Test
 no-description = No description
+site = Site
 discord = Discord
 github = Github
 donatello = Donatello

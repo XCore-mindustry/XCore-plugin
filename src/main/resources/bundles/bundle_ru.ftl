@@ -1259,6 +1259,7 @@ yes = Да
 no = Нет
 test = Тест
 no-description = Без описания
+site = Сайт
 discord = Discord
 github = GitHub
 donatello = Donatello

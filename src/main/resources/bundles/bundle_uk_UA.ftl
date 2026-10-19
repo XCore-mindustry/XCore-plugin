@@ -1184,6 +1184,7 @@ admin-inactive = [red]Адмін
 cancel = Скасувати
 back = Назад
 no-description = Без опису
+site = Сайт
 discord = Discord
 github = GitHub
 donatello = Donatello

@@ -100,10 +100,12 @@ public class TomlSecretsConfig implements SelfNormalizing {
     }
 
     public static class ExternalLinksConfig {
+        public String siteUrl = "https://x-core.org/";
+
         public String discordUrl = "https://discord.gg/RUMCCa9QAC";
         public String githubUrl = "https://github.com/XCore-mindustry/";
         public String donatelloUrl = "https://donatello.to/xcore";
-        public String weblateUrl = "https://xcore.eradication.fun/";
+        public String weblateUrl = "https://weblate.x-core.org/";
         @JsonProperty("discord_red_vs_blue_url")
         public String discordRedVSBlueUrl = "https://discord.gg/UdnuFetcNt";
     }

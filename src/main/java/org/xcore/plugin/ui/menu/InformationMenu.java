@@ -119,6 +119,7 @@ public class InformationMenu extends Menu {
     private final class InformationFlow extends BaseMenuFlow<NoState> {
         InformationFlow() {
             super(ROUTE_INFORMATION, NoState.class);
+            action("site", ctx -> openUrl(ctx.session(), secretsConfig.externalLinks.siteUrl));
             action("discord", ctx -> openUrl(ctx.session(), secretsConfig.externalLinks.discordUrl));
             action("github", ctx -> openUrl(ctx.session(), secretsConfig.externalLinks.githubUrl));
             action("donatello", ctx -> openUrl(ctx.session(), secretsConfig.externalLinks.donatelloUrl));
@@ -130,6 +131,7 @@ public class InformationMenu extends Menu {
         public MenuScreen render(MenuRenderContext<NoState> context) {
             var local = context.locale();
             var grid = new MenuGrid()
+                    .row(MenuButton.of(local.t("site"), "site"))
                     .row(
                             MenuButton.of(local.t("discord"), "discord"),
                             MenuButton.of(local.t("github"), "github")
