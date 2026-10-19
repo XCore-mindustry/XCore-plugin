@@ -1,0 +1,703 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-18T19:32:29+00:00",
+  "title": "Design System: XCore",
+  "extensions": {
+    "colorMeta": {
+      "ground": {
+        "role": "neutral",
+        "displayName": "Sand Floor",
+        "canonical": "#101217",
+        "tonalRamp": [
+          "oklch(15% 0.011 268.1)",
+          "oklch(26% 0.011 268.1)",
+          "oklch(37% 0.011 268.1)",
+          "oklch(48% 0.011 268.1)",
+          "oklch(60% 0.011 268.1)",
+          "oklch(71% 0.011 268.1)",
+          "oklch(83% 0.011 268.1)",
+          "oklch(95% 0.011 268.1)"
+        ]
+      },
+      "inset": {
+        "role": "neutral",
+        "displayName": "Inset Black",
+        "canonical": "#14161c",
+        "tonalRamp": [
+          "oklch(15% 0.012 270.7)",
+          "oklch(26% 0.012 270.7)",
+          "oklch(37% 0.012 270.7)",
+          "oklch(48% 0.012 270.7)",
+          "oklch(60% 0.012 270.7)",
+          "oklch(71% 0.012 270.7)",
+          "oklch(83% 0.012 270.7)",
+          "oklch(95% 0.012 270.7)"
+        ]
+      },
+      "window": {
+        "role": "neutral",
+        "displayName": "Window",
+        "canonical": "#1a1d25",
+        "tonalRamp": [
+          "oklch(15% 0.016 269.0)",
+          "oklch(26% 0.016 269.0)",
+          "oklch(37% 0.016 269.0)",
+          "oklch(48% 0.016 269.0)",
+          "oklch(60% 0.016 269.0)",
+          "oklch(71% 0.016 269.0)",
+          "oklch(83% 0.016 269.0)",
+          "oklch(95% 0.016 269.0)"
+        ]
+      },
+      "card": {
+        "role": "neutral",
+        "displayName": "Card",
+        "canonical": "#242833",
+        "tonalRamp": [
+          "oklch(15% 0.021 269.3)",
+          "oklch(26% 0.021 269.3)",
+          "oklch(37% 0.021 269.3)",
+          "oklch(48% 0.021 269.3)",
+          "oklch(60% 0.021 269.3)",
+          "oklch(71% 0.021 269.3)",
+          "oklch(83% 0.021 269.3)",
+          "oklch(95% 0.021 269.3)"
+        ]
+      },
+      "head": {
+        "role": "neutral",
+        "displayName": "Head Band",
+        "canonical": "#2b3040",
+        "tonalRamp": [
+          "oklch(15% 0.030 271.1)",
+          "oklch(26% 0.030 271.1)",
+          "oklch(37% 0.030 271.1)",
+          "oklch(48% 0.030 271.1)",
+          "oklch(60% 0.030 271.1)",
+          "oklch(71% 0.030 271.1)",
+          "oklch(83% 0.030 271.1)",
+          "oklch(95% 0.030 271.1)"
+        ]
+      },
+      "head-hover": {
+        "role": "neutral",
+        "displayName": "Head Lit",
+        "canonical": "#30364a",
+        "tonalRamp": [
+          "oklch(15% 0.036 271.4)",
+          "oklch(26% 0.036 271.4)",
+          "oklch(37% 0.036 271.4)",
+          "oklch(48% 0.036 271.4)",
+          "oklch(60% 0.036 271.4)",
+          "oklch(71% 0.036 271.4)",
+          "oklch(83% 0.036 271.4)",
+          "oklch(95% 0.036 271.4)"
+        ]
+      },
+      "edge": {
+        "role": "neutral",
+        "displayName": "Edge",
+        "canonical": "#3a3f4f",
+        "tonalRamp": [
+          "oklch(15% 0.028 271.4)",
+          "oklch(26% 0.028 271.4)",
+          "oklch(37% 0.028 271.4)",
+          "oklch(48% 0.028 271.4)",
+          "oklch(60% 0.028 271.4)",
+          "oklch(71% 0.028 271.4)",
+          "oklch(83% 0.028 271.4)",
+          "oklch(95% 0.028 271.4)"
+        ]
+      },
+      "ghost": {
+        "role": "neutral",
+        "displayName": "Ghost Line",
+        "canonical": "#555b70",
+        "tonalRamp": [
+          "oklch(15% 0.035 272.5)",
+          "oklch(26% 0.035 272.5)",
+          "oklch(37% 0.035 272.5)",
+          "oklch(48% 0.035 272.5)",
+          "oklch(60% 0.035 272.5)",
+          "oklch(71% 0.035 272.5)",
+          "oklch(83% 0.035 272.5)",
+          "oklch(95% 0.035 272.5)"
+        ]
+      },
+      "text": {
+        "role": "neutral",
+        "displayName": "Paper White",
+        "canonical": "#eef0f5",
+        "tonalRamp": [
+          "oklch(15% 0.007 268.5)",
+          "oklch(26% 0.007 268.5)",
+          "oklch(37% 0.007 268.5)",
+          "oklch(48% 0.007 268.5)",
+          "oklch(60% 0.007 268.5)",
+          "oklch(71% 0.007 268.5)",
+          "oklch(83% 0.007 268.5)",
+          "oklch(95% 0.007 268.5)"
+        ]
+      },
+      "muted": {
+        "role": "neutral",
+        "displayName": "Dust",
+        "canonical": "#b0b6c6",
+        "tonalRamp": [
+          "oklch(15% 0.024 269.4)",
+          "oklch(26% 0.024 269.4)",
+          "oklch(37% 0.024 269.4)",
+          "oklch(48% 0.024 269.4)",
+          "oklch(60% 0.024 269.4)",
+          "oklch(71% 0.024 269.4)",
+          "oklch(83% 0.024 269.4)",
+          "oklch(95% 0.024 269.4)"
+        ]
+      },
+      "success": {
+        "role": "neutral",
+        "displayName": "Success",
+        "canonical": "#24402b",
+        "tonalRamp": [
+          "oklch(15% 0.050 151.0)",
+          "oklch(26% 0.050 151.0)",
+          "oklch(37% 0.050 151.0)",
+          "oklch(48% 0.050 151.0)",
+          "oklch(60% 0.050 151.0)",
+          "oklch(71% 0.050 151.0)",
+          "oklch(83% 0.050 151.0)",
+          "oklch(95% 0.050 151.0)"
+        ]
+      },
+      "error": {
+        "role": "neutral",
+        "displayName": "Error",
+        "canonical": "#4a2626",
+        "tonalRamp": [
+          "oklch(15% 0.054 20.6)",
+          "oklch(26% 0.054 20.6)",
+          "oklch(37% 0.054 20.6)",
+          "oklch(48% 0.054 20.6)",
+          "oklch(60% 0.054 20.6)",
+          "oklch(71% 0.054 20.6)",
+          "oklch(83% 0.054 20.6)",
+          "oklch(95% 0.054 20.6)"
+        ]
+      },
+      "gold": {
+        "role": "primary",
+        "displayName": "Core Gold",
+        "canonical": "#ffd37f",
+        "tonalRamp": [
+          "oklch(15% 0.114 82.5)",
+          "oklch(26% 0.114 82.5)",
+          "oklch(37% 0.114 82.5)",
+          "oklch(48% 0.114 82.5)",
+          "oklch(60% 0.114 82.5)",
+          "oklch(71% 0.114 82.5)",
+          "oklch(83% 0.114 82.5)",
+          "oklch(95% 0.114 82.5)"
+        ]
+      },
+      "gold-band": {
+        "role": "primary",
+        "displayName": "Gold Band",
+        "canonical": "#4d4026",
+        "tonalRamp": [
+          "oklch(15% 0.044 83.9)",
+          "oklch(26% 0.044 83.9)",
+          "oklch(37% 0.044 83.9)",
+          "oklch(48% 0.044 83.9)",
+          "oklch(60% 0.044 83.9)",
+          "oklch(71% 0.044 83.9)",
+          "oklch(83% 0.044 83.9)",
+          "oklch(95% 0.044 83.9)"
+        ]
+      },
+      "blue": {
+        "role": "secondary",
+        "displayName": "Chat Blue",
+        "canonical": "#7fc8ff",
+        "tonalRamp": [
+          "oklch(15% 0.107 242.3)",
+          "oklch(26% 0.107 242.3)",
+          "oklch(37% 0.107 242.3)",
+          "oklch(48% 0.107 242.3)",
+          "oklch(60% 0.107 242.3)",
+          "oklch(71% 0.107 242.3)",
+          "oklch(83% 0.107 242.3)",
+          "oklch(95% 0.107 242.3)"
+        ]
+      },
+      "blue-band": {
+        "role": "secondary",
+        "displayName": "Blue Band",
+        "canonical": "#243c4f",
+        "tonalRamp": [
+          "oklch(15% 0.045 243.5)",
+          "oklch(26% 0.045 243.5)",
+          "oklch(37% 0.045 243.5)",
+          "oklch(48% 0.045 243.5)",
+          "oklch(60% 0.045 243.5)",
+          "oklch(71% 0.045 243.5)",
+          "oklch(83% 0.045 243.5)",
+          "oklch(95% 0.045 243.5)"
+        ]
+      },
+      "green": {
+        "role": "secondary",
+        "displayName": "Turret Green",
+        "canonical": "#98d982",
+        "tonalRamp": [
+          "oklch(15% 0.134 138.1)",
+          "oklch(26% 0.134 138.1)",
+          "oklch(37% 0.134 138.1)",
+          "oklch(48% 0.134 138.1)",
+          "oklch(60% 0.134 138.1)",
+          "oklch(71% 0.134 138.1)",
+          "oklch(83% 0.134 138.1)",
+          "oklch(95% 0.134 138.1)"
+        ]
+      },
+      "green-band": {
+        "role": "secondary",
+        "displayName": "Green Band",
+        "canonical": "#2c4227",
+        "tonalRamp": [
+          "oklch(15% 0.053 139.9)",
+          "oklch(26% 0.053 139.9)",
+          "oklch(37% 0.053 139.9)",
+          "oklch(48% 0.053 139.9)",
+          "oklch(60% 0.053 139.9)",
+          "oklch(71% 0.053 139.9)",
+          "oklch(83% 0.053 139.9)",
+          "oklch(95% 0.053 139.9)"
+        ]
+      },
+      "purple": {
+        "role": "secondary",
+        "displayName": "Console Purple",
+        "canonical": "#d79bff",
+        "tonalRamp": [
+          "oklch(15% 0.151 310.9)",
+          "oklch(26% 0.151 310.9)",
+          "oklch(37% 0.151 310.9)",
+          "oklch(48% 0.151 310.9)",
+          "oklch(60% 0.151 310.9)",
+          "oklch(71% 0.151 310.9)",
+          "oklch(83% 0.151 310.9)",
+          "oklch(95% 0.151 310.9)"
+        ]
+      },
+      "purple-band": {
+        "role": "secondary",
+        "displayName": "Purple Band",
+        "canonical": "#402c4f",
+        "tonalRamp": [
+          "oklch(15% 0.065 309.5)",
+          "oklch(26% 0.065 309.5)",
+          "oklch(37% 0.065 309.5)",
+          "oklch(48% 0.065 309.5)",
+          "oklch(60% 0.065 309.5)",
+          "oklch(71% 0.065 309.5)",
+          "oklch(83% 0.065 309.5)",
+          "oklch(95% 0.065 309.5)"
+        ]
+      },
+      "red": {
+        "role": "secondary",
+        "displayName": "Crux Red",
+        "canonical": "#ff8f8f",
+        "tonalRamp": [
+          "oklch(15% 0.136 20.7)",
+          "oklch(26% 0.136 20.7)",
+          "oklch(37% 0.136 20.7)",
+          "oklch(48% 0.136 20.7)",
+          "oklch(60% 0.136 20.7)",
+          "oklch(71% 0.136 20.7)",
+          "oklch(83% 0.136 20.7)",
+          "oklch(95% 0.136 20.7)"
+        ]
+      },
+      "red-band": {
+        "role": "secondary",
+        "displayName": "Red Band",
+        "canonical": "#4f2a2a",
+        "tonalRamp": [
+          "oklch(15% 0.055 20.4)",
+          "oklch(26% 0.055 20.4)",
+          "oklch(37% 0.055 20.4)",
+          "oklch(48% 0.055 20.4)",
+          "oklch(60% 0.055 20.4)",
+          "oklch(71% 0.055 20.4)",
+          "oklch(83% 0.055 20.4)",
+          "oklch(95% 0.055 20.4)"
+        ]
+      },
+      "orange": {
+        "role": "secondary",
+        "displayName": "Signal Orange",
+        "canonical": "#ffb074",
+        "tonalRamp": [
+          "oklch(15% 0.120 57.3)",
+          "oklch(26% 0.120 57.3)",
+          "oklch(37% 0.120 57.3)",
+          "oklch(48% 0.120 57.3)",
+          "oklch(60% 0.120 57.3)",
+          "oklch(71% 0.120 57.3)",
+          "oklch(83% 0.120 57.3)",
+          "oklch(95% 0.120 57.3)"
+        ]
+      },
+      "orange-band": {
+        "role": "secondary",
+        "displayName": "Orange Band",
+        "canonical": "#4f3524",
+        "tonalRamp": [
+          "oklch(15% 0.047 53.8)",
+          "oklch(26% 0.047 53.8)",
+          "oklch(37% 0.047 53.8)",
+          "oklch(48% 0.047 53.8)",
+          "oklch(60% 0.047 53.8)",
+          "oklch(71% 0.047 53.8)",
+          "oklch(83% 0.047 53.8)",
+          "oklch(95% 0.047 53.8)"
+        ]
+      },
+      "teal": {
+        "role": "secondary",
+        "displayName": "Coolant Teal",
+        "canonical": "#7fe0d0",
+        "tonalRamp": [
+          "oklch(15% 0.095 182.1)",
+          "oklch(26% 0.095 182.1)",
+          "oklch(37% 0.095 182.1)",
+          "oklch(48% 0.095 182.1)",
+          "oklch(60% 0.095 182.1)",
+          "oklch(71% 0.095 182.1)",
+          "oklch(83% 0.095 182.1)",
+          "oklch(95% 0.095 182.1)"
+        ]
+      },
+      "teal-band": {
+        "role": "secondary",
+        "displayName": "Teal Band",
+        "canonical": "#24443f",
+        "tonalRamp": [
+          "oklch(15% 0.039 182.9)",
+          "oklch(26% 0.039 182.9)",
+          "oklch(37% 0.039 182.9)",
+          "oklch(48% 0.039 182.9)",
+          "oklch(60% 0.039 182.9)",
+          "oklch(71% 0.039 182.9)",
+          "oklch(83% 0.039 182.9)",
+          "oklch(95% 0.039 182.9)"
+        ]
+      },
+      "gray": {
+        "role": "secondary",
+        "displayName": "Steel Gray",
+        "canonical": "#c9ced9",
+        "tonalRamp": [
+          "oklch(15% 0.016 266.3)",
+          "oklch(26% 0.016 266.3)",
+          "oklch(37% 0.016 266.3)",
+          "oklch(48% 0.016 266.3)",
+          "oklch(60% 0.016 266.3)",
+          "oklch(71% 0.016 266.3)",
+          "oklch(83% 0.016 266.3)",
+          "oklch(95% 0.016 266.3)"
+        ]
+      },
+      "gray-band": {
+        "role": "secondary",
+        "displayName": "Gray Band",
+        "canonical": "#353a48",
+        "tonalRamp": [
+          "oklch(15% 0.025 269.6)",
+          "oklch(26% 0.025 269.6)",
+          "oklch(37% 0.025 269.6)",
+          "oklch(48% 0.025 269.6)",
+          "oklch(60% 0.025 269.6)",
+          "oklch(71% 0.025 269.6)",
+          "oklch(83% 0.025 269.6)",
+          "oklch(95% 0.025 269.6)"
+        ]
+      },
+      "discord": {
+        "role": "neutral",
+        "displayName": "Discord Blurple",
+        "canonical": "#8f99ff",
+        "tonalRamp": [
+          "oklch(15% 0.148 277.7)",
+          "oklch(26% 0.148 277.7)",
+          "oklch(37% 0.148 277.7)",
+          "oklch(48% 0.148 277.7)",
+          "oklch(60% 0.148 277.7)",
+          "oklch(71% 0.148 277.7)",
+          "oklch(83% 0.148 277.7)",
+          "oklch(95% 0.148 277.7)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "The XCore wordmark only."
+      },
+      "loud": {
+        "displayName": "Loud",
+        "purpose": "The one loud number per section, in the section accent."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Window headings, in the section accent."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Mode names, league name, row headings."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Title bands, buttons, tabs, route steps, dock cells."
+      },
+      "lede": {
+        "displayName": "Lede",
+        "purpose": "The paragraph under a window heading, max 60ch."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Descriptions, notes and running data, including fact values."
+      },
+      "command": {
+        "displayName": "Command",
+        "purpose": "Command chips and other machine text: ids, timestamps, code."
+      }
+    },
+    "shadows": [],
+    "motion": [
+      {
+        "name": "ease-out",
+        "value": "cubic-bezier(0.16, 1, 0.3, 1)",
+        "purpose": "All state motion: stamp, dock, board, rise, press."
+      },
+      {
+        "name": "stamp",
+        "value": "0.6s; from scale(1.6) rotate(-8deg) brightness(2.4)",
+        "purpose": "A cell lighting from a visitor action. Never reversed."
+      },
+      {
+        "name": "dock-slide",
+        "value": "transform 0.5s",
+        "purpose": "The dock entering once the pass is out of view above."
+      },
+      {
+        "name": "board-columns",
+        "value": "grid-template-columns 0.55s",
+        "purpose": "The open mode panel coming forward."
+      },
+      {
+        "name": "rise",
+        "value": "0.5s; from opacity 0.3, translateY(10px)",
+        "purpose": "A mode panel's body appearing."
+      },
+      {
+        "name": "hover",
+        "value": "0.2s to 0.3s colour and border transitions",
+        "purpose": "Buttons, cells, library links."
+      },
+      {
+        "name": "tile-blink",
+        "value": "1.4s steps(2, jump-none) infinite",
+        "purpose": "The marked tile on the TileLogger map; only without reduced motion."
+      },
+      {
+        "name": "reduced-motion",
+        "value": "animation: none; transition: none (all elements)",
+        "purpose": "Kill switch under prefers-reduced-motion: reduce."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "single-column",
+        "value": "max-width: 1099px"
+      },
+      {
+        "name": "short-laptop",
+        "value": "(min-width: 900px) and (max-height: 860px)"
+      },
+      {
+        "name": "pass-stack",
+        "value": "max-width: 899px"
+      },
+      {
+        "name": "dock-icons",
+        "value": "max-width: 760px"
+      },
+      {
+        "name": "phone",
+        "value": "max-width: 639px"
+      },
+      {
+        "name": "mode-body-container",
+        "value": "@container (min-width: 640px)"
+      }
+    ],
+    "focus": {
+      "value": "outline: 2px solid #ffd37f; outline-offset: 2px",
+      "purpose": "Every focusable element."
+    },
+    "browserSurfaces": {
+      "selection": "background #ffd37f, color #14161c",
+      "scrollbar": "scrollbar-color #3a3f4f #14161c",
+      "themeColor": "#14161c",
+      "colorScheme": "dark"
+    }
+  },
+  "components": [
+    {
+      "name": "Window with head",
+      "kind": "card",
+      "refersTo": "window",
+      "description": "A section window: head band with an accent heading and lede, a 3px accent line, then the body.",
+      "html": "<section class=\"ds-window\" style=\"--ac:#d79bff;--band:#402c4f\"><header class=\"ds-window-head\"><h2>For developers</h2><p>The libraries XCore runs on, all open source.</p></header><div class=\"ds-line\"></div><div class=\"ds-window-body\"><div class=\"ds-card\">Card content</div></div></section>",
+      "css": ".ds-window{background:#1a1d25;border:3px solid #3a3f4f;color:#eef0f5;font-family:var(--font-body),'Golos Text',system-ui,sans-serif;max-width:640px}.ds-window-head{display:grid;gap:6px;padding:22px 18px;background:#2b3040}.ds-window-head h2{margin:0;font-family:var(--font-display),Tektur,'Arial Narrow',sans-serif;font-size:2rem;font-weight:700;line-height:1.05;color:var(--ac)}.ds-window-head p{margin:0;max-width:60ch}.ds-line{height:3px;background:var(--ac)}.ds-window-body{padding:8px}.ds-card{background:#242833;padding:18px}"
+    },
+    {
+      "name": "Title band",
+      "kind": "custom",
+      "refersTo": "title-band",
+      "description": "The kit's card header: band shade, accent title, note, command chips at the right.",
+      "html": "<div class=\"ds-band\" style=\"--ac:#ffd37f;--band:#4d4026\"><p class=\"ds-band-title\">Season rating <span class=\"ds-band-note\">· example</span></p><span class=\"ds-band-cmds\"><code class=\"ds-cmd\">/top</code><code class=\"ds-cmd\">/season</code></span></div>",
+      "css": ".ds-band{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:6px 10px;min-height:42px;padding:6px 10px;background:var(--band)}.ds-band-title{margin:0;font-family:var(--font-display),Tektur,'Arial Narrow',sans-serif;font-size:.95rem;font-weight:600;color:var(--ac)}.ds-band-note{font-family:var(--font-body),'Golos Text',sans-serif;font-size:.8125rem;font-weight:400;color:color-mix(in srgb,var(--ac) 45%,#eef0f5)}.ds-band-cmds{display:flex;gap:4px}.ds-cmd{display:inline-block;padding:5px 7px;font-family:var(--font-code),'Fira Code',ui-monospace,monospace;font-size:.8125rem;font-weight:500;line-height:1;font-variant-ligatures:none;white-space:nowrap;color:var(--ac);background:#14161c;border:1px solid color-mix(in srgb,var(--ac) 30%,#3a3f4f)}"
+    },
+    {
+      "name": "Command chip",
+      "kind": "chip",
+      "refersTo": "command-chip",
+      "description": "An in-game command as the player types it, attached to the field it shows.",
+      "html": "<div class=\"ds-field\" style=\"--ac:#ffd37f\"><span class=\"ds-field-label\">Playtime</span><span class=\"ds-field-value\">212 h</span><code class=\"ds-cmd\">/stats</code></div>",
+      "css": ".ds-field{display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:12px;padding:8px 10px 8px 12px;background:#14161c;max-width:420px}.ds-field-label{font-family:var(--font-body),'Golos Text',sans-serif;font-size:.9375rem;color:#b0b6c6}.ds-field-value{font-family:var(--font-display),Tektur,sans-serif;font-size:1.125rem;font-weight:600;color:#eef0f5}.ds-cmd{display:inline-block;padding:5px 7px;font-family:var(--font-code),'Fira Code',ui-monospace,monospace;font-size:.8125rem;font-weight:500;line-height:1;font-variant-ligatures:none;color:var(--ac);background:#14161c;border:1px solid color-mix(in srgb,var(--ac) 30%,#3a3f4f)}"
+    },
+    {
+      "name": "Button",
+      "kind": "button",
+      "refersTo": "button",
+      "description": "Default action: head-band fill, edge border, accent border on hover.",
+      "html": "<a class=\"ds-btn\" href=\"#\" style=\"--ac:#d79bff\">Maven repository</a>",
+      "css": ".ds-btn{display:inline-flex;align-items:center;gap:10px;min-height:44px;padding:0 14px;font-family:var(--font-display),Tektur,'Arial Narrow',sans-serif;font-weight:600;color:#eef0f5;text-decoration:none;background:#2b3040;border:1px solid #3a3f4f;transition:border-color .2s,background-color .2s}.ds-btn:hover{border-color:var(--ac);background:#30364a}.ds-btn:focus-visible{outline:2px solid #ffd37f;outline-offset:2px}"
+    },
+    {
+      "name": "Primary action",
+      "kind": "button",
+      "refersTo": "button-target",
+      "description": "The one solid-gold action per screen: name plus a short hint.",
+      "html": "<button type=\"button\" class=\"ds-btn-target\"><span class=\"ds-btn-target-name\">XCore</span><span class=\"ds-btn-target-hint\">Copy “XCore” for the search</span></button>",
+      "css": ".ds-btn-target{display:flex;flex-direction:column;justify-content:center;min-height:56px;padding:6px 20px;color:#14161c;text-align:left;background:#ffd37f;border:0;border-radius:0;cursor:pointer;transition:background-color .2s,transform .2s cubic-bezier(.16,1,.3,1)}.ds-btn-target:hover{background:#ffe2a8}.ds-btn-target:active{transform:translateY(2px)}.ds-btn-target:focus-visible{outline:2px solid #ffd37f;outline-offset:2px}.ds-btn-target-name{font-family:var(--font-display),Tektur,sans-serif;font-size:1.5rem;font-weight:800;line-height:1}.ds-btn-target-hint{margin-top:4px;font-family:var(--font-body),'Golos Text',sans-serif;font-size:.8125rem;font-weight:500;line-height:1.2}"
+    },
+    {
+      "name": "Tabs",
+      "kind": "nav",
+      "refersTo": "tab",
+      "description": "Flat toggles that stay pressed; the pressed one gets a 3px accent line underneath.",
+      "html": "<nav class=\"ds-tabs\"><a href=\"#\" aria-current=\"page\">RU</a><a href=\"#\">EN</a></nav>",
+      "css": ".ds-tabs{display:flex;gap:4px}.ds-tabs a{display:grid;place-items:center;min-width:52px;height:44px;font-family:var(--font-display),Tektur,sans-serif;font-weight:600;color:#b0b6c6;text-decoration:none;background:#14161c;border-bottom:3px solid transparent}.ds-tabs a:hover{color:#eef0f5;background:#30364a}.ds-tabs a[aria-current]{color:#eef0f5;background:#242833;border-bottom-color:#ffd37f}.ds-tabs a:focus-visible{outline:2px solid #ffd37f;outline-offset:2px}"
+    },
+    {
+      "name": "Ghost and lit cells",
+      "kind": "custom",
+      "refersTo": "ghost-cell",
+      "description": "Locked or unseen things as dashed ghost cells; reached ones lit in the band and accent, with the stamp.",
+      "html": "<ul class=\"ds-cells\" style=\"--ac:#ffb074;--band:#4f3524\"><li><a href=\"#\" class=\"ds-cell\" data-on=\"true\"><span class=\"ds-mark\"></span>HexedCore</a></li><li><a href=\"#\" class=\"ds-cell\" data-on=\"false\"><span class=\"ds-mark\"></span>Tower Defence</a></li></ul>",
+      "css": ".ds-cells{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px;margin:0;padding:0;list-style:none;max-width:360px}.ds-cell{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;min-height:96px;padding:10px;font-family:var(--font-display),Tektur,sans-serif;font-weight:600;color:#b0b6c6;text-decoration:none;border:1px dashed #555b70;transition:background-color .3s,border-color .3s,color .3s}.ds-cell:hover{color:#eef0f5;border-color:var(--ac)}.ds-cell:focus-visible{outline:2px solid #ffd37f;outline-offset:2px}.ds-mark{width:32px;height:32px;background:currentColor;opacity:.3}.ds-cell[data-on=true]{color:var(--ac);background:var(--band);border:1px solid var(--ac)}.ds-cell[data-on=true] .ds-mark{opacity:1;animation:ds-stamp .6s cubic-bezier(.16,1,.3,1)}@keyframes ds-stamp{from{transform:scale(1.6) rotate(-8deg);filter:brightness(2.4)}}@media (prefers-reduced-motion:reduce){.ds-cell,.ds-cell .ds-mark{animation:none;transition:none}}"
+    },
+    {
+      "name": "Loud number",
+      "kind": "custom",
+      "refersTo": "",
+      "description": "The one loud number of a section, in its accent, with a short label.",
+      "html": "<p class=\"ds-loud\" style=\"--ac:#7fc8ff\"><span class=\"ds-loud-num\">9</span><span class=\"ds-loud-label\">menu languages</span></p>",
+      "css": ".ds-loud{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 14px;margin:0;font-family:var(--font-display),Tektur,sans-serif;color:#eef0f5}.ds-loud-num{font-size:5rem;font-weight:800;line-height:.8;font-variant-numeric:tabular-nums;color:var(--ac)}.ds-loud-label{font-size:1.375rem;font-weight:600}"
+    },
+    {
+      "name": "Dock",
+      "kind": "nav",
+      "refersTo": "dock",
+      "description": "The pass folded into a fixed strip: avatar, name and rating, section cells, Discord.",
+      "html": "<nav class=\"ds-dock\"><a href=\"#\" class=\"ds-dock-id\">Ferrum <span>1487</span></a><a href=\"#\" class=\"ds-dock-cell\" data-on=\"true\" style=\"--ac:#ffb074;--band:#4f3524\">Modes</a><a href=\"#\" class=\"ds-dock-cell\" style=\"--ac:#7fc8ff;--band:#243c4f\">Network</a></nav>",
+      "css": ".ds-dock{display:flex;align-items:center;gap:4px;height:64px;padding:0 16px;background:#2b3040;border-bottom:3px solid #3a3f4f}.ds-dock-id{margin-right:auto;font-family:var(--font-display),Tektur,sans-serif;font-size:1.25rem;font-weight:800;color:#eef0f5;text-decoration:none}.ds-dock-id span{color:#ffd37f;font-variant-numeric:tabular-nums}.ds-dock-cell{display:flex;align-items:center;min-width:44px;height:44px;padding:0 12px;font-family:var(--font-display),Tektur,sans-serif;font-size:.9375rem;font-weight:600;color:#b0b6c6;text-decoration:none;border:1px dashed #555b70}.ds-dock-cell:hover{color:#eef0f5;border-color:var(--ac)}.ds-dock-cell:focus-visible{outline:2px solid #ffd37f;outline-offset:2px}.ds-dock-cell[data-on=true]{color:#eef0f5;background:var(--band);border:1px solid var(--ac)}"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Player Pass",
+    "overview": "**Creative North Star: \"The Player Pass\"**\n\nXCore's web surfaces are the in-game menu kit of XCore-plugin (`ui/kit`, built on xcore-ui) carried onto the web. A visitor should feel they have opened one more menu of the game they already play: dark windows sitting on a tiled floor of Mindustry sand, a title band across the top of each card, one colour per topic, square corners everywhere, and pixel sprites from the game itself. The landing page frames all of this as the player's pass, a single profile that follows them across every mode and server; later surfaces (docs, the TileLogger visualizer) reuse the same windows, bands, cells and chips without the pass framing.\n\nDensity is medium-high, as in a game menu: cards pack edge to edge with 4px and 8px gaps, labels are short, and every data field names the in-game command that shows it. Depth comes from stacked dark tones, never from shadows. Colour is spent sparingly: the neutrals carry the page and each topic contributes one accent and its dark band shade.\n\nThings a player has not reached yet are drawn, never hidden. Locked badges, leagues above the current rating and modes not yet opened sit as dashed ghost cells with dimmed, desaturated sprites. When something is reached or seen, its cell lights in the topic's band and accent, and stays lit.",
+    "keyCharacteristics": [
+      "Dark tonal stack: floor, inset, window, card, head band.",
+      "One accent and its band shade per topic, set by scope, never mixed inside a card.",
+      "Square corners and flat fills; 3px edges and 3px accent lines are the only heavy strokes.",
+      "A command chip on every field that has an in-game source.",
+      "Ghost cells (dashed outline) for locked or unseen things; lit cells for reached ones.",
+      "Mindustry pixel sprites at whole-number scales, and Mindustry's own icon font for icons.",
+      "One loud number per section, in the section's accent."
+    ],
+    "rules": [
+      {
+        "name": "The One Topic Rule",
+        "body": "Every section, card or cell declares one accent pair and everything inside it reads from `--ac` and `--band`. A card never shows two topic accents; nested scopes (a gray badge card inside the gold pass) override the pair, they do not mix it.",
+        "section": "colors"
+      },
+      {
+        "name": "The Band Not Fill Rule",
+        "body": "Accents are for text, lines and borders. Large surfaces take the band shade, never the bright accent. The single exception is the primary action, which is solid gold with inset-black text.",
+        "section": "colors"
+      },
+      {
+        "name": "The Readable Cyrillic Rule",
+        "body": "Running data and anything read as a sentence (fact values, notes, descriptions, badge names) sets in Golos Text. Tektur's Cyrillic «д» reads as a Latin \"g\", so Tektur is kept to names, headings, numbers and short display labels, where that form is accepted as the game-font look.",
+        "section": "typography"
+      },
+      {
+        "name": "The Machine Text Rule",
+        "body": "Fira Code is for what a machine or the game types: commands, ids, timestamps, coordinates, code. Never for prose or headings.",
+        "section": "typography"
+      },
+      {
+        "name": "The First Screen Rule",
+        "body": "On every viewport the first screen holds the way in: the route and the primary action. Fit it with a scoped media query and `order`, not by moving it in the DOM.",
+        "section": "layout"
+      },
+      {
+        "name": "The Flat Stack Rule",
+        "body": "Separate layers by tone and 3px lines, never by `box-shadow` or blur.",
+        "section": "elevation"
+      },
+      {
+        "name": "The Whole Pixel Rule",
+        "body": "A sprite's rendered size is its native size times an integer. If a slot does not fit, change the scale or the slot, not the ratio.",
+        "section": "shapes"
+      }
+    ],
+    "dos": [
+      "Do scope every section and card to one accent pair through `--ac` and `--band`.",
+      "Do put a command chip on every field that has an in-game command, and only there.",
+      "Do draw locked, unreached or unseen things as ghost cells (1px dashed Ghost Line, 30% desaturated sprite) instead of hiding them.",
+      "Do give each section exactly one loud number in its accent, and only a real count (9 modes, 9 menu languages, 8 open repositories) or a value inside a labelled example (rating 1487, 34 restored blocks).",
+      "Do render sprites with `image-rendering: pixelated` at whole-number scales.",
+      "Do draw icons from Mindustry's icon font (`--font-icons`) or as masks of game sprites, marked `aria-hidden` next to a text label.",
+      "Do keep every touch target at least 44px.",
+      "Do keep the theming of browser surfaces: gold selection with inset text, 2px gold focus outline offset 2px, Edge-on-inset scrollbar, dark color-scheme.",
+      "Do honour the reduced-motion kill switch: under `prefers-reduced-motion: reduce` all animations and transitions are off, and smooth scrolling and the tile blink are opt-in.",
+      "Do ease motion with `cubic-bezier(0.16, 1, 0.3, 1)`."
+    ],
+    "donts": [
+      "Don't round corners or add shadows; depth is tone and 3px lines.",
+      "Don't fill large areas with a bright accent; use its band shade. Only the primary action is solid gold.",
+      "Don't set fact values, notes or other running Russian text in Tektur.",
+      "Don't use Fira Code for prose or headings.",
+      "Don't scale sprites by fractional ratios or let them smooth.",
+      "Don't substitute emoji or another icon set for the game's icons.",
+      "Don't clear a stamp or a lit cell within a visit.",
+      "Don't show live player counts, uptime or other figures the plugins cannot back up, even as a loud number."
+    ]
+  }
+}
