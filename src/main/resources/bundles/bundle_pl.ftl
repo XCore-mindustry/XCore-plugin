@@ -802,6 +802,7 @@ commands-ranks-footer = Wygrane liczą się tylko po pokonaniu gracza o twojej r
 commands-top-description = Najlepsi gracze.
 commands-season-description = Sezon rankingowy: pozostały czas, twoja pozycja i zwycięzcy poprzedniego sezonu.
 commands-matches-description = Twoje mecze rankingowe: wyniki, zmiany rankingu i z kim grałeś.
+commands-pvp-description = Poradnik MiniPvP: runda, zasady serwera i jak działa ranking.
 commands-top-hexed-content = [orange]{ $index }. { $nickname }[accent]: [blue]{ $rankName } [cyan]{ $points } []wygranych
 commands-top-pvp-content = [orange]{ $index }. { $nickname }[accent]: [cyan]{ $rating }
 top-menu-title = [orange]{ -xcore } — Najlepsi gracze: [accent]{ $category }
@@ -916,6 +917,86 @@ season-menu-empty = Nie ma jeszcze sezonów rankingowych.
 pvp-hud-status = [accent]MiniPvP[] | [stat]Żywi:[] { $teams } | [gray]{ $time }[]
 pvp-leaderboard-content = [orange]{ $index }. { $nickname }[accent]:[cyan] { $rating } [accent]pkt rankingu
 pvp-you-spectator = [scarlet]Zostałeś wyeliminowany. Poczekaj na następną grę.
+
+# MiniPvP guide (/pvp info)
+pvp-guide-title = Jak się tu gra
+pvp-guide-subtitle = Zwykłe PvP w Mindustry: drużyny budują bazy i niszczą sobie nawzajem rdzenie. Tutaj jest to, czym ten serwer się różni i jak działa ranking.
+pvp-guide-hint = Otwórz ponownie: [accent]/pvp info[]
+pvp-guide-join-hint = [lightgray]Zasady i ranking MiniPvP:[] [accent]/pvp info[]
+pvp-guide-menu-button = Jak grać w MiniPvP
+pvp-guide-tab-round = Runda
+pvp-guide-tab-rules = Zasady
+pvp-guide-tab-rating = Ranking
+pvp-guide-stat-minutes = minut gry
+pvp-guide-stat-teams = drużyn w grze
+pvp-guide-stat-players = graczy w drużynach
+pvp-guide-stat-zone = pól wokół rdzenia
+pvp-guide-stat-unitcap = limit jednostek
+pvp-guide-stat-banned = zakazanych bloków
+pvp-guide-stat-start = ranking na start
+pvp-guide-stat-top = najlepsi gracze
+pvp-guide-stat-matches = historia meczów
+
+pvp-guide-now-title = Teraz
+pvp-guide-now-map = Mapa: [accent]{ $map }[]
+pvp-guide-now-players = { $count } { $count ->
+        [one] gracz
+        [few] gracze
+        [many] graczy
+       *[other] gracza
+    }
+pvp-guide-win-title = Jak wygrać
+pvp-guide-win-text = Zniszcz wszystkie wrogie rdzenie. Wygrywa ostatnia drużyna, której zostały rdzenie i gracze. Drużyna, w której nikt nie został, odpada.
+pvp-guide-out-title = Odpadłeś: oglądasz do końca
+pvp-guide-out-text =
+    Twoja drużyna straciła ostatni rdzeń: oglądasz do następnej rundy.
+    Wyszedłeś w trakcie rundy i wróciłeś: trafisz do tej samej drużyny.
+pvp-guide-commands-title = Komendy
+pvp-guide-cmd-info = to okno
+pvp-guide-cmd-top = tabela liderów
+pvp-guide-cmd-season = sezon i nagrody
+pvp-guide-cmd-matches = twoje mecze i ranking za nie
+pvp-guide-cmd-rtv = głosuj za zmianą mapy
+pvp-guide-cmd-observer = oglądaj z boku
+
+pvp-guide-zone-title = Nie buduj przy cudzym rdzeniu
+pvp-guide-zone-text = Bliżej niż [accent]{ $tiles }[] pól od wrogiego rdzenia nie można budować. Żeby się przesunąć, najpierw zniszcz ten rdzeń.
+pvp-guide-zone-polygon-title = Teren jest podzielony między rdzenie
+pvp-guide-zone-polygon-text = Budować możesz tylko tam, gdzie najbliższy rdzeń jest twój. Żeby zająć cudzy teren, zniszcz rdzeń, do którego należy.
+pvp-guide-unitcap-title = Limit jednostek
+pvp-guide-unitcap-text = Drużyna zaczyna z limitem [accent]{ $cap }[], a każdy rdzeń go podnosi.
+pvp-guide-unitcap-fixed-title = Limit jednostek
+pvp-guide-unitcap-fixed-text = Drużyna ma najwyżej [accent]{ $cap }[] jednostek, niezależnie od liczby rdzeni.
+pvp-guide-multipliers-title = Inny balans
+pvp-guide-multipliers-text = Na tej mapie te wartości różnią się od zwykłych:
+pvp-guide-rule-unit-damage = Obrażenia jednostek
+pvp-guide-rule-unit-health = Wytrzymałość jednostek
+pvp-guide-rule-unit-cost = Koszt jednostek
+pvp-guide-rule-unit-build-speed = Szybkość produkcji jednostek
+pvp-guide-rule-block-damage = Obrażenia budowli
+pvp-guide-rule-block-health = Wytrzymałość budowli
+pvp-guide-rule-build-cost = Koszt budowli
+pvp-guide-rule-build-speed = Szybkość budowania
+pvp-guide-banned-blocks-title = Zakazane bloki
+pvp-guide-banned-units-title = Zakazane jednostki
+pvp-guide-other-title = Ponadto
+pvp-guide-other-fog = Mgła wojny: widzisz tylko to, co widzą twoje budowle i jednostki.
+pvp-guide-other-capture = Zniszczony rdzeń przechodzi do drużyny, która go zniszczyła.
+pvp-guide-other-reactors = Reaktory nie wybuchają.
+pvp-guide-vanilla-title = Zwykłe zasady
+pvp-guide-vanilla-text = Na tej mapie obowiązują zasady zwykłego PvP w Mindustry.
+
+pvp-guide-elo-title = Ranking ELO
+pvp-guide-elo-text = Wszyscy zaczynają od [accent]{ $start }[]. Wygrana podnosi ranking, przegrana obniża. O ile, zależy od rankingu twojej drużyny i przeciwników: wygrana z silniejszymi daje więcej.
+pvp-guide-leave-title = Wyjście nie chroni przed porażką
+pvp-guide-leave-text = Jeśli twoja drużyna przegra, tracisz pełny ranking, nawet jeśli wcześniej wyszedłeś lub przeszedłeś do widzów. Nic nie tracisz tylko wtedy, gdy grałeś krócej niż [accent]{ $seconds }[] s.
+pvp-guide-unrated-title = Kiedy ranking się nie zmienia
+pvp-guide-unrated-text =
+    Runda krótsza niż [accent]{ $seconds }[] s lub z mniej niż [accent]{ $players }[] graczami z rankingiem się nie liczy.
+    Zwycięzca musi rozegrać co najmniej [accent]{ $winner }%[] rundy, inaczej ranking nie rośnie.
+    Dołączyłeś późno do drużyny, która przegrała, i rozegrałeś mniej niż [accent]{ $late }%[] rundy: ranking nie spada.
+pvp-guide-seasons-title = Ligi i sezony
+pvp-guide-seasons-text = Ranking wyznacza ligę. Ranking liczy się w sezonach: na koniec sezonu najlepsi dostają nagrody. Wyniki każdego meczu: [accent]/matches[].
 # ==============================================================================
 # Events & Notifications
 # ==============================================================================

@@ -607,6 +607,7 @@ commands-ranks-footer = Кількість перемог збільшуєтьс
 commands-top-description = Топ гравців.
 commands-season-description = Рейтинговий сезон: скільки лишилось, ваше місце та переможці минулого
 commands-matches-description = Ваші рейтингові матчі: підсумки, зміни рейтингу та з ким ви грали.
+commands-pvp-description = Гайд з MiniPvP: раунд, правила сервера і як рахується рейтинг.
 commands-top-hexed-content = [orange]{ $index }. { $nickname }[accent]: [blue]{ $rankName } [cyan]{ $points } []перемог
 commands-top-pvp-content = [orange]{ $index }. { $nickname }[accent]: [cyan]{ $rating }
 top-menu-title = [orange]{ -xcore } — Топ гравців: [accent]{ $category }
@@ -721,6 +722,86 @@ season-menu-empty = Рейтингових сезонів поки немає.
 pvp-hud-status = [accent]MiniPvP[] | [stat]Живі:[] { $teams } | [gray]{ $time }[]
 pvp-leaderboard-content = [orange]{ $index }. { $nickname }[accent]:[cyan] { $rating } [accent]рейтинг
 pvp-you-spectator = [scarlet]Ви програли. Будь ласка, зачекайте наступної гри.
+
+# MiniPvP guide (/pvp info)
+pvp-guide-title = Як тут грати
+pvp-guide-subtitle = Звичайний PvP Mindustry: команди будують бази й знищують ядра одна одної. Тут зібрано, чим цей сервер відрізняється і як рахується рейтинг.
+pvp-guide-hint = Відкрити знову: [accent]/pvp info[]
+pvp-guide-join-hint = [lightgray]Правила MiniPvP і рейтинг:[] [accent]/pvp info[]
+pvp-guide-menu-button = Як грати в MiniPvP
+pvp-guide-tab-round = Раунд
+pvp-guide-tab-rules = Правила
+pvp-guide-tab-rating = Рейтинг
+pvp-guide-stat-minutes = хвилин триває раунд
+pvp-guide-stat-teams = команд у грі
+pvp-guide-stat-players = гравців у командах
+pvp-guide-stat-zone = тайлів навколо ядра
+pvp-guide-stat-unitcap = ліміт юнітів
+pvp-guide-stat-banned = блоків під забороною
+pvp-guide-stat-start = рейтинг на старті
+pvp-guide-stat-top = найкращі гравці
+pvp-guide-stat-matches = історія матчів
+
+pvp-guide-now-title = Зараз
+pvp-guide-now-map = Мапа: [accent]{ $map }[]
+pvp-guide-now-players = { $count } { $count ->
+        [one] гравець
+        [few] гравці
+        [many] гравців
+       *[other] гравця
+    }
+pvp-guide-win-title = Як перемогти
+pvp-guide-win-text = Знищ усі ядра суперників. Перемагає остання команда, в якої лишилися ядра й гравці. Команда, в якій нікого не лишилося, вибуває.
+pvp-guide-out-title = Вибув: дивишся до кінця
+pvp-guide-out-text =
+    Твоя команда втратила останнє ядро: ти спостерігаєш до наступного раунду.
+    Вийшов посеред раунду й повернувся: потрапиш до тієї ж команди.
+pvp-guide-commands-title = Команди
+pvp-guide-cmd-info = це вікно
+pvp-guide-cmd-top = таблиця лідерів
+pvp-guide-cmd-season = сезон і призи
+pvp-guide-cmd-matches = твої матчі та рейтинг за них
+pvp-guide-cmd-rtv = голосувати за зміну мапи
+pvp-guide-cmd-observer = дивитися збоку
+
+pvp-guide-zone-title = Не будуй біля чужого ядра
+pvp-guide-zone-text = Ближче ніж [accent]{ $tiles }[] тайлів до ворожого ядра будувати не можна. Щоб просунутися, спершу знищ це ядро.
+pvp-guide-zone-polygon-title = Земля поділена між ядрами
+pvp-guide-zone-polygon-text = Будувати можна лише там, де найближче ядро твоє. Щоб зайняти чужу землю, знищ ядро, до якого вона належить.
+pvp-guide-unitcap-title = Ліміт юнітів
+pvp-guide-unitcap-text = Команда починає з лімітом [accent]{ $cap }[], і кожне ядро підіймає його.
+pvp-guide-unitcap-fixed-title = Ліміт юнітів
+pvp-guide-unitcap-fixed-text = У команди не більше [accent]{ $cap }[] юнітів, скільки б ядер у неї не було.
+pvp-guide-multipliers-title = Інший баланс
+pvp-guide-multipliers-text = На цій мапі ці числа відрізняються від звичайних:
+pvp-guide-rule-unit-damage = Шкода юнітів
+pvp-guide-rule-unit-health = Міцність юнітів
+pvp-guide-rule-unit-cost = Ціна юнітів
+pvp-guide-rule-unit-build-speed = Швидкість виробництва юнітів
+pvp-guide-rule-block-damage = Шкода будівель
+pvp-guide-rule-block-health = Міцність будівель
+pvp-guide-rule-build-cost = Ціна будівель
+pvp-guide-rule-build-speed = Швидкість будівництва
+pvp-guide-banned-blocks-title = Заборонені будівлі
+pvp-guide-banned-units-title = Заборонені юніти
+pvp-guide-other-title = Ще
+pvp-guide-other-fog = Туман війни: видно лише те, що бачать твої будівлі та юніти.
+pvp-guide-other-capture = Знищене ядро переходить до того, хто його знищив.
+pvp-guide-other-reactors = Реактори не вибухають.
+pvp-guide-vanilla-title = Звичайні правила
+pvp-guide-vanilla-text = На цій мапі правила як у звичайному PvP Mindustry.
+
+pvp-guide-elo-title = Рейтинг ELO
+pvp-guide-elo-text = Усі починають з [accent]{ $start }[]. Перемога підіймає рейтинг, поразка знижує. Наскільки, залежить від рейтингу твоєї команди та суперників: перемога над сильними дає більше.
+pvp-guide-leave-title = Вихід не рятує від поразки
+pvp-guide-leave-text = Якщо твоя команда програла, ти втрачаєш рейтинг повністю, навіть якщо вийшов або пішов у спостерігачі раніше. Без втрат, лише якщо ти пробув у грі менше ніж [accent]{ $seconds }[] с.
+pvp-guide-unrated-title = Коли рейтинг не змінюється
+pvp-guide-unrated-text =
+    Раунд коротший за [accent]{ $seconds }[] с або в ньому менше ніж [accent]{ $players }[] гравців з рейтингом: раунд не зараховується.
+    Переможцю треба відіграти хоча б [accent]{ $winner }%[] раунду, інакше рейтинг не зростає.
+    Зайшов пізно до команди, що програла, і відіграв менше ніж [accent]{ $late }%[] раунду: рейтинг не падає.
+pvp-guide-seasons-title = Ліги та сезони
+pvp-guide-seasons-text = Рейтинг визначає лігу. Рейтинг іде за сезонами: наприкінці сезону найкращі отримують призи. Підсумки кожного матчу: [accent]/matches[].
 # ==============================================================================
 # Events & Notifications
 # ==============================================================================

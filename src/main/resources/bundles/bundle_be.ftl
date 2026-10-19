@@ -802,6 +802,7 @@ commands-ranks-footer = Перамогі залічваюцца, толькі к
 commands-top-description = Лепшыя гульцы.
 commands-season-description = Рэйтынгавы сезон: колькі засталося, ваша месца і пераможцы мінулага сезона.
 commands-matches-description = Вашы рэйтынгавыя матчы: вынікі, змены рэйтынгу і з кім вы гулялі.
+commands-pvp-description = Гайд па MiniPvP: раўнд, правілы сервера і як лічыцца рэйтынг.
 commands-top-hexed-content = [orange]{ $index }. { $nickname }[accent]: [blue]{ $rankName } [cyan]{ $points } []перамог
 commands-top-pvp-content = [orange]{ $index }. { $nickname }[accent]: [cyan]{ $rating }
 top-menu-title = [orange]{ -xcore } — Лепшыя гульцы: [accent]{ $category }
@@ -916,6 +917,86 @@ season-menu-empty = Рэйтынгавых сезонаў пакуль няма.
 pvp-hud-status = [accent]MiniPvP[] | [stat]Жывыя:[] { $teams } | [gray]{ $time }[]
 pvp-leaderboard-content = [orange]{ $index }. { $nickname }[accent]:[cyan] { $rating } [accent]рэйтынгу
 pvp-you-spectator = [scarlet]Вы выбылі. Пачакайце наступнай гульні.
+
+# MiniPvP guide (/pvp info)
+pvp-guide-title = Як тут гуляць
+pvp-guide-subtitle = Звычайны PvP Mindustry: каманды будуюць базы і знішчаюць ядры адна адной. Тут сабрана, чым гэты сервер адрозніваецца і як лічыцца рэйтынг.
+pvp-guide-hint = Адкрыць зноў: [accent]/pvp info[]
+pvp-guide-join-hint = [lightgray]Правілы MiniPvP і рэйтынг:[] [accent]/pvp info[]
+pvp-guide-menu-button = Як гуляць у MiniPvP
+pvp-guide-tab-round = Раўнд
+pvp-guide-tab-rules = Правілы
+pvp-guide-tab-rating = Рэйтынг
+pvp-guide-stat-minutes = хвілін ідзе раўнд
+pvp-guide-stat-teams = каманд у гульні
+pvp-guide-stat-players = гульцоў у камандах
+pvp-guide-stat-zone = тайлаў вакол ядра
+pvp-guide-stat-unitcap = ліміт юнітаў
+pvp-guide-stat-banned = блокаў пад забаронай
+pvp-guide-stat-start = рэйтынг на старце
+pvp-guide-stat-top = лепшыя гульцы
+pvp-guide-stat-matches = гісторыя матчаў
+
+pvp-guide-now-title = Зараз
+pvp-guide-now-map = Мапа: [accent]{ $map }[]
+pvp-guide-now-players = { $count } { $count ->
+        [one] гулец
+        [few] гульцы
+        [many] гульцоў
+       *[other] гульца
+    }
+pvp-guide-win-title = Як перамагчы
+pvp-guide-win-text = Знішч усе ядры супернікаў. Перамагае апошняя каманда, у якой засталіся ядры і гульцы. Каманда, у якой нікога не засталося, выбывае.
+pvp-guide-out-title = Выбыў: глядзіш да канца
+pvp-guide-out-text =
+    Твая каманда страціла апошняе ядро: ты назіраеш да наступнага раўнда.
+    Выйшаў сярод раўнда і вярнуўся: трапіш у тую ж каманду.
+pvp-guide-commands-title = Каманды
+pvp-guide-cmd-info = гэта акно
+pvp-guide-cmd-top = табліца лідараў
+pvp-guide-cmd-season = сезон і прызы
+pvp-guide-cmd-matches = твае матчы і рэйтынг за іх
+pvp-guide-cmd-rtv = галасаваць за змену мапы
+pvp-guide-cmd-observer = глядзець збоку
+
+pvp-guide-zone-title = Не будуй каля чужога ядра
+pvp-guide-zone-text = Бліжэй за [accent]{ $tiles }[] тайлаў да варожага ядра будаваць нельга. Каб прасунуцца, спачатку знішч гэта ядро.
+pvp-guide-zone-polygon-title = Зямля падзелена паміж ядрамі
+pvp-guide-zone-polygon-text = Будаваць можна толькі там, дзе найбліжэйшае ядро тваё. Каб заняць чужую зямлю, знішч ядро, да якога яна належыць.
+pvp-guide-unitcap-title = Ліміт юнітаў
+pvp-guide-unitcap-text = Каманда пачынае з лімітам [accent]{ $cap }[], і кожнае ядро павялічвае яго.
+pvp-guide-unitcap-fixed-title = Ліміт юнітаў
+pvp-guide-unitcap-fixed-text = У каманды не больш за [accent]{ $cap }[] юнітаў, колькі б ядраў у яе ні было.
+pvp-guide-multipliers-title = Іншы баланс
+pvp-guide-multipliers-text = На гэтай мапе гэтыя лічбы адрозніваюцца ад звычайных:
+pvp-guide-rule-unit-damage = Шкода юнітаў
+pvp-guide-rule-unit-health = Трываласць юнітаў
+pvp-guide-rule-unit-cost = Кошт юнітаў
+pvp-guide-rule-unit-build-speed = Хуткасць вытворчасці юнітаў
+pvp-guide-rule-block-damage = Шкода пабудоў
+pvp-guide-rule-block-health = Трываласць пабудоў
+pvp-guide-rule-build-cost = Кошт пабудоў
+pvp-guide-rule-build-speed = Хуткасць будаўніцтва
+pvp-guide-banned-blocks-title = Забароненыя пабудовы
+pvp-guide-banned-units-title = Забароненыя юніты
+pvp-guide-other-title = Яшчэ
+pvp-guide-other-fog = Туман вайны: бачна толькі тое, што бачаць твае пабудовы і юніты.
+pvp-guide-other-capture = Знішчанае ядро пераходзіць да таго, хто яго знішчыў.
+pvp-guide-other-reactors = Рэактары не выбухаюць.
+pvp-guide-vanilla-title = Звычайныя правілы
+pvp-guide-vanilla-text = На гэтай мапе правілы як у звычайным PvP Mindustry.
+
+pvp-guide-elo-title = Рэйтынг ELO
+pvp-guide-elo-text = Усе пачынаюць з [accent]{ $start }[]. Перамога падымае рэйтынг, параза апускае. Наколькі, залежыць ад рэйтынгу тваёй каманды і супернікаў: перамога над мацнейшымі дае больш.
+pvp-guide-leave-title = Выхад не ратуе ад паразы
+pvp-guide-leave-text = Калі твая каманда прайграла, ты губляеш рэйтынг цалкам, нават калі выйшаў або пайшоў у назіральнікі раней. Без страт, толькі калі ты прабыў у гульні менш за [accent]{ $seconds }[] с.
+pvp-guide-unrated-title = Калі рэйтынг не мяняецца
+pvp-guide-unrated-text =
+    Раўнд карацейшы за [accent]{ $seconds }[] с або з менш чым [accent]{ $players }[] гульцамі з рэйтынгам не залічваецца.
+    Пераможцу трэба адгуляць хаця б [accent]{ $winner }%[] раўнда, інакш рэйтынг не расце.
+    Зайшоў позна ў каманду, якая прайграла, і адгуляў менш за [accent]{ $late }%[] раўнда: рэйтынг не падае.
+pvp-guide-seasons-title = Лігі і сезоны
+pvp-guide-seasons-text = Рэйтынг вызначае лігу. Рэйтынг ідзе па сезонах: у канцы сезона лепшыя атрымліваюць прызы. Вынікі кожнага матчу: [accent]/matches[].
 # ==============================================================================
 # Events & Notifications
 # ==============================================================================

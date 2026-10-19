@@ -19,6 +19,14 @@ import java.util.function.Function;
 
 @Singleton
 public class MiniPvPMatchTracker {
+    /** A player who joined within this long of the start played the match from its start. */
+    public static final long PRESENT_AT_START_MS = 20_000L;
+    /** A loser who played less than this left at once, and loses nothing. */
+    public static final long LEFT_AT_ONCE_MS = 15_000L;
+    /** A loser who joined late and played less than this share of the match loses nothing. */
+    public static final double LATE_JOIN_SHARE = 0.25;
+    /** A winner who played less than this share of the match gains nothing. */
+    public static final double WINNER_SHARE = 0.5;
 
     public record ParticipantInfo(
             String uuid,
@@ -179,7 +187,7 @@ public class MiniPvPMatchTracker {
             double rawParticipation = (double) activePlayTimeMs / matchDurationMs;
             rawParticipation = Math.clamp(rawParticipation, 0.0, 1.0);
 
-            boolean presentAtStart = (p.joinTime() - startedAt <= 20_000L);
+            boolean presentAtStart = (p.joinTime() - startedAt <= PRESENT_AT_START_MS);
 
             double effectiveParticipation;
             String reason;
@@ -187,10 +195,10 @@ public class MiniPvPMatchTracker {
                 // On losing team: leaving or spectating after the first 15s still costs the full loss
                 // (no disconnect-dodging before core destruction), unless the player only joined for
                 // the last quarter of the match.
-                if (!presentAtStart && rawParticipation < 0.25) {
+                if (!presentAtStart && rawParticipation < LATE_JOIN_SHARE) {
                     effectiveParticipation = 0.0;
                     reason = MiniPvPMatchSnapshot.REASON_LATE_JOIN;
-                } else if (activePlayTimeMs < 15_000L) {
+                } else if (activePlayTimeMs < LEFT_AT_ONCE_MS) {
                     effectiveParticipation = 0.0;
                     reason = MiniPvPMatchSnapshot.REASON_LEFT_AT_ONCE;
                 } else {
@@ -200,7 +208,7 @@ public class MiniPvPMatchTracker {
             } else {
                 // On winning team:
                 // Must have stayed for >= 50% of the match to gain rating (no free carry gain for late joiners)
-                effectiveParticipation = rawParticipation >= 0.5 ? rawParticipation : 0.0;
+                effectiveParticipation = rawParticipation >= WINNER_SHARE ? rawParticipation : 0.0;
                 reason = effectiveParticipation > 0.0
                         ? MiniPvPMatchSnapshot.REASON_WINNER
                         : MiniPvPMatchSnapshot.REASON_SHORT_PLAY;

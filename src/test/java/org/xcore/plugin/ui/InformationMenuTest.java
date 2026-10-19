@@ -11,6 +11,7 @@ import org.xcore.plugin.common.BuildInfo;
 import org.xcore.plugin.config.TomlSecretsConfig;
 import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
+import org.xcore.plugin.gamemode.pvp.guide.MiniPvPGuideService;
 import org.xcore.plugin.localization.Localization;
 import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.session.Session;
@@ -48,6 +49,7 @@ class InformationMenuTest {
     private EventMenu event;
     private HelpMenu help;
     private PlayerMenu player;
+    private MiniPvPGuideService pvpGuide;
 
     @BeforeEach
     @SuppressWarnings("unchecked")
@@ -73,7 +75,8 @@ class InformationMenuTest {
         event = mock(EventMenu.class);
         help = mock(HelpMenu.class);
         player = mock(PlayerMenu.class);
-        informationMenu = new InformationMenu(config, secretsConfig, sessionService, buildInfo, menuService, map, event, help, player);
+        pvpGuide = mock(MiniPvPGuideService.class);
+        informationMenu = new InformationMenu(config, secretsConfig, sessionService, buildInfo, menuService, map, event, help, player, pvpGuide);
         informationMenu.init();
 
         session = session();
@@ -211,7 +214,7 @@ class InformationMenuTest {
         eventConfig.server.name = "event";
         BuildInfo buildInfo = new BuildInfo();
         buildInfo.setVersion("test-version");
-        InformationMenu eventInformationMenu = new InformationMenu(eventConfig, secretsConfig, localSessionService, buildInfo, localMenuService, map, eventMenu, help, player);
+        InformationMenu eventInformationMenu = new InformationMenu(eventConfig, secretsConfig, localSessionService, buildInfo, localMenuService, map, eventMenu, help, player, pvpGuide);
         eventInformationMenu.init();
 
         eventInformationMenu.main("viewer-1");
@@ -220,6 +223,19 @@ class InformationMenuTest {
         verify(eventMenu).main("viewer-1");
         assertThat(localSession.hasHistory()).isFalse();
         assertThat(localSession.hasRouteHistory()).isTrue();
+    }
+
+    @Test
+    @DisplayName("main opens the MiniPvP guide on the MiniPvP server")
+    void main_opensMiniPvPGuideOnMiniPvPServer() {
+        when(pvpGuide.hostsMode()).thenReturn(true);
+        informationMenu.main("viewer-1");
+
+        assertThat(session.activeScreen().actionCount()).isEqualTo(6);
+        menuService.onMenuOption(session, 4);
+
+        verify(pvpGuide).open(session);
+        assertThat(session.hasRouteHistory()).isTrue();
     }
 
     @Test
@@ -239,7 +255,7 @@ class InformationMenuTest {
         eventConfig.server.name = "event";
         BuildInfo buildInfo = new BuildInfo();
         buildInfo.setVersion("test-version");
-        InformationMenu eventInformationMenu = new InformationMenu(eventConfig, secretsConfig, localSessionService, buildInfo, localMenuService, map, eventMenu, help, player);
+        InformationMenu eventInformationMenu = new InformationMenu(eventConfig, secretsConfig, localSessionService, buildInfo, localMenuService, map, eventMenu, help, player, pvpGuide);
         eventInformationMenu.init();
 
         eventInformationMenu.main("viewer-1");

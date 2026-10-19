@@ -792,6 +792,7 @@ commands-ranks-footer = Les victoires ne comptent que contre un joueur de votre 
 commands-top-description = Meilleurs joueurs.
 commands-season-description = Saison classée : temps restant, votre position et les gagnants de la saison précédente.
 commands-matches-description = Vos matchs classés : résultats, variations de classement et vos coéquipiers et adversaires.
+commands-pvp-description = Guide MiniPvP : la manche, les règles du serveur et le fonctionnement du classement.
 commands-top-hexed-content = [orange]{ $index }. { $nickname }[accent] : [blue]{ $rankName } [cyan]{ $points } []victoires
 commands-top-pvp-content = [orange]{ $index }. { $nickname }[accent] : [cyan]{ $rating }
 top-menu-title = [orange]{ -xcore } — Meilleurs joueurs : [accent]{ $category }
@@ -904,6 +905,84 @@ season-menu-empty = Il n'y a pas encore de saisons classées.
 pvp-hud-status = [accent]MiniPvP[] | [stat]En vie :[] { $teams } | [gray]{ $time }[]
 pvp-leaderboard-content = [orange]{ $index }. { $nickname }[accent] :[cyan] { $rating } [accent]points
 pvp-you-spectator = [scarlet]Vous avez été éliminé. Attendez la prochaine partie.
+
+# MiniPvP guide (/pvp info)
+pvp-guide-title = Comment jouer ici
+pvp-guide-subtitle = PvP classique de Mindustry : les équipes construisent des bases et détruisent les noyaux des autres. Voici ce qui distingue ce serveur et comment fonctionne le classement.
+pvp-guide-hint = Rouvrir : [accent]/pvp info[]
+pvp-guide-join-hint = [lightgray]Règles et classement MiniPvP :[] [accent]/pvp info[]
+pvp-guide-menu-button = Comment jouer à MiniPvP
+pvp-guide-tab-round = Manche
+pvp-guide-tab-rules = Règles
+pvp-guide-tab-rating = Classement
+pvp-guide-stat-minutes = minutes de jeu
+pvp-guide-stat-teams = équipes en jeu
+pvp-guide-stat-players = joueurs en équipe
+pvp-guide-stat-zone = cases autour d'un noyau
+pvp-guide-stat-unitcap = limite d'unités
+pvp-guide-stat-banned = blocs interdits
+pvp-guide-stat-start = classement de départ
+pvp-guide-stat-top = meilleurs joueurs
+pvp-guide-stat-matches = historique des matchs
+
+pvp-guide-now-title = En ce moment
+pvp-guide-now-map = Carte : [accent]{ $map }[]
+pvp-guide-now-players = { $count } { $count ->
+        [one] joueur
+       *[other] joueurs
+    }
+pvp-guide-win-title = Comment gagner
+pvp-guide-win-text = Détruisez tous les noyaux ennemis. La dernière équipe à qui il reste des noyaux et des joueurs gagne. Une équipe où il ne reste personne est éliminée.
+pvp-guide-out-title = Éliminé : regardez jusqu'à la fin
+pvp-guide-out-text =
+    Votre équipe a perdu son dernier noyau : vous regardez jusqu'à la manche suivante.
+    Parti en cours de manche puis revenu : vous retrouvez la même équipe.
+pvp-guide-commands-title = Commandes
+pvp-guide-cmd-info = cette fenêtre
+pvp-guide-cmd-top = classement général
+pvp-guide-cmd-season = saison et prix
+pvp-guide-cmd-matches = vos matchs et leur classement
+pvp-guide-cmd-rtv = voter pour changer de carte
+pvp-guide-cmd-observer = regarder de côté
+
+pvp-guide-zone-title = Pas de construction près des noyaux ennemis
+pvp-guide-zone-text = Vous ne pouvez pas construire à moins de [accent]{ $tiles }[] cases d'un noyau ennemi. Pour avancer, détruisez d'abord ce noyau.
+pvp-guide-zone-polygon-title = Le terrain est partagé entre les noyaux
+pvp-guide-zone-polygon-text = Vous ne pouvez construire que là où le noyau le plus proche est le vôtre. Pour prendre du terrain ennemi, détruisez le noyau auquel il appartient.
+pvp-guide-unitcap-title = Limite d'unités
+pvp-guide-unitcap-text = Une équipe commence avec une limite de [accent]{ $cap }[], et chaque noyau l'augmente.
+pvp-guide-unitcap-fixed-title = Limite d'unités
+pvp-guide-unitcap-fixed-text = Une équipe a au plus [accent]{ $cap }[] unités, quel que soit son nombre de noyaux.
+pvp-guide-multipliers-title = Un autre équilibre
+pvp-guide-multipliers-text = Sur cette carte, ces valeurs diffèrent de l'habitude :
+pvp-guide-rule-unit-damage = Dégâts des unités
+pvp-guide-rule-unit-health = Santé des unités
+pvp-guide-rule-unit-cost = Coût des unités
+pvp-guide-rule-unit-build-speed = Vitesse de production des unités
+pvp-guide-rule-block-damage = Dégâts des bâtiments
+pvp-guide-rule-block-health = Santé des bâtiments
+pvp-guide-rule-build-cost = Coût des bâtiments
+pvp-guide-rule-build-speed = Vitesse de construction
+pvp-guide-banned-blocks-title = Blocs interdits
+pvp-guide-banned-units-title = Unités interdites
+pvp-guide-other-title = Aussi
+pvp-guide-other-fog = Brouillard de guerre : vous ne voyez que ce que voient vos bâtiments et vos unités.
+pvp-guide-other-capture = Un noyau détruit passe à l'équipe qui l'a détruit.
+pvp-guide-other-reactors = Les réacteurs n'explosent pas.
+pvp-guide-vanilla-title = Règles classiques
+pvp-guide-vanilla-text = Cette carte suit les règles du PvP classique de Mindustry.
+
+pvp-guide-elo-title = Classement ELO
+pvp-guide-elo-text = Tout le monde commence à [accent]{ $start }[]. Une victoire fait monter votre classement, une défaite le fait baisser. De combien dépend du classement de votre équipe et de vos adversaires : battre plus fort rapporte plus.
+pvp-guide-leave-title = Partir n'évite pas la défaite
+pvp-guide-leave-text = Si votre équipe perd, vous perdez le classement en entier, même si vous êtes parti ou passé spectateur avant. Vous ne perdez rien seulement si vous avez joué moins de [accent]{ $seconds }[] s.
+pvp-guide-unrated-title = Quand le classement ne change pas
+pvp-guide-unrated-text =
+    Une manche de moins de [accent]{ $seconds }[] s ou avec moins de [accent]{ $players }[] joueurs classés ne compte pas.
+    Un gagnant doit jouer au moins [accent]{ $winner }%[] de la manche, sinon son classement ne monte pas.
+    Arrivé tard dans une équipe qui a perdu, avec moins de [accent]{ $late }%[] de la manche joués : votre classement ne baisse pas.
+pvp-guide-seasons-title = Ligues et saisons
+pvp-guide-seasons-text = Votre classement détermine votre ligue. Le classement se joue par saisons : à la fin de chacune, les meilleurs reçoivent des prix. Résultats de chaque match : [accent]/matches[].
 # ==============================================================================
 # Events & Notifications
 # ==============================================================================
