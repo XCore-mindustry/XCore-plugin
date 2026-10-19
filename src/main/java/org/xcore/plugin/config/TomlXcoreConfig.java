@@ -3,6 +3,7 @@ package org.xcore.plugin.config;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 
 /**
@@ -312,10 +313,13 @@ public class TomlXcoreConfig implements SelfNormalizing {
     public static class TranslationConfig {
         public boolean enabled = true;
         public List<String> pipeline = new ArrayList<>(List.of("google"));
-        public boolean preserveOriginalMessageOnFailure = true;
         public CacheConfig cache = new CacheConfig();
         public MetricsConfig metrics = new MetricsConfig();
         public LlmConfig llm = new LlmConfig();
+        public TranslationDeliveryConfig delivery = new TranslationDeliveryConfig();
+        public TranslationLimitsConfig limits = new TranslationLimitsConfig();
+        public TranslationPrefilterConfig prefilter = new TranslationPrefilterConfig();
+        public TranslationChannelsConfig channels = new TranslationChannelsConfig();
 
         public void normalize() {
             if (pipeline == null || pipeline.isEmpty()) {
@@ -330,9 +334,24 @@ public class TomlXcoreConfig implements SelfNormalizing {
             if (llm == null) {
                 llm = new LlmConfig();
             }
+            if (delivery == null) {
+                delivery = new TranslationDeliveryConfig();
+            }
+            if (limits == null) {
+                limits = new TranslationLimitsConfig();
+            }
+            if (prefilter == null) {
+                prefilter = new TranslationPrefilterConfig();
+            }
+            if (channels == null) {
+                channels = new TranslationChannelsConfig();
+            }
             cache.normalize();
             metrics.normalize();
             llm.normalize();
+            delivery.normalize();
+            limits.normalize();
+            prefilter.normalize();
         }
     }
 
@@ -340,6 +359,8 @@ public class TomlXcoreConfig implements SelfNormalizing {
         public boolean enabled = true;
         public int ttlSeconds = 1800;
         public int maxTextLength = 500;
+        public int memoryEntries = 2000;
+        public int memoryTtlSeconds = 600;
 
         public void normalize() {
             if (ttlSeconds <= 0) {
@@ -348,7 +369,96 @@ public class TomlXcoreConfig implements SelfNormalizing {
             if (maxTextLength <= 0) {
                 maxTextLength = 500;
             }
+            if (memoryEntries < 0) {
+                memoryEntries = 2000;
+            }
+            if (memoryTtlSeconds <= 0) {
+                memoryTtlSeconds = 600;
+            }
         }
+    }
+
+    /**
+     * When a translated recipient sees a message. {@code deadline}: wait up to
+     * {@code deadlineMillis} for the translation, then send the original and the translation
+     * as a follow-up line if it arrives within {@code lateTranslationMillis}.
+     * {@code original-first}: never wait. {@code wait}: wait up to {@code lateTranslationMillis}
+     * and send no follow-up.
+     */
+    public static class TranslationDeliveryConfig {
+        public static final String MODE_DEADLINE = "deadline";
+        public static final String MODE_ORIGINAL_FIRST = "original-first";
+        public static final String MODE_WAIT = "wait";
+
+        public String mode = MODE_DEADLINE;
+        public int deadlineMillis = 1500;
+        public int lateTranslationMillis = 10000;
+
+        public void normalize() {
+            mode = mode == null ? MODE_DEADLINE : mode.trim().toLowerCase(Locale.ROOT).replace('_', '-');
+            if (!mode.equals(MODE_DEADLINE) && !mode.equals(MODE_ORIGINAL_FIRST) && !mode.equals(MODE_WAIT)) {
+                mode = MODE_DEADLINE;
+            }
+            if (deadlineMillis < 0) {
+                deadlineMillis = 1500;
+            }
+            if (lateTranslationMillis < deadlineMillis) {
+                lateTranslationMillis = Math.max(10000, deadlineMillis);
+            }
+        }
+    }
+
+    public static class TranslationLimitsConfig {
+        /** Provider calls in flight at once; further messages are delivered untranslated. */
+        public int maxConcurrentRequests = 16;
+        /** Messages an author can have translated in a burst. */
+        public int authorBurst = 5;
+        /** How many translated messages an author regains per minute. */
+        public int authorRefillPerMinute = 30;
+        /** Upper bound for one pipeline run, across all providers and retries. */
+        public int requestTimeoutSeconds = 45;
+
+        public void normalize() {
+            if (maxConcurrentRequests <= 0) {
+                maxConcurrentRequests = 16;
+            }
+            if (authorBurst <= 0) {
+                authorBurst = 5;
+            }
+            if (authorRefillPerMinute <= 0) {
+                authorRefillPerMinute = 30;
+            }
+            if (requestTimeoutSeconds <= 0) {
+                requestTimeoutSeconds = 45;
+            }
+        }
+    }
+
+    public static class TranslationPrefilterConfig {
+        public boolean enabled = true;
+        /** Messages with fewer letters (after colour tags and icons are removed) are not translated. */
+        public int minLetters = 2;
+        /** Whole messages that read the same in every language, compared case-insensitively. */
+        public List<String> skipWords = new ArrayList<>(defaultSkipWords());
+
+        public void normalize() {
+            if (minLetters < 0) {
+                minLetters = 2;
+            }
+            if (skipWords == null) {
+                skipWords = new ArrayList<>(defaultSkipWords());
+            }
+        }
+
+        private static List<String> defaultSkipWords() {
+            return List.of("gg", "ggwp", "wp", "gl", "hf", "glhf", "ok", "okay", "lol", "xd", "afk", "brb", "ez", "rip", "omg", "wtf", "pls", "plz", "thx", "ty", "np");
+        }
+    }
+
+    /** Chat that arrives from elsewhere and can be translated for local players as well. */
+    public static class TranslationChannelsConfig {
+        public boolean remoteGlobal = false;
+        public boolean discord = false;
     }
 
     public static class AnnouncementConfig {

@@ -41,14 +41,17 @@ class TranslationMetricsServiceTest {
         TranslationMetricsService service = new TranslationMetricsService(backend, config);
 
         service.incrementGlobal("requests_total");
+        service.incrementGlobal("requests_total");
+        assertThat(hashes).isEmpty();
+        service.flush();
 
         assertThat(hashes.get("xcore:translation:metrics:mini-pvp:totals"))
-                .containsEntry("requests_total", "1");
+                .containsEntry("requests_total", "2");
         String minuteKey = hashes.keySet().stream()
                 .filter(key -> key.startsWith("xcore:translation:metrics:mini-pvp:minute:"))
                 .findFirst()
                 .orElseThrow();
-        assertThat(hashes.get(minuteKey)).containsEntry("requests_total", "1");
+        assertThat(hashes.get(minuteKey)).containsEntry("requests_total", "2");
         assertThat(expirations).containsEntry(minuteKey, 42L);
     }
 
@@ -67,6 +70,7 @@ class TranslationMetricsServiceTest {
 
         service.incrementGlobal("requests_total");
         service.incrementProvider("google", "attempts_total");
+        service.flush();
 
         assertThat(hashes.get("xcore:translation:metrics:mini-pvp:totals"))
                 .containsEntry("requests_total", "1");
@@ -87,6 +91,7 @@ class TranslationMetricsServiceTest {
         TranslationMetricsService service = new TranslationMetricsService(backend, config("alpha"));
 
         service.incrementProvider(" OpenAI / Model ", "attempts_total");
+        service.flush();
 
         assertThat(hashes)
                 .containsKey("xcore:translation:metrics:alpha:provider:openai___model:totals");
@@ -109,6 +114,7 @@ class TranslationMetricsServiceTest {
         service.recordProviderLatency("google", 123);
         service.markProviderSuccess("google");
         service.markProviderFailure("google", "timeout");
+        service.flush();
 
         assertThat(hashes.get("xcore:translation:metrics:beta:provider:google:totals"))
                 .containsEntry("latency_sum_ms", "123")
@@ -116,6 +122,27 @@ class TranslationMetricsServiceTest {
                 .containsEntry("last_latency_ms", "123")
                 .containsEntry("last_failure_reason", "timeout")
                 .containsKeys("last_success_at", "last_failure_at");
+    }
+
+    @Test
+    @DisplayName("reads include counters that are not flushed yet")
+    void reads_includeUnflushedCounters() {
+        Map<String, Map<String, String>> hashes = new LinkedHashMap<>();
+        Map<String, Long> expirations = new HashMap<>();
+        RedisAsyncCommands<String, String> asyncCommands = redisAsyncCommands(hashes, expirations);
+        when(asyncCommands.hgetall(anyString())).thenAnswer(invocation ->
+                redisFuture(new LinkedHashMap<>(hashes.getOrDefault(invocation.<String>getArgument(0), Map.of()))));
+        RedisNetworkBackend backend = backend(redisCommands(hashes, expirations), asyncCommands);
+        TranslationMetricsService service = new TranslationMetricsService(backend, config("gamma"));
+
+        service.incrementGlobal("requests_total");
+        service.flush();
+        service.incrementGlobal("requests_total");
+        service.incrementGlobal("cache_hits_total");
+
+        assertThat(service.readGlobalTotals())
+                .containsEntry("requests_total", "2")
+                .containsEntry("cache_hits_total", "1");
     }
 
     @Test

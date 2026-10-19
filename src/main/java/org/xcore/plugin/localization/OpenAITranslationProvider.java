@@ -1,6 +1,5 @@
 package org.xcore.plugin.localization;
 
-import arc.func.Cons;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import org.xcore.plugin.config.TomlSecretsConfig;
@@ -13,12 +12,15 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Locale;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 import java.util.stream.Collectors;
 
 public final class OpenAITranslationProvider implements TranslationProvider {
 
     private static final String PROVIDER_TYPE = "openai";
-    static final long MAX_OUTPUT_TOKENS = 512L;
+    static final long BASE_OUTPUT_TOKENS = 64L;
+    static final long OUTPUT_TOKENS_PER_TARGET = 384L;
     private static final Gson GSON = new Gson();
 
     private final String providerId;
@@ -48,7 +50,7 @@ public final class OpenAITranslationProvider implements TranslationProvider {
                 .connectTimeout(Duration.ofSeconds(this.providerConfig.timeoutSeconds))
                 .build();
         this.requestFactory = new OpenAIRequestFactory(this.providerConfig, translationSafetyService);
-        this.responseParser = new OpenAIResponseParser(translationSafetyService);
+        this.responseParser = new OpenAIResponseParser();
         this.retryPolicy = new OpenAIRetryPolicy();
     }
 
@@ -62,19 +64,21 @@ public final class OpenAITranslationProvider implements TranslationProvider {
         return PROVIDER_TYPE;
     }
 
+    /** Model, API mode and prompt all change the output, so all of them invalidate cached translations. */
     @Override
-    public void translate(Request request, Cons<TranslationResult> callback) {
-        if (request.text() == null || request.text().isBlank()) {
-            callback.get(TranslationResult.success(""));
-            return;
-        }
+    public String signature() {
+        return String.join(":", providerId, PROVIDER_TYPE, providerConfig.model,
+                requestFactory.normalizedApiMode(), "p" + TranslationSafetyService.PROMPT_VERSION);
+    }
 
+    @Override
+    public CompletionStage<TranslationOutcome> translate(Request request) {
         if (providerConfig.apiKey == null || providerConfig.apiKey.isBlank()) {
-            callback.get(TranslationResult.failure(TranslationFailure.unavailable(name(), "provider is not configured")));
-            return;
+            return CompletableFuture.completedFuture(TranslationOutcome.failed(request.targetLanguages(),
+                    TranslationFailure.unavailable(name(), "provider is not configured")));
         }
 
-        translationExecutor.execute(() -> callback.get(executeTranslation(request)));
+        return translationExecutor.supply(() -> executeTranslation(request));
     }
 
     @Override
@@ -86,22 +90,26 @@ public final class OpenAITranslationProvider implements TranslationProvider {
         return supportedLanguages.contains(languageCode.trim().toLowerCase(Locale.ROOT));
     }
 
-    private TranslationResult executeTranslation(Request request) {
+    private TranslationOutcome executeTranslation(Request request) {
         try {
             TranslationSafetyService.PreparationResult preparationResult = translationSafetyService.prepare(request, name());
             if (preparationResult instanceof TranslationSafetyService.PreparationResult.Failure(var failure)) {
-                return TranslationResult.failure(failure);
+                return TranslationOutcome.failed(request.targetLanguages(), failure);
             }
 
             TranslationSafetyService.PreparedRequest preparedRequest =
                     ((TranslationSafetyService.PreparationResult.Success) preparationResult).preparedRequest();
 
-            String translatedText = executeConfiguredRequest(preparedRequest);
-            return translationSafetyService.validate(name(), preparedRequest, translatedText);
+            String rawOutput = executeConfiguredRequest(preparedRequest);
+            boolean allowPlainText = !translationSafetyService.requiresStructuredOutput()
+                    || OpenAIRequestFactory.API_MODE_CHAT_COMPLETIONS.equals(requestFactory.normalizedApiMode());
+            return translationSafetyService.validate(name(), preparedRequest, rawOutput, allowPlainText);
         } catch (RateLimitFailureException exception) {
-            return TranslationResult.failure(TranslationFailure.unavailable(name(), "translation rate limit exceeded"));
+            return TranslationOutcome.failed(request.targetLanguages(),
+                    TranslationFailure.unavailable(name(), "translation rate limit exceeded"));
         } catch (RuntimeException exception) {
-            return TranslationResult.failure(TranslationFailure.unavailable(name(), sanitizeFailureReason(exception)));
+            return TranslationOutcome.failed(request.targetLanguages(),
+                    TranslationFailure.unavailable(name(), sanitizeFailureReason(exception)));
         }
     }
 

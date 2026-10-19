@@ -3,6 +3,7 @@ package org.xcore.plugin.event.transport;
 import arc.func.Cons;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.xcore.plugin.chat.ChatDeliveryService;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatDiscordIngressCommandV1;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatGlobalV1;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatPrivateV1;
@@ -46,7 +47,8 @@ class ChatTransportHandlerTest {
         TomlXcoreConfig config = new TomlXcoreConfig();
         config.server.name = "mini-pvp";
 
-        ChatTransportHandler handler = new ChatTransportHandler(network, sessionService, privateMessageService, config, async);
+        ChatTransportHandler handler = new ChatTransportHandler(network, sessionService, privateMessageService, config, async,
+                mock(ChatDeliveryService.class));
 
         Map<Class<?>, Cons<?>> listeners = new HashMap<>();
         captureListeners(network, listeners);
@@ -76,7 +78,8 @@ class ChatTransportHandlerTest {
         TomlXcoreConfig config = new TomlXcoreConfig();
         config.server.name = "mini-pvp";
 
-        ChatTransportHandler handler = new ChatTransportHandler(network, sessionService, privateMessageService, config, async);
+        ChatTransportHandler handler = new ChatTransportHandler(network, sessionService, privateMessageService, config, async,
+                mock(ChatDeliveryService.class));
 
         Map<Class<?>, Cons<?>> listeners = new HashMap<>();
         captureListeners(network, listeners);
@@ -98,7 +101,8 @@ class ChatTransportHandlerTest {
         TomlXcoreConfig config = new TomlXcoreConfig();
         config.server.name = "mini-pvp";
 
-        ChatTransportHandler handler = new ChatTransportHandler(network, sessionService, privateMessageService, config, async);
+        ChatTransportHandler handler = new ChatTransportHandler(network, sessionService, privateMessageService, config, async,
+                mock(ChatDeliveryService.class));
 
         Map<Class<?>, Cons<?>> listeners = new HashMap<>();
         captureListeners(network, listeners);
@@ -126,7 +130,8 @@ class ChatTransportHandlerTest {
         TomlXcoreConfig config = new TomlXcoreConfig();
         config.server.name = "mini-pvp";
 
-        ChatTransportHandler handler = new ChatTransportHandler(network, sessionService, privateMessageService, config, async);
+        ChatTransportHandler handler = new ChatTransportHandler(network, sessionService, privateMessageService, config, async,
+                mock(ChatDeliveryService.class));
 
         Map<Class<?>, Cons<?>> listeners = new HashMap<>();
         captureListeners(network, listeners);

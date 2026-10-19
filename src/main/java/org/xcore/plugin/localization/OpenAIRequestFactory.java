@@ -71,11 +71,11 @@ final class OpenAIRequestFactory {
         request.addProperty("instructions", preparedRequest.promptPolicy());
         request.addProperty("input", preparedRequest.userPayload());
         request.addProperty("temperature", providerConfig.temperature);
-        request.addProperty("max_output_tokens", OpenAITranslationProvider.MAX_OUTPUT_TOKENS);
+        request.addProperty("max_output_tokens", maxOutputTokens(preparedRequest));
 
         if (translationSafetyService.requiresStructuredOutput()) {
             JsonObject text = new JsonObject();
-            text.add("format", buildResponsesStructuredFormat());
+            text.add("format", buildResponsesStructuredFormat(preparedRequest));
             request.add("text", text);
         }
 
@@ -86,7 +86,7 @@ final class OpenAIRequestFactory {
         JsonObject request = new JsonObject();
         request.addProperty("model", providerConfig.model);
         request.addProperty("temperature", providerConfig.temperature);
-        request.addProperty("max_completion_tokens", OpenAITranslationProvider.MAX_OUTPUT_TOKENS);
+        request.addProperty("max_completion_tokens", maxOutputTokens(preparedRequest));
 
         JsonArray messages = new JsonArray();
         messages.add(message("system", preparedRequest.promptPolicy()));
@@ -96,31 +96,53 @@ final class OpenAIRequestFactory {
         return request;
     }
 
-    private JsonObject buildResponsesStructuredFormat() {
+    private long maxOutputTokens(TranslationSafetyService.PreparedRequest preparedRequest) {
+        return OpenAITranslationProvider.BASE_OUTPUT_TOKENS
+                + OpenAITranslationProvider.OUTPUT_TOKENS_PER_TARGET * preparedRequest.targetLanguages().size();
+    }
+
+    private JsonObject buildResponsesStructuredFormat(TranslationSafetyService.PreparedRequest preparedRequest) {
         JsonObject format = new JsonObject();
         format.addProperty("type", "json_schema");
-        format.addProperty("name", "translation");
+        format.addProperty("name", "translations");
         format.addProperty("strict", true);
-        format.add("schema", buildTranslationSchema());
+        format.add("schema", buildTranslationSchema(preparedRequest));
         return format;
     }
 
-    private JsonObject buildTranslationSchema() {
-        JsonObject schema = new JsonObject();
-        schema.addProperty("type", "object");
+    private JsonObject buildTranslationSchema(TranslationSafetyService.PreparedRequest preparedRequest) {
+        JsonObject translationProperties = new JsonObject();
+        JsonArray requiredTargets = new JsonArray();
+        for (String target : preparedRequest.targetLanguages()) {
+            translationProperties.add(target, stringSchema());
+            requiredTargets.add(target);
+        }
 
-        JsonObject translationProperty = new JsonObject();
-        translationProperty.addProperty("type", "string");
+        JsonObject translations = objectSchema(translationProperties, requiredTargets);
 
         JsonObject properties = new JsonObject();
-        properties.add("translation", translationProperty);
+        properties.add("detectedLanguage", stringSchema());
+        properties.add("translations", translations);
 
         JsonArray required = new JsonArray();
-        required.add("translation");
+        required.add("detectedLanguage");
+        required.add("translations");
 
+        return objectSchema(properties, required);
+    }
+
+    private static JsonObject objectSchema(JsonObject properties, JsonArray required) {
+        JsonObject schema = new JsonObject();
+        schema.addProperty("type", "object");
         schema.add("properties", properties);
         schema.add("required", required);
         schema.addProperty("additionalProperties", false);
+        return schema;
+    }
+
+    private static JsonObject stringSchema() {
+        JsonObject schema = new JsonObject();
+        schema.addProperty("type", "string");
         return schema;
     }
 

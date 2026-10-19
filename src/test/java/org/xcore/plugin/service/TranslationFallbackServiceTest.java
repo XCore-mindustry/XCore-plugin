@@ -3,12 +3,17 @@ package org.xcore.plugin.service;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.xcore.plugin.localization.TranslationFailure;
+import org.xcore.plugin.localization.TranslationOutcome;
 import org.xcore.plugin.localization.TranslationProvider;
 import org.xcore.plugin.localization.TranslationProviderPipeline;
-import org.xcore.plugin.localization.TranslationResult;
 
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicReference;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
@@ -18,166 +23,129 @@ class TranslationFallbackServiceTest {
     @Test
     @DisplayName("translate returns primary provider result when first provider succeeds")
     void translate_returnsPrimaryProviderResult_whenFirstProviderSucceeds() {
-        StubProvider primary = new StubProvider(
-                "primary",
-                true,
-                TranslationResult.success("translated-primary")
-        );
-        StubProvider secondary = new StubProvider(
-                "secondary",
-                true,
-                TranslationResult.success("translated-secondary")
-        );
-        TranslationFallbackService service = new TranslationFallbackService(
-                new TranslationProviderPipeline(List.of(primary, secondary)),
-                mock(TranslationMetricsService.class)
-        );
-        AtomicReference<TranslationResult> result = new AtomicReference<>();
+        StubProvider primary = new StubProvider("primary", Set.of(), Set.of());
+        StubProvider secondary = new StubProvider("secondary", Set.of(), Set.of());
+        TranslationFallbackService service = service(primary, secondary);
 
-        service.translate(new TranslationProvider.Request("hello", "auto", "ru"), result::set);
+        TranslationOutcome outcome = translate(service, "ru");
 
-        assertThat(result.get())
-                .isInstanceOfSatisfying(TranslationResult.Success.class,
-                        success -> assertThat(success.translatedText()).isEqualTo("translated-primary"));
-        assertThat(primary.calls).isEqualTo(1);
-        assertThat(secondary.calls).isZero();
+        assertThat(outcome.translations()).containsEntry("ru", "primary:ru");
+        assertThat(outcome.failures()).isEmpty();
+        assertThat(primary.requests).containsExactly(List.of("ru"));
+        assertThat(secondary.requests).isEmpty();
     }
 
     @Test
-    @DisplayName("translate falls back to secondary provider when primary fails")
-    void translate_fallsBackToSecondaryProvider_whenPrimaryFails() {
-        StubProvider primary = new StubProvider(
-                "primary",
-                true,
-                TranslationResult.failure(TranslationFailure.unavailable("primary", "timeout"))
-        );
-        StubProvider secondary = new StubProvider(
-                "secondary",
-                true,
-                TranslationResult.success("translated-secondary")
-        );
-        TranslationFallbackService service = new TranslationFallbackService(
-                new TranslationProviderPipeline(List.of(primary, secondary)),
-                mock(TranslationMetricsService.class)
-        );
-        AtomicReference<TranslationResult> result = new AtomicReference<>();
+    @DisplayName("translate falls back per target: only failed targets reach the next provider")
+    void translate_fallsBackPerTarget() {
+        StubProvider primary = new StubProvider("primary", Set.of(), Set.of("de"));
+        StubProvider secondary = new StubProvider("secondary", Set.of(), Set.of());
+        TranslationFallbackService service = service(primary, secondary);
 
-        service.translate(new TranslationProvider.Request("hello", "auto", "ru"), result::set);
+        TranslationOutcome outcome = translate(service, "ru", "de");
 
-        assertThat(result.get())
-                .isInstanceOfSatisfying(TranslationResult.Success.class,
-                        success -> assertThat(success.translatedText()).isEqualTo("translated-secondary"));
-        assertThat(primary.calls).isEqualTo(1);
-        assertThat(secondary.calls).isEqualTo(1);
+        assertThat(outcome.translations())
+                .containsEntry("ru", "primary:ru")
+                .containsEntry("de", "secondary:de");
+        assertThat(outcome.failures()).isEmpty();
+        assertThat(secondary.requests).containsExactly(List.of("de"));
     }
 
     @Test
     @DisplayName("translate returns fallback failure when all providers fail")
     void translate_returnsFallbackFailure_whenAllProvidersFail() {
-        StubProvider primary = new StubProvider(
-                "primary",
-                true,
-                TranslationResult.failure(TranslationFailure.unavailable("primary", "timeout"))
-        );
-        StubProvider secondary = new StubProvider(
-                "secondary",
-                true,
-                TranslationResult.failure(TranslationFailure.unavailable("secondary", "unavailable"))
-        );
-        TranslationFallbackService service = new TranslationFallbackService(
-                new TranslationProviderPipeline(List.of(primary, secondary)),
-                mock(TranslationMetricsService.class)
-        );
-        AtomicReference<TranslationResult> result = new AtomicReference<>();
+        StubProvider primary = new StubProvider("primary", Set.of(), Set.of("ru"));
+        StubProvider secondary = new StubProvider("secondary", Set.of(), Set.of("ru"));
+        TranslationFallbackService service = service(primary, secondary);
 
-        service.translate(new TranslationProvider.Request("hello", "auto", "ru"), result::set);
+        TranslationOutcome outcome = translate(service, "ru");
 
-        assertThat(result.get())
-                .isInstanceOfSatisfying(TranslationResult.Failure.class, failure -> {
-                    assertThat(failure.failure().providerName()).isEqualTo("fallback");
-                    assertThat(failure.failure().reason()).isEqualTo("all translation providers failed");
-                });
-        assertThat(primary.calls).isEqualTo(1);
-        assertThat(secondary.calls).isEqualTo(1);
+        assertThat(outcome.translations()).isEmpty();
+        assertThat(outcome.failures().get("ru").reason()).isEqualTo("all translation providers failed");
     }
 
     @Test
     @DisplayName("translate returns unavailable failure when no providers are configured")
     void translate_returnsUnavailableFailure_whenNoProvidersAreConfigured() {
-        TranslationFallbackService service = new TranslationFallbackService(
-                new TranslationProviderPipeline(List.of()),
-                mock(TranslationMetricsService.class)
-        );
-        AtomicReference<TranslationResult> result = new AtomicReference<>();
+        TranslationFallbackService service = service();
 
-        service.translate(new TranslationProvider.Request("hello", "auto", "ru"), result::set);
+        TranslationOutcome outcome = translate(service, "ru");
 
-        assertThat(result.get())
-                .isInstanceOfSatisfying(TranslationResult.Failure.class, failure -> {
-                    assertThat(failure.failure().providerName()).isEqualTo("fallback");
-                    assertThat(failure.failure().reason()).isEqualTo("translation is unavailable: no providers configured");
-                });
+        assertThat(outcome.failures().get("ru").reason()).contains("no providers configured");
     }
 
     @Test
     @DisplayName("translate skips unsupported provider before using supported fallback")
     void translate_skipsUnsupportedProvider_beforeUsingSupportedFallback() {
-        StubProvider unsupportedPrimary = new StubProvider(
-                "primary",
-                false,
-                TranslationResult.success("should-not-be-used")
-        );
-        StubProvider supportedFallback = new StubProvider(
-                "fallback",
-                true,
-                TranslationResult.success("translated-secondary")
-        );
-        TranslationFallbackService service = new TranslationFallbackService(
-                new TranslationProviderPipeline(List.of(unsupportedPrimary, supportedFallback)),
-                mock(TranslationMetricsService.class)
-        );
-        AtomicReference<TranslationResult> result = new AtomicReference<>();
+        StubProvider primary = new StubProvider("primary", Set.of("ru"), Set.of());
+        StubProvider secondary = new StubProvider("secondary", Set.of(), Set.of());
+        TranslationFallbackService service = service(primary, secondary);
 
-        service.translate(new TranslationProvider.Request("hello", "auto", "ru"), result::set);
+        TranslationOutcome outcome = translate(service, "ru", "de");
 
-        assertThat(result.get())
-                .isInstanceOfSatisfying(TranslationResult.Success.class,
-                        success -> assertThat(success.translatedText()).isEqualTo("translated-secondary"));
-        assertThat(unsupportedPrimary.calls).isZero();
-        assertThat(supportedFallback.calls).isEqualTo(1);
+        assertThat(outcome.translations())
+                .containsEntry("ru", "secondary:ru")
+                .containsEntry("de", "primary:de");
+        assertThat(primary.requests).containsExactly(List.of("de"));
+        assertThat(secondary.requests).containsExactly(List.of("ru"));
+    }
+
+    @Test
+    @DisplayName("a provider that throws fails its targets and the pipeline moves on")
+    void translate_treatsThrowingProviderAsFailure() {
+        TranslationProvider throwing = new TranslationProvider() {
+            @Override
+            public String name() {
+                return "throwing";
+            }
+
+            @Override
+            public CompletionStage<TranslationOutcome> translate(Request request) {
+                throw new IllegalStateException("boom");
+            }
+        };
+        StubProvider secondary = new StubProvider("secondary", Set.of(), Set.of());
+        TranslationFallbackService service = service(throwing, secondary);
+
+        TranslationOutcome outcome = translate(service, "ru");
+
+        assertThat(outcome.translations()).containsEntry("ru", "secondary:ru");
     }
 
     @Test
     @DisplayName("pipeline signature reflects configured provider order")
     void pipelineSignature_reflectsConfiguredProviderOrder() {
-        StubProvider primary = new StubProvider(
-                "nvidia-mistral-small",
-                true,
-                TranslationResult.success("ok")
-        );
-        StubProvider secondary = new StubProvider(
-                "google",
-                true,
-                TranslationResult.success("ok")
-        );
-        TranslationFallbackService service = new TranslationFallbackService(
-                new TranslationProviderPipeline(List.of(primary, secondary)),
-                mock(TranslationMetricsService.class)
-        );
+        TranslationFallbackService service = service(
+                new StubProvider("nvidia-mistral-small", Set.of(), Set.of()),
+                new StubProvider("google", Set.of(), Set.of()));
 
         assertThat(service.pipelineSignature()).isEqualTo("nvidia-mistral-small:nvidia-mistral-small,google:google");
     }
 
+    private static TranslationFallbackService service(TranslationProvider... providers) {
+        return new TranslationFallbackService(
+                new TranslationProviderPipeline(List.of(providers)),
+                mock(TranslationMetricsService.class)
+        );
+    }
+
+    private static TranslationOutcome translate(TranslationFallbackService service, String... targets) {
+        return service.translate(new TranslationProvider.Request("hello", "auto", List.of(targets)))
+                .toCompletableFuture()
+                .join();
+    }
+
+    /** Translates every target to {@code name:target} except the ones it is told to fail. */
     private static final class StubProvider implements TranslationProvider {
         private final String name;
-        private final boolean supported;
-        private final TranslationResult result;
-        private int calls;
+        private final Set<String> unsupported;
+        private final Set<String> failing;
+        private final List<List<String>> requests = new ArrayList<>();
 
-        private StubProvider(String name, boolean supported, TranslationResult result) {
+        private StubProvider(String name, Set<String> unsupported, Set<String> failing) {
             this.name = name;
-            this.supported = supported;
-            this.result = result;
+            this.unsupported = unsupported;
+            this.failing = failing;
         }
 
         @Override
@@ -186,14 +154,23 @@ class TranslationFallbackServiceTest {
         }
 
         @Override
-        public void translate(Request request, arc.func.Cons<TranslationResult> callback) {
-            calls++;
-            callback.get(result);
+        public CompletionStage<TranslationOutcome> translate(Request request) {
+            requests.add(request.targetLanguages());
+            Map<String, String> translations = new LinkedHashMap<>();
+            Map<String, TranslationFailure> failures = new LinkedHashMap<>();
+            for (String target : request.targetLanguages()) {
+                if (failing.contains(target)) {
+                    failures.put(target, TranslationFailure.unavailable(name, "failed"));
+                } else {
+                    translations.put(target, name + ":" + target);
+                }
+            }
+            return CompletableFuture.completedFuture(new TranslationOutcome(null, translations, failures));
         }
 
         @Override
         public boolean supports(String languageCode) {
-            return supported;
+            return !unsupported.contains(languageCode);
         }
     }
 }

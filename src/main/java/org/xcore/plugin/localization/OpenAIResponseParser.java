@@ -1,29 +1,19 @@
 package org.xcore.plugin.localization;
 
-import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import org.xcore.plugin.service.TranslationSafetyService;
 
 import java.util.Optional;
 
 final class OpenAIResponseParser {
-    private static final Gson GSON = new Gson();
-
-    private final TranslationSafetyService translationSafetyService;
-
-    OpenAIResponseParser(TranslationSafetyService translationSafetyService) {
-        this.translationSafetyService = translationSafetyService;
-    }
 
     String extractTranslation(String apiMode, JsonObject response) {
         return switch (apiMode) {
             case OpenAIRequestFactory.API_MODE_RESPONSES -> extractResponseContent(response)
                     .orElseThrow(() -> new IllegalStateException("OpenAI response did not contain translation output"));
             case OpenAIRequestFactory.API_MODE_CHAT_COMPLETIONS -> extractChatCompletionContent(response)
-                    .map(this::configTranslationPayload)
                     .orElseThrow(() -> new IllegalStateException("OpenAI chat completion did not contain translation output"));
             default -> throw new IllegalStateException("Unsupported OpenAI provider api mode: " + apiMode);
         };
@@ -161,31 +151,6 @@ final class OpenAIResponseParser {
         return Optional.empty();
     }
 
-    private String configTranslationPayload(String content) {
-        if (!translationSafetyService.requiresStructuredOutput()) {
-            return content;
-        }
-
-        if (looksLikeStructuredTranslation(content)) {
-            return content;
-        }
-
-        return "{\"translation\":%s}".formatted(toJsonString(content));
-    }
-
-    private boolean looksLikeStructuredTranslation(String content) {
-        if (content == null || content.isBlank()) {
-            return false;
-        }
-
-        try {
-            JsonObject root = GSON.fromJson(content, JsonObject.class);
-            return root != null && root.has("translation") && !root.get("translation").isJsonNull();
-        } catch (RuntimeException exception) {
-            return false;
-        }
-    }
-
     private Optional<String> getString(JsonObject object, String memberName) {
         if (object == null || memberName == null || !object.has(memberName)) {
             return Optional.empty();
@@ -215,15 +180,5 @@ final class OpenAIResponseParser {
 
         JsonElement element = object.get(memberName);
         return element != null && element.isJsonArray() ? element.getAsJsonArray() : null;
-    }
-
-    private String toJsonString(String value) {
-        String escaped = value
-                .replace("\\", "\\\\")
-                .replace("\"", "\\\"")
-                .replace("\n", "\\n")
-                .replace("\r", "\\r")
-                .replace("\t", "\\t");
-        return '"' + escaped + '"';
     }
 }

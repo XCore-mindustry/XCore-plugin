@@ -207,25 +207,38 @@ memory; a scheduled task flushes deltas to the existing Redis hashes every
 blocking `join()` on the main thread) and the Redis totals for the
 cross-server view.
 
-## 4. Migration Plan
+## 4. Implementation Status
 
-| Phase | Scope | Behaviour change |
-|-------|-------|------------------|
-| 1 (done) | D1–D3: thread-safe Google parsing, guaranteed single completion in `TranslatorService.translate`, `minuteBucketsEnabled` honoured. | None beyond the fixes. |
-| 2 | `CompletionStage` provider/pipeline API; `ChatTranslationService` with prefilter, single-flight, admission control and L1 cache. `TranslatorService` becomes a thin adapter over it. | Fewer provider calls; rate-limited authors fall back to originals. |
-| 3 | `ChatDeliveryService` replaces the global/team paths in `TranslatorService`; delivery policy (§3.3) and per-group ordering; unify Foo's-client handling and `RecentChatBuffer` recording at the handler level. | Translated players see messages within the deadline; late translations as `↳` lines. |
-| 4 | Detected-language propagation, multi-target LLM requests, pipeline version in cache key, cross-server cache, in-memory metrics with periodic flush. | Lower cost/latency, no visible change. |
-| 5 | Optional translation of cross-server global chat and Discord ingress (config flag per channel). | New feature. |
+All phases are implemented. Where the code differs from §3, this section wins.
 
-Each phase is shippable on its own and keeps existing config keys working;
-removed keys (`preserveOriginalMessageOnFailure`) are accepted and ignored with
-a startup warning for one release.
+| Phase | Scope | Where |
+|-------|-------|-------|
+| 1 | D1–D3 fixes. | `GoogleTranslationProvider`, `TranslationMetricsService` |
+| 2 | `CompletionStage` provider/pipeline API with per-target fallback; `ChatTranslationService` with prefilter, single-flight, admission control and the in-memory cache. | `localization/TranslationProvider`, `TranslationOutcome`, `service/TranslationFallbackService`, `translation/*` |
+| 3 | `ChatDeliveryService` replaces `TranslatorService`: delivery modes, per-language lanes, late follow-up lines, Foo's-client handling for team chat only (as before), `RecentChatBuffer` recorded by `ChatMessageHandler` and `SocialController`. | `chat/ChatDeliveryService` |
+| 4 | Detected language from Google (`[["text","en"]]`) and from LLM JSON; multi-target LLM requests with a per-target JSON schema; provider `signature()` (model, API mode, prompt version) in the cache key; Redis cache shared across servers (`xcore:translation:cache:v2:*`); metrics buffered in memory and flushed every 15 s. | `OpenAIRequestFactory`, `TranslationSafetyService`, `TranslationCacheService`, `TranslationMetricsService` |
+| 5 | `translation.channels.remote_global` / `discord` route relayed chat through `ChatDeliveryService.deliverRemote`. | `event/transport/ChatTransportHandler` |
 
-## 5. Open Questions
+### 4.1 Decisions
 
-1. Default delivery mode: `deadline` (one line when fast, two when slow) or
-   `original-first` (always immediate, always two lines when translated)?
-2. Deadline value: 1–2 s is the proposed range. It should be picked from real
-   provider latencies (`trstats` already records them per provider) rather
-   than guessed.
-3. Should translation of cross-server/Discord chat (phase 5) be on by default?
+- Default delivery mode is `deadline` with `deadline_millis = 1500` and
+  `late_translation_millis = 10000`. Late translations arrive as
+  `[lightgray]» Name: translation`; `»` (Latin-1) is used rather than `↳`,
+  which the game font may not have.
+- `preserve_original_message_on_failure` is removed. The config loader ignores
+  unknown keys, so existing files keep loading; a failed translation always
+  delivers the original.
+- Cross-server and Discord translation are off by default.
+- Colour tags and icons are stripped before translation (and before the cache
+  key). Arc only strips colours it knows, so bracketed words such as `[help]`
+  stay part of the text.
+- The per-author budget is charged once per message that misses the in-memory
+  cache, before joining another author's in-flight request, so a rate-limited
+  author never makes another author's message untranslated.
+- Admission rejects instead of queueing: a queued chat translation is
+  useless by the time it would run.
+- `max_concurrent_requests` is read at startup; the other settings apply on
+  the next message after `xconfig` changes them.
+- Ordering lanes are per target language, not per recipient. A team message
+  and a global message for the same language share a lane; the wait is still
+  bounded by the deadline.

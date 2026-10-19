@@ -23,6 +23,16 @@ All notable changes to this project will be documented in this file.
 - Map inspection no longer rejects maps with data patches or embedded content as `invalid_map`. It skips them, runs the usual checks and adds a `data-patches` warning with their count.
 - Complete translations for Belarusian, Czech, German, Spanish, French and Polish (previously 9–174 of 905 keys), and the remaining Ukrainian permission names. Belarusian, Czech, German, Spanish, French and Polish bundles now follow the English file's order and section headers.
 
+- Chat translation is split into `ChatTranslationService` (text → translations) and `ChatDeliveryService` (who sees what, and when); `TranslatorService` is removed. See `docs/architecture/chat-translation-design-spec.md`.
+- Translated players no longer wait for the slowest provider. By default (`translation.delivery.mode = "deadline"`) they get the translated line if it is ready within 1.5 s; otherwise the original, followed by the translation as `» Name: …` if it arrives within 10 s. Lines in one language are delivered in message order. Modes `original-first` and `wait` are available.
+- A failed translation always delivers the original. `translation.preserve_original_message_on_failure` is removed and ignored if present.
+- One request per message instead of one per language for OpenAI-compatible providers (JSON with every target and the detected language). Google requests run in parallel per language.
+- Messages that need no translation (no letters, links, `gg`, `ok`, …) are not sent to providers, nor are languages the message is already in. Colour tags and icons are removed before translation.
+- Translation load is bounded: at most 16 provider calls in flight and a per-author budget (5 messages, +30 per minute); beyond that messages are delivered untranslated. Identical messages translated at the same time share one request.
+- An in-memory cache sits in front of Redis, and the Redis cache is shared by all servers. Changing a provider's model or the prompt no longer reuses old cached translations.
+- Translation metrics are kept in memory and flushed to Redis every 15 s instead of ~20 Redis commands per translated message. `trstats` shows the new counters.
+- New `[translation.delivery]`, `[translation.limits]`, `[translation.prefilter]` and `[translation.channels]` settings; `translation.cache.memory_entries` and `memory_ttl_seconds`.
+
 ### Added
 - Discord map attribution in `/map`: uploader and optional declared creator with stored Discord IDs, names and upload date, separate from the map file author. Submission metadata follows the file across game modes while statistics remain partitioned.
 - Match history: `/matches` and a "Matches" button on the player's own `/stats` profile list their rated matches per ladder (result, rating before and after, map, time) and open a match with every participant, their rating change and why it did or did not count. Players see only their own history for now.
@@ -33,6 +43,7 @@ All notable changes to this project will be documented in this file.
 - Test that every translated message renders without errors the English message does not have.
 - Test that every translation uses the same `$variables` as the English bundle.
 - MiniPvP guide: `/pvp info` (also `/pvp`, `/pvp guide`) and a "How to play MiniPvP" button in the main menu open a guide on three tabs. "Round" shows the map, the teams with their players, how long the round has run, how to win and what happens when a team is out. "Rules" shows only what the current map changes from vanilla PvP: the no-build zone around enemy cores, the unit cap, rule multipliers, banned blocks and units, fog, core capture and reactors. "Rating" explains the ELO rating, the starting rating and when a round does or does not change it. The numbers are read from the live rules and the rating code, so the guide follows the map and any change to the rating thresholds. Players with fewer than 3 rated MiniPvP rounds see it when they join; others get a chat line naming the command. The command exists on the MiniPvP server only. Texts in every bundle.
+- Optional translation of global chat from other servers (`translation.channels.remote_global`) and of Discord chat (`translation.channels.discord`), both off by default.
 
 ### Fixed
 - Chat translation: concurrent Google translations no longer share one JSON parser, which could hand a player a translation into another language. An exception inside the translation chain is now handled like a failed translation (the original is delivered) instead of silently dropping the message for that language group, and `translation.metrics.minuteBucketsEnabled = false` is honoured.

@@ -50,7 +50,13 @@ class TomlXcoreConfigTest {
 
         assertThat(toml.translation.enabled).isTrue();
         assertThat(toml.translation.pipeline).containsExactly("google");
-        assertThat(toml.translation.preserveOriginalMessageOnFailure).isTrue();
+        assertThat(toml.translation.delivery.mode).isEqualTo("deadline");
+        assertThat(toml.translation.delivery.deadlineMillis).isEqualTo(1500);
+        assertThat(toml.translation.limits.maxConcurrentRequests).isEqualTo(16);
+        assertThat(toml.translation.prefilter.skipWords).contains("gg");
+        assertThat(toml.translation.channels.remoteGlobal).isFalse();
+        assertThat(toml.translation.channels.discord).isFalse();
+        assertThat(toml.translation.cache.memoryEntries).isEqualTo(2000);
         assertThat(toml.translation.cache.enabled).isTrue();
         assertThat(toml.translation.cache.ttlSeconds).isEqualTo(1800);
         assertThat(toml.translation.cache.maxTextLength).isEqualTo(500);
