@@ -116,6 +116,68 @@ class TranslatorServiceTest {
     }
 
     @Test
+    @DisplayName("translate falls back to the error callback when the pipeline throws")
+    void translate_runsErrorCallback_whenPipelineThrows() {
+        TranslationFallbackService translationFallbackService = mock(TranslationFallbackService.class);
+        TranslationCacheService translationCacheService = mock(TranslationCacheService.class);
+        TranslatorService service = new TranslatorService(
+                config(),
+                mock(SessionService.class),
+                mock(ChatFormatService.class),
+                mock(ClientCompatibilityService.class),
+                translationFallbackService,
+                translationCacheService,
+                mock(TranslationMetricsService.class),
+                async
+        );
+        AtomicReference<String> outcome = new AtomicReference<>();
+
+        when(translationFallbackService.supports("ru")).thenReturn(true);
+        when(translationFallbackService.pipelineSignature()).thenReturn("google:google");
+        when(translationCacheService.getAsync("auto", "ru", "hello", "google:google"))
+                .thenReturn(java.util.concurrent.CompletableFuture.completedFuture(null));
+        doAnswer(invocation -> {
+            throw new IllegalStateException("provider dispatch failed");
+        }).when(translationFallbackService).translate(any(TranslationProvider.Request.class), any());
+
+        service.translate("hello", "auto", "ru", outcome::set, () -> outcome.set("error"));
+
+        assertThat(outcome.get()).isEqualTo("error");
+    }
+
+    @Test
+    @DisplayName("translate delivers once when the pipeline throws after a result")
+    void translate_deliversOnce_whenPipelineThrowsAfterResult() {
+        TranslationFallbackService translationFallbackService = mock(TranslationFallbackService.class);
+        TranslationCacheService translationCacheService = mock(TranslationCacheService.class);
+        TranslatorService service = new TranslatorService(
+                config(),
+                mock(SessionService.class),
+                mock(ChatFormatService.class),
+                mock(ClientCompatibilityService.class),
+                translationFallbackService,
+                translationCacheService,
+                mock(TranslationMetricsService.class),
+                async
+        );
+        List<String> outcomes = new java.util.ArrayList<>();
+
+        when(translationFallbackService.supports("ru")).thenReturn(true);
+        when(translationFallbackService.pipelineSignature()).thenReturn("google:google");
+        when(translationCacheService.getAsync("auto", "ru", "hello", "google:google"))
+                .thenReturn(java.util.concurrent.CompletableFuture.completedFuture(null));
+        doAnswer(invocation -> {
+            arc.func.Cons<TranslationResult> callback = invocation.getArgument(1);
+            callback.get(TranslationResult.success("привет"));
+            throw new IllegalStateException("late failure");
+        }).when(translationFallbackService).translate(any(TranslationProvider.Request.class), any());
+
+        service.translate("hello", "auto", "ru", outcomes::add, () -> outcomes.add("error"));
+
+        assertThat(outcomes).containsExactly("привет");
+    }
+
+    @Test
     @DisplayName("translate sends original message when target language is unsupported")
     void translate_sendsOriginalMessage_whenTargetLanguageIsUnsupported() {
         TomlXcoreConfig config = config();

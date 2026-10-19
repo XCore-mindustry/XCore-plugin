@@ -1,5 +1,6 @@
 package org.xcore.plugin.service;
 
+import io.lettuce.core.api.async.RedisAsyncCommands;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import org.xcore.plugin.config.TomlXcoreConfig;
@@ -35,14 +36,8 @@ public class TranslationMetricsService {
             return;
         }
 
-        backend.withAsyncCommands(commands -> {
-            var first = commands.hincrby(globalTotalsKey(), field, 1);
-            var bucket = commands.hincrby(globalMinuteKey(), field, 1);
-            return bucket.toCompletableFuture()
-                    .thenCompose(value -> commands.expire(globalMinuteKey(), config.translation.metrics.minuteBucketTtlSeconds).toCompletableFuture())
-                    .orTimeout(500, TimeUnit.MILLISECONDS)
-                    .thenApply(ignored -> true);
-        }, false);
+        backend.withAsyncCommands(commands -> incrementTotalsAndMinuteBucket(
+                commands, globalTotalsKey(), globalMinuteKey(), field), false);
     }
 
     public void incrementProvider(String providerId, String field) {
@@ -50,15 +45,8 @@ public class TranslationMetricsService {
             return;
         }
 
-        backend.withAsyncCommands(commands -> {
-            String bucketKey = providerMinuteKey(providerId);
-            commands.hincrby(providerTotalsKey(providerId), field, 1);
-            commands.hincrby(bucketKey, field, 1);
-            return commands.expire(bucketKey, config.translation.metrics.minuteBucketTtlSeconds)
-                    .toCompletableFuture()
-                    .orTimeout(500, TimeUnit.MILLISECONDS)
-                    .thenApply(ignored -> true);
-        }, false);
+        backend.withAsyncCommands(commands -> incrementTotalsAndMinuteBucket(
+                commands, providerTotalsKey(providerId), providerMinuteKey(providerId), field), false);
     }
 
     public void recordProviderLatency(String providerId, long latencyMs) {
@@ -184,15 +172,20 @@ public class TranslationMetricsService {
         return config.translation.enabled && config.translation.metrics.enabled;
     }
 
-    private void incrementMinuteBucket(io.lettuce.core.api.sync.RedisCommands<String, String> commands,
-                                       String key,
-                                       String field) {
+    private CompletionStage<Boolean> incrementTotalsAndMinuteBucket(RedisAsyncCommands<String, String> commands,
+                                                                   String totalsKey,
+                                                                   String minuteKey,
+                                                                   String field) {
+        var totals = commands.hincrby(totalsKey, field, 1).toCompletableFuture();
         if (!config.translation.metrics.minuteBucketsEnabled) {
-            return;
+            return totals.orTimeout(500, TimeUnit.MILLISECONDS).thenApply(ignored -> true);
         }
 
-        commands.hincrby(key, field, 1);
-        commands.expire(key, config.translation.metrics.minuteBucketTtlSeconds);
+        commands.hincrby(minuteKey, field, 1);
+        return commands.expire(minuteKey, config.translation.metrics.minuteBucketTtlSeconds)
+                .toCompletableFuture()
+                .orTimeout(500, TimeUnit.MILLISECONDS)
+                .thenApply(ignored -> true);
     }
 
     private String globalTotalsKey() {

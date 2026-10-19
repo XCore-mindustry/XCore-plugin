@@ -16,7 +16,6 @@ import java.time.Duration;
 @Singleton
 public final class GoogleTranslationProvider implements TranslationProvider {
 
-    private static final JsonReader READER = new JsonReader();
     private static final String ENDPOINT = "https://clients5.google.com/translate_a/t?client=dict-chrome-ex&dt=t";
     private static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(10);
 
@@ -60,7 +59,10 @@ public final class GoogleTranslationProvider implements TranslationProvider {
                 return TranslationResult.failure(TranslationFailure.unavailable(name(), "translation request failed (HTTP %d)".formatted(response.statusCode())));
             }
 
-            String translatedText = READER.parse(response.body()).get(0).get(0).asString();
+            // JsonReader keeps parse state in instance fields, so one per request: a shared
+            // instance raced across translation threads and could hand one language's
+            // result to another request.
+            String translatedText = new JsonReader().parse(response.body()).get(0).get(0).asString();
             return TranslationResult.success(translatedText);
         } catch (InterruptedException exception) {
             Thread.currentThread().interrupt();

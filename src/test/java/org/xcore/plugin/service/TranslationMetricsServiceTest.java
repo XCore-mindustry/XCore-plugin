@@ -53,6 +53,30 @@ class TranslationMetricsServiceTest {
     }
 
     @Test
+    @DisplayName("incrementGlobal and incrementProvider skip minute buckets when they are disabled")
+    void increments_skipMinuteBuckets_whenDisabled() {
+        Map<String, Map<String, String>> hashes = new LinkedHashMap<>();
+        Map<String, Long> expirations = new HashMap<>();
+        RedisCommands<String, String> commands = redisCommands(hashes, expirations);
+        RedisAsyncCommands<String, String> asyncCommands = redisAsyncCommands(hashes, expirations);
+        RedisNetworkBackend backend = backend(commands, asyncCommands);
+
+        TomlXcoreConfig config = config("mini-pvp");
+        config.translation.metrics.minuteBucketsEnabled = false;
+        TranslationMetricsService service = new TranslationMetricsService(backend, config);
+
+        service.incrementGlobal("requests_total");
+        service.incrementProvider("google", "attempts_total");
+
+        assertThat(hashes.get("xcore:translation:metrics:mini-pvp:totals"))
+                .containsEntry("requests_total", "1");
+        assertThat(hashes.get("xcore:translation:metrics:mini-pvp:provider:google:totals"))
+                .containsEntry("attempts_total", "1");
+        assertThat(hashes.keySet()).noneMatch(key -> key.contains(":minute:"));
+        assertThat(expirations).isEmpty();
+    }
+
+    @Test
     @DisplayName("incrementProvider uses sanitized provider key and records totals")
     void incrementProvider_usesSanitizedProviderKeyAndRecordsTotals() {
         Map<String, Map<String, String>> hashes = new LinkedHashMap<>();

@@ -20,6 +20,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletionException;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 @Singleton
 public class TranslatorService {
@@ -73,6 +74,17 @@ public class TranslatorService {
             return;
         }
 
+        // The recipient group waiting on this request is served by nothing else, so every path
+        // has to end in exactly one of the two callbacks: an exception thrown inside the stage
+        // chain would otherwise be swallowed and the message never delivered to them.
+        AtomicBoolean completed = new AtomicBoolean();
+        Cons<String> onResult = translatedText -> {
+            if (completed.compareAndSet(false, true)) result.get(translatedText);
+        };
+        Runnable onError = () -> {
+            if (completed.compareAndSet(false, true)) error.run();
+        };
+
         String pipelineSignature = translationFallbackService.pipelineSignature();
         translationCacheService.getAsync(from, to, text, pipelineSignature)
                 .exceptionally(cacheError -> {
@@ -84,7 +96,7 @@ public class TranslatorService {
                         translationMetricsService.incrementGlobal("cache_hits_total");
                         Log.debug("[Translation] Cache hit for '@' -> '@' via provider '@'",
                                 from, to, cachedTranslation.providerId());
-                        result.get(cachedTranslation.translatedText());
+                        onResult.get(cachedTranslation.translatedText());
                         return;
                     }
 
@@ -94,9 +106,9 @@ public class TranslatorService {
                     TranslationProvider.Request request = new TranslationProvider.Request(text, from, to);
                     translationFallbackService.translate(request, translationResult -> {
             if (translationResult instanceof TranslationResult.Success(var translatedText)) {
-                translationCacheService.putAsync(from, to, text, pipelineSignature, translatedText, "pipeline");
                 Log.debug("[Translation] Pipeline translation succeeded for '@' -> '@'", from, to);
-                result.get(translatedText);
+                onResult.get(translatedText);
+                translationCacheService.putAsync(from, to, text, pipelineSignature, translatedText, "pipeline");
                 return;
             }
 
@@ -106,8 +118,13 @@ public class TranslatorService {
             } else {
                 PLog.err("Translation pipeline failed for '@' -> '@' with unknown reason", from, to);
             }
-            error.run();
+            onError.run();
                     });
+                })
+                .exceptionally(failure -> {
+                    PLog.err("Translation for '@' -> '@' failed unexpectedly: @", from, to, unwrap(failure).getMessage());
+                    onError.run();
+                    return null;
                 });
     }
 
