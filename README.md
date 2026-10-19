@@ -60,7 +60,7 @@ Multifunctional plugin for XCore Mindustry servers. Provides player profiles, cr
 - Java 25+
 - MongoDB 6.0+
 - Redis (for cross-server transport)
-- Mindustry v158 (or compatible forks)
+- Mindustry v160 (or compatible forks)
 - `cloud-mindustry` `0.2.0+` from `https://maven.x-core.org/releases`
 - `FluBundle` `1.3+` from `https://maven.x-core.org/releases`
 
@@ -221,17 +221,30 @@ Configuration is split into two TOML files:
 | `event_hub.enabled` | `false` | Whether the current map is the event hub. |
 | `event_hub.map_id` | `""` | Internal map identifier for the event hub. |
 
-#### Translation settings (`[translation]`, `[translation.cache]`, `[translation.metrics]`, `[translation.llm]`)
+#### Translation settings (`[translation]`, `[translation.delivery]`, `[translation.limits]`, `[translation.prefilter]`, `[translation.channels]`, `[translation.cache]`, `[translation.metrics]`, `[translation.llm]`)
 
 | Field | Default | Description |
 |-------|---------|-------------|
 | `translation.enabled` | `true` | Master switch for the translation pipeline. |
 | `translation.pipeline` | `["google"]` | Ordered list of provider IDs to try (for example `["google", "openai"]`). |
-| `translation.preserve_original_message_on_failure` | `true` | Whether to send the original untranslated message if all providers fail. |
-| `translation.cache.enabled` | `true` | Whether translation results are cached in Redis. |
-| `translation.cache.ttl_seconds` | `1800` | Cache entry lifetime in seconds. |
-| `translation.cache.max_text_length` | `500` | Maximum text length eligible for caching. |
-| `translation.metrics.enabled` | `true` | Whether translation metrics are collected. |
+| `translation.delivery.mode` | `deadline` | When translated players see a message. `deadline`: the translated line if it is ready within `deadline_millis`, otherwise the original and the translation as a follow-up line `» Name: …` if it arrives within `late_translation_millis`. `original-first`: always the original at once, the translation as a follow-up. `wait`: the translated line, or the original after `late_translation_millis`. A failed translation always delivers the original. |
+| `translation.delivery.deadline_millis` | `1500` | How long `deadline` mode waits before sending the original. |
+| `translation.delivery.late_translation_millis` | `10000` | Follow-up lines for translations later than this are dropped. |
+| `translation.limits.max_concurrent_requests` | `16` | Provider calls in flight at once; messages beyond that are delivered untranslated. Applied at startup. |
+| `translation.limits.author_burst` | `5` | Messages one author can have translated in a burst. |
+| `translation.limits.author_refill_per_minute` | `30` | Translated messages an author regains per minute. |
+| `translation.limits.request_timeout_seconds` | `45` | Upper bound for one pipeline run across all providers and retries. |
+| `translation.prefilter.enabled` | `true` | Skip messages that need no translation. |
+| `translation.prefilter.min_letters` | `2` | Messages with fewer letters (after colour tags and icons) are not translated. |
+| `translation.prefilter.skip_words` | `["gg", "wp", "ok", "lol", …]` | Whole messages that read the same in every language. |
+| `translation.channels.remote_global` | `false` | Also translate global chat relayed from other servers. |
+| `translation.channels.discord` | `false` | Also translate chat relayed from Discord. |
+| `translation.cache.enabled` | `true` | Whether translation results are cached (in memory and in Redis). |
+| `translation.cache.ttl_seconds` | `1800` | Redis cache entry lifetime in seconds. The Redis cache is shared by all servers. |
+| `translation.cache.max_text_length` | `500` | Maximum text length eligible for the Redis cache. |
+| `translation.cache.memory_entries` | `2000` | Size of the in-process cache in front of Redis; `0` disables it. |
+| `translation.cache.memory_ttl_seconds` | `600` | In-process cache entry lifetime in seconds. |
+| `translation.metrics.enabled` | `true` | Whether translation metrics are collected. They are kept in memory and flushed to Redis every 15 seconds. |
 | `translation.metrics.minute_buckets_enabled` | `true` | Whether per-minute metric buckets are maintained. |
 | `translation.metrics.minute_bucket_ttl_seconds` | `21600` | TTL for per-minute metric buckets. |
 | `translation.llm.preserve_formatting_tokens` | `true` | Whether Mindustry formatting tokens are preserved when sending text to LLM-based providers. |
@@ -313,7 +326,7 @@ Bundles are stored in `src/main/resources/bundles/` and distributed via FluBundl
 
 ## Maven Publishing
 - Snapshots are published to `https://maven.x-core.org/snapshots` on every non-PR push via GitHub Actions.
-- Releases are published to `https://maven.x-core.org/releases` when a GitHub Release is published.
+- Release tags (`vX.Y.Z`) trigger validation, Maven publication to `https://maven.x-core.org/releases`, and a GitHub Release with the packaged JAR.
 - Gradle repository names follow the Reposilite pattern: `xcoreRepositorySnapshots` and `xcoreRepositoryReleases`.
 - GitHub Actions maps `XCORE_USERNAME` and `XCORE_PASSWORD` to matching Gradle properties.
 

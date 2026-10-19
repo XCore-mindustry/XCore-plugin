@@ -45,6 +45,7 @@ class MaintainControllerTest {
         assertThat(event.command()).isEqualTo("say hello world");
         assertThat(event.targetServers()).containsExactly("mini-pvp", "mini-hexed");
         assertThat(event.exclusion()).isFalse();
+        assertThat(event.sourceServer()).isEqualTo(serverLocalConfig.server.name);
     }
 
     @Test

@@ -156,13 +156,12 @@ public class MapDataRepository extends DataRepository<MapData> {
     }
 
     public MapData findOrCreate(String name, String fileName, String author, String gameMode) {
-        return findByFileName(fileName, gameMode)
-                .or(() -> find(name, author, gameMode))
-                .orElseGet(() -> {
-                    MapData newData = new MapData(name, fileName, author, gameMode);
-                    save(newData);
-                    return newData;
-                });
+        MapData data = findByFileName(fileName, gameMode)
+                .or(() -> find(name, author, gameMode)).orElse(null);
+        boolean created = data == null;
+        if (created) data = new MapData(name, fileName, author, gameMode);
+        if (created) save(data);
+        return data;
     }
 
     /** Add advisory metadata only; never overwrite an existing identity or unrelated statistics. */

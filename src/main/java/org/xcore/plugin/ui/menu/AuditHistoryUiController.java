@@ -10,31 +10,38 @@ import org.xcore.plugin.model.AuditCursor;
 import org.xcore.plugin.model.AuditRecord;
 import org.xcore.plugin.model.AuditRecordSummary;
 import org.xcore.plugin.model.PlayerData;
+import org.xcore.plugin.permission.PermissionNodes;
 import org.xcore.plugin.model.Slice;
 import org.xcore.plugin.service.PlayerDisplayService;
 import org.xcore.plugin.service.moderation.AuditService;
 import org.xcore.plugin.service.moderation.DefaultAuditService;
 import org.xcore.plugin.session.Session;
 import org.xcore.plugin.session.SessionService;
-import org.xcore.ui.Text;
+import org.xcore.plugin.ui.kit.Accent;
+import org.xcore.plugin.ui.kit.Kit;
+import org.xcore.plugin.ui.kit.Screen;
+import org.xcore.plugin.ui.kit.TextWidth;
 import org.xcore.ui.Ui;
 import org.xcore.ui.VNode;
-import org.xcore.ui.responsive.DialogMetrics;
 import org.xcore.ui.runtime.ControllerContext;
 import org.xcore.ui.runtime.SlotKey;
 import org.xcore.ui.runtime.UiController;
 import org.xcore.ui.runtime.UpdateResult;
 
-import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Deque;
 import java.util.List;
 import java.util.Set;
 
 import static com.ospx.flubundle.Bundle.args;
+import static org.xcore.plugin.ui.kit.Kit.GAP;
+import static org.xcore.plugin.ui.kit.Kit.MARGIN;
+import static org.xcore.plugin.ui.kit.Texts.locale;
+import static org.xcore.plugin.ui.kit.Texts.t;
 
 /**
  * Reactive Elm/MVI controller for Mindustry server-side Audit History inspection (/audit).
@@ -46,10 +53,10 @@ public class AuditHistoryUiController implements UiController<AuditHistoryUiCont
     public static final SlotKey<Object> SLOT_HEADER     = SlotKey.of("slot_audit_header");
     public static final SlotKey<Object> SLOT_TABS       = SlotKey.of("slot_audit_tabs");
     public static final SlotKey<Object> SLOT_LIST       = SlotKey.of("slot_audit_list");
-    public static final SlotKey<Object> SLOT_DETAILS    = SlotKey.of("slot_audit_details");
     public static final SlotKey<Object> SLOT_PAGINATION = SlotKey.of("slot_audit_pagination");
 
     public static final int RECORDS_PER_PAGE = 8;
+    private static final float STRIPE = 4f;
     private static final DateTimeFormatter DATE_TIME_FORMAT =
             DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm").withZone(ZoneId.systemDefault());
 
@@ -212,7 +219,7 @@ public class AuditHistoryUiController implements UiController<AuditHistoryUiCont
     }
 
     public AuditHistoryModel createInitialModel(AuditViewMode mode) {
-        boolean isAdmin = session != null && session.player != null && session.player.admin;
+        boolean isAdmin = session != null && session.has(PermissionNodes.MODERATION_AUDIT_OTHERS);
         String viewerUuid = session != null && session.data != null ? session.data.uuid : "";
 
         String targetColor = PlayerSettingsUiController.resolvePlayerColorHex(session, targetData);
@@ -269,17 +276,18 @@ public class AuditHistoryUiController implements UiController<AuditHistoryUiCont
     public UpdateResult<AuditHistoryModel> update(AuditHistoryModel model, AuditHistoryEvent event, ControllerContext ctx) {
         return switch (event) {
             case AuditHistoryEvent.SelectMode(var newMode) -> {
-                if (!model.isViewerAdmin() || newMode == model.mode()) {
+                if (!model.isViewerAdmin() || newMode == model.mode()
+                        || session == null || !session.has(PermissionNodes.MODERATION_AUDIT_OTHERS)) {
                     yield UpdateResult.of(model);
                 }
                 AuditHistoryModel switched = model.withMode(newMode);
                 AuditHistoryModel loaded = loadPage(switched, null, 1, new ArrayDeque<>());
-                yield UpdateResult.patch(loaded, SLOT_HEADER, SLOT_TABS, SLOT_LIST, SLOT_PAGINATION);
+                yield UpdateResult.patch(loaded, Screen.slots(SLOT_HEADER, SLOT_TABS, SLOT_LIST, SLOT_PAGINATION));
             }
 
             case AuditHistoryEvent.SelectFilter(var filter) -> {
                 AuditHistoryModel updated = model.withActionFilter(filter);
-                yield UpdateResult.patch(updated, SLOT_TABS, SLOT_LIST);
+                yield UpdateResult.patch(updated, Screen.slots(SLOT_TABS, SLOT_LIST));
             }
 
             case AuditHistoryEvent.NextPage() -> {
@@ -289,7 +297,7 @@ public class AuditHistoryUiController implements UiController<AuditHistoryUiCont
                 Deque<AuditCursor> newStack = new ArrayDeque<>(model.cursorBackStack());
                 newStack.addLast(model.currentCursor());
                 AuditHistoryModel loaded = loadPage(model, model.nextCursor(), model.pageIndex() + 1, newStack);
-                yield UpdateResult.patch(loaded, SLOT_LIST, SLOT_PAGINATION);
+                yield UpdateResult.patch(loaded, Screen.slots(SLOT_LIST, SLOT_PAGINATION));
             }
 
             case AuditHistoryEvent.PrevPage() -> {
@@ -299,12 +307,12 @@ public class AuditHistoryUiController implements UiController<AuditHistoryUiCont
                 Deque<AuditCursor> newStack = new ArrayDeque<>(model.cursorBackStack());
                 AuditCursor prevCursor = newStack.pollLast();
                 AuditHistoryModel loaded = loadPage(model, prevCursor, Math.max(1, model.pageIndex() - 1), newStack);
-                yield UpdateResult.patch(loaded, SLOT_LIST, SLOT_PAGINATION);
+                yield UpdateResult.patch(loaded, Screen.slots(SLOT_LIST, SLOT_PAGINATION));
             }
 
             case AuditHistoryEvent.Refresh() -> {
                 AuditHistoryModel refreshed = loadPage(model, model.currentCursor(), model.pageIndex(), model.cursorBackStack());
-                yield UpdateResult.patch(refreshed, SLOT_LIST, SLOT_PAGINATION);
+                yield UpdateResult.patch(refreshed, Screen.slots(SLOT_LIST, SLOT_PAGINATION));
             }
 
             case AuditHistoryEvent.InspectRecord(String auditId) -> {
@@ -313,9 +321,8 @@ public class AuditHistoryUiController implements UiController<AuditHistoryUiCont
                 }
                 AuditRecord record = auditService.findByAuditId(auditId).orElse(null);
                 if (record == null) {
-                    Localization local = session != null ? session.locale() : null;
-                    String err = local != null ? local.t("error-processing-request") : "Record not found";
-                    yield UpdateResult.patch(model.withFeedback("[scarlet]" + Iconc.warning + " " + err + "[]"), SLOT_HEADER);
+                    String err = t(session, "error-processing-request");
+                    yield UpdateResult.patch(model.withFeedback("[scarlet]" + Iconc.warning + " " + err + "[]"), Screen.slots(SLOT_HEADER));
                 }
                 yield UpdateResult.rerender(model.withDetails(auditId, record));
             }
@@ -326,13 +333,10 @@ public class AuditHistoryUiController implements UiController<AuditHistoryUiCont
 
             case AuditHistoryEvent.CopyAuditId(String auditId) -> {
                 if (session != null && session.player != null && auditId != null) {
-                    session.player.sendMessage("[accent]Audit ID: [white]" + auditId);
+                    session.player.sendMessage("[accent]" + t(session, "audit-menu-field-id") + ": [white]" + auditId);
                 }
-                Localization local = session != null ? session.locale() : null;
-                String msg = local != null
-                        ? local.t("audit-menu-copy-id-success", args("auditId", auditId))
-                        : "Audit ID sent to chat: " + auditId;
-                yield UpdateResult.patch(model.withFeedback("[lime]" + Iconc.ok + " " + msg + "[]"), SLOT_HEADER);
+                String msg = t(session, "audit-menu-copy-id-success", args("auditId", auditId));
+                yield UpdateResult.patch(model.withFeedback("[lime]" + Iconc.ok + " " + msg + "[]"), Screen.slots(SLOT_HEADER));
             }
 
             case AuditHistoryEvent.Back() -> {
@@ -403,331 +407,255 @@ public class AuditHistoryUiController implements UiController<AuditHistoryUiCont
 
     @Override
     public VNode render(AuditHistoryModel model) {
-        DialogMetrics metrics = metrics();
-        Localization local = session != null ? session.locale() : null;
+        return Screen.each(screen -> window(model, screen));
+    }
 
-        return Ui.table(root -> {
-            root.background("pane");
-            root.margin(8f);
-            root.layout(l -> l.growX().maxWidth(metrics.maxDialogWidth()).pad(4f));
+    /** The whole menu as it is on a screen of the given class. */
+    VNode window(AuditHistoryModel model, Screen screen) {
+        Localization local = locale(session);
+        return model.screen() == ViewScreen.DETAILS ? details(model, screen, local) : list(model, screen, local);
+    }
 
-            // Slot 1: Header (Target Nickname, Mode, Breadcrumbs, Close [X])
-            root.slot(SLOT_HEADER.path(), h -> renderHeader(h, model, local)).row();
-            root.image("whiteui", l -> l.growX().height(2f).padBottom(4f).color("ffd37f")).row();
+    // ------------------------------------------------------------------ list
 
-            if (model.screen() == ViewScreen.DETAILS) {
-                // In-Dialog Inspection Dossier
-                root.slot(SLOT_DETAILS.path(), d -> renderDetailsView(d, model, metrics, local)).row();
-            } else {
-                // Slot 2: Tabs (Mode Tabs + Action Filter Buttons)
-                root.slot(SLOT_TABS.path(), t -> renderTabs(t, model, local)).row();
+    private VNode list(AuditHistoryModel model, Screen screen, Localization local) {
+        float width = screen.width();
+        return Kit.window(window -> {
+            window.slot(screen.slot(SLOT_HEADER).path(), slot -> slot.add(header(model, width, local))).row();
+            window.slot(screen.slot(SLOT_TABS).path(), slot -> tabs(slot, model, width, local)).row();
+            window.slot(screen.slot(SLOT_LIST).path(), slot -> slot.add(records(model, screen, local))).row();
+            window.slot(screen.slot(SLOT_PAGINATION).path(), slot -> slot.add(Kit.pager(width,
+                    t(local, "audit-menu-page", args("page", model.pageIndex())),
+                    model.cursorBackStack().isEmpty() ? null : "action:page:prev",
+                    model.hasNext() && model.nextCursor() != null ? "action:page:next" : null,
+                    "action:refresh"))).row();
 
-                // Slot 3: Scrollable Card List
-                root.slot(SLOT_LIST.path(), l -> renderCardList(l, model, metrics, local)).row();
-
-                root.image("whiteui", l -> l.growX().height(2f).padTop(4f).padBottom(4f).color("3b4252")).row();
-
-                // Slot 4: Pagination Footer Bar
-                root.slot(SLOT_PAGINATION.path(), p -> renderPagination(p, model, local)).row();
+            // Back leads to the menu this one was opened from; with none, the dialog's own button closes it.
+            if (session != null && session.hasHistory()) {
+                window.add(Ui.table(bar -> {
+                    bar.layout(l -> l.padTop(GAP));
+                    bar.add(Kit.actions(width, List.of(
+                            new Kit.Action(Iconc.left + " " + t(local, "back"), "action:back"))));
+                })).row();
             }
         });
     }
 
-    /** Caps only; the client resolves the actual width and body height. */
-    private DialogMetrics metrics() {
-        return DialogMetrics.standard();
-    }
+    /** Whose history this is; under the name, what the last action came to, or what to do here. */
+    private VNode header(AuditHistoryModel model, float width, Localization local) {
+        float text = width - 2f * MARGIN;
+        String name = TextWidth.fit("[accent]" + Iconc.list + "[] [#" + model.targetColorHex() + "]"
+                + TextWidth.escape(model.targetNickname()) + "[] [gray]#" + model.targetPid() + "[]", text);
 
-    private void renderHeader(Ui.TableBuilder h, AuditHistoryModel model, Localization local) {
-        h.layout(l -> l.growX().padBottom(4f));
-
-        h.add(Ui.table(left -> {
-            left.layout(l -> l.growX().align("left"));
-
-            String nameFormatted = "[#" + model.targetColorHex() + "]" + escapeMarkup(model.targetNickname()) + "[]";
-            String modeBadge = model.mode() == AuditViewMode.TARGET
-                    ? "[orange]" + Iconc.warning + " " + (local != null ? local.t("audit-menu-tab-sanctions") : "Sanctions Dossier") + "[]"
-                    : "[accent]" + Iconc.admin + " " + (local != null ? local.t("audit-menu-tab-actions") : "Staff Actions Log") + "[]";
-
-            left.label(Text.raw(nameFormatted + " [gray]#" + model.targetPid() + "[] " + modeBadge),
-                    l -> l.align("left").growX()).row();
-
-            if (model.feedbackMessage() != null && !model.feedbackMessage().isBlank()) {
-                left.label(Text.raw(model.feedbackMessage()), l -> l.align("left")).row();
-            } else {
-                String sub = model.mode() == AuditViewMode.TARGET
-                        ? (local != null ? local.t("audit-menu-history-hint") : "Sanctions and interventions against player")
-                        : (local != null ? local.t("audit-menu-actions-hint") : "Administrative enforcement actions performed by staff member");
-                left.label(Text.raw("[darkgray]" + sub + "[]"), l -> l.align("left")).row();
-            }
-        }));
-
-        // Close Button
-        h.button(Text.raw("[scarlet]" + Iconc.cancel + "[]"), "action:close",
-                b -> b.style("cleart").layout(l -> l.size(34f)));
-    }
-
-    private void renderTabs(Ui.TableBuilder t, AuditHistoryModel model, Localization local) {
-        t.layout(l -> l.growX().padBottom(6f));
-
-        // 1. Mode Tabs (Only switchable if viewer is admin)
-        if (model.isViewerAdmin()) {
-            t.add(Ui.table(m -> {
-                m.layout(l -> l.growX().padBottom(4f));
-
-                boolean isTarget = model.mode() == AuditViewMode.TARGET;
-                String targetStyle = isTarget ? "default" : "cleart";
-                String targetText = local != null ? local.t("audit-menu-tab-sanctions") : "Sanctions Received";
-                String targetLabel = (isTarget ? "[accent]" : "[gray]") + Iconc.warning + " " + targetText + "[]";
-                m.button(Text.raw(targetLabel), "action:mode:TARGET",
-                        b -> b.style(targetStyle).layout(l -> l.uniform().growX().height(32f).padRight(4f)));
-
-                String actorStyle = !isTarget ? "default" : "cleart";
-                String actorText = local != null ? local.t("audit-menu-tab-actions") : "Staff Actions Taken";
-                String actorLabel = (!isTarget ? "[accent]" : "[gray]") + Iconc.admin + " " + actorText + "[]";
-                m.button(Text.raw(actorLabel), "action:mode:ACTOR",
-                        b -> b.style(actorStyle).layout(l -> l.uniform().growX().height(32f)));
-            })).row();
+        boolean sanctions = model.mode() == AuditViewMode.TARGET;
+        String second;
+        if (model.feedbackMessage() != null && !model.feedbackMessage().isBlank()) {
+            second = model.feedbackMessage();
+        } else if (model.screen() == ViewScreen.DETAILS) {
+            second = sanctions
+                    ? "[#" + Accent.ORANGE.color() + "]" + Iconc.warning + " " + t(local, "audit-menu-tab-sanctions") + "[]"
+                    : "[#" + Accent.GOLD.color() + "]" + Iconc.admin + " " + t(local, "audit-menu-tab-actions") + "[]";
+        } else {
+            second = "[lightgray]" + (sanctions
+                    ? t(local, "audit-menu-history-hint")
+                    : t(local, "audit-menu-actions-hint")) + "[]";
         }
+        return Kit.header(width, name + "\n" + second);
+    }
 
-        // 2. Action Filter Chips (ALL, BANS, MUTES, WARNS, OTHER)
-        t.add(Ui.table(f -> {
-            // WrapTable picks the chip columns from the width the client gives it, so five
-            // localized filters fit a narrow phone and a wide desktop without a server guess
-            f.wrap();
-            f.layout(l -> l.growX().align("left"));
-            for (var filter : ActionFilter.values()) {
-                boolean active = model.actionFilter() == filter;
-                String style = active ? "default" : "cleart";
-                String color = active ? "[white]" : "[darkgray]";
-                String label = resolveFilterLabel(filter, local);
-                f.button(Text.raw(color + label + "[]"), "action:filter:" + filter.name(),
-                        b -> b.style(style).layout(l -> l.height(28f).padRight(4f).padBottom(2f)));
-            }
-        })).row();
+    /** Whose records are shown (an admin's choice), and which kinds of them. */
+    private void tabs(Ui.TableBuilder slot, AuditHistoryModel model, float width, Localization local) {
+        boolean sanctions = model.mode() == AuditViewMode.TARGET;
+        if (model.isViewerAdmin()) {
+            slot.add(Kit.tabs(width, "audit_mode", List.of(
+                    new Kit.Tab(Iconc.warning, t(local, "audit-menu-tab-sanctions"),
+                            "action:mode:TARGET", Accent.ORANGE, sanctions),
+                    new Kit.Tab(Iconc.admin, t(local, "audit-menu-tab-actions"),
+                            "action:mode:ACTOR", Accent.GOLD, !sanctions)))).row();
+        }
+        slot.add(Kit.line(width, sanctions ? Accent.ORANGE : Accent.GOLD)).row();
+
+        List<Kit.Option> filters = new ArrayList<>();
+        for (ActionFilter filter : ActionFilter.values()) {
+            filters.add(new Kit.Option(resolveFilterLabel(filter, local), "action:filter:" + filter.name(),
+                    model.actionFilter() == filter));
+        }
+        Kit.options(slot, width, "audit_filter", filters);
     }
 
     private static String resolveFilterLabel(ActionFilter filter, Localization local) {
-        if (local == null) return filter.name();
         return switch (filter) {
-            case ALL -> local.t("audit-menu-filter-all");
-            case BANS -> local.t("audit-menu-filter-bans");
-            case MUTES -> local.t("audit-menu-filter-mutes");
-            case WARNS -> local.t("audit-menu-filter-warns");
-            case OTHER -> local.t("audit-menu-filter-other");
+            case ALL -> t(local, "audit-menu-filter-all");
+            case BANS -> t(local, "audit-menu-filter-bans");
+            case MUTES -> t(local, "audit-menu-filter-mutes");
+            case WARNS -> t(local, "audit-menu-filter-warns");
+            case OTHER -> t(local, "audit-menu-filter-other");
         };
     }
 
-    private void renderCardList(Ui.TableBuilder l, AuditHistoryModel model, DialogMetrics metrics, Localization local) {
-        l.layout(lout -> lout.growX().padBottom(4f));
-
+    private VNode records(AuditHistoryModel model, Screen screen, Localization local) {
         List<AuditRecordSummary> filtered = model.records().stream()
                 .filter(r -> model.actionFilter().matches(r.action()))
                 .toList();
 
-        if (filtered.isEmpty()) {
-            l.add(Ui.table(empty -> {
-                empty.background("button");
-                empty.margin(14f);
-                empty.layout(lay -> lay.growX().height(140f).align("center"));
-                String emptyMsg = model.mode() == AuditViewMode.TARGET
-                        ? (local != null ? local.t("audit-menu-history-empty") : "No audit entries found for this player yet.")
-                        : (local != null ? local.t("audit-menu-actions-empty") : "No audit actions found for this player yet.");
-                empty.label(Text.raw("[gray]" + Iconc.info + " " + emptyMsg + "[]"),
-                        lay -> lay.align("center")).row();
-            })).row();
-            return;
-        }
-
-        l.pane(scroll -> {
-            scroll.layout(p -> p.growX().growY().maxHeight(metrics.maxBodyHeight()));
-            scroll.table(list -> {
-                list.layout(lay -> lay.growX());
-                for (var item : filtered) {
-                    renderAuditCard(list, item, model, metrics, local);
-                }
-            });
+        return Kit.pane(screen, body -> {
+            if (filtered.isEmpty()) {
+                body.add(Kit.note(screen.cards(), model.mode() == AuditViewMode.TARGET
+                        ? t(local, "audit-menu-history-empty")
+                        : t(local, "audit-menu-actions-empty"))).row();
+                return;
+            }
+            List<VNode> rows = new ArrayList<>();
+            for (AuditRecordSummary item : filtered) {
+                Accent accent = accent(item.action());
+                rows.add(Kit.row("action:inspect:" + item.auditId(), screen.card(), false, true, (row, inner) -> {
+                    float text = inner - STRIPE - GAP;
+                    row.add(Ui.image("whiteui", l -> l.width(STRIPE).growY().padRight(GAP).color(accent.color())));
+                    row.add(Kit.text(rowText(item, model.mode(), text, local), text));
+                }));
+            }
+            body.add(Kit.columns(screen, rows)).row();
         });
     }
 
-    private void renderAuditCard(Ui.TableBuilder list, AuditRecordSummary item, AuditHistoryModel model, DialogMetrics metrics, Localization local) {
-        String color = actionColor(item.action());
-        char icon = actionIcon(item.action());
+    /**
+     * A record in four lines: what was done and whether it still holds, by whom (or to whom, in
+     * a staff member's log), why, and when. A date beside the name would leave a small phone
+     * some eight letters of it.
+     */
+    static String rowText(AuditRecordSummary item, AuditViewMode mode, float width, Localization local) {
+        Accent accent = accent(item.action());
+        String status = status(item.action(), item.expiresAt(), local);
+        String what = "[#" + accent.color() + "]" + actionIcon(item.action()) + " " + formatActionName(item.action(), local) + "[]"
+                + (status.isEmpty() ? "" : "  " + status);
 
-        list.add(Ui.table(card -> {
-            card.background("button");
-            card.margin(8f);
-            card.layout(l -> l.growX().padBottom(4f));
+        boolean sanctions = mode == AuditViewMode.TARGET;
+        String who = sanctions ? item.actorName() : item.targetName();
+        String whom = "[gray]" + (sanctions ? Iconc.admin : Iconc.players) + "[] [white]" + TextWidth.escape(who) + "[]";
+        String when = "[gray]" + (item.createdAtEpochMs() <= 0
+                ? "-" : DATE_TIME_FORMAT.format(Instant.ofEpochMilli(item.createdAtEpochMs()))) + "[]";
 
-            // Left vertical severity accent stripe
-            card.image("whiteui", l -> l.width(4f).growY().padRight(8f).color(color));
+        String reason = item.reason() == null || item.reason().isBlank()
+                ? t(local, "audit-menu-reason-unspecified")
+                : item.reason().trim().replaceAll("\\s+", " ");
 
-            // Card Body
-            card.add(Ui.table(body -> {
-                body.layout(l -> l.growX().align("left"));
-
-                // Row 1: Action Badge + Subject + Timestamp + Active Status
-                body.add(Ui.table(r1 -> {
-                    r1.layout(l -> l.growX());
-                    String actionName = formatActionName(item.action(), local);
-                    String badge = "[" + color + "]" + icon + " " + actionName + "[]";
-                    String subject = model.mode() == AuditViewMode.TARGET
-                            ? "[gray]by[] [white]" + escapeMarkup(metrics.truncate(item.actorName())) + "[]"
-                            : "[gray]on[] [white]" + escapeMarkup(metrics.truncate(item.targetName())) + "[]";
-                    String time = "[darkgray]• " + formatTimestamp(item.createdAtEpochMs()) + "[]";
-                    String status = formatStatusPill(item, local);
-
-                    r1.label(Text.raw(badge + "  " + subject + " " + time), l -> l.align("left").growX());
-                    if (!status.isEmpty()) {
-                        r1.label(Text.raw(status), l -> l.align("right"));
-                    }
-                })).row();
-
-                // Row 2: Reason Excerpt
-                String reasonExcerpt = summarizeReason(item.reason(), metrics, local);
-                body.label(Text.raw("[lightgray]" + escapeMarkup(reasonExcerpt) + "[]"),
-                        l -> l.align("left").growX().padTop(2f).padBottom(3f)).row();
-
-                // Row 3: Duration / ID + Click to Inspect Button
-                body.add(Ui.table(r3 -> {
-                    r3.layout(l -> l.growX());
-                    String durationInfo = formatDurationInfo(item, local);
-                    r3.label(Text.raw(durationInfo), l -> l.align("left").growX());
-
-                    String btnText = local != null ? local.t("audit-menu-btn-details") : "Details >";
-                    r3.button(Text.raw("[accent]" + Iconc.zoom + " " + btnText + "[]"), "action:inspect:" + item.auditId(),
-                            b -> b.style("cleart").layout(l -> l.height(24f)));
-                })).row();
-            }));
-        })).row();
+        return TextWidth.fit(what, width) + "\n" + TextWidth.fit(whom, width) + "\n"
+                + TextWidth.fit("[lightgray]" + TextWidth.escape(reason) + "[]", width) + "\n" + when;
     }
 
-    private void renderDetailsView(Ui.TableBuilder d, AuditHistoryModel model, DialogMetrics metrics, Localization local) {
-        d.layout(l -> l.growX().padBottom(4f));
+    // ------------------------------------------------------------------ details
+
+    private VNode details(AuditHistoryModel model, Screen screen, Localization local) {
+        float width = screen.width();
         AuditRecord rec = model.inspectedRecord();
-        if (rec == null) {
-            d.label(Text.raw("[scarlet]Record details unavailable.[]")).row();
-            return;
-        }
+        return Kit.window(window -> {
+            window.slot(screen.slot(SLOT_HEADER).path(), slot -> slot.add(header(model, width, local))).row();
+            window.add(Kit.line(width, rec == null ? Accent.GRAY : accent(rec.action))).row();
 
-        String color = actionColor(rec.action);
-        char icon = actionIcon(rec.action);
-
-        d.add(Ui.table(card -> {
-            card.background("button");
-            card.margin(10f);
-            card.layout(l -> l.growX().padBottom(6f));
-
-            // Section 1: Header & Status
-            card.add(Ui.table(top -> {
-                top.layout(l -> l.growX().padBottom(6f));
-                String actionName = formatActionName(rec.action, local);
-                String title = (local != null ? local.t("audit-menu-details-title") : "Audit details") + ": [" + color + "]" + icon + " " + actionName + "[]";
-                top.label(Text.raw(title), l -> l.align("left").growX());
-
-                boolean active = isRecordActive(rec);
-                String activeTag = active
-                        ? "[scarlet]" + (local != null ? local.t("audit-menu-status-active") : "ACTIVE") + "[]"
-                        : "[darkgray]" + (local != null ? local.t("audit-menu-status-expired") : "EXPIRED") + "[]";
-                top.label(Text.raw(activeTag), l -> l.align("right"));
-            })).row();
-            card.image("whiteui", l -> l.growX().height(1f).padBottom(6f).color("3b4252")).row();
-
-            // Section 2: Target & Actor Information
-            card.add(Ui.table(info -> {
-                info.layout(l -> l.growX().padBottom(4f));
-                String targetName = rec.target != null && rec.target.nameSnapshot != null ? rec.target.nameSnapshot : "Unknown";
-                String actorName = rec.actor != null && rec.actor.nameSnapshot != null ? rec.actor.nameSnapshot : "Unknown";
-                info.label(Text.raw("[gray]Target:[] [white]" + escapeMarkup(targetName) + "[]"), l -> l.align("left")).row();
-                info.label(Text.raw("[gray]Actor:[]  [white]" + escapeMarkup(actorName) + "[] [accent](" + (rec.actor != null ? rec.actor.type : "UNKNOWN") + ")[]"), l -> l.align("left")).row();
-                if (rec.origin != null && rec.origin.serverId != null && !rec.origin.serverId.isBlank()) {
-                    info.label(Text.raw("[gray]Server:[] [sky]" + rec.origin.serverId + "[]"), l -> l.align("left")).row();
+            Kit.body(window, screen, body -> {
+                if (rec == null) {
+                    body.add(Kit.note(screen.cards(), t(local, "audit-menu-details-unavailable"))).row();
+                    return;
                 }
+                body.add(Kit.columns(screen,
+                        List.of(eventCard(rec, screen.card(), local), reasonCard(rec, screen.card(), local)),
+                        List.of(timeCard(rec, screen.card(), local), idCard(rec, screen.card(), local)))).row();
+            });
+
+            List<Kit.Action> actions = new ArrayList<>();
+            actions.add(new Kit.Action(Iconc.left + " " + t(local, "audit-menu-btn-back"), "action:back_to_list"));
+            if (rec != null) {
+                actions.add(new Kit.Action(Iconc.copy + " " + t(local, "audit-menu-btn-copy-id"), "action:copy_id:" + rec.auditId));
+            }
+            window.add(Ui.table(bar -> {
+                bar.layout(l -> l.padTop(GAP));
+                bar.add(Kit.actions(width, actions));
             })).row();
-
-            // Section 3: Reason (Multi-line safe)
-            card.add(Ui.table(reasonBox -> {
-                reasonBox.background("pane");
-                reasonBox.margin(6f);
-                reasonBox.layout(l -> l.growX().padBottom(6f));
-                String reasonStr = rec.reason != null && !rec.reason.isBlank() ? rec.reason : (local != null ? local.t("audit-menu-reason-unspecified") : "Not specified");
-                reasonBox.label(Text.raw("[white]Reason: " + escapeMarkup(reasonStr) + "[]"),
-                        l -> l.align("left").growX()).row();
-            })).row();
-
-            // Section 4: Timing & Duration
-            card.add(Ui.table(timing -> {
-                timing.layout(l -> l.growX().padBottom(6f));
-                String occurred = rec.occurredAt != null ? DATE_TIME_FORMAT.format(rec.occurredAt) : "-";
-                timing.label(Text.raw("[gray]Occurred:[] [white]" + occurred + "[]"), l -> l.align("left")).row();
-
-                if (rec.details != null && rec.details.durationMs != null) {
-                    long minutes = Math.max(1L, rec.details.durationMs / 60000L);
-                    String durationStr = PlayerProfileUiController.formatDuration((int) minutes, local);
-                    timing.label(Text.raw("[gray]Duration:[] [white]" + durationStr + "[]"), l -> l.align("left")).row();
-                } else {
-                    String perm = local != null ? local.t("audit-menu-duration-permanent") : "Permanent";
-                    timing.label(Text.raw("[gray]Duration:[] [scarlet]" + perm + "[]"), l -> l.align("left")).row();
-                }
-                if (rec.details != null && rec.details.expiresAt != null) {
-                    timing.label(Text.raw("[gray]Expires:[]  [scarlet]" + DATE_TIME_FORMAT.format(rec.details.expiresAt) + "[]"), l -> l.align("left")).row();
-                }
-            })).row();
-
-            // Section 5: Metadata Footer (Audit ID)
-            card.add(Ui.table(meta -> {
-                meta.layout(l -> l.growX());
-                meta.label(Text.raw("[darkgray]Audit ID: " + rec.auditId + "[]"), l -> l.align("left").growX());
-                String copyLabel = local != null ? local.t("audit-menu-btn-copy-id") : "Copy ID";
-                meta.button(Text.raw("[lightgray]" + Iconc.copy + " " + copyLabel + "[]"), "action:copy_id:" + rec.auditId,
-                        b -> b.style("cleart").layout(l -> l.height(24f)));
-            })).row();
-        })).row();
-
-        // Details Navigation Footer
-        d.add(Ui.table(foot -> {
-            foot.layout(l -> l.growX().padTop(4f));
-            String backText = local != null ? local.t("audit-menu-btn-back") : "Back to History";
-            foot.button(Text.raw("[accent]" + Iconc.left + " " + backText + "[]"), "action:back_to_list",
-                    b -> b.style("default").layout(l -> l.growX().height(36f)));
-        })).row();
+        });
     }
 
-    private void renderPagination(Ui.TableBuilder p, AuditHistoryModel model, Localization local) {
-        p.layout(l -> l.growX().padTop(4f));
+    private VNode eventCard(AuditRecord rec, float width, Localization local) {
+        Accent accent = accent(rec.action);
+        return Kit.card(width, accent, actionIcon(rec.action) + " " + formatActionName(rec.action, local), (content, inner) -> {
+            List<String> lines = new ArrayList<>();
+            Instant expiresAt = rec.details != null ? rec.details.expiresAt : null;
+            String status = status(rec.action, expiresAt, local);
+            if (!status.isEmpty()) lines.add(status);
 
-        // Prev Button
-        boolean hasPrev = !model.cursorBackStack().isEmpty();
-        String prevStyle = hasPrev ? "default" : "cleart";
-        String prevText = local != null ? local.t("previous") : "Prev";
-        String prevLabel = (hasPrev ? "[accent]" : "[gray]") + Iconc.left + " " + prevText + "[]";
-        // The page buttons share the leftover width, so the bar fits whatever it is given
-        p.button(Text.raw(prevLabel), "action:page:prev", b -> b.style(prevStyle).layout(l -> l.growX().height(32f).padRight(8f)));
+            String target = rec.target != null && rec.target.nameSnapshot != null
+                    ? rec.target.nameSnapshot : t(local, "audit-menu-unknown-target");
+            String actor = rec.actor != null && rec.actor.nameSnapshot != null
+                    ? rec.actor.nameSnapshot : t(local, "audit-menu-unknown-actor");
+            lines.add(field(local, "audit-menu-field-target") + " [white]" + TextWidth.escape(target) + "[]");
+            lines.add(field(local, "audit-menu-field-actor") + " [white]" + TextWidth.escape(actor) + "[]"
+                    + (rec.actor != null && rec.actor.type != null ? " [gray](" + rec.actor.type + ")[]" : ""));
+            if (rec.origin != null && rec.origin.serverId != null && !rec.origin.serverId.isBlank()) {
+                lines.add(field(local, "audit-menu-field-server") + " [sky]" + TextWidth.escape(rec.origin.serverId) + "[]");
+            }
+            content.add(Kit.text(String.join("\n", lines), inner)).row();
+        });
+    }
 
-        // Page Indicator
-        p.label(Text.raw("[white]Page " + model.pageIndex() + "[]"), l -> l.align("center").growX());
+    private VNode reasonCard(AuditRecord rec, float width, Localization local) {
+        return Kit.card(width, Accent.GRAY, Iconc.chat + " " + t(local, "audit-menu-field-reason"), (content, inner) -> {
+            String reason = rec.reason != null && !rec.reason.isBlank()
+                    ? rec.reason : t(local, "audit-menu-reason-unspecified");
+            content.add(Kit.text("[white]" + TextWidth.escape(reason) + "[]", inner)).row();
+        });
+    }
 
-        // Next Button
-        boolean hasNext = model.hasNext() && model.nextCursor() != null;
-        String nextStyle = hasNext ? "default" : "cleart";
-        String nextText = local != null ? local.t("next") : "Next";
-        String nextLabel = (hasNext ? "[accent]" : "[gray]") + nextText + " " + Iconc.right + "[]";
-        p.button(Text.raw(nextLabel), "action:page:next", b -> b.style(nextStyle).layout(l -> l.growX().height(32f).padLeft(8f)));
+    private VNode timeCard(AuditRecord rec, float width, Localization local) {
+        return Kit.card(width, Accent.BLUE, Iconc.refresh + " " + t(local, "audit-menu-section-time"), (content, inner) -> {
+            List<String> lines = new ArrayList<>();
+            lines.add(field(local, "audit-menu-field-occurred") + " [white]"
+                    + (rec.occurredAt != null ? DATE_TIME_FORMAT.format(rec.occurredAt) : "-") + "[]");
+            if (rec.details != null && rec.details.durationMs != null) {
+                long minutes = Math.max(1L, rec.details.durationMs / 60000L);
+                lines.add(field(local, "audit-menu-field-duration") + " [white]"
+                        + PlayerProfileUiController.formatDuration((int) minutes, local) + "[]");
+            } else if (rec.action == AuditAction.BAN || rec.action == AuditAction.MUTE) {
+                lines.add(field(local, "audit-menu-field-duration") + " [scarlet]"
+                        + t(local, "audit-menu-duration-permanent") + "[]");
+            }
+            if (rec.details != null && rec.details.expiresAt != null) {
+                lines.add(field(local, "audit-menu-field-expires") + " [white]"
+                        + DATE_TIME_FORMAT.format(rec.details.expiresAt) + "[]");
+            }
+            content.add(Kit.text(String.join("\n", lines), inner)).row();
+        });
+    }
 
-        // Refresh Button
-        p.button(Text.raw("[gray]" + Iconc.refresh + "[]"), "action:refresh",
-                b -> b.style("cleart").layout(l -> l.size(32f).padLeft(6f)));
-
-        // Return to Profile / Back Button
-        String backBtnText = local != null ? local.t("back") : "Back";
-        p.button(Text.raw("[accent]" + Iconc.left + " " + backBtnText + "[]"), "action:back",
-                b -> b.style("default").layout(l -> l.growX().height(32f).padLeft(6f)));
+    private VNode idCard(AuditRecord rec, float width, Localization local) {
+        return Kit.card(width, (content, inner) ->
+                content.add(Kit.text("[gray]" + t(local, "audit-menu-field-id") + "[]\n[lightgray]"
+                        + lines(rec.auditId, inner) + "[]", inner)).row());
     }
 
     // --- Helper Formatters ---
 
+    /** The name of a field of a record, as it stands before its value. */
+    private static String field(Localization local, String key) {
+        return "[gray]" + t(local, key) + ":[]";
+    }
+
+    /** An id is one long word, which no label wraps: it is cut into lines that fit {@code width}. */
+    static String lines(String id, float width) {
+        if (id == null) return "";
+        StringBuilder all = new StringBuilder();
+        StringBuilder line = new StringBuilder();
+        for (int i = 0; i < id.length(); i++) {
+            char c = id.charAt(i);
+            if (line.length() > 0 && TextWidth.of(TextWidth.escape(line.toString() + c)) > width) {
+                all.append(TextWidth.escape(line.toString())).append('\n');
+                line.setLength(0);
+            }
+            line.append(c);
+        }
+        return all.append(TextWidth.escape(line.toString())).toString();
+    }
+
     private static String formatActionName(AuditAction action, Localization local) {
-        if (action == null) return "UNKNOWN";
+        if (action == null) return t(local, "unknown");
         if (local != null) {
             String key = "audit-menu-action-" + action.name().toLowerCase();
             String translated = local.t(key);
@@ -738,18 +666,16 @@ public class AuditHistoryUiController implements UiController<AuditHistoryUiCont
         return action.name();
     }
 
-    private static String actionColor(AuditAction action) {
-        if (action == null) return "gray";
+    private static Accent accent(AuditAction action) {
+        if (action == null) return Accent.GRAY;
         return switch (action) {
-            case BAN -> "scarlet";
-            case UNBAN -> "lime";
-            case MUTE -> "orange";
-            case UNMUTE -> "lime";
-            case WARN -> "yellow";
-            case KICK -> "lightgray";
-            case QUARANTINE -> "purple";
-            case UNQUARANTINE -> "cyan";
-            case NOTE, MERGE -> "gray";
+            case BAN -> Accent.RED;
+            case MUTE -> Accent.ORANGE;
+            case WARN -> Accent.GOLD;
+            case QUARANTINE -> Accent.PURPLE;
+            case UNBAN, UNMUTE -> Accent.GREEN;
+            case UNQUARANTINE -> Accent.TEAL;
+            case KICK, NOTE, MERGE -> Accent.GRAY;
         };
     }
 
@@ -768,59 +694,15 @@ public class AuditHistoryUiController implements UiController<AuditHistoryUiCont
         };
     }
 
-    private static String formatStatusPill(AuditRecordSummary item, Localization local) {
-        if (item.action() != AuditAction.BAN && item.action() != AuditAction.MUTE) return "";
-        if (item.expiresAt() == null) {
-            String perm = local != null ? local.t("audit-menu-status-permanent") : "PERMANENT";
-            return "[scarlet][" + perm + "][]";
+    /** Whether a ban or a mute still holds; nothing for the actions that do not last. */
+    private static String status(AuditAction action, Instant expiresAt, Localization local) {
+        if (action != AuditAction.BAN && action != AuditAction.MUTE) return "";
+        if (expiresAt == null) {
+            return "[scarlet]" + t(local, "audit-menu-status-permanent") + "[]";
         }
-        Instant now = Instant.now();
-        if (now.isBefore(item.expiresAt())) {
-            String active = local != null ? local.t("audit-menu-status-active") : "ACTIVE";
-            return "[scarlet][" + active + "][]";
+        if (Instant.now().isBefore(expiresAt)) {
+            return "[scarlet]" + t(local, "audit-menu-status-active") + "[]";
         }
-        String expired = local != null ? local.t("audit-menu-status-expired") : "EXPIRED";
-        return "[darkgray][" + expired + "][]";
-    }
-
-    private static boolean isRecordActive(AuditRecord rec) {
-        if (rec == null) return false;
-        if (rec.action != AuditAction.BAN && rec.action != AuditAction.MUTE) return false;
-        if (rec.details == null || rec.details.expiresAt == null) return true; // Permanent
-        return Instant.now().isBefore(rec.details.expiresAt);
-    }
-
-    private static String formatDurationInfo(AuditRecordSummary item, Localization local) {
-        if (item.durationMs() == null && item.expiresAt() == null) {
-            return "[darkgray]ID: " + truncate(item.auditId(), 12) + "[]";
-        }
-        if (item.expiresAt() == null) {
-            String perm = local != null ? local.t("audit-menu-duration-permanent") : "Permanent";
-            return "[darkgray]" + perm + " | ID: " + truncate(item.auditId(), 12) + "[]";
-        }
-        return "[darkgray]Expires: " + DATE_TIME_FORMAT.format(item.expiresAt()) + "[]";
-    }
-
-    private static String summarizeReason(String reason, DialogMetrics metrics, Localization local) {
-        if (reason == null || reason.isBlank()) {
-            return local != null ? local.t("audit-menu-reason-unspecified") : "Not specified";
-        }
-        return metrics.truncateReason(reason.trim());
-    }
-
-    private static String formatTimestamp(long millis) {
-        if (millis <= 0) return "-";
-        return DATE_TIME_FORMAT.format(Instant.ofEpochMilli(millis));
-    }
-
-    private static String escapeMarkup(String text) {
-        if (text == null || text.isBlank()) return "";
-        return text.replace("[", "[[");
-    }
-
-    private static String truncate(String text, int max) {
-        if (text == null) return "";
-        if (text.length() <= max) return text;
-        return text.substring(0, Math.max(0, max - 3)) + "...";
+        return "[gray]" + t(local, "audit-menu-status-expired") + "[]";
     }
 }

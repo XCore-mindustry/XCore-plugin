@@ -2,8 +2,8 @@ package org.xcore.plugin.service;
 
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
-import arc.util.Strings;
 import org.bson.types.ObjectId;
+import org.xcore.plugin.model.PlayerPids;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatPrivateV1;
 import org.xcore.plugin.config.TomlSecretsConfig;
 import org.xcore.plugin.config.TomlXcoreConfig;
@@ -292,17 +292,7 @@ public class PrivateMessageService {
     }
 
     public Integer parseMenuPid(String input) {
-        if (input == null || input.isBlank()) {
-            return null;
-        }
-
-        String normalized = input.trim();
-        if (normalized.startsWith("#")) {
-            normalized = normalized.substring(1);
-        }
-
-        int parsed = Strings.parseInt(normalized, Integer.MIN_VALUE);
-        return parsed == Integer.MIN_VALUE || parsed < 0 ? null : parsed;
+        return PlayerPids.parse(input);
     }
 
     private boolean isRateLimited(Session session) {

@@ -3,9 +3,10 @@ package org.xcore.plugin.cloud.config;
 import io.leangen.geantyref.TypeToken;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
-import mindustry.game.Team;
+import mindustry.gen.Player;
 import org.incendo.cloud.parser.ParserParameters;
 import org.xcore.cloud.mindustry.MindustryCommandManager;
+import org.xcore.cloud.mindustry.selector.SelectorRestrictions;
 import org.xcore.plugin.cloud.XCoreSender;
 import org.xcore.plugin.cloud.annotation.AllTeams;
 import org.xcore.plugin.cloud.annotation.AllowNegativeDuration;
@@ -14,7 +15,6 @@ import org.xcore.plugin.cloud.parser.LanguageParser;
 import org.xcore.plugin.cloud.parser.MapParser;
 import org.xcore.plugin.cloud.parser.PlayerParser;
 import org.xcore.plugin.cloud.parser.SmartDurationParser;
-import org.xcore.plugin.cloud.parser.TeamParser;
 import org.xcore.plugin.localization.TranslatorLanguagesProvider;
 import org.xcore.plugin.service.TimeService;
 
@@ -35,14 +35,10 @@ public class CloudParserConfigurer {
     }
 
     public void configure(MindustryCommandManager<XCoreSender> manager) {
+        // Team parsing comes from cloud-mindustry; @AllTeams sets its parser parameter.
         manager.parserRegistry().registerAnnotationMapper(
                 AllTeams.class,
                 (_, _) -> ParserParameters.single(AllTeams.PARAM, true)
-        );
-
-        manager.parserRegistry().registerParserSupplier(
-                TypeToken.get(Team.class),
-                params -> new TeamParser(params.get(AllTeams.PARAM, false))
         );
 
         manager.parserRegistry().registerAnnotationMapper(
@@ -65,7 +61,10 @@ public class CloudParserConfigurer {
         );
 
         manager.parserRegistry().registerNamedParser("language", LanguageParser.parser(translatorLanguagesProvider));
-        manager.parserRegistry().registerParser(PlayerParser.parser());
+        manager.parserRegistry().registerParserSupplier(
+                TypeToken.get(Player.class),
+                params -> new PlayerParser(manager, SelectorRestrictions.from(params))
+        );
         manager.parserRegistry().registerParser(MapParser.parser());
     }
 }

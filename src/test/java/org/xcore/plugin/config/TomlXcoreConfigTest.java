@@ -50,7 +50,13 @@ class TomlXcoreConfigTest {
 
         assertThat(toml.translation.enabled).isTrue();
         assertThat(toml.translation.pipeline).containsExactly("google");
-        assertThat(toml.translation.preserveOriginalMessageOnFailure).isTrue();
+        assertThat(toml.translation.delivery.mode).isEqualTo("deadline");
+        assertThat(toml.translation.delivery.deadlineMillis).isEqualTo(1500);
+        assertThat(toml.translation.limits.maxConcurrentRequests).isEqualTo(16);
+        assertThat(toml.translation.prefilter.skipWords).contains("gg");
+        assertThat(toml.translation.channels.remoteGlobal).isFalse();
+        assertThat(toml.translation.channels.discord).isFalse();
+        assertThat(toml.translation.cache.memoryEntries).isEqualTo(2000);
         assertThat(toml.translation.cache.enabled).isTrue();
         assertThat(toml.translation.cache.ttlSeconds).isEqualTo(1800);
         assertThat(toml.translation.cache.maxTextLength).isEqualTo(500);
@@ -66,7 +72,7 @@ class TomlXcoreConfigTest {
         assertThat(toml.announcements.enabled).isTrue();
         assertThat(toml.announcements.intervalSeconds).isEqualTo(360);
         assertThat(toml.announcements.firstDelaySeconds).isEqualTo(120);
-        assertThat(toml.announcements.messages).containsExactly("announcement-hub", "announcement-discord", "announcement-help");
+        assertThat(toml.announcements.messages).containsExactly("announcement-hub", "announcement-discord", "announcement-help", "announcement-report");
     }
 
     @Test
@@ -98,7 +104,7 @@ class TomlXcoreConfigTest {
         assertThat(toml.server.name).isEqualTo("server");
         assertThat(toml.transport.redis.url).isEqualTo("redis://127.0.0.1:6379");
         assertThat(toml.translation.pipeline).containsExactly("google");
-        assertThat(toml.announcements.messages).containsExactly("announcement-hub", "announcement-discord", "announcement-help");
+        assertThat(toml.announcements.messages).containsExactly("announcement-hub", "announcement-discord", "announcement-help", "announcement-report");
     }
 
     @Test

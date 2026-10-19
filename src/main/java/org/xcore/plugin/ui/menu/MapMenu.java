@@ -131,9 +131,9 @@ public class MapMenu extends Menu {
         if (session == null || session.player == null) return;
         session.clear();
 
-        var controller = new org.xcore.plugin.ui.menu.map.MapUiController(mapService, mapDataRepository, mapPreviewService, mapVoteObserverService, session, hashService, summaryCache);
+        var controller = controller(session);
         var initialModel = controller.createInitialBrowserModel(session, page);
-        menuService.openUi(session, controller, initialModel);
+        menuService.openUi(session, controller, initialModel, true);
         controller.requestSummariesAsync();
     }
 
@@ -141,13 +141,22 @@ public class MapMenu extends Menu {
         if (session == null || session.player == null) return;
         session.clear();
 
-        var controller = new org.xcore.plugin.ui.menu.map.MapUiController(mapService, mapDataRepository, mapPreviewService, mapVoteObserverService, session, hashService, summaryCache);
+        var controller = controller(session);
         var initialModel = controller.createInitialDetailsModel(session, m);
-        menuService.openUi(session, controller, initialModel);
+        menuService.openUi(session, controller, initialModel, true);
         if (mapVoteObserverService != null) {
             mapVoteObserverService.registerViewing(session.player.uuid(), initialModel.selectedMapId());
         }
         controller.requestPreviewAsync(session, initialModel.selectedMapId());
+    }
+
+    /** The maps menu of {@code session}; on the events server a map can be given an event from it. */
+    private org.xcore.plugin.ui.menu.map.MapUiController controller(Session session) {
+        var controller = new org.xcore.plugin.ui.menu.map.MapUiController(mapService, mapDataRepository, mapPreviewService, mapVoteObserverService, session, hashService, summaryCache);
+        if (config != null && config.server != null && "event".equals(config.server.name)) {
+            controller.offerEvent(map -> eventMenu.get().createStart(getUuid(session), map));
+        }
+        return controller;
     }
 
     MapData resolveMap(String mapId) {
@@ -175,6 +184,10 @@ public class MapMenu extends Menu {
     }
 
     public void showGameOverMenu(MapData current, MapData next, Team winner) {
+        showGameOverMenu(current, next, winner, next == null ? null : mapService.findPersistedMap(next));
+    }
+
+    public void showGameOverMenu(MapData current, MapData next, Team winner, mindustry.maps.Map nextMap) {
         String nextName = next != null ? next.name : "Unknown";
         String nextAuthor = next != null ? next.author : "Unknown";
         String currentId = current != null && current.id != null ? current.id.toString() : null;
@@ -194,12 +207,13 @@ public class MapMenu extends Menu {
                     ? session.locale().t("map-vote-dislike-selected")
                     : session.locale().t("map-vote-dislike");
 
+            String creator = org.xcore.plugin.ui.menu.map.MapUploadText.creator(session.locale(), mapService.discordUploadFor(nextMap));
             var builder = session.builder().title("map-vote-title")
-                    .content("map-vote-content", args(
+                    .rawContent(session.locale().t("map-vote-content", args(
                             "mapName", nextName,
                             "author", nextAuthor,
                             "seconds", 10
-                    ));
+                    )) + (creator.isBlank() ? "" : "\n\n" + creator));
 
             if (current != null) {
                 builder.addButtonText(likeButtonText, () -> mapService.handleReputation(player, true, current))

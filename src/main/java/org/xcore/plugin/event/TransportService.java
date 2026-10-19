@@ -1,25 +1,28 @@
 package org.xcore.plugin.event;
 
-import arc.Events;
 import arc.util.Log;
-import arc.util.Timer;
 import io.avaje.inject.PostConstruct;
+import io.avaje.inject.PreDestroy;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import mindustry.core.Version;
 import mindustry.game.EventType;
 import mindustry.gen.Groups;
 import mindustry.net.Administration;
-import org.xcore.protocol.generated.messages.server.ServerMessages.ServerActionV1;
-import org.xcore.protocol.generated.messages.server.ServerMessages.ServerHeartbeatV1;
+import org.xcore.plugin.concurrent.ScheduledTasks;
+import org.xcore.plugin.concurrent.StorageExecutor;
 import org.xcore.plugin.config.TomlXcoreConfig;
+import org.xcore.plugin.event.transport.CasesTransportHandler;
 import org.xcore.plugin.event.transport.ChatTransportHandler;
 import org.xcore.plugin.event.transport.DiscordLinkTransportHandler;
 import org.xcore.plugin.event.transport.MapTransportHandler;
-import org.xcore.plugin.event.transport.RatingTransportHandler;
 import org.xcore.plugin.event.transport.ModerationTransportHandler;
-import org.xcore.plugin.concurrent.StorageExecutor;
+import org.xcore.plugin.event.transport.RatingTransportHandler;
+import org.xcore.plugin.event.transport.SecurityTransportHandler;
 import org.xcore.plugin.service.NetworkService;
+import org.xcore.plugin.startup.ShutdownOrder;
+import org.xcore.protocol.generated.messages.server.ServerMessages.ServerActionV1;
+import org.xcore.protocol.generated.messages.server.ServerMessages.ServerHeartbeatV1;
 
 import java.io.InputStream;
 import java.net.HttpURLConnection;
@@ -39,12 +42,20 @@ public class TransportService {
     private final ModerationTransportHandler moderationTransportHandler;
     private final MapTransportHandler mapTransportHandler;
     private final RatingTransportHandler ratingTransportHandler;
+    private final SecurityTransportHandler securityTransportHandler;
     private final NetworkService network;
     private final TomlXcoreConfig config;
     private final StorageExecutor storageExecutor;
+    private final EventSubscriptions subscriptions = new EventSubscriptions();
+    private final Runnable reconnectHook = this::registerListeners;
+    private final ScheduledTasks tasks = new ScheduledTasks(TransportService.class);
+    private ScheduledTasks.Handle heartbeatTask;
+    private volatile boolean stopped;
     private volatile String cachedPublicHost;
     private volatile long nextPublicHostResolveAttemptAtMs;
     private final AtomicBoolean hostResolveInFlight = new AtomicBoolean();
+
+    private final CasesTransportHandler casesTransportHandler;
 
     @Inject
     public TransportService(ChatTransportHandler chatTransportHandler,
@@ -52,67 +63,96 @@ public class TransportService {
                             ModerationTransportHandler moderationTransportHandler,
                             MapTransportHandler mapTransportHandler,
                             RatingTransportHandler ratingTransportHandler,
+                            SecurityTransportHandler securityTransportHandler,
                             NetworkService network,
                             TomlXcoreConfig config,
-                            StorageExecutor storageExecutor) {
+                            StorageExecutor storageExecutor,
+                            CasesTransportHandler casesTransportHandler) {
+        this.casesTransportHandler = casesTransportHandler;
         this.chatTransportHandler = chatTransportHandler;
         this.discordLinkTransportHandler = discordLinkTransportHandler;
         this.moderationTransportHandler = moderationTransportHandler;
         this.mapTransportHandler = mapTransportHandler;
         this.ratingTransportHandler = ratingTransportHandler;
+        this.securityTransportHandler = securityTransportHandler;
         this.network = network;
         this.config = config;
         this.storageExecutor = storageExecutor;
     }
 
+    public TransportService(ChatTransportHandler chatTransportHandler, DiscordLinkTransportHandler discordLinkTransportHandler,
+                            ModerationTransportHandler moderationTransportHandler, MapTransportHandler mapTransportHandler,
+                            RatingTransportHandler ratingTransportHandler, SecurityTransportHandler securityTransportHandler,
+                            NetworkService network, TomlXcoreConfig config, StorageExecutor storageExecutor) {
+        this(chatTransportHandler, discordLinkTransportHandler, moderationTransportHandler, mapTransportHandler,
+                ratingTransportHandler, securityTransportHandler, network, config, storageExecutor, null);
+    }
+
     @PostConstruct
     public void init() {
-        network.registerReconnectHook(this::registerListeners);
+        network.registerReconnectHook(reconnectHook);
         registerListeners();
 
-        Events.on(EventType.ServerLoadEvent.class, event -> {
-            network.post(new ServerActionV1("Server loaded", config.server.name));
+        subscriptions.on(EventType.ServerLoadEvent.class, event -> startHeartbeat());
+    }
 
-            Timer.schedule(() -> {
-                try {
-                    String desc = Administration.Config.desc.string();
-                    if ("off".equalsIgnoreCase(desc) || desc == null) {
-                        desc = "";
-                    }
-                    String mapName = mindustry.Vars.state.map != null ? mindustry.Vars.state.map.name() : "-";
-                    int wave = mindustry.Vars.state.wave;
-                    String modeName = mindustry.Vars.state.rules.modeName != null && !mindustry.Vars.state.rules.modeName.isEmpty()
-                            ? mindustry.Vars.state.rules.modeName
-                            : mindustry.Vars.state.rules.mode().name();
-                    int tps = (arc.Core.graphics != null ? arc.Core.graphics.getFramesPerSecond() : 60);
+    private synchronized void startHeartbeat() {
+        if (stopped) return;
+        if (heartbeatTask != null) heartbeatTask.cancel();
+        network.post(new ServerActionV1("Server loaded", config.server.name));
+        securityTransportHandler.start();
 
-                    network.post(new ServerHeartbeatV1(
-                            config.server.name,
-                            config.discord.channelIdAsLong(),
-                            Groups.player.size(),
-                            config.server.playerLimit + Groups.player.count(p -> p.admin),
-                            Version.buildString(),
-                            resolveHostAddress(),
-                            Administration.Config.port.num(),
-                            desc,
-                            mapName,
-                            wave,
-                            modeName,
-                            tps
-                    ));
-                } catch (Exception ex) {
-                    Log.err("Failed to publish heartbeat", ex);
+        heartbeatTask = tasks.every(10f, 30f, () -> {
+            try {
+                String desc = Administration.Config.desc.string();
+                if ("off".equalsIgnoreCase(desc) || desc == null) {
+                    desc = "";
                 }
-            }, 10f, 30f);
+                String mapName = mindustry.Vars.state.map != null ? mindustry.Vars.state.map.name() : "-";
+                int wave = mindustry.Vars.state.wave;
+                String modeName = mindustry.Vars.state.rules.modeName != null && !mindustry.Vars.state.rules.modeName.isEmpty()
+                        ? mindustry.Vars.state.rules.modeName
+                        : mindustry.Vars.state.rules.mode().name();
+                int tps = (arc.Core.graphics != null ? arc.Core.graphics.getFramesPerSecond() : 60);
+
+                network.post(new ServerHeartbeatV1(
+                        config.server.name,
+                        config.discord.channelIdAsLong(),
+                        Groups.player.size(),
+                        config.server.playerLimit + Groups.player.count(p -> p.admin),
+                        Version.buildString(),
+                        resolveHostAddress(),
+                        Administration.Config.port.num(),
+                        desc,
+                        mapName,
+                        wave,
+                        modeName,
+                        tps
+                ));
+            } catch (Exception ex) {
+                Log.err("Failed to publish heartbeat", ex);
+            }
         });
     }
 
+    @PreDestroy(priority = ShutdownOrder.STOP_PRODUCERS)
+    public synchronized void stop() {
+        stopped = true;
+        subscriptions.close();
+        network.unregisterReconnectHook(reconnectHook);
+        tasks.close();
+        heartbeatTask = null;
+    }
+
     private void registerListeners() {
+        if (stopped) return;
         chatTransportHandler.registerListeners();
         discordLinkTransportHandler.registerListeners();
         moderationTransportHandler.registerListeners();
         mapTransportHandler.registerListeners();
         ratingTransportHandler.registerListeners();
+        securityTransportHandler.registerListeners();
+        if (casesTransportHandler != null) casesTransportHandler.registerListeners();
     }
 
     /**

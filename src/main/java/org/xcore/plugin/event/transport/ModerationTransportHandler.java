@@ -10,6 +10,8 @@ import mindustry.server.ServerControl;
 import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.concurrent.Async;
 import org.xcore.plugin.model.PlayerData;
+import org.xcore.plugin.permission.Actor;
+import org.xcore.plugin.permission.RemoteConsoleScope;
 import org.xcore.plugin.rating.ladder.LadderService;
 import org.xcore.plugin.service.DiscordAdminAccessService;
 import org.xcore.plugin.service.NetworkService;
@@ -42,6 +44,7 @@ public class ModerationTransportHandler {
     private final DiscordAdminAccessService discordAdminAccessService;
     private final LadderService ladderService;
     private final Async async;
+    private final RemoteConsoleScope remoteConsole;
 
     @Inject
     public ModerationTransportHandler(NetworkService network,
@@ -50,7 +53,8 @@ public class ModerationTransportHandler {
                                       PlayerDisplayService playerDisplayService,
                                       DiscordAdminAccessService discordAdminAccessService,
                                       LadderService ladderService,
-                                      Async async) {
+                                      Async async,
+                                      RemoteConsoleScope remoteConsole) {
         this.network = network;
         this.sessionService = sessionService;
         this.config = config;
@@ -58,6 +62,7 @@ public class ModerationTransportHandler {
         this.discordAdminAccessService = discordAdminAccessService;
         this.ladderService = ladderService;
         this.async = async;
+        this.remoteConsole = remoteConsole;
     }
 
     /**
@@ -143,12 +148,15 @@ public class ModerationTransportHandler {
                 "badge inventory"
         )));
 
-        network.subscribe(PlayerPasswordResetCommandV1.class, e -> async.main(() -> updatePlayerSession(
-                e.playerUuid(),
-                data -> data.password = "",
-                false,
-                "password reset"
-        )));
+        network.subscribe(PlayerPasswordResetCommandV1.class, e -> async.main(() -> {
+            updatePlayerSession(
+                    e.playerUuid(),
+                    data -> data.password = "",
+                    false,
+                    "password reset"
+            );
+            discordAdminAccessService.onPasswordReset(e.playerUuid());
+        }));
 
         // The cache rebuild walks Groups.player and queries MongoDB per player, so it
         // takes its own snapshot on the game thread and installs the result back onto it.
@@ -159,6 +167,7 @@ public class ModerationTransportHandler {
         });
 
         // handleCommandString runs game logic, including player and world mutation.
+        // Senders older than the sourceServer field leave it out; the origin is then only known to be remote.
         network.subscribe(ServerCommandExecuteCommandV1.class, e -> {
             if (!e.targetServers().isEmpty()) {
                 if (e.exclusion()) {
@@ -170,7 +179,10 @@ public class ModerationTransportHandler {
 
             async.main(() -> {
                 Log.infoTag("ExecuteCommandEvent", "Executing command: " + e.command());
-                ServerControl.instance.handleCommandString(e.command());
+                String source = e.sourceServer() == null || e.sourceServer().isBlank()
+                        ? Actor.RemoteConsole.UNKNOWN_SOURCE
+                        : e.sourceServer();
+                remoteConsole.run(source, () -> ServerControl.instance.handleCommandString(e.command()));
             });
         });
     }

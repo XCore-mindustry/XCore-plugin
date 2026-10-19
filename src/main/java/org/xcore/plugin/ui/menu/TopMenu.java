@@ -135,7 +135,7 @@ public class TopMenu extends Menu {
                 Log.err("Failed to open top category " + query.categoryId(), error);
                 return;
             }
-            menuService.openUi(session, controller, controller.model(data));
+            menuService.openUi(session, controller, controller.model(data), true);
         });
     }
 }

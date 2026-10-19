@@ -18,6 +18,8 @@ import org.xcore.plugin.model.AuditTarget;
 import org.xcore.plugin.model.BanData;
 import org.xcore.plugin.model.MuteData;
 import org.xcore.plugin.model.PlayerData;
+import org.xcore.plugin.model.PlayerPids;
+import org.xcore.plugin.permission.Actor;
 import org.xcore.plugin.service.FindService;
 import org.xcore.plugin.service.NetworkService;
 import org.xcore.plugin.service.SecurityService;
@@ -28,6 +30,7 @@ import org.xcore.protocol.generated.messages.moderation.ModerationMessages.Moder
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import static mindustry.Vars.netServer;
@@ -39,6 +42,7 @@ import static mindustry.Vars.netServer;
 @Singleton
 public class ModerationService {
     public static final String PLAYER_NOT_FOUND_MESSAGE = "Player not found";
+    public static final String MISSING_ACTOR_MESSAGE = "Moderation actor is missing";
     private static final String DEFAULT_REASON = "Not Specified";
     private static final String UNKNOWN_PLAYER_NAME = "Unknown";
     private static final String EMPTY_DISCORD_ID = "";
@@ -101,8 +105,11 @@ public class ModerationService {
         if (command == null) {
             return ModerationResult.failure("Invalid ban command");
         }
-        ModerationActor actor = command.actor() != null ? command.actor() : ModerationActor.CONSOLE;
-        if (command.targetId() >= 0) {
+        ModerationActor actor = command.actor();
+        if (actor == null) {
+            return ModerationResult.failure(MISSING_ACTOR_MESSAGE);
+        }
+        if (PlayerPids.isAssigned(command.targetId())) {
             return banById(command.targetId(), actor.name(), actor.discordId(),
                     command.reason(), command.duration(), command.kickOnline());
         }
@@ -117,8 +124,11 @@ public class ModerationService {
         if (command == null) {
             return ModerationResult.failure("Invalid unban command");
         }
-        ModerationActor actor = command.actor() != null ? command.actor() : ModerationActor.CONSOLE;
-        if (command.targetId() >= 0) {
+        ModerationActor actor = command.actor();
+        if (actor == null) {
+            return ModerationResult.failure(MISSING_ACTOR_MESSAGE);
+        }
+        if (PlayerPids.isAssigned(command.targetId())) {
             return unbanById(command.targetId(), actor.name(), actor.discordId());
         }
         var res = tempUnban(command.targetUuid(), command.targetIp(), actor.name(), actor.discordId());
@@ -135,7 +145,10 @@ public class ModerationService {
         if (command == null) {
             return ModerationResult.failure("Invalid mute command");
         }
-        ModerationActor actor = command.actor() != null ? command.actor() : ModerationActor.CONSOLE;
+        ModerationActor actor = command.actor();
+        if (actor == null) {
+            return ModerationResult.failure(MISSING_ACTOR_MESSAGE);
+        }
         Integer pid = resolveTargetPid(command.targetId(), command.targetUuid());
         if (pid != null) {
             return muteById(pid, actor.name(), actor.discordId(), command.reason(), command.duration());
@@ -150,7 +163,10 @@ public class ModerationService {
         if (command == null) {
             return ModerationResult.failure("Invalid unmute command");
         }
-        ModerationActor actor = command.actor() != null ? command.actor() : ModerationActor.CONSOLE;
+        ModerationActor actor = command.actor();
+        if (actor == null) {
+            return ModerationResult.failure(MISSING_ACTOR_MESSAGE);
+        }
         Integer pid = resolveTargetPid(command.targetId(), command.targetUuid());
         if (pid != null) {
             return unmuteById(pid, actor.name(), actor.discordId());
@@ -175,13 +191,10 @@ public class ModerationService {
             return playerDataRepository.findByUsername(target.substring(1));
         }
 
-        String pidCandidate = target.startsWith("#") ? target.substring(1) : target;
-        if (pidCandidate.matches("\\d+")) {
-            try {
-                int pid = Integer.parseInt(pidCandidate);
-                PlayerData data = playerDataRepository.findByPid(pid);
-                if (data != null) return data;
-            } catch (NumberFormatException ignored) {}
+        Integer pid = PlayerPids.parse(target);
+        if (pid != null) {
+            PlayerData data = playerDataRepository.findByPid(pid);
+            if (data != null) return data;
         }
 
         PlayerData byUsername = playerDataRepository.findByUsername(target);
@@ -193,7 +206,7 @@ public class ModerationService {
     }
 
     private Integer resolveTargetPid(int targetId, String targetUuid) {
-        if (targetId >= 0) {
+        if (PlayerPids.isAssigned(targetId)) {
             return targetId;
         }
         if (targetUuid != null && !targetUuid.isBlank()) {
@@ -231,7 +244,12 @@ public class ModerationService {
         Instant expire = toExpireDate(duration);
         String playerName = resolvePlayerName(name);
 
+        if (banDataRepository.isReadOnly()) {
+            return ModerationResult.failure(BAN_SAVE_FAILED_MESSAGE);
+        }
         BanData ban = BanData.builder()
+                .banId(banDataRepository.nextBanId())
+                .pid(PlayerPids.orNull(pid))
                 .name(playerName)
                 .uuid(uuid)
                 .ip(ip)
@@ -251,7 +269,7 @@ public class ModerationService {
                 legacyActor(adminName, adminDiscordId),
                 legacyOrigin(adminName),
                 ban.reason,
-                auditDetails(duration, expire),
+                banAuditDetails(ban, duration, expire),
                 null
         );
 
@@ -282,11 +300,14 @@ public class ModerationService {
             return ModerationResult.failure(PLAYER_NOT_FOUND_MESSAGE);
         }
 
+        BanData ban = banDataRepository.find(target.uuid, null);
+        banDataRepository.assignBanIdIfMissing(ban);
         if (!banDataRepository.delete(target.uuid, null)) {
             return ModerationResult.failure(BAN_DELETE_FAILED_MESSAGE);
         }
 
-        auditAndPublishPardon(AuditAction.UNBAN, target.uuid, target.pid, target.nickname, null, adminName, adminDiscordId);
+        auditAndPublishPardon(AuditAction.UNBAN, target.uuid, target.pid, target.nickname, null,
+                adminName, adminDiscordId, banAuditDetails(ban, null, null));
 
         return ModerationResult.success("Player '" + target.nickname + "' unbanned successfully", target);
     }
@@ -301,13 +322,18 @@ public class ModerationService {
 
     private void auditAndPublishPardon(AuditAction action, String uuid, Integer pid, String name, String ip,
                                        String adminName, String adminDiscordId) {
+        auditAndPublishPardon(action, uuid, pid, name, ip, adminName, adminDiscordId, new AuditDetails());
+    }
+
+    private void auditAndPublishPardon(AuditAction action, String uuid, Integer pid, String name, String ip,
+                                       String adminName, String adminDiscordId, AuditDetails details) {
         AuditRecord audit = appendAudit(
                 action,
                 auditTarget(uuid, pid, name, ip),
                 legacyActor(adminName, adminDiscordId),
                 legacyOrigin(adminName),
                 DEFAULT_REASON,
-                new AuditDetails(),
+                details,
                 null
         );
 
@@ -400,7 +426,8 @@ public class ModerationService {
             return ModerationResult.failure(MISSING_IDENTIFIER_MESSAGE);
         }
 
-        return executeBan(uuid, ip, null, name, duration, reason,
+        var target = hasUuid(uuid) ? playerDataRepository.findByUuid(uuid) : null;
+        return executeBan(uuid, ip, target != null ? target.pid : null, name, duration, reason,
                 adminName, adminDiscordId, true, true);
     }
 
@@ -409,11 +436,14 @@ public class ModerationService {
             return ModerationResult.failure(MISSING_IDENTIFIER_MESSAGE);
         }
 
+        BanData ban = banDataRepository.find(uuid, ip);
+        banDataRepository.assignBanIdIfMissing(ban);
         if (!banDataRepository.delete(uuid, ip)) {
             return ModerationResult.failure(BAN_DELETE_FAILED_MESSAGE);
         }
 
-        auditAndPublishPardon(AuditAction.UNBAN, uuid, null, UNKNOWN_PLAYER_NAME, ip, adminName, adminDiscordId);
+        auditAndPublishPardon(AuditAction.UNBAN, uuid, ban != null ? ban.pid : null, UNKNOWN_PLAYER_NAME, ip,
+                adminName, adminDiscordId, banAuditDetails(ban, null, null));
 
         return ModerationResult.success("Unbanned: UUID=" + uuid + " / IP=" + ip, null);
     }
@@ -506,6 +536,14 @@ public class ModerationService {
                     .serverId(null)
                     .build();
         }
+        if (isRemoteConsole(normalizedName)) {
+            return AuditActor.builder()
+                    .type(AuditActorType.SERVER_CONSOLE)
+                    .id(normalizedName)
+                    .nameSnapshot(normalizedName)
+                    .serverId(normalizedName.substring(Actor.RemoteConsole.AUDIT_PREFIX.length()))
+                    .build();
+        }
 
         return AuditActor.builder()
                 .type(AuditActorType.PLAYER_ADMIN)
@@ -515,14 +553,28 @@ public class ModerationService {
                 .build();
     }
 
+    /** A console command relayed from another server; see {@link Actor.RemoteConsole}. */
+    private static boolean isRemoteConsole(String actorName) {
+        return actorName.startsWith(Actor.RemoteConsole.AUDIT_PREFIX);
+    }
+
     private static AuditOrigin legacyOrigin(String adminName) {
-        AuditOriginChannel channel = "console".equalsIgnoreCase(resolvePlayerName(adminName))
+        String normalizedName = resolvePlayerName(adminName);
+        AuditOriginChannel channel = "console".equalsIgnoreCase(normalizedName) || isRemoteConsole(normalizedName)
                 ? AuditOriginChannel.SERVER_CONSOLE
                 : AuditOriginChannel.IN_GAME;
         return AuditOrigin.builder()
                 .channel(channel)
                 .source("xcore-plugin")
                 .build();
+    }
+
+    private static AuditDetails banAuditDetails(BanData ban, Duration duration, Instant expiresAt) {
+        var details = auditDetails(duration, expiresAt);
+        if (ban != null && ban.banId != null) {
+            details.extra = Map.of("ban_id", ban.banId.toString());
+        }
+        return details;
     }
 
     private static AuditDetails auditDetails(Duration duration, Instant expiresAt) {

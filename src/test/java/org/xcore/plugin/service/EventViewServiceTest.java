@@ -4,8 +4,8 @@ import org.bson.types.ObjectId;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.xcore.plugin.common.StatusEnum;
 import org.xcore.plugin.database.repository.EventDataRepository;
+import org.xcore.plugin.database.repository.EventDataRepository.Listing;
 import org.xcore.plugin.database.repository.MapDataRepository;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
 import org.xcore.plugin.model.EventData;
@@ -13,12 +13,11 @@ import org.xcore.plugin.model.MapData;
 import org.xcore.plugin.model.PlayerData;
 
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -84,12 +83,12 @@ class EventViewServiceTest {
     @Test
     @DisplayName("page clamps requested page and loads repository slice")
     void page_clampsAndLoadsSlice() {
-        Map<String, StatusEnum> filters = Map.of("active", StatusEnum.Active);
+        ObjectId author = new ObjectId();
         EventData event = new EventData();
-        when(eventDataRepository.count(filters)).thenReturn(25L);
-        when(eventDataRepository.findPage(20, 10, filters)).thenReturn(List.of(event));
+        when(eventDataRepository.count(Listing.MINE, author)).thenReturn(25L);
+        when(eventDataRepository.findPage(Listing.MINE, author, 20, 10)).thenReturn(List.of(event));
 
-        EventViewService.EventPage page = eventViewService.page(5, 10, filters);
+        EventViewService.EventPage page = eventViewService.page(5, 10, Listing.MINE, author);
 
         assertThat(page.events()).containsExactly(event);
         assertThat(page.total()).isEqualTo(25);
@@ -102,9 +101,9 @@ class EventViewServiceTest {
     @Test
     @DisplayName("empty page returns page one and skips slice query")
     void page_emptySkipsFindPage() {
-        when(eventDataRepository.count(isNull(Map.class))).thenReturn(0L);
+        when(eventDataRepository.count(Listing.UPCOMING, null)).thenReturn(0L);
 
-        EventViewService.EventPage page = eventViewService.page(1, 10, null);
+        EventViewService.EventPage page = eventViewService.page(1, 10, Listing.UPCOMING, null);
 
         assertThat(page.events()).isEmpty();
         assertThat(page.total()).isZero();
@@ -113,6 +112,6 @@ class EventViewServiceTest {
         assertThat(page.isEmpty()).isTrue();
         assertThat(page.hasPrevious()).isFalse();
         assertThat(page.hasNext()).isFalse();
-        verify(eventDataRepository, never()).findPage(anyInt(), anyInt(), org.mockito.ArgumentMatchers.any());
+        verify(eventDataRepository, never()).findPage(any(), any(), anyInt(), anyInt());
     }
 }

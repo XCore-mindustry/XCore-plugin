@@ -11,6 +11,7 @@ import org.xcore.plugin.common.BuildInfo;
 import org.xcore.plugin.config.TomlSecretsConfig;
 import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
+import org.xcore.plugin.gamemode.pvp.guide.MiniPvPGuideService;
 import org.xcore.plugin.localization.Localization;
 import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.session.Session;
@@ -44,10 +45,11 @@ class InformationMenuTest {
     private InformationMenu informationMenu;
     private Session session;
     private TomlSecretsConfig secretsConfig;
-    private Provider<MapMenu> map;
-    private Provider<EventMenu> event;
-    private Provider<HelpMenu> help;
-    private Provider<PlayerMenu> player;
+    private MapMenu map;
+    private EventMenu event;
+    private HelpMenu help;
+    private PlayerMenu player;
+    private MiniPvPGuideService pvpGuide;
 
     @BeforeEach
     @SuppressWarnings("unchecked")
@@ -69,11 +71,12 @@ class InformationMenuTest {
 
         BuildInfo buildInfo = new BuildInfo();
         buildInfo.setVersion("test-version");
-        map = mock(Provider.class);
-        event = mock(Provider.class);
-        help = mock(Provider.class);
-        player = mock(Provider.class);
-        informationMenu = new InformationMenu(config, secretsConfig, sessionService, buildInfo, menuService, map, event, help, player);
+        map = mock(MapMenu.class);
+        event = mock(EventMenu.class);
+        help = mock(HelpMenu.class);
+        player = mock(PlayerMenu.class);
+        pvpGuide = mock(MiniPvPGuideService.class);
+        informationMenu = new InformationMenu(config, secretsConfig, sessionService, buildInfo, menuService, map, event, help, player, pvpGuide);
         informationMenu.init();
 
         session = session();
@@ -158,8 +161,7 @@ class InformationMenuTest {
     @Test
     @DisplayName("main help action uses route history and opens help menu")
     void main_helpActionUsesRouteHistoryAndOpensHelpMenu() {
-        HelpMenu helpMenu = mock(HelpMenu.class);
-        when(help.get()).thenReturn(helpMenu);
+        HelpMenu helpMenu = help;
 
         informationMenu.main("viewer-1");
         menuService.onMenuOption(session, 1);
@@ -172,8 +174,7 @@ class InformationMenuTest {
     @Test
     @DisplayName("main maps action uses route history and opens maps menu")
     void main_mapsActionUsesRouteHistoryAndOpensMapsMenu() {
-        MapMenu mapMenu = mock(MapMenu.class);
-        when(map.get()).thenReturn(mapMenu);
+        MapMenu mapMenu = map;
 
         informationMenu.main("viewer-1");
         menuService.onMenuOption(session, 2);
@@ -186,8 +187,7 @@ class InformationMenuTest {
     @Test
     @DisplayName("main players action uses route history and opens players menu")
     void main_playersActionUsesRouteHistoryAndOpensPlayersMenu() {
-        PlayerMenu playerMenu = mock(PlayerMenu.class);
-        when(player.get()).thenReturn(playerMenu);
+        PlayerMenu playerMenu = player;
 
         informationMenu.main("viewer-1");
         menuService.onMenuOption(session, 3);
@@ -209,14 +209,12 @@ class InformationMenuTest {
         when(localSessionService.get("viewer-1")).thenReturn(localSession);
 
         EventMenu eventMenu = mock(EventMenu.class);
-        Provider<EventMenu> localEvent = mock(Provider.class);
-        when(localEvent.get()).thenReturn(eventMenu);
 
         TomlXcoreConfig eventConfig = new TomlXcoreConfig();
         eventConfig.server.name = "event";
         BuildInfo buildInfo = new BuildInfo();
         buildInfo.setVersion("test-version");
-        InformationMenu eventInformationMenu = new InformationMenu(eventConfig, secretsConfig, localSessionService, buildInfo, localMenuService, map, localEvent, help, player);
+        InformationMenu eventInformationMenu = new InformationMenu(eventConfig, secretsConfig, localSessionService, buildInfo, localMenuService, map, eventMenu, help, player, pvpGuide);
         eventInformationMenu.init();
 
         eventInformationMenu.main("viewer-1");
@@ -225,6 +223,19 @@ class InformationMenuTest {
         verify(eventMenu).main("viewer-1");
         assertThat(localSession.hasHistory()).isFalse();
         assertThat(localSession.hasRouteHistory()).isTrue();
+    }
+
+    @Test
+    @DisplayName("main opens the MiniPvP guide on the MiniPvP server")
+    void main_opensMiniPvPGuideOnMiniPvPServer() {
+        when(pvpGuide.hostsMode()).thenReturn(true);
+        informationMenu.main("viewer-1");
+
+        assertThat(session.activeScreen().actionCount()).isEqualTo(6);
+        menuService.onMenuOption(session, 4);
+
+        verify(pvpGuide).open(session);
+        assertThat(session.hasRouteHistory()).isTrue();
     }
 
     @Test
@@ -239,14 +250,12 @@ class InformationMenuTest {
         when(localSessionService.get("viewer-1")).thenReturn(localSession);
 
         EventMenu eventMenu = mock(EventMenu.class);
-        Provider<EventMenu> localEvent = mock(Provider.class);
-        when(localEvent.get()).thenReturn(eventMenu);
 
         TomlXcoreConfig eventConfig = new TomlXcoreConfig();
         eventConfig.server.name = "event";
         BuildInfo buildInfo = new BuildInfo();
         buildInfo.setVersion("test-version");
-        InformationMenu eventInformationMenu = new InformationMenu(eventConfig, secretsConfig, localSessionService, buildInfo, localMenuService, map, localEvent, help, player);
+        InformationMenu eventInformationMenu = new InformationMenu(eventConfig, secretsConfig, localSessionService, buildInfo, localMenuService, map, eventMenu, help, player, pvpGuide);
         eventInformationMenu.init();
 
         eventInformationMenu.main("viewer-1");

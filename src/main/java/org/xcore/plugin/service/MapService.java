@@ -1,12 +1,19 @@
 package org.xcore.plugin.service;
 
-import arc.Events;
+import io.avaje.inject.PreDestroy;
+import org.xcore.plugin.event.EventSubscriptions;
+import org.xcore.plugin.event.RoundScope;
+import org.xcore.plugin.startup.ShutdownOrder;
 import arc.func.Boolf;
 import arc.struct.Seq;
-import arc.util.Timer;
 import arc.util.Strings;
 import org.jspecify.annotations.Nullable;
 import io.avaje.inject.PostConstruct;
+import org.xcore.plugin.database.repository.MapUploadRepository;
+import org.xcore.plugin.model.MapDiscordUpload;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.CompletionStage;
+import java.util.concurrent.CompletableFuture;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import mindustry.Vars;
@@ -39,6 +46,7 @@ import static mindustry.Vars.maps;
 
 @Singleton
 public class MapService {
+    private final EventSubscriptions subscriptions = new EventSubscriptions();
     private static final int NEW_VOTE_REPUTATION_DELTA = 1;
     private static final int CHANGED_VOTE_REPUTATION_DELTA = 2;
     private static final double POPULARITY_PER_REPUTATION = 2.0;
@@ -52,7 +60,15 @@ public class MapService {
     private final VoteNewWaveFactory voteNewWaveFactory;
     private final VoteRtvFactory voteRtvFactory;
     private final GameStateService gameStateService;
+    private final RoundScope roundScope;
     private volatile org.xcore.plugin.service.map.MapIdentityCatalog identityCatalog;
+
+    private final MapUploadRepository uploadRepository;
+    private volatile java.util.Map<String, MapDiscordUpload> uploads = java.util.Map.of();
+    private final AtomicLong uploadRevision = new AtomicLong();
+    private final AtomicLong catalogRevision = new AtomicLong();
+    private volatile boolean catalogRebuilding;
+    private volatile CompletionStage<Void> catalogReady = CompletableFuture.completedFuture(null);
 
     @Inject
     public MapService(EventDataRepository eventDataRepository,
@@ -64,7 +80,9 @@ public class MapService {
                       VoteNewWaveFactory voteNewWaveFactory,
                       VoteRtvFactory voteRtvFactory,
                       GameStateService gameStateService,
-                      @Nullable MapIdentityCatalog identityCatalog) {
+                      RoundScope roundScope,
+                      @Nullable MapIdentityCatalog identityCatalog,
+                      @Nullable MapUploadRepository uploadRepository) {
         this.eventDataRepository = eventDataRepository;
         this.mapDataRepository = mapDataRepository;
         this.sessionService = sessionService;
@@ -74,7 +92,9 @@ public class MapService {
         this.voteNewWaveFactory = voteNewWaveFactory;
         this.voteRtvFactory = voteRtvFactory;
         this.gameStateService = gameStateService;
+        this.roundScope = roundScope;
         this.identityCatalog = identityCatalog;
+        this.uploadRepository = uploadRepository;
     }
 
     public MapService(EventDataRepository eventDataRepository,
@@ -88,6 +108,20 @@ public class MapService {
                       GameStateService gameStateService) {
         this(eventDataRepository, mapDataRepository, sessionService, config, secretsConfig,
                 voteService, voteNewWaveFactory, voteRtvFactory, gameStateService, null);
+    }
+
+    public MapService(EventDataRepository events, MapDataRepository maps, SessionService sessions,
+                      TomlXcoreConfig config, TomlSecretsConfig secrets, VoteService votes,
+                      VoteNewWaveFactory waves, VoteRtvFactory rtv, GameStateService games,
+                      MapIdentityCatalog catalog) {
+        this(events, maps, sessions, config, secrets, votes, waves, rtv, games, catalog, null);
+    }
+
+    public MapService(EventDataRepository events, MapDataRepository maps, SessionService sessions,
+                      TomlXcoreConfig config, TomlSecretsConfig secrets, VoteService votes,
+                      VoteNewWaveFactory waves, VoteRtvFactory rtv, GameStateService games,
+                      MapIdentityCatalog catalog, MapUploadRepository uploads) {
+        this(events, maps, sessions, config, secrets, votes, waves, rtv, games, new RoundScope(), catalog, uploads);
     }
 
     @PostConstruct
@@ -111,12 +145,11 @@ public class MapService {
         String targetFileName = (mapData.fileName != null && !mapData.fileName.isBlank())
                 ? mapData.fileName.trim()
                 : null;
+        Map byFile = findMapByFileName(targetFileName);
+        if (byFile != null) return byFile;
         Map fallbackMatch = null;
 
         for (Map map : getAvailableMaps()) {
-            if (targetFileName != null && map.file != null && map.file.name().equalsIgnoreCase(targetFileName)) {
-                return map;
-            }
             if (fallbackMatch == null && Objects.equals(map.plainName(), mapData.name)
                     && (Objects.equals(map.author(), mapData.author) || Objects.equals(map.plainAuthor(), mapData.author))) {
                 fallbackMatch = map;
@@ -131,9 +164,11 @@ public class MapService {
         }
 
         String normalized = fileName.trim();
-        return getAvailableMaps().find(map ->
-                map.file != null && map.file.name().equalsIgnoreCase(normalized)
-        );
+        var available = getAvailableMaps();
+        Map exact = available.find(map -> map.file != null && map.file.name().equals(normalized));
+        if (exact != null) return exact;
+        var aliases = available.select(map -> map.file != null && map.file.name().equalsIgnoreCase(normalized));
+        return aliases.size == 1 ? aliases.first() : null;
     }
 
     public Map resolveNextMap(Gamemode mode, Map previous) {
@@ -230,8 +265,8 @@ public class MapService {
 
         mapDataRepository.findExistingAsync(name, file, author, mode)
                 .thenCompose(existing -> existing != null
-                        ? java.util.concurrent.CompletableFuture.completedFuture(existing)
-                        : java.util.concurrent.CompletableFuture.supplyAsync(
+                        ? CompletableFuture.completedFuture(existing)
+                        : CompletableFuture.supplyAsync(
                                 () -> mapDataRepository.findOrCreate(name, file, author, mode),
                                 java.util.concurrent.ForkJoinPool.commonPool()))
                 .thenAccept(map -> {
@@ -335,12 +370,13 @@ public class MapService {
     }
 
     private void switchMapImmediately(Map target) {
-        Timer.schedule(
+        // Round-scoped: if the world changes during the delay, this switch is no longer wanted.
+        roundScope.after(
+                secretsConfig.maps.voting.switchDelaySeconds,
                 () -> gameStateService.reloadWorld(() -> {
                     Gamemode mode = Gamemode.valueOf(arc.Core.settings.getString("lastServerMode", "survival"));
                     Vars.world.loadMap(target, target.applyRules(mode));
-                }),
-                secretsConfig.maps.voting.switchDelaySeconds
+                })
         );
     }
 
@@ -358,20 +394,78 @@ public class MapService {
 
     /** Registers engine event triggers; safe in headless tests, no-op without a catalog. */
     public void registerCatalogTriggers() {
-        Events.on(EventType.ServerLoadEvent.class, ignored -> rebuildIdentityCatalog());
+        subscriptions.on(EventType.ServerLoadEvent.class, ignored -> rebuildIdentityCatalog());
+        subscriptions.on(EventType.WorldLoadEvent.class, ignored -> {
+            var current = state.map;
+            // Loading a world does not change the map files; preserve the verified cache.
+            (catalogRebuilding ? catalogReady : refreshAttribution()).whenComplete((result, failure) ->
+                    org.xcore.plugin.concurrent.MainThreadDispatcher.mindustry().execute(() -> {
+                        if (failure == null && state.map == current) announceMapCreator(current);
+                    }));
+        });
     }
 
     /** Rebuilds the identity catalog from live engine maps; metadata is captured on the calling thread. */
-    public void rebuildIdentityCatalog() {
+    public void rebuildIdentityCatalog() { rebuildIdentityCatalogAsync(); }
+
+    public CompletionStage<Void> rebuildIdentityCatalogAsync() {
         var catalog = this.identityCatalog;
-        if (catalog == null) return;
+        if (catalog == null) return CompletableFuture.completedFuture(null);
         var sources = new java.util.ArrayList<org.xcore.plugin.service.map.MapIdentityCatalog.Source>();
         for (Map map : getAvailableMaps()) {
             if (map.file == null) continue;
             sources.add(new org.xcore.plugin.service.map.MapIdentityCatalog.Source(
                     map.file.name(), map.plainName(), map.plainAuthor(), map.width, map.height, map.file::read));
         }
-        catalog.rebuild(sources);
+        long revision = catalogRevision.incrementAndGet();
+        catalogRebuilding = true;
+        clearAttribution();
+        var ready = catalog.rebuild(sources).thenCompose(rebuilt -> {
+            if (revision != catalogRevision.get()) return CompletableFuture.<Void>completedFuture(null);
+            catalogRebuilding = false;
+            return Boolean.TRUE.equals(rebuilt) ? refreshAttribution() : CompletableFuture.<Void>completedFuture(null);
+        }).whenComplete((result, failure) -> {
+            if (failure != null && revision == catalogRevision.get()) {
+                catalogRebuilding = false;
+                clearAttribution();
+                org.xcore.plugin.common.PLog.warn("Map catalog rebuild failed: @", failure.toString());
+            }
+        });
+        catalogReady = ready;
+        return ready;
+    }
+
+    public void clearAttribution() {
+        uploadRevision.incrementAndGet();
+        uploads = java.util.Map.of();
+    }
+
+    public CompletionStage<Void> refreshAttribution() {
+        var catalog = identityCatalog;
+        if (catalog == null || uploadRepository == null || catalogRebuilding) return CompletableFuture.completedFuture(null);
+        long revision = uploadRevision.incrementAndGet();
+        var snapshot = catalog.snapshot();
+        return uploadRepository.snapshotAsync(snapshot.entries()).handle((result, failure) -> {
+            if (failure != null) org.xcore.plugin.common.PLog.warn("Map attribution refresh failed: @", failure.toString());
+            else if (!catalogRebuilding && revision == uploadRevision.get()
+                    && snapshot.generation() == catalog.snapshot().generation()) uploads = result;
+            return (Void) null;
+        });
+    }
+
+    /** In-memory lookup only; safe on the game thread and independent of a statistics alias. */
+    public MapDiscordUpload discordUploadFor(Map map) {
+        return map == null || map.file == null ? null : uploads.get(map.file.name());
+    }
+
+    public void announceMapCreator(Map map) {
+        var upload = discordUploadFor(map);
+        if (upload == null || upload.creatorDiscordId == null) return;
+        mindustry.gen.Groups.player.each(player -> {
+            var session = sessionService.get(player.uuid());
+            if (session != null) session.locale().send("map-upload-current-creator", args("map", map.name(),
+                    "creator", org.xcore.plugin.ui.menu.map.MapUploadText.creator(session.locale(), upload)));
+        });
     }
 
     private void startMapVote(Player player, Map target, boolean isManual) {
@@ -430,5 +524,10 @@ public class MapService {
     }
 
     private record VoteDelta(int reputationDelta, double popularityDelta, int likeDelta, int dislikeDelta, String messageKey) {
+    }
+
+    @PreDestroy(priority = ShutdownOrder.STOP_PRODUCERS)
+    public void shutdownEventSubscriptions() {
+        subscriptions.close();
     }
 }

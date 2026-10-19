@@ -50,6 +50,7 @@ class HelpUiClientIntegrationTest {
     private Session session;
     private SessionService sessionService;
     private HelpMenu helpMenu;
+    private String submittedSearch;
 
     @BeforeEach
     void setUp() {
@@ -131,6 +132,9 @@ class HelpUiClientIntegrationTest {
             if (msg instanceof UiWireMessage.Choose choose) {
                 var result = new MenuResult(choose.action());
                 result.token = choose.token();
+                if ("action:search".equals(choose.action()) && submittedSearch != null) {
+                    result.values = arc.struct.ObjectMap.of("field_help_search", submittedSearch);
+                }
                 menuService.onMenuBuilderResult(session, result);
             }
         });
@@ -208,6 +212,37 @@ class HelpUiClientIntegrationTest {
         assertThat(dsl).contains("action:run:hub");
         assertThat(dsl).contains("action:copy:hub");
         assertThat(dsl).doesNotContain("//hub");
+    }
+
+    @Test
+    void search_deliversFilteredSlotsAndPreservesQueryAfterDetails() {
+        helpMenu.open(session);
+        assertThat(loop.stepServerToClient()).isTrue();
+        int menuId = menuService.getMenuBuilderId();
+        // The testkit's Choose carries only the action; attach the form data collected by
+        // the real client to the MenuResult at the same transport boundary.
+        submittedSearch = "resynchronize";
+        loop.client().click(menuId, "action:search");
+        assertThat(loop.stepClientToServer()).isTrue();
+        while (loop.stepServerToClient()) {}
+        assertThat(loop.client().isVisible(menuId)).isTrue();
+        var updates = loop.transcript().all().stream().filter(m -> m instanceof UiWireMessage.Update)
+                .map(m -> (UiWireMessage.Update) m).toList();
+        assertThat(updates).isNotEmpty();
+        String patched = updates.stream().map(m -> UiDslWriter.write((NodeBuilder<?>) m.body().decode()))
+                .collect(java.util.stream.Collectors.joining("\n"));
+        assertThat(patched).contains("resynchronize", "action:cmd:sync").doesNotContain("action:cmd:hub");
+
+        loop.client().click(menuId, "action:cmd:sync");
+        assertThat(loop.stepClientToServer()).isTrue();
+        while (loop.stepServerToClient()) {}
+        loop.client().click(menuId, "action:back");
+        assertThat(loop.stepClientToServer()).isTrue();
+        while (loop.stepServerToClient()) {}
+        var last = (UiWireMessage.Show) loop.transcript().all().stream().filter(m -> m instanceof UiWireMessage.Show)
+                .reduce((first, second) -> second).orElseThrow();
+        assertThat(UiDslWriter.write((NodeBuilder<?>) last.body().decode()))
+                .contains("resynchronize", "action:cmd:sync").doesNotContain("action:cmd:hub");
     }
 
     @Test

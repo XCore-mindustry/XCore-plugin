@@ -11,6 +11,8 @@ import org.xcore.plugin.cloud.annotation.PlayTimeLimit;
 import org.xcore.plugin.cloud.exception.XCoreCommandException;
 import org.xcore.plugin.config.TomlSecretsConfig;
 import org.xcore.plugin.metrics.MetricsService;
+import org.xcore.plugin.permission.PermissionNodes;
+import org.xcore.plugin.permission.PermissionService;
 import org.xcore.plugin.session.SessionService;
 import org.xcore.plugin.service.SecurityService;
 
@@ -27,18 +29,21 @@ public class CloudGuardConfigurer {
     private final TomlSecretsConfig secretsConfig;
     private final DisabledCommandPolicy disabledCommandPolicy;
     private final MetricsService metricsService;
+    private final PermissionService permissions;
 
     @Inject
     public CloudGuardConfigurer(Provider<SecurityService> securityService,
                                 Provider<SessionService> sessionService,
                                 TomlSecretsConfig secretsConfig,
                                 DisabledCommandPolicy disabledCommandPolicy,
-                                MetricsService metricsService) {
+                                MetricsService metricsService,
+                                PermissionService permissions) {
         this.securityService = securityService;
         this.sessionService = sessionService;
         this.secretsConfig = secretsConfig;
         this.disabledCommandPolicy = disabledCommandPolicy;
         this.metricsService = metricsService;
+        this.permissions = permissions;
     }
 
     public void configure(MindustryCommandManager<XCoreSender> manager,
@@ -77,7 +82,7 @@ public class CloudGuardConfigurer {
             }
 
             Player player = sender.player();
-            if (player.admin) {
+            if (permissions.has(player, PermissionNodes.BYPASS_PLAYTIME)) {
                 return;
             }
 

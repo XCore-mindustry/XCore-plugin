@@ -84,7 +84,8 @@ class ModerationTransportHandlerTest {
         config.server.name = "mini-pvp";
 
         ModerationTransportHandler handler = new ModerationTransportHandler(
-                network, sessionService, config, playerDisplayService, discordAdminAccessService, mock(LadderService.class), async);
+                network, sessionService, config, playerDisplayService, discordAdminAccessService, mock(LadderService.class), async,
+                new org.xcore.plugin.permission.RemoteConsoleScope());
 
         Map<Class<?>, Cons<?>> listeners = new HashMap<>();
         captureListeners(network, listeners);
@@ -120,7 +121,8 @@ class ModerationTransportHandlerTest {
         config.server.name = "mini-pvp";
 
         ModerationTransportHandler handler = new ModerationTransportHandler(
-                network, sessionService, config, playerDisplayService, discordAdminAccessService, mock(LadderService.class), async);
+                network, sessionService, config, playerDisplayService, discordAdminAccessService, mock(LadderService.class), async,
+                new org.xcore.plugin.permission.RemoteConsoleScope());
 
         Map<Class<?>, Cons<?>> listeners = new HashMap<>();
         captureListeners(network, listeners);
@@ -156,7 +158,8 @@ class ModerationTransportHandlerTest {
         config.server.name = "mini-pvp";
 
         ModerationTransportHandler handler = new ModerationTransportHandler(
-                network, sessionService, config, playerDisplayService, discordAdminAccessService, mock(LadderService.class), async);
+                network, sessionService, config, playerDisplayService, discordAdminAccessService, mock(LadderService.class), async,
+                new org.xcore.plugin.permission.RemoteConsoleScope());
 
         Map<Class<?>, Cons<?>> listeners = new HashMap<>();
         captureListeners(network, listeners);
@@ -203,7 +206,8 @@ class ModerationTransportHandlerTest {
         config.server.name = "mini-pvp";
 
         ModerationTransportHandler handler = new ModerationTransportHandler(
-                network, sessionService, config, playerDisplayService, discordAdminAccessService, mock(LadderService.class), async);
+                network, sessionService, config, playerDisplayService, discordAdminAccessService, mock(LadderService.class), async,
+                new org.xcore.plugin.permission.RemoteConsoleScope());
 
         Map<Class<?>, Cons<?>> listeners = new HashMap<>();
         captureListeners(network, listeners);
@@ -244,7 +248,8 @@ class ModerationTransportHandlerTest {
         config.server.name = "mini-pvp";
 
         ModerationTransportHandler handler = new ModerationTransportHandler(
-                network, sessionService, config, playerDisplayService, discordAdminAccessService, mock(LadderService.class), async);
+                network, sessionService, config, playerDisplayService, discordAdminAccessService, mock(LadderService.class), async,
+                new org.xcore.plugin.permission.RemoteConsoleScope());
 
         Map<Class<?>, Cons<?>> listeners = new HashMap<>();
         captureListeners(network, listeners);
@@ -289,7 +294,8 @@ class ModerationTransportHandlerTest {
 
         ModerationTransportHandler handler = new ModerationTransportHandler(
                 network, sessionService, config, playerDisplayService, discordAdminAccessService,
-                mock(LadderService.class), new Async(new StorageExecutor(4), deferred));
+                mock(LadderService.class), new Async(new StorageExecutor(4), deferred),
+                new org.xcore.plugin.permission.RemoteConsoleScope());
 
         Map<Class<?>, Cons<?>> listeners = new HashMap<>();
         captureListeners(network, listeners);
@@ -342,7 +348,8 @@ class ModerationTransportHandlerTest {
 
         ModerationTransportHandler handler = new ModerationTransportHandler(
                 network, sessionService, config, playerDisplayService, discordAdminAccessService,
-                mock(LadderService.class), new Async(new StorageExecutor(4), marshalled::add));
+                mock(LadderService.class), new Async(new StorageExecutor(4), marshalled::add),
+                new org.xcore.plugin.permission.RemoteConsoleScope());
 
         Map<Class<?>, Cons<?>> listeners = new HashMap<>();
         captureListeners(network, listeners);

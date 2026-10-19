@@ -13,7 +13,7 @@ import java.util.Objects;
  * Supports asymmetric team sizes and multi-team placement rankings.
  */
 public final class TeamEloCalculator {
-    public static final String ALGORITHM_VERSION = "team-elo-v1";
+    public static final String ALGORITHM_VERSION = "team-elo-v2";
 
     public record RatedMember(String uuid, int rating, double participation) {
         public RatedMember {
@@ -36,12 +36,18 @@ public final class TeamEloCalculator {
             if (members.isEmpty()) throw new IllegalArgumentException("team must have members");
         }
 
+        /** Exempt members remain in the result but never affect team strength or shares. */
+        public long ratedMemberCount() {
+            return members.stream().filter(member -> member.participation() > 0.0).count();
+        }
+
         public double averageRating() {
-            return members.stream().mapToInt(RatedMember::rating).average().orElse(1000.0);
+            return members.stream().filter(member -> member.participation() > 0.0)
+                    .mapToInt(RatedMember::rating).average().orElse(1000.0);
         }
 
         public double effectiveRating() {
-            return EloMath.effectiveTeamRating(averageRating(), members.size());
+            return EloMath.effectiveTeamRating(averageRating(), (int) ratedMemberCount());
         }
     }
 
@@ -74,7 +80,8 @@ public final class TeamEloCalculator {
         teams.sort(Comparator.comparingInt(RatedTeam::teamId));
 
         int totalPlayers = teams.stream().mapToInt(t -> t.members().size()).sum();
-        if (totalPlayers < policy.minimumPlayers()) {
+        long ratedPlayers = teams.stream().mapToLong(RatedTeam::ratedMemberCount).sum();
+        if (ratedPlayers < policy.minimumPlayers()) {
             throw new IllegalArgumentException("Not enough players for a rated team match");
         }
 
@@ -87,14 +94,19 @@ public final class TeamEloCalculator {
             throw new IllegalArgumentException("Duplicate player UUID across match participants");
         }
 
-        int n = teams.size();
+        var ratedTeams = teams.stream().filter(team -> team.ratedMemberCount() > 0).toList();
+        if (ratedTeams.size() < 2) {
+            throw new IllegalArgumentException("At least two teams with rated participants are required");
+        }
+        int n = ratedTeams.size();
         List<PlayerRatingDelta> deltas = new ArrayList<>();
 
         for (RatedTeam team : teams) {
+            long ratedMemberCount = team.ratedMemberCount();
             double teamPoolDelta = 0.0;
 
-            for (RatedTeam opponent : teams) {
-                if (team.teamId() == opponent.teamId()) continue;
+            for (RatedTeam opponent : ratedTeams) {
+                if (ratedMemberCount == 0 || team.teamId() == opponent.teamId()) continue;
 
                 double actualScore = team.placement() < opponent.placement() ? 1.0
                         : (team.placement() == opponent.placement() ? 0.5 : 0.0);
@@ -105,7 +117,7 @@ public final class TeamEloCalculator {
 
             // Normalize across (N - 1) opponent teams
             double normalizedPool = teamPoolDelta / (n - 1);
-            double baseMemberShare = normalizedPool / team.members().size();
+            double baseMemberShare = ratedMemberCount == 0 ? 0.0 : normalizedPool / ratedMemberCount;
 
             for (RatedMember member : team.members()) {
                 int delta;

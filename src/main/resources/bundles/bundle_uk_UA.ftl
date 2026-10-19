@@ -47,16 +47,14 @@ help-ui-title = ДОВІДНИК КОМАНД
 help-ui-summary = [gray]{ $count } команд доступно
 help-ui-empty-category = [lightgray]У цій категорії немає доступних команд.[]
 help-ui-overloads = ({ $count } вар.)
-help-ui-back = « Назад до списку
-help-ui-aliases = [orange]» [accent]Псевдоніми: [white]{ $aliases }
-help-ui-syntax-title = [orange]» [accent]Синтаксис:
-help-ui-args-title = [orange]» [accent]Параметри:
+help-ui-aliases = [lightgray]Псевдоніми:[] { $aliases }
+help-ui-syntax-title = Синтаксис
+help-ui-args-title = Параметри
 help-ui-arg-required = [scarlet]Обов'язковий
 help-ui-arg-optional = [sky]Опціональний
 help-ui-btn-run = Виконати
 help-ui-btn-copy = В чат
 help-ui-btn-back = Назад
-help-ui-hint = Натисніть на команду для перегляду детального синтаксису
 help-ui-copied = [accent]Команда: [white]/{ $syntax }
 help-ui-executed = [accent]Виконується команда: [white]/{ $syntax }
 
@@ -256,18 +254,28 @@ commands-announcement-description = Надіслати періодичне ог
 commands-audit-description = Відкрити журнал аудиту дій персоналу та модераторів.
 ban-content = [scarlet]⚠ Доступ заборонено[]
     [accent]{ $nickname }[white] — вас назавжди заблоковано на цьому сервері.
+    [orange]» [accent]ID гравця: [white]{ $pid }
     [lightgray]Щоб оскаржити блокування, перейдіть у Discord-канал [gray]{ support-channel }[]:
     [cyan]{ $discordUrl }
 ban-cancelled = [accent]Блокування гравця [scarlet]{ $nickname }[accent] було скасовано
 tempban-content = [scarlet]⚠ Доступ заборонено[]
-    [accent]{ $nickname }[white] — вас тимчасово заблоковано на цьому сервері.
+    { $permanent ->
+        [true] [accent]{ $nickname }[white] — вас назавжди заблоковано на цьому сервері.
+       *[false] [accent]{ $nickname }[white] — вас тимчасово заблоковано на цьому сервері.
+    }
+    [orange]» [accent]Блокування: [white]{ $banId }
+    [orange]» [accent]ID гравця: [white]{ $pid }
     { "" }
     [orange]» [accent]Адміністратор: [white]{ $adminName }
     [orange]» [accent]Причина: [gold]{ $reason }
-    [orange]» [accent]До розблокування: { DURATION($duration, style: "full", colored: "true", maxUnits: 2) }
-    [orange]» [accent]Спливає: [white]{ DATETIME($expireDate, dateStyle: "medium", timeStyle: "short") }
+    { $permanent ->
+        [true] [orange]» [accent]{ audit-menu-duration-permanent }[]
+       *[false] [orange]» [accent]До розблокування: { DURATION($duration, style: "full", colored: "true", maxUnits: 2) }
+            { "" }[orange]» [accent]Спливає: [white]{ DATETIME($expireDate, dateStyle: "medium", timeStyle: "short") }
+    }
     { "" }
     [lightgray]Щоб оскаржити блокування, перейдіть у Discord-канал [gray]{ support-channel }[]:
+    [lightgray]Вкажіть { $banId } у зверненні.
     [cyan]{ $discordUrl }
 tempban-player-banned = [scarlet] Адміністратор { $adminName }[scarlet] заблокував гравця [gray]'[]{ $playerName }[gray]'
 you-are-muted-by =
@@ -290,7 +298,58 @@ kick-admintools-outdated =
     [scarlet]Ваша версія AdminTools: [grey]{ $version }[]
     { "" }
     [cyan]Будь ласка, оновіть AdminTools для входу на сервер.
-support-channel = #reports-appeals
+support-channel = #tickets
+# ==============================================================================
+# Скарги: сповіщення та меню /report
+# ==============================================================================
+report-menu-title = [orange]{ -xcore } — Скарга на гравця
+report-menu-pick-player = Оберіть гравця
+report-menu-left-recently = Нещодавно вийшли
+report-menu-left-ago = { $minutes } хв тому
+report-menu-empty = Немає гравців для скарги
+report-menu-staff-hint = [lightgray]Скарги на адміністрацію — у Discord.
+report-menu-pick-reason = Оберіть причину
+report-menu-comment = Коментар (необов’язково)
+report-menu-comment-required = Для причини «Інше» потрібен коментар.
+report-menu-confirm-title = Підтвердіть скаргу
+report-menu-confirm-note = [lightgray]Додамо останній чат та історію будівництва. Неправдиві скарги караються.
+report-menu-next = Далі
+report-menu-back = Назад
+report-menu-send = Надіслати
+report-menu-close = Закрити
+report-result-sent = [green]Скаргу надіслано. Дякуємо!
+report-result-cooldown = [scarlet]Зачекайте [accent]{ $seconds } с[scarlet] до наступної скарги.
+report-result-same-target = [scarlet]Ви нещодавно вже скаржилися на цього гравця.
+report-result-daily-limit = [scarlet]Денний ліміт скарг вичерпано. Спробуйте завтра.
+report-result-invalid-target = [scarlet]На цього гравця не можна поскаржитися.
+report-result-playtime = [scarlet]Щоб надсилати скарги, награйте ще [accent]{ $minutes } хв.
+report-result-disabled = [scarlet]Скарги вимкнено на цьому сервері.
+report-result-failed = [scarlet]Не вдалося надіслати скаргу. Спробуйте ще раз.
+report-reason-griefing = Грифінг
+report-reason-toxicity = Токсичність
+report-reason-cheating = Читерство
+report-reason-nsfw = NSFW
+report-reason-evasion = Обхід бану
+report-reason-other = Інше
+case-notice-report-received = [lightgray]Скаргу зареєстровано під номером [accent]#{ $number }[lightgray]. Дякуємо!
+case-notice-report-resolved = [lightgray]Скаргу [accent]#{ $number }[lightgray] розглянуто: [green]вжито заходів[lightgray]. Дякуємо!
+case-notice-report-rejected =
+    { $reason ->
+        [no_violation] [lightgray]Скаргу [accent]#{ $number }[lightgray] розглянуто: порушень не виявлено. Дякуємо!
+        [no_evidence] [lightgray]Скаргу [accent]#{ $number }[lightgray] розглянуто: доказів недостатньо. Дякуємо!
+        [already_handled] [lightgray]Скаргу [accent]#{ $number }[lightgray] закрито: з цим випадком уже розібралися. Дякуємо!
+        [duplicate] [lightgray]Скаргу [accent]#{ $number }[lightgray] закрито: про це вже повідомили раніше. Дякуємо!
+        [abuse] [lightgray]Скаргу [accent]#{ $number }[lightgray] відхилено: [scarlet]вона сама порушує правила сервера.
+       *[other] [lightgray]Скаргу [accent]#{ $number }[lightgray] розглянуто: заходів не вжито. Дякуємо!
+    }
+case-notice-report-not-accepted = [scarlet]Вашу скаргу не прийнято.
+case-notice-appeal-accepted = [lightgray]Апеляцію [accent]#{ $number }[lightgray] прийнято: блокування знято.
+case-notice-appeal-shortened = [lightgray]Апеляцію [accent]#{ $number }[lightgray] прийнято: строк блокування скорочено.
+case-notice-badge-granted = [lightgray]Запит на значок [accent]#{ $number }[lightgray] схвалено: значок [green]{ $badge }[lightgray] видано.
+case-notice-badge-rejected = [lightgray]Запит на значок [accent]#{ $number }[lightgray] відхилено.
+case-notice-map-accepted = [lightgray]Перевірка карти [accent]#{ $number }[lightgray]: карту [green]{ $map }[lightgray] прийнято.
+case-notice-map-rejected = [lightgray]Перевірка карти [accent]#{ $number }[lightgray]: карту [scarlet]{ $map }[lightgray] відхилено.
+case-notice-complaint-closed = [lightgray]Звернення [accent]#{ $number }[lightgray] закрито. Дякуємо!
 # ==============================================================================
 # Voting (VoteKick)
 # ==============================================================================
@@ -317,7 +376,7 @@ commands-map-description = Статистика конкретної мапи т
 commands-map-title = [orange]{ -xcore } — Мапа
 commands-map-content =
     [gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
-    [white]{ $name }[] [gray]від [sky]{ $author }[]
+    [white]{ $name }[] [sky]{ $authorLabel }[]
     [lightgray]{ $description }[]
     [gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
     { "" }
@@ -371,14 +430,14 @@ map-vote-dislike-selected = [gray]Вам вже не подобається
 map-rtv = [orange]Голосування
 map-artv = [red]Миттєва зміна
 map-maps = Мапи
-map-maps-back = ← До списку мап
+map-maps-back = До списку мап
 
 # Map UI Modernized
 map-ui-search-hint = Пошук мапи або автора...
+map-ui-total = [lightgray]Усього мап: [white]{ $count }[]
+map-ui-about-title = Про мапу
+map-ui-rtv-title = Зміна мапи
 map-ui-no-maps-found = [lightgray]Мапи за вашим запитом не знайдено.[]
-map-ui-page-info = [lightgray]Сторінка [white]{ $page }[] з [white]{ $total }[]
-map-ui-prev = < Назад
-map-ui-next = Вперед >
 map-ui-by = від [lightgray]{ $author }[]
 map-ui-mode = Режим: [white]{ $mode }[]
 map-ui-loading = [gray]Завантаження...[]
@@ -389,31 +448,27 @@ map-ui-last-played = [gray]Остання гра: [white]{ $lastPlayed }[]
 map-ui-description = [gray]Опис: [lightgray]{ $description }[]
 map-ui-no-description = [gray]Опис: [lightgray]Опис відсутній.[]
 
-map-ui-col-duration = [accent]ТРИВАЛІСТЬ[]
+map-ui-col-duration = Тривалість
 map-ui-duration-min = [gray]Мін: [white]{ $value }[]
 map-ui-duration-avg = [gray]Сер: [white]{ $value }[]
 map-ui-duration-max = [gray]Макс: [white]{ $value }[]
 
-map-ui-col-popularity = [accent]ПОПУЛЯРНІСТЬ[]
-map-ui-popularity-score = [gray]Рейтинг: [white]+{ $value }[]
-map-ui-popularity-pop = [gray]Поп: [white]{ $value }[]
+map-ui-col-popularity = Популярність
+map-ui-popularity-score = [gray]Рейтинг: [white]{ $value }[]
+map-ui-popularity-pop = [gray]Популярність: [white]{ $value }[]
 map-ui-popularity-interest = [gray]Інтерес: [white]{ $value }[]
 
-map-ui-col-community = [accent]СПІЛЬНОТА[]
+map-ui-col-community = Спільнота
 map-ui-community-approval = [gray]Схвалення: [green]{ $rate }%[]
-map-ui-community-likes = [gray]Вподобайки: [white]{ $value }[]
-map-ui-community-dislikes = [gray]Дизлайки: [white]{ $value }[]
 
-map-ui-btn-like = [lightgray]👍 Подобається ({ $count })[]
-map-ui-btn-liked = [green]✔ Подобається ({ $count })[]
-map-ui-btn-dislike = [lightgray]👎 Не подобається ({ $count })[]
-map-ui-btn-disliked = [scarlet]✔ Не подобається ({ $count })[]
+map-ui-btn-like = Лайк ({ $count })
+map-ui-btn-dislike = Дизлайк ({ $count })
 
-map-ui-rtv-active-status = [accent]● RTV Голосування: [white]{ $votes }/{ $required }[] [gray](залишилось [white]{ $seconds }с[gray])[]
-map-ui-rtv-vote-yes = [accent]✔ Проголосувати ЗА цю мапу[]
-map-ui-rtv-start = [accent]ГОЛОСУВАННЯ ЗА ЗМІНУ МАПИ (RTV)[]
-map-ui-admin-rtv = [red]⚡ Адмін: Змінити мапу негайно (ARTV)[]
-map-ui-admin-rtv-confirm = [scarlet]⚠ Натисніть ще раз для підтвердження! ⚠
+map-ui-rtv-active-status = [accent]● Триває голосування: [white]{ $votes }/{ $required }[] [gray](залишилось [white]{ $seconds } с[gray])[]
+map-ui-rtv-vote-yes = Голосувати за мапу
+map-ui-rtv-start = Голосувати за цю мапу
+map-ui-admin-rtv = Змінити мапу одразу
+map-ui-admin-rtv-confirm = Натисніть ще раз
 
 gamemode-survival = Виживання
 gamemode-attack = Атака
@@ -479,14 +534,11 @@ player-stats-tab-players = Онлайн ({ $count })
 player-stats-status-online = [lime]● Онлайн[]
 player-stats-status-offline = [gray]○ Офлайн[]
 player-stats-no-bio = [gray]Опис відсутній.[]
-player-stats-full-stats = Детальна статистика →
-player-stats-back-to-players = ← До списку онлайн
 player-stats-loading = [lightgray]Завантаження статистики...[]
 player-stats-no-stats = [gray]Немає записів матчів[]
 player-stats-filter-all = Фільтр: Всі
 player-stats-filter-admins = Фільтр: Тільки адміни
 player-stats-filter-non-admins = Фільтр: Звичайні
-player-stats-inspect = Профіль →
 player-stats-refresh = Оновити
 player-stats-combat-efficiency = Бойова та будівельна ефективність
 player-stats-waves-summary = [gray]хвилі: макс [lime]{ $best }[], сер [white]{ $avg }[]
@@ -511,12 +563,15 @@ player-stats-hexed-summary = [gray]Колишній Hexed:[]
 player-stats-blocks-built = [gray]Побудовано:[]
 player-stats-blocks-deconstructed = [gray]Розібрано:[]
 player-stats-blocks-destroyed = [gray]Знищено:[]
+player-stats-units-produced = [gray]Юнітів створено:[]
+player-stats-units-lost = [gray]Юнітів втрачено:[]
 
 player-stats-games-played-value = [white]{ $count }[] [gray]ігор[]
 player-stats-victories-value = [lime]{ $wins }[] [gray]перемог[]  [darkgray]|[]  [sky]{ $winRate }%[] [gray]вінрейт[]
 player-stats-hexed-points = [gray]({ $points } очк.)[]
 
 player-stats-btn-settings = Налаштування
+player-stats-btn-matches = Матчі
 player-stats-btn-audit = Аудит
 player-stats-btn-players = Онлайн
 player-stats-btn-close = Закрити
@@ -551,6 +606,8 @@ commands-ranks-content =
 commands-ranks-footer = Кількість перемог збільшується лише при перемозі над гравцем вашого рангу або вище.
 commands-top-description = Топ гравців.
 commands-season-description = Рейтинговий сезон: скільки лишилось, ваше місце та переможці минулого
+commands-matches-description = Ваші рейтингові матчі: підсумки, зміни рейтингу та з ким ви грали.
+commands-pvp-description = Гайд з MiniPvP: раунд, правила сервера і як рахується рейтинг.
 commands-top-hexed-content = [orange]{ $index }. { $nickname }[accent]: [blue]{ $rankName } [cyan]{ $points } []перемог
 commands-top-pvp-content = [orange]{ $index }. { $nickname }[accent]: [cyan]{ $rating }
 top-menu-title = [orange]{ -xcore } — Топ гравців: [accent]{ $category }
@@ -589,7 +646,7 @@ commands-surrender-success = [green]Ви здалися і тепер спост
 commands-observer-success = [green]Тепер ви спостерігаєте за грою
 commands-observer-exit-success = [green]Ви більше не спостерігаєте за грою
 commands-ai-description = Керування ШІ (AI).
-commands-ai-usage = [red]attack(i) []або [accent]idle(i)
+commands-ai-usage = [red]attack(a) []або [accent]idle(i)
 hexed-popup = [blue]{ DURATION($remaining, style: "timer") }[] до кінця гри.
 hexed-eliminated = { $nickname } [gold]був [scarlet]знищений[]!
 hexed-leaderboard-content = [orange]{ $index }. { $nickname }[accent]: [cyan]{ $hexes } [accent]гексів
@@ -625,6 +682,7 @@ pvp-match-settlement-win = [accent]■ Підсумки матчу: [green]Пе�
 pvp-match-settlement-loss = [accent]■ Підсумки матчу: [scarlet]Поразка![] Ваш рейтинг: [stat]{ $oldRating }[] -> [stat]{ $newRating }[] [scarlet]({ $delta })[] { $leagueIcon } { $leagueName }
 pvp-match-settlement-draw = [accent]■ Підсумки матчу: [yellow]Нічия![] Ваш рейтинг: [stat]{ $oldRating }[] -> [stat]{ $newRating }[] [yellow]({ $delta })[] { $leagueIcon } { $leagueName }
 pvp-match-settlement-exempt = [accent]■ Підсумки матчу: [lightgray]Рейтинг не змінено (недостатньо активного часу у матчі).[]
+pvp-match-settlement-details = [lightgray]Докладніше про матч: [white]/matches[][]
 season-ending-soon = [accent]■ [white]{ $ladder }[]: сезон { $number } завершиться через [stat]{ $remaining }[]. Встигніть зіграти останні матчі!
 season-started = [accent]■ [white]{ $ladder }[]: сезон { $previous } завершено. Розпочався сезон { $number }!
 season-reset-soft = [lightgray]Рейтинги підтягнуто до стартового значення, лічильники матчів обнулено.[]
@@ -664,6 +722,86 @@ season-menu-empty = Рейтингових сезонів поки немає.
 pvp-hud-status = [accent]MiniPvP[] | [stat]Живі:[] { $teams } | [gray]{ $time }[]
 pvp-leaderboard-content = [orange]{ $index }. { $nickname }[accent]:[cyan] { $rating } [accent]рейтинг
 pvp-you-spectator = [scarlet]Ви програли. Будь ласка, зачекайте наступної гри.
+
+# MiniPvP guide (/pvp info)
+pvp-guide-title = Як тут грати
+pvp-guide-subtitle = Звичайний PvP Mindustry: команди будують бази й знищують ядра одна одної. Тут зібрано, чим цей сервер відрізняється і як рахується рейтинг.
+pvp-guide-hint = Відкрити знову: [accent]/pvp info[]
+pvp-guide-join-hint = [lightgray]Правила MiniPvP і рейтинг:[] [accent]/pvp info[]
+pvp-guide-menu-button = Як грати в MiniPvP
+pvp-guide-tab-round = Раунд
+pvp-guide-tab-rules = Правила
+pvp-guide-tab-rating = Рейтинг
+pvp-guide-stat-minutes = хвилин триває раунд
+pvp-guide-stat-teams = команд у грі
+pvp-guide-stat-players = гравців у командах
+pvp-guide-stat-zone = тайлів навколо ядра
+pvp-guide-stat-unitcap = ліміт юнітів
+pvp-guide-stat-banned = блоків під забороною
+pvp-guide-stat-start = рейтинг на старті
+pvp-guide-stat-top = найкращі гравці
+pvp-guide-stat-matches = історія матчів
+
+pvp-guide-now-title = Зараз
+pvp-guide-now-map = Мапа: [accent]{ $map }[]
+pvp-guide-now-players = { $count } { $count ->
+        [one] гравець
+        [few] гравці
+        [many] гравців
+       *[other] гравця
+    }
+pvp-guide-win-title = Як перемогти
+pvp-guide-win-text = Знищ усі ядра суперників. Перемагає остання команда, в якої лишилися ядра й гравці. Команда, в якій нікого не лишилося, вибуває.
+pvp-guide-out-title = Вибув: дивишся до кінця
+pvp-guide-out-text =
+    Твоя команда втратила останнє ядро: ти спостерігаєш до наступного раунду.
+    Вийшов посеред раунду й повернувся: потрапиш до тієї ж команди.
+pvp-guide-commands-title = Команди
+pvp-guide-cmd-info = це вікно
+pvp-guide-cmd-top = таблиця лідерів
+pvp-guide-cmd-season = сезон і призи
+pvp-guide-cmd-matches = твої матчі та рейтинг за них
+pvp-guide-cmd-rtv = голосувати за зміну мапи
+pvp-guide-cmd-observer = дивитися збоку
+
+pvp-guide-zone-title = Не будуй біля чужого ядра
+pvp-guide-zone-text = Ближче ніж [accent]{ $tiles }[] тайлів до ворожого ядра будувати не можна. Щоб просунутися, спершу знищ це ядро.
+pvp-guide-zone-polygon-title = Земля поділена між ядрами
+pvp-guide-zone-polygon-text = Будувати можна лише там, де найближче ядро твоє. Щоб зайняти чужу землю, знищ ядро, до якого вона належить.
+pvp-guide-unitcap-title = Ліміт юнітів
+pvp-guide-unitcap-text = Команда починає з лімітом [accent]{ $cap }[], і кожне ядро підіймає його.
+pvp-guide-unitcap-fixed-title = Ліміт юнітів
+pvp-guide-unitcap-fixed-text = У команди не більше [accent]{ $cap }[] юнітів, скільки б ядер у неї не було.
+pvp-guide-multipliers-title = Інший баланс
+pvp-guide-multipliers-text = На цій мапі ці числа відрізняються від звичайних:
+pvp-guide-rule-unit-damage = Шкода юнітів
+pvp-guide-rule-unit-health = Міцність юнітів
+pvp-guide-rule-unit-cost = Ціна юнітів
+pvp-guide-rule-unit-build-speed = Швидкість виробництва юнітів
+pvp-guide-rule-block-damage = Шкода будівель
+pvp-guide-rule-block-health = Міцність будівель
+pvp-guide-rule-build-cost = Ціна будівель
+pvp-guide-rule-build-speed = Швидкість будівництва
+pvp-guide-banned-blocks-title = Заборонені будівлі
+pvp-guide-banned-units-title = Заборонені юніти
+pvp-guide-other-title = Ще
+pvp-guide-other-fog = Туман війни: видно лише те, що бачать твої будівлі та юніти.
+pvp-guide-other-capture = Знищене ядро переходить до того, хто його знищив.
+pvp-guide-other-reactors = Реактори не вибухають.
+pvp-guide-vanilla-title = Звичайні правила
+pvp-guide-vanilla-text = На цій мапі правила як у звичайному PvP Mindustry.
+
+pvp-guide-elo-title = Рейтинг ELO
+pvp-guide-elo-text = Усі починають з [accent]{ $start }[]. Перемога підіймає рейтинг, поразка знижує. Наскільки, залежить від рейтингу твоєї команди та суперників: перемога над сильними дає більше.
+pvp-guide-leave-title = Вихід не рятує від поразки
+pvp-guide-leave-text = Якщо твоя команда програла, ти втрачаєш рейтинг повністю, навіть якщо вийшов або пішов у спостерігачі раніше. Без втрат, лише якщо ти пробув у грі менше ніж [accent]{ $seconds }[] с.
+pvp-guide-unrated-title = Коли рейтинг не змінюється
+pvp-guide-unrated-text =
+    Раунд коротший за [accent]{ $seconds }[] с або в ньому менше ніж [accent]{ $players }[] гравців з рейтингом: раунд не зараховується.
+    Переможцю треба відіграти хоча б [accent]{ $winner }%[] раунду, інакше рейтинг не зростає.
+    Зайшов пізно до команди, що програла, і відіграв менше ніж [accent]{ $late }%[] раунду: рейтинг не падає.
+pvp-guide-seasons-title = Ліги та сезони
+pvp-guide-seasons-text = Рейтинг визначає лігу. Рейтинг іде за сезонами: наприкінці сезону найкращі отримують призи. Підсумки кожного матчу: [accent]/matches[].
 # ==============================================================================
 # Events & Notifications
 # ==============================================================================
@@ -723,115 +861,8 @@ dislike-event-changed = [orange]Ви змінили свою думку на "Н
 commands-event-description = Меню керуванням подій.
 commands-events-description = Список усіх подій на серверах.
 event-menu-main = Головних подій
-event-menu-main-title = [orange]{ -xcore } — Події
-event-menu-main-content =
-    [gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
-    [white]Центр подій[]
-    [lightgray]Тут можна переглядати активні та заплановані події сервера.[]
-    [gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
-    { "" }
-    [accent]■ Поточна подія[]
-    [gray]Статус: [white]{ $currentEventState }[]
-    [gray]Вибрано: [white]{ $currentEventName }[]
-    { "" }
-    [accent]■ Голосування[]
-    [gray]Сесія голосування: [white]{ $voteStatus }[]
-    { "" }
-    [accent]■ Дії[]
-    [gray]Відкрийте каталог подій, теперішню картку або підготуйте нову подію.[]
 event-menu-event = Подія
-event-menu-event-title = [orange]{ -xcore } — Подія
-event-menu-event-content =
-    [gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
-    [white]{ $name }[]
-    [lightgray]{ $description }[]
-    [gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
-    { "" }
-    [accent]■ Огляд[]
-    [gray]Автор: [white]{ $author }[]
-    [gray]Мапа: [white]{ $mapName }[]
-    [gray]Тип: [white]{ $eventType }[] [darkgray]|[gray] Стан: [white]{ $eventState }[]
-    [gray]Тимчасова: [white]{ $isTemporary }[]
-    { "" }
-    [accent]■ Розклад[]
-    [gray]Створено: [white]{ $createdEventTime }[]
-    [gray]Запланований старт: [white]{ $plannedStartTime }[]
-    [gray]Запланований кінець: [white]{ $plannedEndTime }[]
-    { "" }
-    [accent]■ Репутація[]
-    [gray]Вподобайки: [white]{ $like }[] [darkgray]|[gray] Не подобається: [white]{ $dislike }[]
-event-menu-event-map = Подивитися мапу
-event-menu-events = Список подій
-event-menu-events-title = [orange]{ -xcore } — Список Подій
-event-menu-events-content =
-    [gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
-    [white]Каталог подій[]
-    [lightgray]Сторінка [green]{ $page }[]/[green]{ $total }[] [gold]•[] [lightgray]Подій: [green]{ $count }[]
-    [gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
-    { "" }
-    [accent]■ Фільтри[]
-    [gray]Завершено: [white]{ $finished }[]
-    [gray]Масштабна: [white]{ $major }[] [darkgray]|[gray] Активна: [white]{ $active }[]
-    { "" }
-    [accent]■ Список[]
-    [gray]Виберіть подію нижче, щоб відкрити її картку.[]
-event-menu-events-empty =
-    [gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
-    [white]Каталог подій[]
-    [lightgray]Зараз немає подій, що відповідають вибраним фільтрам.[]
-    [gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
-    { "" }
-    [accent]■ Фільтри[]
-    [gray]Завершено: [white]{ $finished }[]
-    [gray]Масштабна: [white]{ $major }[] [darkgray]|[gray] Активна: [white]{ $active }[]
-event-menu-events-row = [accent]{ $state }[] [darkgray]•[] [white]{ $type }[] [darkgray]—[] { $name }
-event-menu-events-selected = [green]●[] [accent]{ $state }[] [darkgray]•[] [white]{ $type }[] [darkgray]—[] { $name }
-event-menu-create-start = Створити
-event-menu-create-start-title = [orange]{ -xcore } — Створення подій
-event-menu-create-start-message = Ведіть назву майбутьної події
 event-menu-create-start-default = { $playerName } Подія
-event-menu-edit = Редагувати
-event-menu-edit-title = [orange]{ -xcore } — Редагування подій
-event-menu-edit-content =
-    [gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
-    [white]{ $name }[]
-    [lightgray]{ $description }[]
-    [gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
-    { "" }
-    [accent]■ Ідентичність[]
-    [gray]Автор: [white]{ $author }[]
-    [gray]Тип: [white]{ $eventType }[]
-    { "" }
-    [accent]■ Мапа[]
-    [gray]Обрана мапа: [white]{ $mapName }[]
-    { "" }
-    [accent]■ Розклад[]
-    [gray]Запланований старт: [white]{ $plannedStartTime }[]
-    [gray]Запланований кінець: [white]{ $plannedEndTime }[]
-    { "" }
-    [accent]■ Прапорці[]
-    [gray]Тимчасова: [white]{ $isTemporary }[]
-event-menu-edit-name = Назва
-event-menu-edit-name-reset = [scarlet]Скинути назву
-event-menu-edit-name-title = [orange]{ -xcore } — Редагування події
-event-menu-edit-name-message = Редагування назви:
-event-menu-edit-description = Опис
-event-menu-edit-description-title = [orange]{ -xcore } — Редагування події
-event-menu-edit-description-message = Редагування опису:
-event-menu-edit-map = Редагувати мапу
-event-menu-edit-temporary-active = [green]Тимчасова
-event-menu-edit-temporary-inactive = [gray]Тимчасова
-event-menu-edit-major-active = [green]Масштабна
-event-menu-edit-major-inactive = [gray]Масштабна
-event-menu-edit-planned-start = Початок події
-event-menu-edit-planned-start-title = [orange]{ -xcore } — Редагування події
-event-menu-edit-planned-start-message = Напишіть початковий час у мс або з використанням m/h/d:
-event-menu-edit-planned-end = Кінець події
-event-menu-edit-planned-end-title = [orange]{ -xcore } — Редагування події
-event-menu-edit-planned-end-message = Напишіть кінцевий час у мс або з використанням m/h/d:
-event-menu-maps = Мапи
-event-menu-maps-title = [orange]{ -xcore } — Вибір мапи
-event-menu-maps-content = [white]Сторінка [green]{ $page }[] з [green]{ $total }[]
 vote-event-vote =
     { $nickname }[lightgray] проголосував за зміну поточної події на [orange]{ $name }[lightgray]. ([accent]{ $votes }[]/[accent]{ $votesRequired }[])
     Напишіть [orange]y[] або [orange]n[], щоб проголосувати.
@@ -839,19 +870,6 @@ vote-event-left = { $nickname }[lightgray] вийшов. Його голос з�
 vote-event-fail = [lightgray]Голосування не пройшло. Недостатньо голосів для зміни події на [orange]{ $name }[].
 vote-event-success = [orange]Голосування пройшло. Подія [accent]{ $name }[] буде завантажена при наступній зміни мапи.
 vote-event-cancelled = [lightgray]Голосування за зміну події на [orange]{ $name }[lightgray] було скасовано адміністратором { $admin }.
-event-vote = [orange]Голосувати
-event-avote = [red]Миттєва зміна
-event-menu-vote-stop = Зупинити голосування
-event-menu-stop = Зупинити подію
-event-menu-this-event = [orange]Теперішна подія
-event-menu-type-major = Масштабна подія
-event-menu-type-regular = Звичайна подія
-event-menu-state-none = Немає активної події
-event-menu-state-planned = Запланована
-event-menu-state-active = Активна зараз
-event-menu-state-finished = Завершена
-event-menu-vote-status-running = Триває
-event-menu-vote-status-idle = Не триває
 # ==============================================================================
 # Errors
 # ==============================================================================
@@ -930,6 +948,15 @@ argument-parse-failure-flag-duplicate-flag = [scarlet]⚠ Прапорець, щ
 argument-parse-failure-flag-no-flag-started = [scarlet]⚠ Прапорець не було розпочато. Незрозуміло, що робити з '{ $input }'.
 argument-parse-failure-flag-missing-argument = [scarlet]⚠ Відсутній аргумент для прапорця: '{ $flag }'.
 argument-parse-failure-flag-no-permission = [scarlet]⚠ У вас немає прав на використання прапорця '{ $flag }'.
+argument-parse-failure-selector-syntax = [scarlet]⚠ Невірний селектор '{ $input }': [lightgray]{ $reason }
+argument-parse-failure-selector-no-such-target = [scarlet]⚠ Під '{ $input }' нічого не підходить.
+argument-parse-failure-selector-too-many-targets = [scarlet]⚠ Під '{ $input }' підходить кілька цілей, а команді потрібна одна.
+argument-parse-failure-selector-denied = [scarlet]⚠ Селектори тут заборонені: [lightgray]{ $reason }
+argument-parse-failure-selector-kind-not-allowed = [scarlet]⚠ Селектор '{ $kind }' тут заборонений.
+argument-parse-failure-selector-sender-required = [scarlet]⚠ Селектор '{ $kind }' можна використовувати лише в грі.
+argument-parse-failure-selector-limit-exceeded = [scarlet]⚠ Селектор знайшов { $count } цілей, ліміт — { $limit }.
+argument-parse-failure-team = [scarlet]⚠ Команду '{ $input }' не знайдено.
+argument-parse-failure-content = [scarlet]⚠ '{ $input }' не є допустимим { $type }.
 # ==============================================================================
 # Miscellaneous
 # ==============================================================================
@@ -987,10 +1014,11 @@ player-menu-settings-chat-title = [orange]{ -xcore } — Налаштуванн�
 
 # Modern Player Settings Form
 player-settings-tab-profile = Профіль
-player-settings-tab-chat = Чат та Мова
+player-settings-tab-chat = Чат
 player-settings-tab-badges = Значки
 player-settings-chat-preview = Прев'ю в чаті
 player-settings-chat-preview-sample = Приклад
+player-settings-chat-preview-message = Всім привіт!
 player-settings-symbol-color-mode = Колір символу
 player-settings-badges-my = Мої значки
 player-settings-badges-all = Всі значки
@@ -1001,16 +1029,22 @@ player-settings-badge-previewing = У прев'ю
 player-settings-translator-lang = Перекладач чату
 player-settings-translator-off = Вимк
 player-settings-badges-empty = У вас поки немає відкритих значків.
-player-settings-manage-badges = До значків →
+player-settings-manage-badges = До значків
 player-settings-global-chat = Global чат
 player-settings-discord-relay = Discord relay
-player-settings-leaderboard = Відображати в лідерборді
+player-settings-leaderboard = Показувати таблицю лідерів
 player-settings-language = Мова
 player-settings-saved = [lime]Налаштування збережено![]
 player-settings-reset-feedback = [lightgray]Ім'я скинуто.[]
-player-settings-player-label = Гравець:
 player-settings-edit-badges = [accent]Редагувати[]
-player-settings-reset-nick-btn = [scarlet]Скинути[]
+player-settings-tab-language = Мова
+player-settings-identity = Ім'я та опис
+player-settings-interface = Екран
+player-settings-leaderboard-hint = Список найкращих гравців поверх гри. Працює на Mini-PvP.
+player-settings-global-chat-hint = Повідомлення гравців з інших серверів XCore.
+player-settings-discord-relay-hint = Повідомлення з Discord-каналу сервера в ігровому чаті.
+player-settings-translator-hint = Повідомлення інших гравців перекладаються обраною мовою.
+player-settings-language-hint = Мова меню та повідомлень сервера. Auto бере мову вашої гри.
 player-menu-settings-chat-content =
     [gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
     [accent]■ Видимість чату[]
@@ -1050,10 +1084,20 @@ audit-menu-filter-bans = Бани
 audit-menu-filter-mutes = Мути
 audit-menu-filter-warns = Варни
 audit-menu-filter-other = Інше
-audit-menu-btn-details = Деталі >
 audit-menu-btn-back = Назад до історії
 audit-menu-btn-copy-id = Копіювати ID
-audit-menu-copy-id-success = Audit ID надіслано в чат: { $auditId }
+audit-menu-copy-id-success = ID запису надіслано в чат
+audit-menu-field-id = ID запису
+audit-menu-page = Стор. { $page }
+audit-menu-details-unavailable = Запис недоступний.
+audit-menu-field-target = Гравець
+audit-menu-field-actor = Хто виконав
+audit-menu-field-server = Сервер
+audit-menu-field-reason = Причина
+audit-menu-section-time = Час
+audit-menu-field-occurred = Коли
+audit-menu-field-duration = Тривалість
+audit-menu-field-expires = Спливає
 audit-menu-btn-revoke = Зняти покарання
 audit-menu-revoke-success = Покарання успішно анульовано.
 audit-menu-status-active = АКТИВНО
@@ -1106,43 +1150,97 @@ audit-menu-action-quarantine = Карантин
 audit-menu-action-unquarantine = Зняття карантину
 settings-language-label = Мова: [green]{ $lang }[]
 event-menu-create-start-map = Створити подію для цієї карти
-date-time-picker-title = [orange]{ -xcore } — Дата й час
-date-time-picker-content =
-    [gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
-    [white]{ $field }[]
-    [lightgray]Поточне значення: [white]{ $value }[]
-    [gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
-    { "" }
-    [accent]■ Дата[]
-    [gray]Спочатку виберіть день, а потім уточніть час нижче.[]
-    { "" }
-    [accent]■ Час[]
-    [gray]Скористайтеся пресетами або точними коригуваннями для зручного планування.[]
-    { "" }
-    [accent]■ Ручне введення[]
-    [gray]Використовуйте його лише коли потрібні точні мілісекунди або відносне значення формату +m/+h/+d.[]
-date-time-picker-field-generic = Запланований час
-date-time-picker-today = Сьогодні
-date-time-picker-tomorrow = Завтра
-date-time-picker-plus-2d = +2 дні
-date-time-picker-plus-7d = +7 днів
-date-time-picker-now = Зараз
-date-time-picker-time-0000 = 00:00
-date-time-picker-time-0600 = 06:00
-date-time-picker-time-1200 = 12:00
-date-time-picker-time-1800 = 18:00
-date-time-picker-minus-1d = -1д
-date-time-picker-plus-1d = +1д
-date-time-picker-minus-1h = -1г
-date-time-picker-plus-1h = +1г
-date-time-picker-minus-15m = -15хв
-date-time-picker-plus-15m = +15хв
-date-time-picker-reset = Скинути
-date-time-picker-manual = Ручне введення
-date-time-picker-manual-title = [orange]{ -xcore } — Ручне введення часу
-date-time-picker-manual-message = Введіть абсолютні мілісекунди або відносний час на кшталт +30m, +2h, +1d.
+event-ui-title = Події
+event-ui-server-time = Час сервера: { $zone }
+event-ui-tab-upcoming = Скоро
+event-ui-tab-major = Великі
+event-ui-tab-past = Минулі
+event-ui-tab-mine = Мої
+event-ui-now-running = Триває зараз
+event-ui-now-vote = Голосування
+event-ui-empty-upcoming = Подій поки не заплановано. Створіть першу!
+event-ui-empty-major = Великих подій поки не заплановано.
+event-ui-empty-past = Ще жодна подія не завершилася.
+event-ui-empty-mine = Ви поки не створили жодної події.
+event-ui-create = Створити подію
+event-ui-load-failed = Не вдалося завантажити події. Спробуйте ще раз.
+event-ui-state-active = Триває зараз
+event-ui-state-active-until = Триває до { $time }
+event-ui-state-finished = Завершено
+event-ui-state-finished-at = Завершено { $date }
+event-ui-state-unscheduled = Без дати
+event-ui-major = Велика
+event-ui-major-hint = Позначена зіркою і зібрана на окремій вкладці
+event-ui-temporary = Тимчасова
+event-ui-temporary-hint = Закінчиться сама в час кінця
+event-ui-about = Про подію
+event-ui-no-description = Опису немає.
+event-ui-author = Автор: { $author }
+event-ui-created = Створено: { $date }
+event-ui-map-schedule = Мапа і розклад
+event-ui-map-none = Мапу не вказано
+event-ui-map-pick = Оберіть мапу
+event-ui-planned-start = Початок: { $time }
+event-ui-planned-end = Кінець: { $time }
+event-ui-started = Почалася: { $time }
+event-ui-ended = Завершилася: { $time }
+event-ui-not-set = не задано
+event-ui-open-map = Відкрити мапу
+event-ui-rating = Оцінка
+event-ui-launch = Запуск
+event-ui-launch-hint = Подію запускають самі гравці — голосуванням. Вона почнеться з наступною зміною мапи.
+event-ui-launch-again = Ця подія вже проводилася. Її можна запустити знову.
+event-ui-launch-active = Подія триває просто зараз.
+event-ui-launch-voting = Триває голосування: { $votes } із { $required }. Напишіть y або n у чат.
+event-ui-launch-busy = Зараз триває інше голосування. Дочекайтеся його кінця.
+event-ui-vote = Почати голосування
+event-ui-vote-busy = Голосування вже триває.
+event-ui-vote-stopped = Голосування зупинено.
+event-ui-force = Запустити одразу
+event-ui-force-confirm = Точно запустити?
+event-ui-stop = Зупинити подію
+event-ui-stop-confirm = Точно зупинити?
+event-ui-stop-vote = Зупинити голосування
+event-ui-stopped = Подію зупинено.
+event-ui-to-list = До списку
+event-ui-edit = Змінити
+event-ui-editor-new = Нова подія
+event-ui-editor-edit = Зміна події
+event-ui-texts = Назва й опис
+event-ui-name = Назва
+event-ui-description = Опис
+event-ui-description-hint = Про що ця подія
+event-ui-map = Мапа
+event-ui-schedule = Розклад і тип
+event-ui-start = Початок
+event-ui-end = Кінець
+event-ui-save = Зберегти
+event-ui-saved = Подію збережено.
+event-ui-draft-restored = Ваша недописана подія на місці.
+event-ui-maps-title = Вибір мапи
+event-ui-to-editor = До редактора
+event-ui-time-start = Початок події
+event-ui-time-end = Кінець події
+event-ui-time-unset = Не задано
+event-ui-time-unset-hint = Задайте стрілками або кнопкою нижче
+event-ui-time-hours = { $value } год
+event-ui-time-minutes = { $value } хв
+event-ui-time-now = Зараз
+event-ui-time-in-hour = За годину
+event-ui-time-today-evening = Сьогодні 20:00
+event-ui-time-tomorrow-noon = Завтра 12:00
+event-ui-time-plus-hour = +1 год
+event-ui-time-plus-three-hours = +3 год
+event-ui-time-plus-day = +1 день
+event-ui-time-apply = Готово
+event-ui-time-clear = Скинути
+event-ui-error-no-map = Спочатку оберіть мапу.
+event-ui-error-no-end = Тимчасовій події потрібен час кінця.
+event-ui-error-end-before-start = Кінець має бути пізніше за початок.
+event-ui-error-not-allowed = Вам не можна змінювати цю подію.
+event-ui-error-gone = Цієї події більше немає.
+event-ui-error-save-failed = Не вдалося зберегти подію. Спробуйте ще раз.
 event-end = Подія [green]{ $name }[] завершилася!
-error-team-not-found = [scarlet]⚠ Команду не знайдено.
 error-no-access = [scarlet]⚠ Немає доступу.
 error-nickname-too-long = [scarlet]⚠ Ім'я користувача надто довге. Максимум { $max } видимих символів.
 error-private-message-invalid-pid = [scarlet]⚠ Невірний ID гравця. Використовуйте формат [lightgray]#123[].
@@ -1250,6 +1348,7 @@ badge-veteran-description = Надається шанованим досвідч
 badge-season-champion-name = Чемпіон сезону
 badge-season-champion-description = Надається за місце на подіумі рейтингового сезону.
 none = Немає
+unknown = Невідомо
 
 # Серверний браузер (/servers)
 player-servers-title = ІГРОВІ СЕРВЕРИ XCORE
@@ -1285,16 +1384,106 @@ announcement-discord =
 announcement-help =
     [gold]★ [accent]Допомога XCore [lightgray]» [white]Потрібні всі доступні команди?
     [lightgray]Введіть [accent]/help[lightgray], щоб переглянути всі команди!
+announcement-report =
+    [gold]★ [accent]Скарги XCore [lightgray]» [white]Хтось гриферить або порушує правила?
+    [lightgray]Поскаржтеся командою [accent]/report[lightgray] — адміністрація розбереться!
 
 
 error-only-players = [scarlet]⚠ Цю команду можуть використовувати лише гравці.
 
 player-settings-username-editable = [gold]★ Ім'я користувача (Нагорода за подію):[]
 player-settings-username-hint = Введіть унікальне ім'я (4-32 симв.)...
-player-settings-username-locked = [gray]Ім'я користувача:[] [accent]@{ $username }[] [darkgray](🔒 Заблоковано)[]
+player-settings-username-locked = [gray]Ім'я користувача:[] [accent]@{ $username }[] [darkgray](Заблоковано)[]
 player-settings-username-none = [gray]Ім'я користувача: [darkgray]Не встановлено (Виграйте у події)[]
 
 error-username-empty = Ім'я користувача не може бути порожнім!
 error-username-length = Довжина імені користувача має бути від 4 до 32 символів!
 error-username-invalid-chars = Ім'я користувача може містити лише латинські літери, цифри та символ підкреслення!
 error-username-taken = Це ім'я користувача вже зайнято іншим гравцем!
+# ==============================================================================
+# Permission nodes
+# ==============================================================================
+permission-mindustry-admin = Користуватися вбудованим меню адміністратора гри та пропускати хвилі
+permission-xcore-moderation-mute = Видавати мут
+permission-xcore-moderation-unmute = Знімати мут
+permission-xcore-moderation-kick = Виганяти гравців
+permission-xcore-moderation-ban = Блокувати гравців
+permission-xcore-moderation-unban = Розблоковувати гравців
+permission-xcore-moderation-audit-others = Переглядати історію модерації інших гравців
+permission-xcore-moderation-votekick-immune = Не може бути вигнаний голосуванням
+permission-xcore-admin-tp = Телепортувати гравців
+permission-xcore-admin-broadcast = Надсилати оголошення всім
+permission-xcore-admin-kill = Знищувати юнітів і гравців
+permission-xcore-admin-heal = Лікувати юнітів і гравців
+permission-xcore-admin-set-team = Змінювати команду гравця
+permission-xcore-maps-force-rtv = Змінювати карту без голосування
+permission-xcore-maps-force-vnw = Пропускати хвилю без голосування
+permission-xcore-votes-cancel = Скасовувати поточне голосування
+permission-xcore-events-create-major = Створювати великі події
+permission-xcore-events-edit-others = Редагувати події інших гравців
+permission-xcore-events-force-vote = Запускати подію без голосування
+permission-xcore-events-stop = Зупиняти поточну подію
+permission-xcore-players-settings-others = Змінювати налаштування інших гравців
+permission-xcore-players-private-info = Бачити приватні дані гравців, наприклад їхні IP-адреси
+permission-xcore-bypass-playtime = Обходити вимоги до ігрового часу для команд
+permission-xcore-permissions-inspect = Бачити, хто має які дозволи
+permission-xcore-permissions-manage = Змінювати ролі та дозволи
+
+error-target-outranks = [scarlet]⚠ Не можна застосувати це до гравця, чия роль не нижча за вашу.
+perm-me-legacy = [accent]Ролі на цьому сервері вимкнено. Адмін: [white]{ $admin }
+perm-me-header = [accent]Ваші ролі тут (вага [white]{ $weight }[accent]):
+perm-me-none = [lightgray] - немає
+perm-me-logged-in = [green]Ви увійшли як стафф.
+perm-me-not-logged-in = [yellow]Ви не увійшли як стафф. Використайте [white]/login <пароль>[yellow].
+perm-me-stale = [scarlet]Права стаффу призупинено: сервер не зміг їх оновити. Вони повернуться самі.
+
+help-ui-search-hint = Пошук за командами, псевдонімами й описами
+help-ui-search-empty = [lightgray]За вашим запитом команд не знайдено.[]
+
+match-history-title = Історія матчів
+match-history-rank = #{ $rank } у сезоні
+match-history-form = Останні { $count }:
+match-history-empty = Тут з'являться ваші рейтингові матчі.
+match-history-since = Історія ведеться з { $date }.
+match-history-load-failed = Не вдалося завантажити історію матчів. Спробуйте трохи пізніше.
+match-history-back-to-list = До списку
+match-history-your-result = Ваш результат
+match-history-places = Місця
+match-history-team-title = { $place } місце · { $team } · середній { $average }
+match-history-time-now = щойно
+match-history-time-minutes = { $count } хв тому
+match-history-time-hours = { $count } год тому
+match-history-time-yesterday = учора
+match-history-outcome-win = [lime]Перемога[]
+match-history-outcome-loss = [scarlet]Поразка[]
+match-history-outcome-unrated = [lightgray]Без рейтингу[]
+match-history-outcome-uncounted = [lightgray]Не зараховано[]
+match-history-lineup = { $own } на { $other }
+match-history-team-place = { $place } місце з { $teams } команд
+match-history-place = #{ $place } з { $players }
+match-history-counted = Зараховано: { $reason }
+match-history-not-counted = Не зараховано: { $reason }
+match-history-counted-share = Зараховано { $percent }% матчу
+match-history-reason-winner = перемога
+match-history-reason-defeated = поразка
+match-history-reason-short-play = зіграв менше половини матчу
+match-history-reason-late-join = зайшов наприкінці
+match-history-reason-left-at-once = майже одразу вийшов
+match-history-reason-match-unrated = матч без рейтингу
+match-history-reason-unknown = причину не записано
+match-history-skip-not-enough-players = замало гравців
+match-history-skip-admin-stop = зупинено адміністратором
+match-history-skip-technical-error = технічна помилка
+match-history-skip-unknown = без рейтингу
+match-history-finish-surrender = здачею
+match-history-finish-timeout = за таймером
+match-history-finish-admin-stop = зупинено адміністратором
+match-history-finish-technical-error = технічна помилка
+
+# Discord submission attribution; the declared creator is supplied by the uploader.
+map-upload-file-author = Автор із файлу: { $author }
+map-upload-creator = Вказаний автор: { $person }
+map-upload-submitter = Додав через Discord: { $person }
+map-upload-date = Завантажена: [lightgray]{ $date }[] (UTC)
+
+map-upload-current-creator = [accent]{ $map }[] — { $creator }

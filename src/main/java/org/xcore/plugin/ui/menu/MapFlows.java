@@ -10,6 +10,7 @@ import org.xcore.plugin.database.repository.MapDataRepository;
 import org.xcore.plugin.model.EventData;
 import org.xcore.plugin.model.MapData;
 import org.xcore.plugin.model.enums.Feature;
+import org.xcore.plugin.permission.PermissionNodes;
 import org.xcore.plugin.service.MapService;
 import org.xcore.plugin.session.Session;
 import org.xcore.plugin.ui.flow.BaseMenuFlow;
@@ -189,6 +190,9 @@ final class MapFlows {
                 }
             });
             action("admin-rtv", ctx -> {
+                if (!ctx.session().allowed(PermissionNodes.MAPS_FORCE_RTV)) {
+                    return;
+                }
                 MapData mapData = menu.resolveMap(ctx.state().mapId);
                 if (mapData != null) {
                     Map mindustryMap = mapService.findPersistedMap(mapData);
@@ -255,7 +259,7 @@ final class MapFlows {
             if (rtvEnabled && (!isEvent() || (activeEvent == null || !activeEvent.isActive) || activeEvent.map.equals(mapData.id))) {
                 List<MenuButton> rtvRow = new ArrayList<>();
                 rtvRow.add(MenuButton.of(session.locale().t("map-rtv"), "rtv"));
-                if (session.player.admin) {
+                if (session.has(PermissionNodes.MAPS_FORCE_RTV)) {
                     rtvRow.add(MenuButton.of(session.locale().t("map-artv"), "admin-rtv"));
                 }
                 grid.row(rtvRow.toArray(new MenuButton[0]));
@@ -273,6 +277,7 @@ final class MapFlows {
                     session.locale().t("commands-map-title"),
                     session.locale().t("commands-map-content", args(
                             "name", mapData.name, "author", mapData.author, "description", desc,
+                            "authorLabel", session.locale().t(mapService.discordUploadFor(mindustryMap) == null ? "map-ui-by" : "map-upload-file-author", args("author", mapData.author)),
                             "width", (mindustryMap == null) ? "?" : mindustryMap.width,
                             "height", (mindustryMap == null) ? "?" : mindustryMap.height,
                             "reputation", mapData.reputation, "popularity", String.format("%.1f", mapData.popularity),
@@ -280,10 +285,14 @@ final class MapFlows {
                             "playedYear", mapData.playedTimesYear, "lastPlayed", last,
                             "like", mapData.like, "dislike", mapData.dislike,
                             "min", minDuration, "avg", averageDuration, "max", maxDuration
-                    )),
+                    )) + attribution(session, mapService.discordUploadFor(mindustryMap)),
                     grid.build()
             );
         }
+    }
+
+    private static String attribution(Session session, org.xcore.plugin.model.MapDiscordUpload upload) {
+        return upload == null ? "" : "\n\n" + org.xcore.plugin.ui.menu.map.MapUploadText.format(session.locale(), upload, session.has(PermissionNodes.MAPS_FORCE_RTV));
     }
 
     static final class MapsState {

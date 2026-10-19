@@ -1,6 +1,7 @@
 package org.xcore.plugin.ui.flow;
 
 import org.xcore.plugin.ui.route.MenuRoute;
+import org.xcore.ui.VNode;
 
 import java.util.List;
 
@@ -12,8 +13,16 @@ public class ActiveMenuScreen {
     private final Object state;
     private final List<String> actionIds;
     private final MenuRoute route;
+    private final VNode tree;
+    private final long token;
 
     private ActiveMenuScreen(long version, MenuMode mode, List<MenuAction> actions, MenuFlow<?> flow, Object state, List<String> actionIds, MenuRoute route) {
+        this(version, mode, actions, flow, state, actionIds, route, null, 0L);
+    }
+
+    private ActiveMenuScreen(long version, MenuMode mode, List<MenuAction> actions, MenuFlow<?> flow, Object state, List<String> actionIds, MenuRoute route, VNode tree, long token) {
+        this.tree = tree;
+        this.token = token;
         this.version = version;
         this.mode = mode;
         this.actions = List.copyOf(actions);
@@ -33,6 +42,27 @@ public class ActiveMenuScreen {
 
     public static ActiveMenuScreen create(long version, MenuMode mode, List<MenuAction> actions, MenuFlow<?> flow, Object state, List<String> actionIds, MenuRoute route) {
         return new ActiveMenuScreen(version, mode, actions, flow, state, actionIds, route);
+    }
+
+    /**
+     * This screen as a dialog the client builds from {@code tree}. Such a dialog stays on the
+     * screen until it is replaced or told to go, and answers with {@code token}.
+     */
+    public ActiveMenuScreen built(VNode tree, long token) {
+        return new ActiveMenuScreen(version, mode, actions, flow, state, actionIds, route, tree, token);
+    }
+
+    public boolean isBuilt() {
+        return tree != null;
+    }
+
+    public VNode tree() {
+        return tree;
+    }
+
+    /** What the dialog of a built screen answers with. */
+    public long token() {
+        return token;
     }
 
     public long version() {

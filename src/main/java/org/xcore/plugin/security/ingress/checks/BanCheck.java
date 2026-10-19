@@ -7,8 +7,8 @@ import mindustry.net.Packets.ConnectPacket;
 import org.xcore.plugin.config.TomlSecretsConfig;
 import org.xcore.plugin.concurrent.Async;
 import org.xcore.plugin.database.repository.BanDataRepository;
-import org.xcore.plugin.localization.Localization;
 import org.xcore.plugin.model.BanData;
+import org.xcore.plugin.model.PlayerPids;
 import org.xcore.plugin.security.ingress.AccessResult;
 import org.xcore.plugin.security.ingress.IngressCheck;
 
@@ -49,8 +49,6 @@ public class BanCheck implements IngressCheck {
         String uuid = packet.uuid;
         String ip = con.address;
 
-        Localization local = new Localization(bundle, bundle.resolveLocale(packet.locale));
-
         BanData ban = banDataRepository.find(uuid, ip);
 
         if (ban != null) {
@@ -67,13 +65,19 @@ public class BanCheck implements IngressCheck {
                 return AccessResult.Allowed.INSTANCE;
             }
 
-            Duration duration = Duration.between(Instant.now(), ban.expireDate);
+            banDataRepository.assignBanIdIfMissing(ban);
+            Duration duration = ban.expireDate == null ? Duration.ZERO : Duration.between(Instant.now(), ban.expireDate);
 
-            String reason = local.format("tempban-content", args(
+            // Runs off the game thread, so the resolver may read the player's selected language
+            // from the database when it is not known yet.
+            String reason = bundle.format(bundle.locale(packet), "tempban-content", args(
                     "nickname", stripColors(ban.name == null ? "" : ban.name),
+                    "banId", ban.banId == null ? "-" : "B-" + ban.banId,
+                    "pid", PlayerPids.isAssigned(ban.pid) ? ban.pid : "-",
                     "adminName", stripColors(ban.adminName == null ? "" : ban.adminName),
                     "reason", ban.reason == null ? "" : ban.reason,
                     "duration", Math.max(0, duration.toSeconds()),
+                    "permanent", ban.expireDate == null ? "true" : "false",
                     "expireDate", ban.expireDate,
                     "discordUrl", secretsConfig.externalLinks.discordUrl
             ));
@@ -101,8 +105,10 @@ public class BanCheck implements IngressCheck {
                 netServer.admins.isSubnetBanned(ip) ||
                 netServer.admins.isIDBanned(uuid)) {
 
-            String reason = local.format("ban-content", args(
+            Integer pid = banDataRepository.findPlayerPid(uuid);
+            String reason = bundle.format(bundle.locale(packet), "ban-content", args(
                     "nickname", stripColors(packet.name),
+                    "pid", pid != null ? pid : "-",
                     "discordUrl", secretsConfig.externalLinks.discordUrl
             ));
 

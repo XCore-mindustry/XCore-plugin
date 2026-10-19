@@ -29,11 +29,11 @@ public class SeasonTransportPublisher implements SeasonEvents {
     private final TomlXcoreConfig config;
     private final Clock clock;
 
-    @Inject
     public SeasonTransportPublisher(SeasonLifecycleService lifecycle, NetworkService network, TomlXcoreConfig config) {
         this(lifecycle, network, config, Clock.systemUTC());
     }
 
+    @Inject
     SeasonTransportPublisher(SeasonLifecycleService lifecycle, NetworkService network, TomlXcoreConfig config,
                              Clock clock) {
         this.lifecycle = lifecycle;

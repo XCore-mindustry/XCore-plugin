@@ -104,15 +104,50 @@ public final class ConfigTomlTemplateWriter {
         enabled = false
         map_id = ""
 
+        [permissions]
+        mode = "legacy"
+        trust_native_admins = false
+
         [translation]
         enabled = true
         pipeline = ["google"]
-        preserve_original_message_on_failure = true
+
+        [translation.delivery]
+        # deadline: wait up to deadline_millis for the translation, then send the original and
+        #   the translation as a follow-up line if it arrives within late_translation_millis.
+        # original-first: always send the original at once, the translation as a follow-up.
+        # wait: send the translated line, or the original after late_translation_millis.
+        mode = "deadline"
+        deadline_millis = 1500
+        late_translation_millis = 10000
+
+        [translation.limits]
+        # Provider calls in flight at once; messages beyond that are delivered untranslated.
+        max_concurrent_requests = 16
+        # Per-author budget: burst of translated messages, refilled per minute.
+        author_burst = 5
+        author_refill_per_minute = 30
+        request_timeout_seconds = 45
+
+        [translation.prefilter]
+        enabled = true
+        # Messages with fewer letters (after colour tags and icons) are not translated.
+        min_letters = 2
+        # Whole messages that read the same in every language.
+        skip_words = ["gg", "ggwp", "wp", "gl", "hf", "glhf", "ok", "okay", "lol", "xd", "afk", "brb", "ez", "rip", "omg", "wtf", "pls", "plz", "thx", "ty", "np"]
+
+        [translation.channels]
+        # Translate chat relayed from other servers and from Discord as well.
+        remote_global = false
+        discord = false
 
         [translation.cache]
         enabled = true
         ttl_seconds = 1800
         max_text_length = 500
+        # In-process cache in front of Redis.
+        memory_entries = 2000
+        memory_ttl_seconds = 600
 
         [translation.metrics]
         enabled = true
@@ -138,6 +173,7 @@ public final class ConfigTomlTemplateWriter {
             "announcement-hub",
             "announcement-discord",
             "announcement-help",
+            "announcement-report",
         ]
         """;
     }
@@ -178,6 +214,47 @@ public final class ConfigTomlTemplateWriter {
 
         [maps.voting]
         switch_delay_seconds = 10
+
+        [maps.checks]
+        # Limits for detached map inspection; the running world is never loaded from a submission.
+        max_file_bytes = 4194304
+        max_tiles = 360000
+        # Optional finding code -> error/warning/info. Example: { "td-road-floor-mixed" = "warning" }
+        # Levels are trimmed and case-insensitive. An unknown code or level is ignored with a
+        # warning in the server log at start-up, and the default severity applies.
+        severities = {}
+
+        [maps.checks.profiles.tower-defense]
+        # Empty road floor allows any single floor type; empty border wall disables that check.
+        road_floor = "metal-tiles-2"
+        border_wall = "metal-wall-2"
+        border_tolerance = 0.05
+        require_drop_zone_radius_zero = true
+        # Map size in tiles, inclusive; 0 = no bound. Any profile may carry its own bounds, for example
+        # [maps.checks.profiles.pvp]. A negative value is treated as 0, and a maximum below its minimum
+        # is raised to that minimum; both are reported with a warning in the server log at start-up.
+        min_width = 0
+        max_width = 0
+        min_height = 0
+        max_height = 0
+
+        [cases.reports]
+        # Shared flow switch. Server-local runtime.disabled_features may also contain "reports".
+        enabled = false
+        cooldown_seconds = 60
+        same_target_cooldown_minutes = 30
+        daily_limit = 10
+        # Per-address account-rotation breaker, across ten minutes. Addresses stay on the server.
+        network_burst_limit = 6
+        min_play_time_minutes = 0
+        chat_lines = 30
+        chat_window_minutes = 10
+        block_window_seconds = 600
+        recent_leaver_minutes = 10
+
+        [cases.notices]
+        # Durable outcome notices shown after login on any server with cases enabled.
+        max_per_join = 5
 
         [pagination]
         events_per_page = 10

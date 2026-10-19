@@ -23,6 +23,7 @@ public class TomlSecretsConfig implements SelfNormalizing {
     public MessagesConfig messages = new MessagesConfig();
     public TranslationSection translation = new TranslationSection();
     public RatingConfig rating = new RatingConfig();
+    public CasesConfig cases = new CasesConfig();
 
     public void normalize() {
         if (database == null) {
@@ -58,6 +59,10 @@ public class TomlSecretsConfig implements SelfNormalizing {
             rating = new RatingConfig();
         }
         rating.normalize();
+        if (cases == null) {
+            cases = new CasesConfig();
+        }
+        cases.normalize();
     }
 
     public void validate(Fi secretsFile) {
@@ -142,15 +147,144 @@ public class TomlSecretsConfig implements SelfNormalizing {
 
     public static class MapsConfig {
         public VotingConfig voting = new VotingConfig();
+        public ChecksConfig checks = new ChecksConfig();
 
         public void normalize() {
             if (voting == null) {
                 voting = new VotingConfig();
             }
+            if (checks == null) {
+                checks = new ChecksConfig();
+            }
+            checks.normalize();
         }
 
         public static class VotingConfig {
             public int switchDelaySeconds = 10;
+        }
+
+        public static class ChecksConfig {
+            public static final Set<String> FINDING_CODES = Set.of(
+                    "missing-name", "missing-author", "size-out-of-range", "requires-mods", "data-patches", "unknown-content", "no-core",
+                    "no-spawn", "pvp-single-team", "attack-no-enemy-core", "td-road-floor-mixed", "td-road-floor-unexpected",
+                    "td-road-disconnected", "td-spawn-not-at-road-start", "td-border-wall-missing", "td-drop-zone-radius",
+                    "td-waves-enabled");
+            public int maxFileBytes = 4194304;
+            public int maxTiles = 360000;
+            /** Documented finding code to error/warning/info. Empty preserves the default severities. */
+            public Map<String, String> severities = new LinkedHashMap<>();
+            public Map<String, ProfileConfig> profiles = defaultProfiles();
+
+            public void normalize() {
+                for (String problem : repair()) {
+                    PLog.warnTag("Config", "maps.checks: @", problem);
+                }
+            }
+
+            /**
+             * Repairs invalid values in place. An invalid severity override or dimension bound never stops
+             * start-up: it is dropped or adjusted, and described in the returned list for the load-time warning.
+             */
+            List<String> repair() {
+                var problems = new ArrayList<String>();
+                ChecksConfig defaults = new ChecksConfig();
+                if (maxFileBytes <= 0) {
+                    maxFileBytes = defaults.maxFileBytes;
+                }
+                if (maxTiles <= 0) {
+                    maxTiles = defaults.maxTiles;
+                }
+                var normalizedSeverities = new java.util.TreeMap<String, String>();
+                if (severities != null) severities.forEach((code, value) -> {
+                    String severity = normalizeSeverity(code, value);
+                    if (severity != null) {
+                        normalizedSeverities.put(code, severity);
+                    } else if (code == null || !FINDING_CODES.contains(code)) {
+                        problems.add("severities: unknown check id \"" + code + "\" ignored");
+                    } else {
+                        problems.add("severities." + code + ": unknown severity \"" + value
+                                + "\" ignored (expected error, warning or info); the default severity applies");
+                    }
+                });
+                severities = new LinkedHashMap<>(normalizedSeverities);
+                if (profiles == null) {
+                    profiles = defaultProfiles();
+                }
+                // A profiles table in the file replaces the whole map; bounds added for another profile
+                // must not silently switch the Tower Defence policy off.
+                defaultProfiles().forEach(profiles::putIfAbsent);
+                profiles.replaceAll((id, config) -> {
+                    ProfileConfig normalized = config == null ? new ProfileConfig() : config;
+                    normalized.repair("profiles." + id, problems);
+                    return normalized;
+                });
+                return problems;
+            }
+
+            public static String normalizeSeverity(String code, String value) {
+                if (code == null || !FINDING_CODES.contains(code) || value == null) return null;
+                String normalized = value.trim().toLowerCase(java.util.Locale.ROOT);
+                return Set.of("error", "warning", "info").contains(normalized) ? normalized : null;
+            }
+
+            private static Map<String, ProfileConfig> defaultProfiles() {
+                var map = new LinkedHashMap<String, ProfileConfig>();
+                map.put("tower-defense", new ProfileConfig());
+                return map;
+            }
+
+            public static class ProfileConfig {
+                /** Empty means any single floor type is accepted for the road. */
+                public String roadFloor = "metal-tiles-2";
+                /** Empty turns the border check off. */
+                public String borderWall = "metal-wall-2";
+                public double borderTolerance = 0.05;
+                public boolean requireDropZoneRadiusZero = true;
+                /** Inclusive dimension limits. Zero disables that endpoint; parser safety caps always apply. */
+                public int minWidth = 0;
+                public int maxWidth = 0;
+                public int minHeight = 0;
+                public int maxHeight = 0;
+
+                public void normalize() {
+                    repair("profile", new ArrayList<>());
+                }
+
+                void repair(String path, List<String> problems) {
+                    ProfileConfig defaults = new ProfileConfig();
+                    if (roadFloor == null) {
+                        roadFloor = "";
+                    }
+                    if (borderWall == null) {
+                        borderWall = "";
+                    }
+                    if (!Double.isFinite(borderTolerance) || borderTolerance < 0 || borderTolerance > 1) {
+                        borderTolerance = defaults.borderTolerance;
+                    }
+                    minWidth = bound(minWidth, path + ".min_width", problems);
+                    maxWidth = bound(maxWidth, path + ".max_width", problems);
+                    minHeight = bound(minHeight, path + ".min_height", problems);
+                    maxHeight = bound(maxHeight, path + ".max_height", problems);
+                    if (maxWidth > 0 && maxWidth < minWidth) {
+                        problems.add(path + ": max_width = " + maxWidth + " is below min_width = " + minWidth
+                                + "; using max_width = " + minWidth);
+                        maxWidth = minWidth;
+                    }
+                    if (maxHeight > 0 && maxHeight < minHeight) {
+                        problems.add(path + ": max_height = " + maxHeight + " is below min_height = " + minHeight
+                                + "; using max_height = " + minHeight);
+                        maxHeight = minHeight;
+                    }
+                }
+
+                private static int bound(int value, String key, List<String> problems) {
+                    if (value >= 0) {
+                        return value;
+                    }
+                    problems.add(key + " = " + value + " is negative; that bound is off");
+                    return 0;
+                }
+            }
         }
     }
 
@@ -232,6 +366,77 @@ public class TomlSecretsConfig implements SelfNormalizing {
             }
             if (reset == null || reset.isBlank()) {
                 reset = defaults.reset;
+            }
+        }
+    }
+
+    /** Player reports and the notices that answer them. Every feature here is off or inert by default. */
+    public static class CasesConfig {
+        public ReportsConfig reports = new ReportsConfig();
+        public NoticesConfig notices = new NoticesConfig();
+
+        public void normalize() {
+            if (reports == null) {
+                reports = new ReportsConfig();
+            }
+            reports.normalize();
+            if (notices == null) {
+                notices = new NoticesConfig();
+            }
+            notices.normalize();
+        }
+
+        public static class ReportsConfig {
+            public boolean enabled = false;
+            public int cooldownSeconds = 60;
+            public int sameTargetCooldownMinutes = 30;
+            public int dailyLimit = 10;
+            public int networkBurstLimit = 6;
+            public int minPlayTimeMinutes = 0;
+            public int chatLines = 30;
+            public int chatWindowMinutes = 10;
+            public int blockWindowSeconds = 600;
+            public int recentLeaverMinutes = 10;
+
+            public void normalize() {
+                ReportsConfig defaults = new ReportsConfig();
+                if (cooldownSeconds < 0) {
+                    cooldownSeconds = defaults.cooldownSeconds;
+                }
+                if (sameTargetCooldownMinutes < 0) {
+                    sameTargetCooldownMinutes = defaults.sameTargetCooldownMinutes;
+                }
+                if (dailyLimit < 0) {
+                    dailyLimit = defaults.dailyLimit;
+                }
+                if (networkBurstLimit < 0) {
+                    networkBurstLimit = defaults.networkBurstLimit;
+                }
+                if (minPlayTimeMinutes < 0) {
+                    minPlayTimeMinutes = defaults.minPlayTimeMinutes;
+                }
+                if (chatLines < 0) {
+                    chatLines = defaults.chatLines;
+                }
+                if (chatWindowMinutes < 0) {
+                    chatWindowMinutes = defaults.chatWindowMinutes;
+                }
+                if (blockWindowSeconds < 0) {
+                    blockWindowSeconds = defaults.blockWindowSeconds;
+                }
+                if (recentLeaverMinutes < 0) {
+                    recentLeaverMinutes = defaults.recentLeaverMinutes;
+                }
+            }
+        }
+
+        public static class NoticesConfig {
+            public int maxPerJoin = 5;
+
+            public void normalize() {
+                if (maxPerJoin < 0) {
+                    maxPerJoin = new NoticesConfig().maxPerJoin;
+                }
             }
         }
     }

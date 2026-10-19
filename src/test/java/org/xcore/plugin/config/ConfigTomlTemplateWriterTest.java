@@ -110,6 +110,65 @@ class ConfigTomlTemplateWriterTest {
         }
     }
 
+    @Test
+    void casesAndMapChecksTemplateRoundTripBindsEveryKey() throws Exception {
+        String template = ConfigTomlTemplateWriter.defaultSecretsTomlContent();
+        TomlSecretsConfig defaults = PluginConfigLoader.lenientTomlMapper().readValue(template, TomlSecretsConfig.class);
+        assertThat(defaults.cases.reports.enabled).isFalse();
+        assertThat(defaults.cases.notices.maxPerJoin).isEqualTo(5);
+        assertThat(defaults.maps.checks.maxFileBytes).isEqualTo(4194304);
+        assertThat(defaults.maps.checks.severities).isEmpty();
+        var defaultProfile = defaults.maps.checks.profiles.get("tower-defense");
+        assertThat(defaultProfile.minWidth).isZero(); assertThat(defaultProfile.maxWidth).isZero();
+        assertThat(defaultProfile.minHeight).isZero(); assertThat(defaultProfile.maxHeight).isZero();
+        String changed = template
+                .replace("enabled = false", "enabled = true")
+                .replace("cooldown_seconds = 60", "cooldown_seconds = 71")
+                .replace("same_target_cooldown_minutes = 30", "same_target_cooldown_minutes = 31")
+                .replace("daily_limit = 10", "daily_limit = 11")
+                .replace("network_burst_limit = 6", "network_burst_limit = 7")
+                .replace("min_play_time_minutes = 0", "min_play_time_minutes = 8")
+                .replace("chat_lines = 30", "chat_lines = 21")
+                .replace("chat_window_minutes = 10", "chat_window_minutes = 12")
+                .replace("block_window_seconds = 600", "block_window_seconds = 601")
+                .replace("recent_leaver_minutes = 10", "recent_leaver_minutes = 13")
+                .replace("max_per_join = 5", "max_per_join = 3")
+                .replace("max_file_bytes = 4194304", "max_file_bytes = 123456")
+                .replace("max_tiles = 360000", "max_tiles = 12345")
+                .replace("severities = {}", "severities = { \"td-road-floor-mixed\" = \"warning\" }")
+                .replace("min_width = 0", "min_width = 11")
+                .replace("max_width = 0", "max_width = 101")
+                .replace("min_height = 0", "min_height = 21")
+                .replace("max_height = 0", "max_height = 201")
+                .replace("metal-tiles-2", "stone")
+                .replace("metal-wall-2", "copper-wall")
+                .replace("border_tolerance = 0.05", "border_tolerance = 0.07")
+                .replace("require_drop_zone_radius_zero = true", "require_drop_zone_radius_zero = false");
+        TomlSecretsConfig bound = PluginConfigLoader.lenientTomlMapper().readValue(changed, TomlSecretsConfig.class);
+        var reports = bound.cases.reports;
+        assertThat(reports.enabled).isTrue();
+        assertThat(reports.cooldownSeconds).isEqualTo(71);
+        assertThat(reports.sameTargetCooldownMinutes).isEqualTo(31);
+        assertThat(reports.dailyLimit).isEqualTo(11);
+        assertThat(reports.networkBurstLimit).isEqualTo(7);
+        assertThat(reports.minPlayTimeMinutes).isEqualTo(8);
+        assertThat(reports.chatLines).isEqualTo(21);
+        assertThat(reports.chatWindowMinutes).isEqualTo(12);
+        assertThat(reports.blockWindowSeconds).isEqualTo(601);
+        assertThat(reports.recentLeaverMinutes).isEqualTo(13);
+        assertThat(bound.cases.notices.maxPerJoin).isEqualTo(3);
+        assertThat(bound.maps.checks.maxFileBytes).isEqualTo(123456);
+        assertThat(bound.maps.checks.maxTiles).isEqualTo(12345);
+        var profile = bound.maps.checks.profiles.get("tower-defense");
+        assertThat(profile.roadFloor).isEqualTo("stone");
+        assertThat(profile.borderWall).isEqualTo("copper-wall");
+        assertThat(profile.borderTolerance).isEqualTo(0.07);
+        assertThat(profile.requireDropZoneRadiusZero).isFalse();
+        assertThat(bound.maps.checks.severities).containsExactlyEntriesOf(java.util.Map.of("td-road-floor-mixed", "warning"));
+        assertThat(profile.minWidth).isEqualTo(11); assertThat(profile.maxWidth).isEqualTo(101);
+        assertThat(profile.minHeight).isEqualTo(21); assertThat(profile.maxHeight).isEqualTo(201);
+    }
+
     private static TomlXcoreConfig loadFromTemplate(Path dir) {
         Fi dataDirectory = new Fi(dir.toFile());
         var result = ConfigTomlLoader.loadXcoreConfig(dataDirectory);

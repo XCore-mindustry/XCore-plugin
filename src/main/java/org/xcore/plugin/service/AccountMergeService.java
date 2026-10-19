@@ -196,6 +196,7 @@ public class AccountMergeService {
         sourceWorking.uuid = "merged:" + oldSourceUuid;
         sourceWorking.username = "";
         sourceWorking.canChangeUsername = false;
+        revokeCredentials(sourceWorking);
         sourceWorking.totalPlayTime = 0;
         sourceWorking.description = "Merged into PID #" + targetWorking.pid + " (" + targetWorking.nickname + ")";
 
@@ -285,14 +286,9 @@ public class AccountMergeService {
             target.discordLinkedAt = source.discordLinkedAt;
         }
 
-        if (source.deviceTokens != null) {
-            if (target.deviceTokens == null) target.deviceTokens = new HashMap<>();
-            target.deviceTokens.putAll(source.deviceTokens);
-        }
-        if (source.deviceTokenHashes != null) {
-            if (target.deviceTokenHashes == null) target.deviceTokenHashes = new HashSet<>();
-            target.deviceTokenHashes.addAll(source.deviceTokenHashes);
-        }
+        // Credentials and grants are not merged. The target keeps its own password, device
+        // tokens and admin status; inheriting the source's would hand staff access to an
+        // account that never earned it.
         if (source.mapVotes != null) {
             if (target.mapVotes == null) target.mapVotes = new HashMap<>();
             target.mapVotes.putAll(source.mapVotes);
@@ -305,11 +301,14 @@ public class AccountMergeService {
             if (target.blockedPrivateUuids == null) target.blockedPrivateUuids = new HashSet<>();
             target.blockedPrivateUuids.addAll(source.blockedPrivateUuids);
         }
+    }
 
-        target.admin = target.admin || source.admin;
-        if (target.admin && "NONE".equals(target.adminSource) && !"NONE".equals(source.adminSource)) {
-            target.adminSource = source.adminSource;
-        }
+    /** The retired account can no longer prove anything: its password, device tokens and admin status go. */
+    private static void revokeCredentials(PlayerData retired) {
+        retired.password = null;
+        retired.clearDeviceTokens();
+        retired.admin = false;
+        retired.adminSource = DiscordAdminAccessService.SOURCE_NONE;
     }
 
     private MergeExecutionOutcome executeAtomicMerge(
@@ -520,6 +519,7 @@ public class AccountMergeService {
         dest.blockedPrivateUuids = src.blockedPrivateUuids != null ? new HashSet<>(src.blockedPrivateUuids) : new HashSet<>();
         dest.admin = src.admin;
         dest.adminSource = src.adminSource;
+        dest.password = src.password;
     }
 
     private void handleOnlinePlayers(String oldSourceUuid, PlayerData targetData) {

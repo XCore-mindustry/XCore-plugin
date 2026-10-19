@@ -17,8 +17,8 @@ plugins {
 }
 
 group = "org.xcore.plugin"
-val baseVersion = "4.8.0"
-version = providers.gradleProperty("xcorePublishVersion").orElse("$baseVersion-SNAPSHOT").get()
+val baseVersion = "5.0.0"
+version = providers.gradleProperty("xcorePublishVersion").orElse(baseVersion).get()
 val isSnapshotVersion = version.toString().endsWith("-SNAPSHOT")
 val mindustryVersion = libs.versions.mindustry.get()
 
@@ -79,6 +79,7 @@ dependencies {
     implementation(libs.gson)
     implementation(libs.jackson.dataformat.toml)
     implementation(libs.jbcrypt)
+    implementation(platform(libs.netty.bom))
     implementation(libs.lettuce)
     implementation(variantOf(libs.netty.epoll) { classifier("linux-x86_64") })
     implementation(libs.avaje.inject)
@@ -129,6 +130,9 @@ fun ShadowJar.applyCommonSettings() {
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
     from(generateModInfo)
     mergeServiceFiles()
+    filesMatching("META-INF/services/**") {
+        duplicatesStrategy = DuplicatesStrategy.INCLUDE
+    }
     isReproducibleFileOrder = true
     isPreserveFileTimestamps = false
 }

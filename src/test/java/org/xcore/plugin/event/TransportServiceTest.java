@@ -120,6 +120,7 @@ class TransportServiceTest {
                     mock(ModerationTransportHandler.class),
                     mock(MapTransportHandler.class),
                     mock(RatingTransportHandler.class),
+                    mock(org.xcore.plugin.event.transport.SecurityTransportHandler.class),
                     mock(NetworkService.class),
                     config,
                     // Unused: this subclass overrides the scheduling hook and resolves inline.

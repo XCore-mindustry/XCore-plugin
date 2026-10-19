@@ -8,23 +8,30 @@ import mindustry.game.EventType.PlayerJoin;
 import mindustry.game.EventType.PlayerLeave;
 import mindustry.gen.Call;
 import mindustry.gen.Player;
-import org.xcore.protocol.generated.messages.identity.IdentityMessages.PlayerJoinLeaveV1;
+import org.xcore.plugin.cases.CaseNotice;
+import org.xcore.plugin.cases.CaseNoticeService;
+import org.xcore.plugin.cases.RecentPlayers;
+import org.xcore.plugin.cases.ReportService;
 import org.xcore.plugin.concurrent.Async;
 import org.xcore.plugin.config.TomlSecretsConfig;
 import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.localization.Localization;
 import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.model.enums.IdentityDisplayMode;
+import org.xcore.plugin.permission.PermissionSessions;
+import org.xcore.plugin.permission.role.PermissionSet;
+import org.xcore.plugin.service.DiscordAdminAccessService;
 import org.xcore.plugin.service.NetworkService;
 import org.xcore.plugin.service.PlayerDisplayService;
 import org.xcore.plugin.service.PrivateMessageService;
-import org.xcore.plugin.service.DiscordAdminAccessService;
 import org.xcore.plugin.service.map.MapVoteObserverService;
 import org.xcore.plugin.session.ObserverService;
-import org.xcore.plugin.session.SessionService;
 import org.xcore.plugin.session.Session;
+import org.xcore.plugin.session.SessionService;
 import org.xcore.plugin.vote.VoteService;
+import org.xcore.protocol.generated.messages.identity.IdentityMessages.PlayerJoinLeaveV1;
 
+import java.util.List;
 import java.util.Objects;
 
 import static com.ospx.flubundle.Bundle.args;
@@ -44,6 +51,10 @@ public class ConnectionHandler {
     private final ObserverService observerService;
     private final MapVoteObserverService mapVoteObserverService;
     private final Async async;
+    private final PermissionSessions permissionSessions;
+
+    private final CaseNoticeService caseNotices;
+    private final RecentPlayers recentPlayers;
 
     @Inject
     public ConnectionHandler(SessionService sessionService,
@@ -56,7 +67,12 @@ public class ConnectionHandler {
                              DiscordAdminAccessService discordAdminAccessService,
                              ObserverService observerService,
                              MapVoteObserverService mapVoteObserverService,
-                             Async async) {
+                             Async async,
+                             PermissionSessions permissionSessions,
+                             CaseNoticeService caseNotices,
+                             RecentPlayers recentPlayers) {
+        this.caseNotices = caseNotices;
+        this.recentPlayers = recentPlayers;
         this.sessionService = sessionService;
         this.network = network;
         this.config = config;
@@ -68,6 +84,32 @@ public class ConnectionHandler {
         this.observerService = observerService;
         this.mapVoteObserverService = mapVoteObserverService;
         this.async = async;
+        this.permissionSessions = permissionSessions;
+    }
+
+    public ConnectionHandler(SessionService sessionService, NetworkService network, TomlXcoreConfig config,
+                             TomlSecretsConfig secretsConfig, VoteService voteService,
+                             PrivateMessageService privateMessageService, PlayerDisplayService playerDisplayService,
+                             DiscordAdminAccessService discordAdminAccessService, ObserverService observerService,
+                             MapVoteObserverService mapVoteObserverService, Async async, PermissionSessions permissionSessions) {
+        this(sessionService, network, config, secretsConfig, voteService, privateMessageService, playerDisplayService,
+                discordAdminAccessService, observerService, mapVoteObserverService, async, permissionSessions, null, null);
+    }
+
+    /** Without roles. */
+    public ConnectionHandler(SessionService sessionService,
+                             NetworkService network,
+                             TomlXcoreConfig config,
+                             TomlSecretsConfig secretsConfig,
+                             VoteService voteService,
+                             PrivateMessageService privateMessageService,
+                             PlayerDisplayService playerDisplayService,
+                             DiscordAdminAccessService discordAdminAccessService,
+                             ObserverService observerService,
+                             MapVoteObserverService mapVoteObserverService,
+                             Async async) {
+        this(sessionService, network, config, secretsConfig, voteService, privateMessageService, playerDisplayService,
+                discordAdminAccessService, observerService, mapVoteObserverService, async, null);
     }
 
     public void onPlayerJoin(PlayerJoin event) {
@@ -118,14 +160,25 @@ public class ConnectionHandler {
         }
 
         long unreadMessages = privateMessageService.countUnread(data.uuid);
+        List<CaseNotice> notices = caseNotices == null ? List.of() : caseNotices.prepareJoin(data.uuid);
 
-        return new PreparedJoin(data, ipChanged, unreadMessages);
+        if (rolesEnabled()) {
+            // The game's admin list vouches for a connection only from the address it knows.
+            boolean nativeAdmin = permissionSessions.trustsNativeAdmin(join.admin()) && !ipChanged;
+            PermissionSet permissions = permissionSessions.load(data.uuid, nativeAdmin);
+            return new PreparedJoin(data, ipChanged, unreadMessages, permissions, nativeAdmin, notices);
+        }
+
+        return new PreparedJoin(data, ipChanged, unreadMessages, PermissionSet.EMPTY, false, notices);
     }
 
     private void completeJoin(Player player, JoinSnapshot join, PreparedJoin prepared) {
-        boolean admin = join.admin();
+        boolean roles = rolesEnabled();
+        // With roles the admin flag is computed from the grants once the session exists; the
+        // game's own list gives nothing by itself and is never written.
+        boolean admin = join.admin() && (!roles || permissionSessions.trustsNativeAdmin(true));
         boolean revokeAdmin = admin && prepared.ipChanged();
-        if (admin && !revokeAdmin) {
+        if (admin && !revokeAdmin && !roles) {
             player.admin(true);
         }
 
@@ -136,6 +189,11 @@ public class ConnectionHandler {
             return;
         }
 
+        if (roles) {
+            permissionSessions.attach(session, prepared.permissions(), prepared.nativeAdmin());
+        }
+
+        if (recentPlayers != null) recentPlayers.joined(session.data.uuid);
         observerService.restore(player);
 
         PlayerData data = session.data;
@@ -150,7 +208,9 @@ public class ConnectionHandler {
         }
 
         if (revokeAdmin) {
-            discordAdminAccessService.deactivateRuntimeAdmin(player, player.uuid());
+            if (!roles) {
+                discordAdminAccessService.deactivateRuntimeAdmin(player, player.uuid());
+            }
             if (locale != null) {
                 locale.send("error-ip-changed", args());
             }
@@ -168,6 +228,7 @@ public class ConnectionHandler {
         if (prepared.unreadMessages() > 0 && locale != null) {
             locale.send("private-message-join-notification", args("count", prepared.unreadMessages()));
         }
+        if (caseNotices != null) caseNotices.completeJoin(session, prepared.notices());
         if (data.username != null && !data.username.isEmpty()) {
             Log.info("@ [@] #@ @ joined", player.plainName(), data.username, data.pid, player.uuid());
         }
@@ -195,7 +256,12 @@ public class ConnectionHandler {
     ) {
     }
 
-    private record PreparedJoin(PlayerData data, boolean ipChanged, long unreadMessages) {
+    private record PreparedJoin(PlayerData data, boolean ipChanged, long unreadMessages,
+                                PermissionSet permissions, boolean nativeAdmin, List<CaseNotice> notices) {
+    }
+
+    private boolean rolesEnabled() {
+        return permissionSessions != null && permissionSessions.enabled();
     }
 
     public void onPlayerLeave(PlayerLeave event) {
@@ -203,6 +269,10 @@ public class ConnectionHandler {
         Player player = event.player;
 
         mapVoteObserverService.unregisterViewing(player.uuid());
+        if (recentPlayers != null) {
+            Session leaving = sessionService.get(player);
+            recentPlayers.left(leaving, ReportService.isStaff(leaving));
+        }
         Session session = sessionService.registerLogout(player);
         PlayerData data = session != null ? session.data : null;
 

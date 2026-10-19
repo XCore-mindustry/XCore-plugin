@@ -13,6 +13,8 @@ import org.xcore.plugin.concurrent.Async;
 import org.xcore.plugin.concurrent.GameThread;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
 import org.xcore.plugin.model.PlayerData;
+import org.xcore.plugin.model.PlayerPids;
+import org.xcore.plugin.permission.PermissionService;
 import org.xcore.plugin.service.TopMenuCacheService;
 
 import java.util.ArrayList;
@@ -32,6 +34,7 @@ public class SessionService {
     private final SessionFactory sessionFactory;
     private final PlayerDataRepository playerDataRepository;
     private final TopMenuCacheService topMenuCacheService;
+    private final PermissionService permissionService;
 
     /**
      * In-memory cache of online players.
@@ -42,10 +45,18 @@ public class SessionService {
     @Inject
     public SessionService(SessionFactory sessionFactory,
                           PlayerDataRepository playerDataRepository,
-                          TopMenuCacheService topMenuCacheService) {
+                          TopMenuCacheService topMenuCacheService,
+                          PermissionService permissionService) {
         this.sessionFactory = sessionFactory;
         this.playerDataRepository = playerDataRepository;
         this.topMenuCacheService = topMenuCacheService;
+        this.permissionService = permissionService;
+    }
+
+    public SessionService(SessionFactory sessionFactory,
+                          PlayerDataRepository playerDataRepository,
+                          TopMenuCacheService topMenuCacheService) {
+        this(sessionFactory, playerDataRepository, topMenuCacheService, null);
     }
 
     public SessionService(SessionFactory sessionFactory, PlayerDataRepository playerDataRepository) {
@@ -127,7 +138,7 @@ public class SessionService {
      * @return active Session, or null if not online
      */
     public Session findOnlineByPid(int pid) {
-        if (pid < 0) return null;
+        if (!PlayerPids.isAssigned(pid)) return null;
         for (var session : getAllCachedSnapshot()) {
             if (session.data != null && session.data.pid == pid) {
                 return session;
@@ -146,7 +157,7 @@ public class SessionService {
      * @return PlayerData from cache or database, or null if not found
      */
     public PlayerData getOrLoadFromDb(int pid) {
-        if (pid < 0) return null;
+        if (!PlayerPids.isAssigned(pid)) return null;
         Session online = findOnlineByPid(pid);
         if (online != null && online.data != null) {
             return online.data;
@@ -159,7 +170,7 @@ public class SessionService {
      * Asynchronously gets player data by internal player ID with in-memory cache check.
      */
     public CompletionStage<PlayerData> getOrLoadFromDbAsync(int pid) {
-        if (pid < 0) {
+        if (!PlayerPids.isAssigned(pid)) {
             return CompletableFuture.completedFuture(null);
         }
         Session online = findOnlineByPid(pid);
@@ -376,7 +387,16 @@ public class SessionService {
                         if (data == null) {
                             continue;
                         }
-                        rebuilt.put(player.uuid(), createSession(player, data));
+                        Session session = createSession(player, data);
+                        // The rebuilt session is the same connection: what it was granted
+                        // and whether it logged in as staff must not be lost with the old one.
+                        Session previous = sessionCache.get(player.uuid());
+                        if (previous != null && previous.player == player) {
+                            session.permissionSet = previous.permissionSet;
+                            session.staffAuthenticated = previous.staffAuthenticated;
+                            session.nativeAdmin = previous.nativeAdmin;
+                        }
+                        rebuilt.put(player.uuid(), session);
                     }
 
                     sessionCache.clear();
@@ -611,7 +631,11 @@ public class SessionService {
     }
 
     private Session createSession(Player player, PlayerData data) {
-        return sessionFactory.create(player, data);
+        Session session = sessionFactory.create(player, data);
+        if (session != null && permissionService != null) {
+            session.permissions = permissionService;
+        }
+        return session;
     }
 
     private boolean hasData(Session session) {
@@ -694,13 +718,10 @@ public class SessionService {
             return playerDataRepository.findByUsername(name);
         }
 
-        String pidCandidate = target.startsWith("#") ? target.substring(1) : target;
-        if (pidCandidate.matches("\\d+")) {
-            try {
-                int pid = Integer.parseInt(pidCandidate);
-                PlayerData data = getOrLoadFromDb(pid);
-                if (data != null) return data;
-            } catch (NumberFormatException ignored) {}
+        Integer pid = PlayerPids.parse(target);
+        if (pid != null) {
+            PlayerData data = getOrLoadFromDb(pid);
+            if (data != null) return data;
         }
 
         Session online = findOnlineByUsername(target);
@@ -725,12 +746,9 @@ public class SessionService {
             return playerDataRepository.findByUsernameAsync(name);
         }
 
-        String pidCandidate = cleanTarget.startsWith("#") ? cleanTarget.substring(1) : cleanTarget;
-        if (pidCandidate.matches("\\d+")) {
-            try {
-                int pid = Integer.parseInt(pidCandidate);
-                return getOrLoadFromDbAsync(pid);
-            } catch (NumberFormatException ignored) {}
+        Integer pid = PlayerPids.parse(cleanTarget);
+        if (pid != null) {
+            return getOrLoadFromDbAsync(pid);
         }
 
         Session online = findOnlineByUsername(cleanTarget);

@@ -1,6 +1,9 @@
 package org.xcore.plugin.service.moderation;
 
+import org.xcore.plugin.model.PlayerPids;
+
 import java.time.Duration;
+import java.util.Objects;
 
 public record MuteCommand(
         int targetId,
@@ -20,11 +23,11 @@ public record MuteCommand(
     }
 
     public static class Builder {
-        private int targetId = -1;
+        private int targetId = PlayerPids.NONE;
         private String targetUuid;
         private String targetIp;
         private String targetName;
-        private ModerationActor actor = ModerationActor.CONSOLE;
+        private ModerationActor actor;
         private String reason;
         private Duration duration;
 
@@ -32,7 +35,7 @@ public record MuteCommand(
         public Builder targetUuid(String targetUuid) { this.targetUuid = targetUuid; return this; }
         public Builder targetIp(String targetIp) { this.targetIp = targetIp; return this; }
         public Builder targetName(String targetName) { this.targetName = targetName; return this; }
-        public Builder actor(ModerationActor actor) { this.actor = actor != null ? actor : ModerationActor.CONSOLE; return this; }
+        public Builder actor(ModerationActor actor) { this.actor = Objects.requireNonNull(actor, "actor"); return this; }
         public Builder reason(String reason) { this.reason = reason; return this; }
         public Builder duration(Duration duration) { this.duration = duration; return this; }
 

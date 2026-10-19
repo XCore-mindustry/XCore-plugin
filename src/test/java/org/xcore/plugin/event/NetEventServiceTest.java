@@ -14,7 +14,7 @@ import org.xcore.plugin.event.net.chat.VoteChatInterceptor;
 import org.xcore.plugin.service.ChatFormatService;
 import org.xcore.plugin.service.NetworkService;
 import org.xcore.plugin.service.SecurityService;
-import org.xcore.plugin.service.TranslatorService;
+import org.xcore.plugin.chat.ChatDeliveryService;
 import org.xcore.plugin.session.SessionService;
 import org.xcore.plugin.vote.VoteService;
 
@@ -29,7 +29,7 @@ class NetEventServiceTest {
 
     private SessionService sessionService;
     private TomlXcoreConfig config;
-    private TranslatorService translatorService;
+    private ChatDeliveryService chatDeliveryService;
     private NetworkService network;
     private VoteService voteService;
     private SecurityService securityService;
@@ -41,7 +41,7 @@ class NetEventServiceTest {
     void setUp() {
         sessionService = mock(SessionService.class);
         config = new TomlXcoreConfig();
-        translatorService = mock(TranslatorService.class);
+        chatDeliveryService = mock(ChatDeliveryService.class);
         network = mock(NetworkService.class);
         voteService = mock(VoteService.class);
         securityService = mock(SecurityService.class);
@@ -51,7 +51,7 @@ class NetEventServiceTest {
 
         ChatMessageHandler chatMessageHandler = new ChatMessageHandler(
                 config,
-                translatorService,
+                chatDeliveryService,
                 network,
                 securityService,
                 chatFormatService,
@@ -75,7 +75,7 @@ class NetEventServiceTest {
         service.chat(author, "hello");
 
         verify(chatFormatService, never()).formatChat(any(), any());
-        verify(translatorService, never()).translate(any(), any());
+        verify(chatDeliveryService, never()).deliverGlobal(any(), any());
         verify(network, never()).post(any());
     }
 
@@ -93,7 +93,7 @@ class NetEventServiceTest {
 
         verify(chatFormatService).formatChat(author, "he`llo");
         verify(author).sendMessage("formatted", author, "he`llo");
-        verify(translatorService).translate(author, "he`llo");
+        verify(chatDeliveryService).deliverGlobal(author, "he`llo");
         verify(network).post(new ChatMessageV1("Tester", "he*llo", "main"));
     }
 

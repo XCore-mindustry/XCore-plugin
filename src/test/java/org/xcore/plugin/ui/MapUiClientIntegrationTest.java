@@ -249,12 +249,13 @@ class MapUiClientIntegrationTest {
         // Drain server-post (dispatcher moves result to main thread)
         loop.stepServerPost();
 
-        // 3. Server emits Update (patching SLOT_MAP_TABLE), NOT a full Show!
+        // 3. Server emits Update (patching SLOT_MAP_TABLE), NOT a full Show! Each class of
+        // screens has a slot of its own; the client applies the one it has built.
         assertThat(loop.stepServerToClient()).isTrue();
         var lastMsg = loop.transcript().get(loop.transcript().size() - 1);
         assertThat(lastMsg).isInstanceOf(UiWireMessage.Update.class);
         var update = (UiWireMessage.Update) lastMsg;
-        assertThat(update.targetId()).isEqualTo("slot_map_table");
+        assertThat(update.targetId()).startsWith("slot_map_table_");
     }
 
     @Test

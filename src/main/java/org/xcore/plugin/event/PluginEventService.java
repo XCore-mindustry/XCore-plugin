@@ -1,7 +1,9 @@
 package org.xcore.plugin.event;
 
-import arc.Events;
+import arc.Core;
+import arc.func.Cons;
 import io.avaje.inject.PostConstruct;
+import io.avaje.inject.PreDestroy;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import mindustry.game.EventType;
@@ -12,6 +14,8 @@ import org.xcore.plugin.event.handler.GameDataHandler;
 import org.xcore.plugin.event.handler.GameLifecycleHandler;
 import org.xcore.plugin.event.handler.MapVoteHandler;
 import org.xcore.plugin.event.net.connect.ConnectionAccessHandler;
+import org.xcore.plugin.concurrent.GameThread;
+import org.xcore.plugin.startup.ShutdownOrder;
 
 @Singleton
 public class PluginEventService {
@@ -22,6 +26,10 @@ public class PluginEventService {
     private final MapVoteHandler mapVoteHandler;
     
     private final ConnectionAccessHandler connectionAccessHandler;
+    private final EventSubscriptions subscriptions = new EventSubscriptions();
+    private Cons<GameOverEvent> previousGameOverListener;
+    private Cons<GameOverEvent> gameOverListener;
+    private ServerControl serverControl;
 
     @Inject
     public PluginEventService(ConnectionHandler connectionHandler,
@@ -38,30 +46,44 @@ public class PluginEventService {
 
     @PostConstruct
     public void init() {
-        Events.on(EventType.ConnectPacketEvent.class, event -> {
+        subscriptions.on(EventType.ConnectPacketEvent.class, event -> {
             connectionAccessHandler.allow(event.connection, event.packet);
         });
 
-        Events.on(PlayerJoin.class, event -> {
+        subscriptions.on(PlayerJoin.class, event -> {
             connectionHandler.onPlayerJoin(event);
             gameDataHandler.onPlayerJoin(event);
         });
 
-        Events.on(PlayerLeave.class, event -> {
+        subscriptions.on(PlayerLeave.class, event -> {
             connectionHandler.onPlayerLeave(event);
             gameDataHandler.onPlayerLeave(event);
         });
 
-        Events.on(PlayEvent.class, gameLifecycleHandler::onPlayEvent);
-        Events.on(GameOverEvent.class, gameLifecycleHandler::onGameOver);
-        Events.on(String.class, gameLifecycleHandler::onWorldReload);
+        subscriptions.on(PlayEvent.class, gameLifecycleHandler::onPlayEvent);
+        subscriptions.on(GameOverEvent.class, gameLifecycleHandler::onGameOver);
+        subscriptions.on(String.class, gameLifecycleHandler::onWorldReload);
 
-        Events.on(BlockBuildBeginEvent.class, gameDataHandler::onBlockBuildBegin);
-        Events.on(BlockBuildEndEvent.class, gameDataHandler::onBlockBuild);
-        Events.on(PickupEvent.class, gameDataHandler::onPickup);
+        subscriptions.on(BlockBuildBeginEvent.class, gameDataHandler::onBlockBuildBegin);
+        subscriptions.on(BlockBuildEndEvent.class, gameDataHandler::onBlockBuild);
+        subscriptions.on(PickupEvent.class, gameDataHandler::onPickup);
 
         if (ServerControl.instance != null) {
-            ServerControl.instance.gameOverListener = mapVoteHandler.getGameOverListener();
+            serverControl = ServerControl.instance;
+            previousGameOverListener = serverControl.gameOverListener;
+            gameOverListener = mapVoteHandler.getGameOverListener();
+            serverControl.gameOverListener = gameOverListener;
         }
+    }
+    @PreDestroy(priority = ShutdownOrder.STOP_PRODUCERS)
+    public void stop() {
+        subscriptions.close();
+        Runnable restore = () -> {
+            if (serverControl != null && serverControl.gameOverListener == gameOverListener) {
+                serverControl.gameOverListener = previousGameOverListener;
+            }
+        };
+        if (GameThread.isGameThread()) restore.run();
+        else Core.app.post(restore);
     }
 }

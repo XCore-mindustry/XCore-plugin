@@ -83,6 +83,7 @@ class TomlSecretsConfigTest {
         toml.pagination = null;
         toml.messages = null;
         toml.translation = null;
+        toml.cases = null;
 
         toml.normalize();
 
@@ -94,6 +95,7 @@ class TomlSecretsConfigTest {
         assertThat(toml.pagination).isNotNull();
         assertThat(toml.messages).isNotNull();
         assertThat(toml.translation).isNotNull();
+        assertThat(toml.cases).isNotNull();
 
         assertThat(toml.moderation.votekick).isNotNull();
         assertThat(toml.chat.global).isNotNull();
@@ -220,5 +222,131 @@ class TomlSecretsConfigTest {
         TomlSecretsConfig template = PluginConfigLoader.lenientTomlMapper()
                 .readValue(ConfigTomlTemplateWriter.defaultSecretsTomlContent(), TomlSecretsConfig.class);
         assertThat(template.rating.seasons).usingRecursiveComparison().isEqualTo(defaults.rating.seasons);
+    }
+
+    @Test
+    @DisplayName("cases and maps.checks have documented defaults with player reports switched off")
+    void casesAndMapChecks_defaults() {
+        TomlSecretsConfig defaults = new TomlSecretsConfig();
+
+        assertThat(defaults.cases.reports.enabled).isFalse();
+        assertThat(defaults.cases.reports.cooldownSeconds).isEqualTo(60);
+        assertThat(defaults.cases.reports.sameTargetCooldownMinutes).isEqualTo(30);
+        assertThat(defaults.cases.reports.dailyLimit).isEqualTo(10);
+        assertThat(defaults.cases.reports.networkBurstLimit).isEqualTo(6);
+        assertThat(defaults.cases.reports.minPlayTimeMinutes).isEqualTo(0);
+        assertThat(defaults.cases.reports.chatLines).isEqualTo(30);
+        assertThat(defaults.cases.reports.chatWindowMinutes).isEqualTo(10);
+        assertThat(defaults.cases.reports.blockWindowSeconds).isEqualTo(600);
+        assertThat(defaults.cases.reports.recentLeaverMinutes).isEqualTo(10);
+        assertThat(defaults.cases.notices.maxPerJoin).isEqualTo(5);
+
+        assertThat(defaults.maps.checks.maxFileBytes).isEqualTo(4194304);
+        assertThat(defaults.maps.checks.maxTiles).isEqualTo(360000);
+        assertThat(defaults.maps.checks.profiles).containsOnlyKeys("tower-defense");
+        TomlSecretsConfig.MapsConfig.ChecksConfig.ProfileConfig towerDefense =
+                defaults.maps.checks.profiles.get("tower-defense");
+        assertThat(towerDefense.roadFloor).isEqualTo("metal-tiles-2");
+        assertThat(towerDefense.borderWall).isEqualTo("metal-wall-2");
+        assertThat(towerDefense.borderTolerance).isEqualTo(0.05);
+        assertThat(towerDefense.requireDropZoneRadiusZero).isTrue();
+    }
+
+    @Test
+    @DisplayName("a secrets file without cases or maps.checks keeps the defaults")
+    void casesAndMapChecks_absentSectionsKeepDefaults() throws Exception {
+        TomlSecretsConfig bound = PluginConfigLoader.lenientTomlMapper().readValue("""
+                [database]
+                name = "xcore"
+                """, TomlSecretsConfig.class);
+        bound.normalize();
+
+        assertThat(bound.cases.reports.enabled).isFalse();
+        assertThat(bound.cases.reports.cooldownSeconds).isEqualTo(60);
+        assertThat(bound.cases.notices.maxPerJoin).isEqualTo(5);
+        assertThat(bound.maps.checks.maxFileBytes).isEqualTo(4194304);
+        assertThat(bound.maps.checks.maxTiles).isEqualTo(360000);
+        assertThat(bound.maps.checks.profiles.get("tower-defense").roadFloor).isEqualTo("metal-tiles-2");
+    }
+
+    @Test
+    @DisplayName("cases and maps.checks bind values from TOML")
+    void casesAndMapChecks_bindFromToml() throws Exception {
+        TomlSecretsConfig bound = PluginConfigLoader.lenientTomlMapper().readValue("""
+                [cases.reports]
+                enabled = true
+                cooldown_seconds = 5
+                same_target_cooldown_minutes = 15
+                daily_limit = 3
+                network_burst_limit = 2
+                min_play_time_minutes = 30
+                chat_lines = 12
+                chat_window_minutes = 4
+                block_window_seconds = 120
+                recent_leaver_minutes = 7
+
+                [cases.notices]
+                max_per_join = 2
+
+                [maps.checks]
+                max_file_bytes = 1024
+                max_tiles = 2000
+
+                [maps.checks.profiles.tower-defense]
+                road_floor = ""
+                border_wall = "copper-wall"
+                border_tolerance = 0.2
+                require_drop_zone_radius_zero = false
+                """, TomlSecretsConfig.class);
+        bound.normalize();
+
+        assertThat(bound.cases.reports.enabled).isTrue();
+        assertThat(bound.cases.reports.cooldownSeconds).isEqualTo(5);
+        assertThat(bound.cases.reports.sameTargetCooldownMinutes).isEqualTo(15);
+        assertThat(bound.cases.reports.dailyLimit).isEqualTo(3);
+        assertThat(bound.cases.reports.networkBurstLimit).isEqualTo(2);
+        assertThat(bound.cases.reports.minPlayTimeMinutes).isEqualTo(30);
+        assertThat(bound.cases.reports.chatLines).isEqualTo(12);
+        assertThat(bound.cases.reports.chatWindowMinutes).isEqualTo(4);
+        assertThat(bound.cases.reports.blockWindowSeconds).isEqualTo(120);
+        assertThat(bound.cases.reports.recentLeaverMinutes).isEqualTo(7);
+        assertThat(bound.cases.notices.maxPerJoin).isEqualTo(2);
+
+        assertThat(bound.maps.checks.maxFileBytes).isEqualTo(1024);
+        assertThat(bound.maps.checks.maxTiles).isEqualTo(2000);
+        TomlSecretsConfig.MapsConfig.ChecksConfig.ProfileConfig towerDefense =
+                bound.maps.checks.profiles.get("tower-defense");
+        assertThat(towerDefense.roadFloor).isEmpty();
+        assertThat(towerDefense.borderWall).isEqualTo("copper-wall");
+        assertThat(towerDefense.borderTolerance).isEqualTo(0.2);
+        assertThat(towerDefense.requireDropZoneRadiusZero).isFalse();
+    }
+
+    @Test
+    @DisplayName("cases and maps.checks repair negative counts and out-of-range tolerance")
+    void casesAndMapChecks_repairInvalidValues() throws Exception {
+        TomlSecretsConfig bound = PluginConfigLoader.lenientTomlMapper().readValue("""
+                [cases.reports]
+                cooldown_seconds = -1
+                chat_lines = -3
+
+                [cases.notices]
+                max_per_join = -1
+
+                [maps.checks]
+                max_file_bytes = 0
+                max_tiles = -5
+
+                [maps.checks.profiles.tower-defense]
+                border_tolerance = 2.0
+                """, TomlSecretsConfig.class);
+        bound.normalize();
+
+        assertThat(bound.cases.reports.cooldownSeconds).isEqualTo(60);
+        assertThat(bound.cases.reports.chatLines).isEqualTo(30);
+        assertThat(bound.cases.notices.maxPerJoin).isEqualTo(5);
+        assertThat(bound.maps.checks.maxFileBytes).isEqualTo(4194304);
+        assertThat(bound.maps.checks.maxTiles).isEqualTo(360000);
+        assertThat(bound.maps.checks.profiles.get("tower-defense").borderTolerance).isEqualTo(0.05);
     }
 }

@@ -14,6 +14,7 @@ import org.incendo.cloud.annotations.CommandDescription;
 import org.incendo.cloud.annotations.Permission;
 import org.xcore.cloud.mindustry.selector.TargetSelector.MultiplePlayerSelector;
 import org.xcore.plugin.cloud.XCoreSender;
+import org.xcore.plugin.permission.PermissionNodes;
 import org.xcore.plugin.command.controller.CloudClientController;
 import org.xcore.plugin.service.AnnouncementService;
 
@@ -33,7 +34,7 @@ public class BroadcastController implements CloudClientController {
 
     @Command("alert <targets> <message>")
     @CommandDescription("Displays a prominent announcement banner to target players.")
-    @Permission("xcore.admin.broadcast")
+    @Permission(PermissionNodes.ADMIN_BROADCAST)
     public void alert(
             XCoreSender sender,
             @Argument("targets") MultiplePlayerSelector targets,
@@ -52,7 +53,7 @@ public class BroadcastController implements CloudClientController {
 
     @Command("toast <targets> <message>")
     @CommandDescription("Displays a warning toast notification to target players.")
-    @Permission("xcore.admin.broadcast")
+    @Permission(PermissionNodes.ADMIN_BROADCAST)
     public void toast(
             XCoreSender sender,
             @Argument("targets") MultiplePlayerSelector targets,
@@ -71,7 +72,7 @@ public class BroadcastController implements CloudClientController {
 
     @Command("announcement [key]")
     @CommandDescription("Broadcasts a periodic announcement by key, or the next one in rotation.")
-    @Permission("xcore.admin.broadcast")
+    @Permission(PermissionNodes.ADMIN_BROADCAST)
     public void announcement(
             XCoreSender sender,
             @Argument("key") @Nullable String key

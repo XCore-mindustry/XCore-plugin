@@ -5,6 +5,7 @@ import org.xcore.plugin.model.AuditActorType;
 import org.xcore.plugin.model.AuditRecord;
 import org.xcore.plugin.model.BanData;
 import org.xcore.plugin.model.MuteData;
+import org.xcore.plugin.model.PlayerPids;
 import org.xcore.plugin.model.Punishment;
 import org.xcore.protocol.generated.messages.moderation.ModerationAuditAppendedV1EntryType;
 import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationAuditAppendedV1;
@@ -33,12 +34,13 @@ public final class ModerationProtocolMapper {
 
     public static ModerationBanCreatedV1 toBanCreated(BanData ban, String server, Instant occurredAt) {
         return new ModerationBanCreatedV1(
-                new PlayerRefV1(ban.uuid, null, ban.name, normalizeOptional(ban.ip)),
+                new PlayerRefV1(ban.uuid, normalizeOptionalPid(ban.pid), ban.name, normalizeOptional(ban.ip)),
                 new ActorRefV1(resolveActorName(ban.adminName), normalizeOptional(ban.adminDiscordId), resolveActorType(ban.adminDiscordId)),
                 resolveReason(ban.reason),
                 toExpirationInfo(ban),
                 normalizeOptional(server),
-                occurredAt.toString()
+                occurredAt.toString(),
+                ban.banId
         );
     }
 
@@ -249,7 +251,7 @@ public final class ModerationProtocolMapper {
     }
 
     private static Integer normalizeOptionalPid(Integer pid) {
-        return pid == null || pid < 0 ? null : pid;
+        return PlayerPids.orNull(pid);
     }
 
     private static String normalizeOptional(String value) {

@@ -584,6 +584,69 @@ class ConnectionHandlerTest {
         verify(player).kick(org.mockito.ArgumentMatchers.anyString());
     }
 
+    @Test
+    void casesJoinPreparationRunsBeforeSessionAndDeliveryRunsAfterRegistration() throws Exception {
+        var loop = new org.xcore.plugin.cases.CasesTestLoop();
+        SessionService sessions = mock(SessionService.class);
+        var notices = mock(org.xcore.plugin.cases.CaseNoticeService.class);
+        var recent = mock(org.xcore.plugin.cases.RecentPlayers.class);
+        var notice = new org.xcore.plugin.cases.CaseNotice("n", "case-player", "report_received",
+                java.util.Map.of("number", "57"), null, null);
+        var prepared = java.util.List.of(notice);
+        when(notices.prepareJoin("case-player")).thenReturn(prepared);
+        var handler = new ConnectionHandler(sessions, mock(NetworkService.class), new TomlXcoreConfig(),
+                new TomlSecretsConfig(), mock(VoteService.class), mock(PrivateMessageService.class),
+                mock(PlayerDisplayService.class), mock(DiscordAdminAccessService.class), mock(ObserverService.class),
+                mock(MapVoteObserverService.class), loop.async, null, notices, recent);
+        Player player = onlinePlayer();
+        player.name = "Case Player";
+        player.con = new DummyNetConnection("1.1.1.1");
+        player.con.uuid = "case-player";
+        var data = new PlayerData("case-player", true);
+        data.pid = 5;
+        var session = mock(Session.class);
+        session.data = data;
+        session.player = player;
+        when(session.locale()).thenReturn(mock(Localization.class));
+        when(sessions.loadPlayerData("case-player")).thenReturn(data);
+        when(sessions.registerLogin(player, data)).thenReturn(session);
+        try (MockedStatic<Call> call = Mockito.mockStatic(Call.class)) {
+            handler.onPlayerJoin(new EventType.PlayerJoin(player));
+            loop.worker();
+            verify(notices).prepareJoin("case-player");
+            verify(notices, never()).completeJoin(any(), any());
+            verify(sessions, never()).registerLogin(any(), any());
+            loop.main.runTurn();
+            var order = Mockito.inOrder(sessions, recent, notices);
+            order.verify(sessions).registerLogin(player, data);
+            order.verify(recent).joined("case-player");
+            order.verify(notices).completeJoin(session, prepared);
+        }
+    }
+
+    @Test
+    void casesLeaveSnapshotsStaffBeforeSessionRemoval() {
+        SessionService sessions = mock(SessionService.class);
+        var recent = mock(org.xcore.plugin.cases.RecentPlayers.class);
+        var handler = new ConnectionHandler(sessions, mock(NetworkService.class), new TomlXcoreConfig(),
+                new TomlSecretsConfig(), mock(VoteService.class), mock(PrivateMessageService.class),
+                mock(PlayerDisplayService.class), mock(DiscordAdminAccessService.class), mock(ObserverService.class),
+                mock(MapVoteObserverService.class), async, null, mock(org.xcore.plugin.cases.CaseNoticeService.class), recent);
+        Player player = onlinePlayer();
+        player.con = new DummyNetConnection("1.1.1.1");
+        player.con.uuid = "leaving";
+        player.admin = true;
+        var session = mock(Session.class);
+        session.player = player;
+        session.data = new PlayerData("leaving", true);
+        session.permissions = new org.xcore.plugin.permission.PermissionService();
+        when(sessions.get(player)).thenReturn(session);
+        handler.onPlayerLeave(new EventType.PlayerLeave(player));
+        var order = Mockito.inOrder(recent, sessions);
+        order.verify(recent).left(session, true);
+        order.verify(sessions).registerLogout(player);
+    }
+
     /** A storage executor whose task fails, the way an unreachable Mongo would. */
     private static org.xcore.plugin.concurrent.StorageExecutor failingStorage() {
         org.xcore.plugin.concurrent.StorageExecutor executor =

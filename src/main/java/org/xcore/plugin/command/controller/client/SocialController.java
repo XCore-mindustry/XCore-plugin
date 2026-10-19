@@ -9,6 +9,8 @@ import org.incendo.cloud.annotations.Argument;
 import org.incendo.cloud.annotations.Command;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatGlobalV1;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatMessageV1;
+import org.xcore.plugin.cases.RecentChatBuffer;
+import org.xcore.plugin.chat.ChatDeliveryService;
 import org.xcore.plugin.cloud.XCoreSender;
 import org.xcore.plugin.cloud.annotation.PlayTimeLimit;
 import org.xcore.plugin.cloud.annotation.RequiresMuteCheck;
@@ -23,7 +25,6 @@ import org.xcore.plugin.session.Session;
 import org.xcore.plugin.session.SessionService;
 import org.xcore.plugin.service.DiscordLinkService;
 import org.xcore.plugin.service.NetworkService;
-import org.xcore.plugin.service.TranslatorService;
 import org.xcore.plugin.ui.menu.DiscordMenu;
 
 import static com.ospx.flubundle.Bundle.args;
@@ -36,7 +37,8 @@ public class SocialController implements CloudClientController {
     private final TomlXcoreConfig config;
     private final TomlSecretsConfig secretsConfig;
     private final TranslatorLanguagesProvider translatorLanguagesProvider;
-    private final TranslatorService translatorService;
+    private final ChatDeliveryService chatDeliveryService;
+    private final RecentChatBuffer recentChat;
     private final DiscordLinkService discordLinkService;
     private final DiscordMenu discordMenu;
 
@@ -46,7 +48,8 @@ public class SocialController implements CloudClientController {
                             TomlXcoreConfig config,
                             TomlSecretsConfig secretsConfig,
                             TranslatorLanguagesProvider translatorLanguagesProvider,
-                            TranslatorService translatorService,
+                            ChatDeliveryService chatDeliveryService,
+                            RecentChatBuffer recentChat,
                             DiscordLinkService discordLinkService,
                             DiscordMenu discordMenu) {
         this.sessionService = sessionService;
@@ -54,7 +57,8 @@ public class SocialController implements CloudClientController {
         this.config = config;
         this.secretsConfig = secretsConfig;
         this.translatorLanguagesProvider = translatorLanguagesProvider;
-        this.translatorService = translatorService;
+        this.chatDeliveryService = chatDeliveryService;
+        this.recentChat = recentChat;
         this.discordLinkService = discordLinkService;
         this.discordMenu = discordMenu;
     }
@@ -62,7 +66,8 @@ public class SocialController implements CloudClientController {
     @RequiresMuteCheck
     @Command("t <message>")
     public void teamChat(XCoreSender sender, @Argument("message") @Greedy String message) {
-        translatorService.translateTeamChat(sender.player(), message);
+        recentChat.record(sender.player(), message, true);
+        chatDeliveryService.deliverTeam(sender.player(), message);
     }
 
     @RequiresMuteCheck

@@ -16,7 +16,8 @@ import org.xcore.plugin.cloud.annotation.PlayTimeLimit;
 import org.xcore.plugin.cloud.annotation.RequiresMuteCheck;
 import org.xcore.plugin.cloud.annotation.RequiresPlayTime;
 import org.xcore.plugin.cloud.config.CloudManagerFactory;
-import org.xcore.plugin.cloud.config.CloudPermissionPolicy;
+import org.xcore.plugin.permission.PermissionService;
+import org.xcore.plugin.permission.RemoteConsoleScope;
 import org.xcore.plugin.cloud.exception.XCoreCommandException;
 import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.metrics.DefaultMetricsService;
@@ -72,7 +73,7 @@ class RequiresMuteCheckIntegrationTest {
                 bundle,
                 () -> sessionService,
                 metricsService,
-                new CloudPermissionPolicy(),
+                new PermissionService(), new RemoteConsoleScope(),
                 mock(org.xcore.plugin.cloud.config.CloudCaptionConfigurer.class)
         );
         manager = factory.createManager(handler);

@@ -1,5 +1,6 @@
 package org.xcore.plugin.service.network;
 
+import org.xcore.plugin.model.PlayerPids;
 import org.xcore.protocol.generated.shared.SeasonPrizeV1Kind;
 import org.xcore.plugin.rating.season.SeasonPrize;
 import org.xcore.plugin.rating.season.PrizeKind;
@@ -51,7 +52,8 @@ class RatingProtocolMapperTest {
     void ended_mapsPodium() {
         Season archived = season(3, "", SeasonStatus.ARCHIVED, List.of(
                 new SeasonPodiumEntry(1, "uuid-1", 101, "Alice", 1820, "DIAMOND", 64, 47, "111", "alice"),
-                new SeasonPodiumEntry(2, "uuid-2", -1, "", 1744, "PLATINUM", 58, 38, "", "")),
+                new SeasonPodiumEntry(2, "uuid-2", PlayerPids.NONE, "", 1744, "PLATINUM", 58, 38, "", ""),
+                new SeasonPodiumEntry(3, "uuid-3", -7, "Event", 1700, "PLATINUM", 50, 30, "", "")),
                 new SeasonSummary(312, 4120));
 
         var event = RatingProtocolMapper.toEnded(archived, "mini-pvp", AT);
@@ -60,7 +62,7 @@ class RatingProtocolMapperTest {
         assertThat(event.occurredAt()).isEqualTo("2026-10-01T00:30:00Z");
         assertThat(event.summary().participants()).isEqualTo(312);
         assertThat(event.summary().matches()).isEqualTo(4120);
-        assertThat(event.podium()).hasSize(2);
+        assertThat(event.podium()).hasSize(3);
         var first = event.podium().get(0);
         assertThat(first.player().playerPid()).isEqualTo(101);
         assertThat(first.discord().discordId()).isEqualTo("111");
@@ -69,6 +71,7 @@ class RatingProtocolMapperTest {
         assertThat(second.discord()).isNull();
         assertThat(second.player().playerPid()).isNull();
         assertThat(second.player().playerName()).isEqualTo("Unknown");
+        assertThat(event.podium().get(2).player().playerPid()).isEqualTo(-7);
         assertThat(event.toPayload()).containsKey("podium");
     }
 

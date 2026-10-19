@@ -2,11 +2,18 @@ package org.xcore.plugin.gamemode.pvp;
 
 import arc.Core;
 import arc.Events;
+import io.avaje.inject.PreDestroy;
+import org.xcore.plugin.event.EventSubscriptions;
+import org.xcore.plugin.startup.ShutdownOrder;
 import arc.struct.Seq;
+import com.ospx.flubundle.Args;
+import com.ospx.flubundle.Bundle;
+import com.ospx.flubundle.mindustry.ContentNames;
 import io.avaje.inject.PostConstruct;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import mindustry.Vars;
+import mindustry.core.NetServer;
 import mindustry.game.EventType;
 import mindustry.game.Team;
 import mindustry.game.Teams.TeamData;
@@ -26,11 +33,17 @@ import org.xcore.plugin.session.ObserverService;
 import org.xcore.plugin.session.Session;
 import org.xcore.plugin.session.SessionService;
 
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.Locale;
+import java.util.Map;
+
 import static com.ospx.flubundle.Bundle.args;
 import static org.xcore.plugin.common.PLog.info;
 
 @Singleton
 public class MiniPvP {
+    private final EventSubscriptions subscriptions = new EventSubscriptions();
     public final Seq<String> defeatedPlayers = new Seq<>();
     public boolean roundHadMultipleTeams = false;
 
@@ -45,6 +58,7 @@ public class MiniPvP {
     private final MiniPvPRatingSettler ratingSettler;
 
     private long lastHudUpdate = 0L;
+    private NetServer.TeamAssigner vanillaAssigner;
 
     @Inject
     public MiniPvP(
@@ -86,8 +100,11 @@ public class MiniPvP {
     public void init() {
         if (!"mini-pvp".equals(config.server.name)) return;
 
-        Events.on(EventType.PlayEvent.class, e -> {
-            clearRoundState();
+        // Round state is dropped when the round ends rather than when the next one starts,
+        // so a world loaded without a PlayEvent (a save) does not inherit it.
+        subscriptions.on(EventType.ResetEvent.class, e -> clearRoundState());
+
+        subscriptions.on(EventType.PlayEvent.class, e -> {
             if (matchTracker != null) {
                 matchTracker.startMatch(observerService);
             }
@@ -96,7 +113,7 @@ public class MiniPvP {
             }
         });
 
-        Events.on(EventType.PlayerConnectionConfirmed.class, e -> {
+        subscriptions.on(EventType.PlayerConnectionConfirmed.class, e -> {
             if (defeatedPlayers.contains(e.player.uuid())) {
                 observerService.enter(e.player);
                 Session session = sessionService.get(e.player);
@@ -107,20 +124,32 @@ public class MiniPvP {
             }
         });
 
-        Events.on(EventType.PlayerLeave.class, e -> {
+        subscriptions.on(EventType.PlayerLeave.class, e -> {
             if (matchTracker != null && e.player != null) {
                 matchTracker.onPlayerLeave(e.player);
             }
         });
 
-        Events.run(EventType.Trigger.update, () -> {
+        if (Vars.netServer != null && matchTracker != null) {
+            vanillaAssigner = Vars.netServer.assigner;
+            // A reconnect returns to the team the match rates the player for, not the smallest one.
+            Vars.netServer.assigner = (player, players) -> {
+                Team team = matchTracker.teamOf(player.uuid());
+                return team != null && team.data().hasCore() ? team : vanillaAssigner.assign(player, players);
+            };
+        }
+
+        subscriptions.run(EventType.Trigger.update, () -> {
             if (!roundHadMultipleTeams && Vars.state != null && Vars.state.isPlaying() && Vars.state.rules.pvp) {
                 updateRoundTeamsPresence();
+            }
+            if (matchTracker != null && Groups.player != null) {
+                Groups.player.each(p -> matchTracker.onObserving(p, observerService.isObserving(p)));
             }
             updateHud();
         });
 
-        Events.on(EventType.GameOverEvent.class, e -> {
+        subscriptions.on(EventType.GameOverEvent.class, e -> {
             if (e.winner == Team.derelict) return;
 
             if (ratingSettler != null) {
@@ -132,7 +161,7 @@ public class MiniPvP {
             }
         });
 
-        Events.on(EventType.BlockDestroyEvent.class, event -> {
+        subscriptions.on(EventType.BlockDestroyEvent.class, event -> {
             var team = event.tile.team();
 
             if (event.tile.block() instanceof CoreBlock) {
@@ -189,23 +218,56 @@ public class MiniPvP {
         long durationSeconds = Math.max(0L, (now - started) / 1000L);
         String timeStr = String.format("%02d:%02d", durationSeconds / 60, durationSeconds % 60);
 
-        StringBuilder teamsLine = new StringBuilder();
-        if (Vars.state.teams != null) {
-            for (TeamData t : Vars.state.teams.getActive()) {
-                if (t.team == Team.derelict || observerService.isObserverTeam(t.team) || !t.isAlive()) continue;
-                int count = countActivePlayers(t.team);
-                if (!teamsLine.isEmpty()) teamsLine.append(" [gray]vs[] ");
-                teamsLine.append("[#").append(t.team.color.toString()).append("]").append(t.team.name)
-                        .append(" (").append(count).append(")[]");
-            }
+        Map<Team, Integer> alive = aliveTeams();
+        if (alive.isEmpty()) {
+            return;
         }
 
-        if (!teamsLine.isEmpty()) {
+        // Rendered once per locale: team names and the HUD label are localized.
+        Bundle bundle = Bundle.INSTANCE;
+        Map<Locale, String> rendered = new HashMap<>();
+        Groups.player.each(player -> {
+            if (player.con == null) return;
+            String text = rendered.computeIfAbsent(bundle.locale(player), locale -> bundle.format(locale,
+                    "pvp-hud-status", Args.of("teams", teamsLine(alive, locale), "time", timeStr)));
             try {
-                Call.setHudText("[accent]MiniPvP[] | [stat]Alive:[] " + teamsLine + " | [gray]" + timeStr + "[]");
+                Call.setHudText(player.con, text);
             } catch (Exception ignored) {
             }
+        });
+    }
+
+    /** The teams still in the round, in the order the game lists them, with the players on each. */
+    public Map<Team, Integer> aliveTeams() {
+        Map<Team, Integer> alive = new LinkedHashMap<>();
+        if (Vars.state == null || Vars.state.teams == null) {
+            return alive;
         }
+        for (TeamData t : Vars.state.teams.getActive()) {
+            if (t.team == Team.derelict || observerService.isObserverTeam(t.team) || !t.isAlive()) continue;
+            alive.put(t.team, countActivePlayers(t.team));
+        }
+        return alive;
+    }
+
+    /** How long the running round has been going, 0 between rounds. */
+    public int roundSeconds() {
+        if (matchTracker == null || !matchTracker.isInProgress()
+                || Vars.state == null || Vars.state.isMenu() || Vars.state.gameOver) {
+            return 0;
+        }
+        return (int) Math.max(0L, (System.currentTimeMillis() - matchTracker.startedAt()) / 1000L);
+    }
+
+    static String teamsLine(Map<Team, Integer> alive, Locale locale) {
+        StringBuilder line = new StringBuilder();
+        alive.forEach((team, count) -> {
+            if (!line.isEmpty()) line.append(" [gray]vs[] ");
+            line.append("[#").append(team.color.toString()).append("]")
+                    .append(ContentNames.vanilla().name(team, locale))
+                    .append(" (").append(count).append(")[]");
+        });
+        return line.toString();
     }
 
     public int countAliveTeamsWithCores() {
@@ -284,6 +346,14 @@ public class MiniPvP {
         try {
             Call.hideHudText();
         } catch (Exception ignored) {
+        }
+    }
+
+    @PreDestroy(priority = ShutdownOrder.STOP_PRODUCERS)
+    public void shutdownEventSubscriptions() {
+        subscriptions.close();
+        if (vanillaAssigner != null && Vars.netServer != null) {
+            Vars.netServer.assigner = vanillaAssigner;
         }
     }
 }

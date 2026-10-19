@@ -2,6 +2,7 @@ package org.xcore.plugin.localization;
 
 import com.ospx.flubundle.compiler.CompilationResult;
 import com.ospx.flubundle.compiler.FtlCompiler;
+import com.ospx.flubundle.compiler.LocaleConsistencyChecker;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -47,6 +48,19 @@ class FtlBundleCompilationTest {
     @DisplayName("all FTL bundles compile without syntax errors, unknown functions, or invalid arguments")
     void allFtlBundlesCompileCleanly() {
         CompilationResult result = FtlCompiler.compile(BUNDLES_DIR);
+        assertThat(result.hasErrors())
+                .withFailMessage(result.formatReport())
+                .isFalse();
+    }
+
+    @Test
+    @DisplayName("translations use the same $variables as the English bundle")
+    void translationsUseEnglishVariables() {
+        CompilationResult result = LocaleConsistencyChecker.builder()
+                .baseLocale("en")
+                .reportMissingKeys(false)
+                .build()
+                .check(BUNDLES_DIR);
         assertThat(result.hasErrors())
                 .withFailMessage(result.formatReport())
                 .isFalse();

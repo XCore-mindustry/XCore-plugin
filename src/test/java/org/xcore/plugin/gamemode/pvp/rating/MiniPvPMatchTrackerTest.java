@@ -122,4 +122,51 @@ class MiniPvPMatchTrackerTest {
         // Must receive 1.0 participation (full loss weight), not 0.0!
         assertThat(dodgerMember.participation()).isEqualTo(1.0);
     }
+
+    @Test
+    @DisplayName("losers who left at once or joined for the last quarter are exempt; spectating counts as away")
+    void quickLeaversLateJoinersAndSpectators() {
+        MiniPvPMatchTracker tracker = new MiniPvPMatchTracker();
+        tracker.startMatch(mock(ObserverService.class));
+        long started = tracker.startedAt();
+        long endedAt = started + 600_000L;
+
+        tracker.trackParticipant(new MiniPvPMatchTracker.ParticipantInfo(
+                "winner", "Winner", Team.sharded.id, started, 0L));
+        tracker.trackParticipant(new MiniPvPMatchTracker.ParticipantInfo(
+                "left-at-once", "Left", Team.crux.id, started, started + 10_000L));
+        tracker.trackParticipant(new MiniPvPMatchTracker.ParticipantInfo(
+                "late", "Late", Team.crux.id, endedAt - 60_000L, 0L));
+        tracker.trackParticipant(new MiniPvPMatchTracker.ParticipantInfo(
+                "dodger", "Dodger", Team.crux.id, started, endedAt - 20_000L));
+
+        Player spectator = mock(Player.class);
+        when(spectator.uuid()).thenReturn("spectator");
+        when(spectator.plainName()).thenReturn("Spectator");
+        when(spectator.team()).thenReturn(Team.crux);
+        tracker.onPlayerJoin(spectator);
+        tracker.onObserving(spectator, true);
+        assertThat(tracker.participants().get("spectator").leaveTime()).isGreaterThan(0L);
+        assertThat(tracker.teamOf("spectator")).isEqualTo(Team.crux);
+
+        // Played 10s, spectated most of the match, came back for the win: under half, not rated.
+        tracker.trackParticipant(new MiniPvPMatchTracker.ParticipantInfo(
+                "returner", "Returner", Team.sharded.id, started, 0L)
+                .away(started + 10_000L).back(endedAt - 30_000L));
+
+        var snapshot = tracker.snapshot(Team.sharded, endedAt);
+        var sharded = snapshot.teams().stream()
+                .filter(team -> team.teamId() == Team.sharded.id).findFirst().orElseThrow();
+        assertThat(sharded.members()).filteredOn(member -> member.uuid().equals("returner"))
+                .extracting(MiniPvPMatchSnapshot.Member::reason)
+                .containsExactly(MiniPvPMatchSnapshot.REASON_SHORT_PLAY);
+        var crux = snapshot.teams().stream()
+                .filter(team -> team.teamId() == Team.crux.id).findFirst().orElseThrow();
+        var reasons = crux.members().stream().collect(java.util.stream.Collectors.toMap(
+                MiniPvPMatchSnapshot.Member::uuid, MiniPvPMatchSnapshot.Member::reason));
+        assertThat(reasons).containsEntry("left-at-once", MiniPvPMatchSnapshot.REASON_LEFT_AT_ONCE)
+                .containsEntry("late", MiniPvPMatchSnapshot.REASON_LATE_JOIN)
+                .containsEntry("dodger", MiniPvPMatchSnapshot.REASON_DEFEATED)
+                .containsEntry("spectator", MiniPvPMatchSnapshot.REASON_LEFT_AT_ONCE);
+    }
 }

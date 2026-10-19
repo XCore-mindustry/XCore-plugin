@@ -8,6 +8,7 @@ import org.xcore.plugin.database.ReactiveMongoStore;
 import com.mongodb.client.model.Filters;
 import com.mongodb.client.model.FindOneAndUpdateOptions;
 import com.mongodb.client.model.IndexOptions;
+import com.mongodb.client.model.Projections;
 import com.mongodb.client.model.ReturnDocument;
 import com.mongodb.client.model.Updates;
 import jakarta.inject.Inject;
@@ -22,6 +23,7 @@ import org.xcore.plugin.database.PagedDataResult;
 import org.xcore.plugin.model.LeaderboardCursor;
 import org.xcore.plugin.model.LeaderboardSlice;
 import org.xcore.plugin.model.PlayerData;
+import org.xcore.plugin.model.PlayerPids;
 import org.xcore.plugin.model.enums.TopCategory;
 
 import java.util.ArrayList;
@@ -77,7 +79,7 @@ public class PlayerDataRepository extends DataRepository<PlayerData> {
 
     @Override
     public boolean save(com.mongodb.client.ClientSession session, PlayerData data) {
-        if (data.pid == -1 && !isReadOnly()) {
+        if (!PlayerPids.isAssigned(data.pid) && !isReadOnly()) {
             data.pid = generatePid(session);
         }
 
@@ -96,7 +98,7 @@ public class PlayerDataRepository extends DataRepository<PlayerData> {
         if (data == null) return java.util.concurrent.CompletableFuture.completedFuture(false);
         if (isReadOnly()) return java.util.concurrent.CompletableFuture.completedFuture(false);
 
-        java.util.concurrent.CompletionStage<PlayerData> pidStage = (data.pid == -1)
+        java.util.concurrent.CompletionStage<PlayerData> pidStage = !PlayerPids.isAssigned(data.pid)
                 ? generatePidAsync().thenApply(pid -> {
                     data.pid = pid;
                     return data;
@@ -167,6 +169,20 @@ public class PlayerDataRepository extends DataRepository<PlayerData> {
             return List.of();
         }
         return collection.find(Filters.in("uuid", uuids)).into(new ArrayList<>());
+    }
+
+    /**
+     * The language a player selected in settings ({@code auto} when unset), or {@code null} for an
+     * unknown player. Reads only that field.
+     */
+    public String findLanguage(String uuid) {
+        if (uuid == null || uuid.isBlank()) {
+            return null;
+        }
+        PlayerData data = collection.find(eq("uuid", uuid))
+                .projection(Projections.include("local_language"))
+                .first();
+        return data == null ? null : data.language;
     }
 
     public java.util.concurrent.CompletionStage<PlayerData> findByUuidAsync(String uuid) {
@@ -352,6 +368,21 @@ public class PlayerDataRepository extends DataRepository<PlayerData> {
 
     public java.util.concurrent.CompletionStage<Boolean> clearAdminAccessAsync(String uuid) {
         return updateAdminStatusAsync(uuid, false, "NONE");
+    }
+
+    /** The players whose admin flag was set through their Discord role; for the move to roles. */
+    public List<PlayerData> findDiscordRoleAdmins() {
+        return collection.find(com.mongodb.client.model.Filters.and(eq("is_admin", true), eq("admin_source", "DISCORD_ROLE")))
+                .into(new ArrayList<>());
+    }
+
+    /** Forgets the password and every remembered device, so that the next login sets a new password. */
+    public boolean clearCredentials(String uuid) {
+        return updateByUuid(uuid, Updates.combine(
+                Updates.set("password_hash", ""),
+                Updates.set("device_token_hashes", new ArrayList<String>()),
+                Updates.set("device_tokens", new org.bson.Document())
+        ));
     }
 
     private String normalizeAdminSource(String adminSource) {

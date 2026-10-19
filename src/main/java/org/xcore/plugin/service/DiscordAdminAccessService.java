@@ -6,6 +6,7 @@ import mindustry.gen.Player;
 import org.xcore.plugin.concurrent.Async;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
 import org.xcore.plugin.model.PlayerData;
+import org.xcore.plugin.permission.StaffAccess;
 import org.xcore.plugin.session.Session;
 import org.xcore.plugin.session.SessionService;
 
@@ -22,26 +23,48 @@ public class DiscordAdminAccessService {
     private final PlayerDisplayService playerDisplayService;
     private final AuthStatusBroadcaster authStatusBroadcaster;
     private final Async async;
+    private final StaffAccess staffAccess;
 
     @Inject
     public DiscordAdminAccessService(PlayerDataRepository playerDataRepository,
                                      SessionService sessionService,
                                      PlayerDisplayService playerDisplayService,
                                      AuthStatusBroadcaster authStatusBroadcaster,
-                                     Async async) {
+                                     Async async,
+                                     StaffAccess staffAccess) {
         this.playerDataRepository = playerDataRepository;
         this.sessionService = sessionService;
         this.playerDisplayService = playerDisplayService;
         this.authStatusBroadcaster = authStatusBroadcaster;
         this.async = async;
+        this.staffAccess = staffAccess;
     }
 
+    public DiscordAdminAccessService(PlayerDataRepository playerDataRepository,
+                                     SessionService sessionService,
+                                     PlayerDisplayService playerDisplayService,
+                                     AuthStatusBroadcaster authStatusBroadcaster,
+                                     Async async) {
+        this(playerDataRepository, sessionService, playerDisplayService, authStatusBroadcaster, async, StaffAccess.legacy());
+    }
+
+    /**
+     * Whether the player may log in as staff. With roles on that is decided by what they are
+     * granted, and the name is all that is left of where the answer used to come from.
+     */
     public boolean hasDiscordAdminAccess(PlayerData data) {
+        if (staffAccess.rolesEnabled()) {
+            return data != null && staffAccess.mayLogIn(sessionService.get(data.uuid));
+        }
         return data != null && data.admin && SOURCE_DISCORD_ROLE.equals(data.adminSource);
     }
 
     public boolean applyDiscordAdminAccess(String playerUuid, String discordId, String discordUsername) {
         if (playerUuid == null || playerUuid.isBlank()) {
+            return false;
+        }
+        if (staffAccess.rolesEnabled()) {
+            // Staff comes from grants now; the admin flag of the player record is no longer written.
             return false;
         }
 
@@ -89,6 +112,9 @@ public class DiscordAdminAccessService {
 
     public boolean revokeDiscordAdminAccess(String playerUuid) {
         if (playerUuid == null || playerUuid.isBlank()) {
+            return false;
+        }
+        if (staffAccess.rolesEnabled()) {
             return false;
         }
 
@@ -142,10 +168,28 @@ public class DiscordAdminAccessService {
      * its own, so the two call sites are responsible for where they run.
      */
     public void deactivateRuntimeAdmin(Player player, String playerUuid) {
+        if (staffAccess.rolesEnabled()) {
+            staffAccess.logOut(sessionService.get(playerUuid));
+            return;
+        }
         if (player != null) {
             player.admin(false);
         }
         netServer.admins.unAdminPlayer(playerUuid);
+    }
+
+    /**
+     * The player's password was reset. Game thread. With roles on that ends the staff login
+     * of the connection: whoever holds it proved themselves with the password that is gone.
+     */
+    public void onPasswordReset(String playerUuid) {
+        Session session = sessionService.get(playerUuid);
+        if (!staffAccess.rolesEnabled() || session == null || session.data == null) {
+            return;
+        }
+        session.data.clearDeviceTokens();
+        staffAccess.logOut(session);
+        playerDisplayService.refresh(session);
     }
 
     private void syncLinkedDiscordState(PlayerData data, String discordId, String discordUsername) {

@@ -3,7 +3,9 @@ package org.xcore.plugin.ui.menu;
 import com.ospx.flubundle.Bundle;
 import io.avaje.inject.PostConstruct;
 import jakarta.inject.Inject;
+import jakarta.inject.Provider;
 import jakarta.inject.Singleton;
+import org.xcore.plugin.permission.TargetHierarchy;
 import org.xcore.plugin.concurrent.Async;
 import org.xcore.plugin.config.TomlSecretsConfig;
 import org.xcore.plugin.database.repository.GameDataRepository;
@@ -12,6 +14,7 @@ import org.xcore.plugin.integration.profile.ProfileSectionRegistry;
 import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.model.PlayerStatsOverview;
 import org.xcore.plugin.model.enums.TopCategory;
+import org.xcore.plugin.permission.PermissionNodes;
 import org.xcore.plugin.service.PlayerDisplayService;
 import org.xcore.plugin.service.PlayerProfileSettingsService;
 import org.xcore.plugin.session.Session;
@@ -22,6 +25,7 @@ import org.xcore.plugin.ui.route.MenuRoute;
 @Singleton
 public class PlayerMenu extends Menu {
 
+    private final TargetHierarchy hierarchy;
     private final Bundle bundle;
     private final PlayerProfileSettingsService profileSettings;
     private final PlayerDisplayService playerDisplayService;
@@ -31,6 +35,7 @@ public class PlayerMenu extends Menu {
     private final Async async;
     private final AuditHistoryMenu auditHistoryMenu;
     private final ProfileSectionRegistry profileSections;
+    private final Provider<MatchHistoryMenu> matchHistory;
 
     @Inject
     public PlayerMenu(TomlSecretsConfig secretsConfig,
@@ -43,8 +48,12 @@ public class PlayerMenu extends Menu {
                       AuditHistoryMenu auditHistoryMenu,
                       MenuService menuService,
                       Async async,
-                      ProfileSectionRegistry profileSections) {
+                      ProfileSectionRegistry profileSections,
+                      TargetHierarchy hierarchy,
+                      Provider<MatchHistoryMenu> matchHistory) {
         super(secretsConfig, sessionService);
+        this.matchHistory = matchHistory;
+        this.hierarchy = hierarchy;
         this.profileSections = profileSections;
         this.bundle = bundle;
         this.profileSettings = profileSettings;
@@ -54,6 +63,37 @@ public class PlayerMenu extends Menu {
         this.playerDataRepository = playerDataRepository;
         this.async = async;
         this.auditHistoryMenu = auditHistoryMenu;
+    }
+
+    public PlayerMenu(TomlSecretsConfig secretsConfig,
+                      SessionService sessionService,
+                      GameDataRepository gameDataRepository,
+                      PlayerDataRepository playerDataRepository,
+                      Bundle bundle,
+                      PlayerDisplayService playerDisplayService,
+                      PlayerProfileSettingsService profileSettings,
+                      AuditHistoryMenu auditHistoryMenu,
+                      MenuService menuService,
+                      Async async,
+                      ProfileSectionRegistry profileSections) {
+        this(secretsConfig, sessionService, gameDataRepository, playerDataRepository, bundle, playerDisplayService,
+                profileSettings, auditHistoryMenu, menuService, async, profileSections, TargetHierarchy.none());
+    }
+
+    public PlayerMenu(TomlSecretsConfig secretsConfig,
+                      SessionService sessionService,
+                      GameDataRepository gameDataRepository,
+                      PlayerDataRepository playerDataRepository,
+                      Bundle bundle,
+                      PlayerDisplayService playerDisplayService,
+                      PlayerProfileSettingsService profileSettings,
+                      AuditHistoryMenu auditHistoryMenu,
+                      MenuService menuService,
+                      Async async,
+                      ProfileSectionRegistry profileSections,
+                      TargetHierarchy hierarchy) {
+        this(secretsConfig, sessionService, gameDataRepository, playerDataRepository, bundle, playerDisplayService,
+                profileSettings, auditHistoryMenu, menuService, async, profileSections, hierarchy, () -> null);
     }
 
     public PlayerMenu(TomlSecretsConfig secretsConfig,
@@ -122,7 +162,7 @@ public class PlayerMenu extends Menu {
         );
 
         var initialModel = controller.createInitialModel(tab, preloaded);
-        menuService.openUi(session, controller, initialModel);
+        menuService.openUi(session, controller, initialModel, true);
 
         if (preloaded == null) {
             loadDetails(session, targetData);
@@ -157,6 +197,22 @@ public class PlayerMenu extends Menu {
                 profileSections != null ? profileSections.load(target) : java.util.List.of());
     }
 
+    /** Whether the profile can offer the viewer's own match history. */
+    public boolean hasMatchHistory() {
+        return matchHistory != null && matchHistory.get() != null;
+    }
+
+    /**
+     * Opens the viewer's own match history from their profile; its back button returns to the
+     * profile as it was.
+     */
+    public void openMatches(Session session, PlayerData self, PlayerProfileUiController.Tab returnTab,
+                            ProfileDetails cached) {
+        MatchHistoryMenu menu = matchHistory != null ? matchHistory.get() : null;
+        if (menu == null || session == null || session.data == null || !session.data.uuid.equals(self.uuid)) return;
+        menu.open(session, null, () -> openProfileUi(session, self, returnTab, cached));
+    }
+
     public void players(String uuid, int page) {
         Session session = sessionService.get(uuid);
         if (session == null || session.data == null) return;
@@ -177,17 +233,22 @@ public class PlayerMenu extends Menu {
         session.clear();
         if (!canAccessSettings(session, targetData)) return;
 
-        var controller = new PlayerSettingsUiController(this, profileSettings, session, targetData);
-        var initialModel = PlayerSettingsUiController.createModel(session, targetData, tab);
-        menuService.openUi(session, controller, initialModel);
+        // Somebody else's settings are theirs to change only for a viewer who outranks them.
+        hierarchy.whenAllowed(session, targetData.uuid, () -> {
+            var controller = new PlayerSettingsUiController(this, profileSettings, session, targetData);
+            var initialModel = PlayerSettingsUiController.createModel(session, targetData, tab);
+            // Filling the screen is what lets the cards scroll on a screen shorter than the settings.
+            menuService.openUi(session, controller, initialModel, true);
+        }, () -> session.locale().send(TargetHierarchy.DENIED_KEY));
     }
 
     public void chatSettings(String uuid, PlayerData targetData) {
-        openSettingsTab(uuid, targetData, PlayerSettingsUiController.Tab.CHAT_LANG);
+        openSettingsTab(uuid, targetData, PlayerSettingsUiController.Tab.CHAT);
     }
 
     public void languageSelectionMenu(String uuid, PlayerData targetData, boolean isTranslator) {
-        openSettingsTab(uuid, targetData, PlayerSettingsUiController.Tab.CHAT_LANG);
+        openSettingsTab(uuid, targetData,
+                isTranslator ? PlayerSettingsUiController.Tab.CHAT : PlayerSettingsUiController.Tab.LANGUAGE);
     }
 
     public void badges(String uuid, PlayerData targetData) {
@@ -216,7 +277,7 @@ public class PlayerMenu extends Menu {
             session.locale().send("error-player-not-found");
             return false;
         }
-        if (!session.data.uuid.equals(targetData.uuid) && (session.player == null || !session.player.admin)) {
+        if (!session.data.uuid.equals(targetData.uuid) && !session.has(PermissionNodes.PLAYERS_SETTINGS_OTHERS)) {
             session.locale().send("error-no-access");
             return false;
         }

@@ -4,7 +4,81 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-No changelog entries were recorded in the Unreleased section.
+### Breaking changes
+- Updated the shaded FluBundle to 2.0.0. Dependent plugins compile and run against it: `Bundle.send/announce/infoMessage/setHud/toast/label/popup/kick`, `Bundle.context(...)`, `BundleContext`, `DefaultValueFactory` and `Bundle.numArgs` are removed. Deliver messages with `Messenger` (`messenger.to(player).send(...)`, `messenger.all().announce(...)`), which XCore now provides as a DI bean; see FluBundle's `docs/migrating-to-2.0.md`.
+- `Localization.context()` and `contextOrNull()` are removed; use `Localization.send(...)` or `Messenger`.
+
+### Changed
+- Updated `xcore-protocol` to 0.14.0 for per-file upload confirmations and Discord handle snapshots.
+- Store map submission provenance separately from statistics, scoped to server, exact filename and content hash, with an audit history and asynchronous UI cache.
+- Show declared creators in both map menus and at game over/world load; show Discord handles to players and IDs to administrators.
+- Missing bundle keys go through `MissingKeyPolicy.logOnce()`.
+- Updated FluBundle to 2.1.0. Connection checks (ban, recent kick, pirated client) explain a denied connection in the language the player selected earlier, not only the client language. `SessionLocaleResolver` looks it up by uuid: a live session, the language last seen for that uuid, or the database (only off the game thread, so the fast checks never block on it).
+- Vanilla blocks, units, items and teams passed as message arguments render with their localized names (FluBundle `ContentNames`).
+- The MiniPvP HUD is localized (`pvp-hud-status` was defined but unused) and shows team names in each player's language instead of internal names like `sharded`.
+- The language a player selects in settings now applies to every message sent through the shared bundle, including messages from dependent plugins such as HexedCore (`SessionLocaleResolver`).
+- Cloud captions read message placeholders from the loaded bundle instead of re-parsing FTL files; `BundlePlaceholderRegistry` is removed.
+- MiniPvP rating: a player on the losing side is not rated if they left or turned spectator within their first 15 seconds of play (new reason `left_at_once`), or joined after the start and played less than a quarter of the match. Leaving or spectating later still counts as a loss. Time spent spectating or disconnected no longer counts as play, also after the player returns, and a spectator who joins a side mid-match is rated from then on.
+- MiniPvP: a player who reconnects during a match returns to the team they are rated for while it still has a core, instead of the team with the fewest players.
+- Map inspection no longer rejects maps with data patches or embedded content as `invalid_map`. It skips them, runs the usual checks and adds a `data-patches` warning with their count.
+- Complete translations for Belarusian, Czech, German, Spanish, French and Polish (previously 9–174 of 905 keys), and the remaining Ukrainian permission names. Belarusian, Czech, German, Spanish, French and Polish bundles now follow the English file's order and section headers.
+
+- Chat translation is split into `ChatTranslationService` (text → translations) and `ChatDeliveryService` (who sees what, and when); `TranslatorService` is removed. See `docs/architecture/chat-translation-design-spec.md`.
+- Translated players no longer wait for the slowest provider. By default (`translation.delivery.mode = "deadline"`) they get the translated line if it is ready within 1.5 s; otherwise the original, followed by the translation as `» Name: …` if it arrives within 10 s. Lines in one language are delivered in message order. Modes `original-first` and `wait` are available.
+- A failed translation always delivers the original. `translation.preserve_original_message_on_failure` is removed and ignored if present.
+- One request per message instead of one per language for OpenAI-compatible providers (JSON with every target and the detected language). Google requests run in parallel per language.
+- Messages that need no translation (no letters, links, `gg`, `ok`, …) are not sent to providers, nor are languages the message is already in. Colour tags and icons are removed before translation.
+- Translation load is bounded: at most 16 provider calls in flight and a per-author budget (5 messages, +30 per minute); beyond that messages are delivered untranslated. Identical messages translated at the same time share one request.
+- An in-memory cache sits in front of Redis, and the Redis cache is shared by all servers. Changing a provider's model or the prompt no longer reuses old cached translations.
+- Translation metrics are kept in memory and flushed to Redis every 15 s instead of ~20 Redis commands per translated message. `trstats` shows the new counters.
+- New `[translation.delivery]`, `[translation.limits]`, `[translation.prefilter]` and `[translation.channels]` settings; `translation.cache.memory_entries` and `memory_ttl_seconds`.
+
+### Added
+- Discord map attribution in `/map`: uploader and optional declared creator with stored Discord IDs, names and upload date, separate from the map file author. Submission metadata follows the file across game modes while statistics remain partitioned.
+- Match history: `/matches` and a "Matches" button on the player's own `/stats` profile list their rated matches per ladder (result, rating before and after, map, time) and open a match with every participant, their rating change and why it did or did not count. Players see only their own history for now.
+- `rating_matches` collection: `Ladder.settle` records a match once when the settlement carries a `MatchReport` (`MatchSettlement.withReport`), rated or not, with the ratings the standings were left at. A failure to record is logged and does not affect the settlement. Account merges move the matches along.
+- `MatchPresenter` / `MatchPresenters`: a mode words its own outcomes, reasons and figures in the history; `StandardMatchPresenter` covers team and free-for-all ladders.
+- MiniPvP records its matches, including unrated ones (too few players) with the reason; matches shorter than the minimum play time are still not recorded. The end-of-match chat message points to `/matches`.
+- Match history texts in every bundle (en, ru, uk, be, cs, de, es, fr, pl).
+- Test that every translated message renders without errors the English message does not have.
+- Test that every translation uses the same `$variables` as the English bundle.
+- MiniPvP guide: `/pvp info` (also `/pvp`, `/pvp guide`) and a "How to play MiniPvP" button in the main menu open a guide on three tabs. "Round" shows the map, the teams with their players, how long the round has run, how to win and what happens when a team is out. "Rules" shows only what the current map changes from vanilla PvP: the no-build zone around enemy cores, the unit cap, rule multipliers, banned blocks and units, fog, core capture and reactors. "Rating" explains the ELO rating, the starting rating and when a round does or does not change it. The numbers are read from the live rules and the rating code, so the guide follows the map and any change to the rating thresholds. Players with fewer than 3 rated MiniPvP rounds see it when they join; others get a chat line naming the command. The command exists on the MiniPvP server only. Texts in every bundle.
+- Optional translation of global chat from other servers (`translation.channels.remote_global`) and of Discord chat (`translation.channels.discord`), both off by default.
+
+### Fixed
+- Chat translation: concurrent Google translations no longer share one JSON parser, which could hand a player a translation into another language. An exception inside the translation chain is now handled like a failed translation (the original is delivered) instead of silently dropping the message for that language group, and `translation.metrics.minuteBucketsEnabled = false` is honoured.
+
+## [5.0.0] - 2026-10-07
+
+### Breaking changes
+- Replaced the old player-field-based PvP rating API with the shared ladder and seasonal standings API. Removed `PlayerData.pvpRating`, `PlayerDataRepository.updatePvpRating*`, `TopCategory.MINI_PVP`, and `TopMenuService.loadPage()` / `resolveDefaultCategory()`. Dependent plugins must use the ladder API and registered top category providers; `legacyPvpRating` only stores the pre-Elo historical value.
+- Database migrations V4–V6 preserve the pre-Elo rating, initialize the new MiniPvP Elo baseline, migrate standings to `rating_standings`, remove the `players.pvp_rating/pvp_matches/pvp_wins` mirror, and archive the old HexedCore rating collection. Restoring an older JAR alone does not restore the previous rating storage; back up the database before upgrading and coordinate all servers sharing it.
+- Player PIDs are signed: zero and negative values, including `-1`, can identify players. Use `PlayerPids.NONE` (`Integer.MIN_VALUE`) and `PlayerPids.isAssigned()` instead of negative-value or `-1` checks in integrations.
+
+### Added
+- Shared Elo ladder engine, seasonal leaderboards for MiniPvP and Hexed, season lifecycle commands and menus, profile sections, rating RPCs, and season events.
+- Season prizes with per-player delivery and retry-safe grant processing.
+- Usernames, username-based player lookup, and configurable PID/username identity display.
+- Declared permission nodes across commands, menus, and AdminTools integration.
+- Optional permission roles with inheritance, explicit denials, server-scoped and expiring grants, staff hierarchy, console management, Discord bindings, password reset, and a legacy-admin migration command. Roles are opt-in through `permissions.mode = "roles"`; the default remains `legacy`.
+- Shared menu layout kit and responsive menus for phones, with reactive profile, settings, help, leaderboard, and audit views.
+
+### Changed
+- Updated `xcore-protocol` to 0.12.0 and `cloud-mindustry` to 0.4.0-SNAPSHOT.
+- Let clients resolve dialog widths and improved profile, leaderboard, and help text layout.
+- Centralized localized command failure handling and reused cloud-mindustry selectors.
+
+### Fixed
+- Prevented spectator unit spawning and world actions, corrected observer appearance, and closed the MiniPvP disconnect-dodging loophole.
+- Hardened admin authentication against stale password verification and prevented account merges from transferring admin rights or credentials.
+- Revoked staff access on grant expiry and password reset without waiting for network availability, and excluded merged accounts from legacy-admin migration.
+- Moved offline permission lookups off the game thread.
+- Fixed stale UI loads and dialog/session close tracking.
+- Checked RPC type compatibility before claiming an idempotency key.
+- Kept legacy `-1` podium placeholders separate from real signed player PIDs.
+
+### Fixed
+- Supported negative and zero player PIDs that technical admins assign to special players (for example event participants): such players keep their PID instead of being given a new one on save, can be found by `#-12` or `-12` in commands and menus, and are sent with their PID in moderation, Discord, private message and rating events.
 
 ## [4.2.0] - 2026-06-06
 
@@ -278,7 +352,8 @@ No changelog entries were recorded in the Unreleased section.
 ### Security
 - Added ingress-based connection verification to harden request entry points.
 
-[Unreleased]: https://github.com/XCore-mindustry/XCore-plugin/compare/v4.2.0...HEAD
+[Unreleased]: https://github.com/XCore-mindustry/XCore-plugin/compare/v5.0.0...HEAD
+[5.0.0]: https://github.com/XCore-mindustry/XCore-plugin/compare/v4.7.0...v5.0.0
 [4.2.0]: https://github.com/XCore-mindustry/XCore-plugin/compare/v4.1.0...v4.2.0
 [4.1.0]: https://github.com/XCore-mindustry/XCore-plugin/compare/4.0.0...4.1.0
 [4.0.0]: https://github.com/XCore-mindustry/XCore-plugin/compare/3.2.1...4.0.0

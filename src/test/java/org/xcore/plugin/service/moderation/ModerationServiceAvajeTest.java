@@ -99,6 +99,7 @@ class ModerationServiceAvajeTest {
         time = scope.get(TimeService.class);
         auditService = scope.get(AuditService.class);
         config = scope.get(TomlXcoreConfig.class);
+        when(banDataRepository.nextBanId()).thenReturn(1234);
 
         when(auditService.append(any())).thenReturn(org.xcore.plugin.model.AuditAppendResult.success(
                 validAuditRecord()
@@ -339,6 +340,44 @@ class ModerationServiceAvajeTest {
         assertThat(result.isSuccess()).isFalse();
         assertThat(result.getMessage()).contains("Player not found");
         verifyNoInteractions(muteDataRepository, network);
+    }
+
+    @Test
+    @DisplayName("A console command relayed from another server is audited as that console, not as a player or the local one")
+    void muteById_remoteConsole_auditActor() {
+        var target = PlayerData.builder()
+                .uuid("uuid-3")
+                .nickname("Target")
+                .build();
+        when(sessionService.getOrLoadFromDb(7)).thenReturn(target);
+        when(muteDataRepository.save(any())).thenReturn(true);
+
+        var result = moderationService.muteById(7, "remote-console@hub", null, null, Duration.ofMinutes(15));
+
+        assertThat(result.isSuccess()).isTrue();
+        verify(auditService).append(argThat(command ->
+                command.actor().type == org.xcore.plugin.model.AuditActorType.SERVER_CONSOLE
+                        && "remote-console@hub".equals(command.actor().id)
+                        && "remote-console@hub".equals(command.actor().nameSnapshot)
+                        && "hub".equals(command.actor().serverId)
+                        && command.origin().channel == org.xcore.plugin.model.AuditOriginChannel.SERVER_CONSOLE));
+    }
+
+    @Test
+    @DisplayName("A moderation command without an actor is refused instead of being run as the console")
+    void commandWithoutActor_isRefused() {
+        var duration = Duration.ofMinutes(15);
+
+        assertThat(moderationService.mute(new MuteCommand(7, null, null, null, null, "r", duration)).getMessage())
+                .contains(ModerationService.MISSING_ACTOR_MESSAGE);
+        assertThat(moderationService.ban(new BanCommand(7, null, null, null, null, "r", duration, true)).getMessage())
+                .contains(ModerationService.MISSING_ACTOR_MESSAGE);
+        assertThat(moderationService.unmute(new UnmuteCommand(7, null, null, null, null)).getMessage())
+                .contains(ModerationService.MISSING_ACTOR_MESSAGE);
+        assertThat(moderationService.unban(new UnbanCommand(7, null, null, null, null)).getMessage())
+                .contains(ModerationService.MISSING_ACTOR_MESSAGE);
+
+        verifyNoInteractions(muteDataRepository, banDataRepository, network, auditService);
     }
 
     @Test
@@ -677,6 +716,87 @@ class ModerationServiceAvajeTest {
         assertThat(result.isSuccess()).isFalse();
         assertThat(result.getMessage()).contains("Player not found");
         verify(sessionService).getOrLoadFromDb(8);
+    }
+
+    @Test
+    void newBanAndRebanHaveDistinctIdsAndPidInStorageAuditAndEvent() {
+        var target = PlayerData.builder().pid(567).uuid("target").nickname("Target").build();
+        when(playerDataRepository.findByPid(567)).thenReturn(target);
+        when(banDataRepository.nextBanId()).thenReturn(1234, 1235);
+        when(banDataRepository.save(any())).thenReturn(true);
+
+        var first = moderationService.banById(567, "admin", null, "reason", Duration.ofHours(1), false);
+        var second = moderationService.banById(567, "admin", null, "reason", Duration.ofHours(1), false);
+
+        assertThat(first.getData().orElseThrow().banId).isEqualTo(1234);
+        assertThat(second.getData().orElseThrow().banId).isEqualTo(1235);
+        assertThat(first.getData().orElseThrow().pid).isEqualTo(567);
+        verify(auditService).append(argThat(command -> command.action() == AuditAction.BAN
+                && "1234".equals(command.details().extra.get("ban_id"))));
+        verify(network).post(argThat(event -> event instanceof ModerationBanCreatedV1 ban
+                && Integer.valueOf(1234).equals(ban.banId())
+                && Integer.valueOf(567).equals(ban.target().playerPid())));
+    }
+
+    @Test
+    void uuidBanResolvesTheKnownPid() {
+        when(playerDataRepository.findByUuid("target")).thenReturn(
+                PlayerData.builder().uuid("target").pid(-7).build());
+        when(banDataRepository.save(any())).thenReturn(true);
+
+        var result = moderationService.tempBanByUuidOrIp("target", null, "Target", Duration.ofHours(1),
+                "reason", "admin", null);
+
+        assertThat(result.getData().orElseThrow().pid).isEqualTo(-7);
+        verify(network).post(argThat(event -> event instanceof ModerationBanCreatedV1 ban
+                && Integer.valueOf(-7).equals(ban.target().playerPid())));
+    }
+
+    @Test
+    void unbanAuditCopiesTheBanIdAndKeepsUuidOnlyDeletion() {
+        var target = PlayerData.builder().pid(567).uuid("target").nickname("Target").ip("1.2.3.4").build();
+        var ban = BanData.builder().uuid("target").banId(1234).pid(567).build();
+        when(banDataRepository.find("target", null)).thenReturn(ban);
+        when(banDataRepository.delete("target", null)).thenReturn(true);
+
+        assertThat(moderationService.unbanPlayer(target, "admin", null).isSuccess()).isTrue();
+
+        var order = inOrder(banDataRepository, auditService);
+        order.verify(banDataRepository).find("target", null);
+        order.verify(banDataRepository).assignBanIdIfMissing(ban);
+        order.verify(banDataRepository).delete("target", null);
+        order.verify(auditService).append(argThat(command -> command.action() == AuditAction.UNBAN
+                && "1234".equals(command.details().extra.get("ban_id"))));
+        verify(banDataRepository, never()).delete("target", "1.2.3.4");
+    }
+
+    @Test
+    void temporaryUnbanHealsLegacyIdentityBeforeAuditingAndKeepsAddressDeletion() {
+        var ban = BanData.builder().ip("1.2.3.4").build();
+        when(banDataRepository.find(null, "1.2.3.4")).thenReturn(ban);
+        org.mockito.Mockito.doAnswer(invocation -> {
+            ban.banId = 1234;
+            return null;
+        }).when(banDataRepository).assignBanIdIfMissing(ban);
+        when(banDataRepository.delete(null, "1.2.3.4")).thenReturn(true);
+
+        assertThat(moderationService.tempUnban(null, "1.2.3.4", "admin", null).isSuccess()).isTrue();
+
+        verify(auditService).append(argThat(command -> command.action() == AuditAction.UNBAN
+                && "1234".equals(command.details().extra.get("ban_id"))));
+        verify(banDataRepository).delete(null, "1.2.3.4");
+    }
+
+    @Test
+    void readOnlyBanDoesNotAllocateAnId() {
+        when(banDataRepository.isReadOnly()).thenReturn(true);
+
+        var result = moderationService.tempBanByUuidOrIp("target", null, "Target", Duration.ofHours(1),
+                "reason", "admin", null);
+
+        assertThat(result.isSuccess()).isFalse();
+        verify(banDataRepository, never()).nextBanId();
+        verifyNoInteractions(auditService, network);
     }
 
     private static AuditRecord validAuditRecord() {

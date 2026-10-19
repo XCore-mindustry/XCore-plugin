@@ -1,14 +1,16 @@
 package org.xcore.plugin.service;
 
-import arc.util.Timer;
 import io.avaje.inject.PostConstruct;
+import io.avaje.inject.PreDestroy;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
+import org.xcore.plugin.concurrent.ScheduledTasks;
 import org.xcore.plugin.config.TomlSecretsConfig;
 import org.xcore.plugin.localization.Localization;
 import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.session.Session;
 import org.xcore.plugin.session.SessionService;
+import org.xcore.plugin.startup.ShutdownOrder;
 
 import static com.ospx.flubundle.Bundle.args;
 
@@ -18,6 +20,7 @@ public class PlayerActivityService {
     private final SessionService sessionService;
     private final FindService findService;
     private final TomlSecretsConfig secretsConfig;
+    private final ScheduledTasks tasks = new ScheduledTasks(PlayerActivityService.class);
 
     @Inject
     public PlayerActivityService(SessionService sessionService,
@@ -30,7 +33,7 @@ public class PlayerActivityService {
 
     @PostConstruct
     public void start() {
-        Timer.schedule(() -> {
+        tasks.every(0, 60, () -> {
             for (Session session : sessionService.getAllCachedSnapshot()) {
                 if (session == null || session.data == null) continue;
                 var player = findService.playerByUuid(session.data.uuid);
@@ -51,6 +54,11 @@ public class PlayerActivityService {
                 }
 
             }
-        }, 0, 60);
+        });
+    }
+
+    @PreDestroy(priority = ShutdownOrder.STOP_PRODUCERS)
+    public void stop() {
+        tasks.close();
     }
 }

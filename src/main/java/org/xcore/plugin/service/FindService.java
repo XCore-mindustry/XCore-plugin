@@ -1,6 +1,5 @@
 package org.xcore.plugin.service;
 
-import arc.util.Strings;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import mindustry.gen.Groups;
@@ -8,6 +7,7 @@ import mindustry.gen.Player;
 import mindustry.net.Administration;
 import org.xcore.plugin.localization.TranslatorLanguagesProvider;
 import org.xcore.plugin.model.PlayerData;
+import org.xcore.plugin.model.PlayerPids;
 import org.xcore.plugin.session.SessionService;
 
 import java.util.concurrent.CompletableFuture;
@@ -54,18 +54,22 @@ public class FindService {
         if (uuidOrPid == null || uuidOrPid.isBlank()) {
             return null;
         }
-        return uuidOrPid.startsWith("#")
-                ? sessionService.getOrLoadFromDb(Strings.parseInt(uuidOrPid.substring(1)))
-                : sessionService.getOrLoadFromDb(uuidOrPid);
+        if (uuidOrPid.startsWith("#")) {
+            Integer pid = PlayerPids.parse(uuidOrPid);
+            return pid == null ? null : sessionService.getOrLoadFromDb(pid);
+        }
+        return sessionService.getOrLoadFromDb(uuidOrPid);
     }
 
     public CompletionStage<PlayerData> playerDataAsync(String uuidOrPid) {
         if (uuidOrPid == null || uuidOrPid.isBlank()) {
             return CompletableFuture.completedFuture(null);
         }
-        return uuidOrPid.startsWith("#")
-                ? sessionService.getOrLoadFromDbAsync(Strings.parseInt(uuidOrPid.substring(1)))
-                : sessionService.getOrLoadFromDbAsync(uuidOrPid);
+        if (uuidOrPid.startsWith("#")) {
+            Integer pid = PlayerPids.parse(uuidOrPid);
+            return pid == null ? CompletableFuture.completedFuture(null) : sessionService.getOrLoadFromDbAsync(pid);
+        }
+        return sessionService.getOrLoadFromDbAsync(uuidOrPid);
     }
 
     public Administration.PlayerInfo playerInfo(String name) {

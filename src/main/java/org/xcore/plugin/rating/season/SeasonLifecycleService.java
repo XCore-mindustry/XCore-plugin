@@ -1,14 +1,15 @@
 package org.xcore.plugin.rating.season;
 
 import arc.util.Log;
-import arc.util.Timer;
 import io.avaje.inject.PostConstruct;
 import io.avaje.inject.PreDestroy;
+import org.xcore.plugin.startup.ShutdownOrder;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import org.jspecify.annotations.Nullable;
 import org.xcore.plugin.common.PLog;
 import org.xcore.plugin.concurrent.Async;
+import org.xcore.plugin.concurrent.ScheduledTasks;
 import org.xcore.plugin.config.TomlSecretsConfig;
 import org.xcore.plugin.integration.idempotency.LedgerClaim;
 import org.xcore.plugin.integration.idempotency.PluginIdempotencyLedger;
@@ -76,7 +77,7 @@ public class SeasonLifecycleService implements LadderSeasons {
     private final Object refreshLock = new Object();
     /** Events this server knows are delivered, so the reconcile pass does not ask the ledger again. */
     private final Set<String> announced = ConcurrentHashMap.newKeySet();
-    private Timer.@Nullable Task tickTask;
+    private final ScheduledTasks tasks = new ScheduledTasks(SeasonLifecycleService.class);
 
     @Inject
     public SeasonLifecycleService(SeasonStore store,
@@ -87,9 +88,10 @@ public class SeasonLifecycleService implements LadderSeasons {
                                   PluginIdempotencyLedgerFactory ledgerFactory,
                                   AuditService audit,
                                   TomlSecretsConfig config,
-                                  Async async) {
+                                  Async async,
+                                  Clock clock) {
         this(store, resolver, schedule, finalizer, prizes, ledgerFactory.create(LEDGER_ID), audit, config, async,
-                Clock.systemUTC());
+                clock);
     }
 
     public SeasonLifecycleService(SeasonStore store,
@@ -116,15 +118,12 @@ public class SeasonLifecycleService implements LadderSeasons {
 
     @PostConstruct
     public void start() {
-        tickTask = Timer.schedule(() -> async.run(this::tickSafely), TICK_SECONDS, TICK_SECONDS);
+        tasks.every(TICK_SECONDS, TICK_SECONDS, () -> async.run(this::tickSafely));
     }
 
-    @PreDestroy
+    @PreDestroy(priority = ShutdownOrder.STOP_PRODUCERS)
     public void stop() {
-        if (tickTask != null) {
-            tickTask.cancel();
-            tickTask = null;
-        }
+        tasks.close();
     }
 
     public void addObserver(SeasonObserver observer) {

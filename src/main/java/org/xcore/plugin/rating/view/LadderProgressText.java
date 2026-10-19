@@ -66,7 +66,7 @@ final class LadderProgressText {
             return local.t("player-stats-max-league");
         }
         RatingLeague next = league.next();
-        String bar = PlayerProfileUiController.renderRatingLeagueProgressBar(league, standing.rating(), PROGRESS_BAR_WIDTH);
+        String bar = PlayerProfileUiController.renderRatingLeagueProgressBar(league, standing.rating(), PROGRESS_BAR_WIDTH, local);
         return bar + "  " + local.t("player-stats-league-elo-left", args(
                 "elo", Math.max(0, next.minimumRating() - standing.rating()),
                 "league", next.icon() + " " + local.t(next.localizationKey())));

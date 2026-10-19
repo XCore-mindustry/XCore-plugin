@@ -8,7 +8,6 @@ import jakarta.inject.Provider;
 import mindustry.gen.Player;
 import mindustry.net.NetConnection;
 import mindustry.ui.builder.MenuResult;
-import mindustry.ui.builder.UiDslWriter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -37,8 +36,10 @@ import org.xcore.plugin.session.Session;
 import org.xcore.plugin.session.SessionService;
 import org.xcore.plugin.ui.MenuService;
 import org.xcore.plugin.ui.MindustryMenuGateway;
-import org.xcore.ui.LocalizerResolver;
-import org.xcore.ui.VNodeCompiler;
+import org.xcore.plugin.rating.view.SeasonCard;
+import org.xcore.plugin.ui.kit.LayoutAssert;
+import org.xcore.plugin.ui.kit.Screen;
+import org.xcore.ui.VNode;
 import org.xcore.ui.runtime.UpdateResult;
 
 import java.time.Clock;
@@ -162,13 +163,59 @@ class SeasonMenuTest {
     void render_cardsAndEmptyState() {
         when(announcer.followed()).thenReturn(List.of(duel.definition()));
         SeasonUiController controller = new SeasonUiController(seasonMenu, views, session);
-        VNodeCompiler compiler = new VNodeCompiler(LocalizerResolver.IDENTITY);
 
-        String dsl = UiDslWriter.write(compiler.compile(controller.render(seasonMenu.load("viewer-1"))));
-        assertThat(dsl).contains("action:top:DUEL", "action:close");
+        String dsl = LayoutAssert.dsl(controller.render(seasonMenu.load("viewer-1")));
+        // The client's own button closes the dialog.
+        assertThat(dsl).contains("action:top:DUEL").doesNotContain("action:close");
 
-        String empty = UiDslWriter.write(compiler.compile(controller.render(new SeasonUiController.SeasonModel(List.of()))));
+        String empty = LayoutAssert.dsl(controller.render(new SeasonUiController.SeasonModel(List.of())));
         assertThat(empty).contains("season-menu-empty").doesNotContain("action:top:");
+    }
+
+    @Test
+    @DisplayName("the window is laid out for every screen in every language")
+    void window_isLaidOutForEveryScreen() {
+        when(announcer.followed()).thenReturn(List.of());
+        standings.put(new LadderStanding("duel", 1, "viewer-1", 1300, 1300, 4, 3, Map.of()));
+        SeasonUiController controller = new SeasonUiController(seasonMenu, views, session);
+
+        for (String language : LayoutAssert.LANGUAGES) {
+            session.localization = LayoutAssert.localization(language);
+            SeasonUiController.SeasonModel model = seasonMenu.load("viewer-1");
+            for (Screen screen : Screen.ALL) {
+                VNode window = controller.window(model, screen);
+                LayoutAssert.assertLaidOut(window, screen);
+                assertThat(LayoutAssert.allText(window)).doesNotContain("season-menu-");
+                assertThat(LayoutAssert.actions(window)).containsExactly("action:top:DUEL");
+            }
+            LayoutAssert.assertFitsPacket(controller.render(model), language);
+        }
+    }
+
+    @Test
+    @DisplayName("prizes and the winners of the season before take their own sections of the card")
+    void window_showsPrizesAndPodium() {
+        session.localization = LayoutAssert.localization("ru");
+        when(announcer.followed()).thenReturn(List.of(duel.definition()));
+        SeasonUiController.SeasonModel model = seasonMenu.load("viewer-1");
+        LadderViews worded = mock(LadderViews.class);
+        when(worded.card(any(), any())).thenReturn(new SeasonCard(
+                "Дуэли — Сезон 2",
+                List.of("[lightgray]До конца [white]12 д 4 ч[] (01.01.2027)[]", "", "[lightgray]Вы:[] #3 · 1300"),
+                "[lightgray]Сезон 1 — победители:[]",
+                List.of("[gold]1.[] [white]A_very_long_nickname_2026[] [gray]—[] Алмаз [accent]1712[][gray] · [gold]Чемпион сезона, Nitro[]",
+                        "[gold]2.[] [white]ace[] [gray]—[] Золото [accent]1540[]"),
+                "[lightgray]Призы этого сезона:[]",
+                List.of("[gold]1.[] [white]Значок «Чемпион сезона»[]", "[gold]2-3.[] [white]Месяц Discord Nitro[]")));
+        SeasonUiController controller = new SeasonUiController(seasonMenu, worded, session);
+
+        for (Screen screen : Screen.ALL) {
+            VNode window = controller.window(model, screen);
+            LayoutAssert.assertLaidOut(window, screen);
+            assertThat(LayoutAssert.allText(window))
+                    .contains("Дуэли — Сезон 2", "Призы этого сезона", "Месяц Discord Nitro", "победители", "A_very_long_nickname_2026")
+                    .doesNotContain("\n\n");
+        }
     }
 
     @Test

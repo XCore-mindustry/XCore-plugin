@@ -1,5 +1,6 @@
 package org.xcore.plugin.cloud.config;
 
+import arc.util.Log;
 import com.ospx.flubundle.Bundle;
 import jakarta.inject.Inject;
 import jakarta.inject.Provider;
@@ -77,7 +78,7 @@ public class CloudExceptionConfigurer {
 
             ParserException parserEx = findCause(exception, ParserException.class);
             if (parserEx != null) {
-                String key = parserEx.errorCaption().key().replace(".", "-");
+                String key = CloudCaptionConfigurer.bundleKey(parserEx.errorCaption());
 
                 Map<String, Object> arguments = new HashMap<>();
                 for (CaptionVariable variable : parserEx.captionVariables()) {
@@ -121,10 +122,11 @@ public class CloudExceptionConfigurer {
 
             XCoreSender sender = ctx.context().sender();
             if (sender.isPlayer()) {
+                Log.err("Command failed for player " + sender.player().plainName(), exception);
                 sendToPlayer(sender.player(), messageKey, args());
             } else {
+                Log.err("Command failed", exception);
                 sender.sendMessage("[red]System Error: " + cause.getMessage());
-                cause.printStackTrace();
             }
         });
     }

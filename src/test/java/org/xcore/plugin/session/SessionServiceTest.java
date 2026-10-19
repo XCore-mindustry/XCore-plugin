@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
 import org.xcore.plugin.localization.Localization;
 import org.xcore.plugin.model.PlayerData;
+import org.xcore.plugin.model.PlayerPids;
 import org.xcore.plugin.service.TopMenuCacheService;
 
 import java.util.ArrayList;
@@ -408,17 +409,22 @@ class SessionServiceTest {
     }
 
     @Test
-    @DisplayName("findOnlineByPid returns matching online session and null when offline or negative")
-    void findOnlineByPid_returnsMatchingOnlineSessionAndNullWhenOfflineOrNegative() {
+    @DisplayName("findOnlineByPid returns matching online session, including negative pids, and null when offline or unassigned")
+    void findOnlineByPid_returnsMatchingOnlineSessionAndNullWhenOfflineOrUnassigned() {
         SessionService service = new SessionService(mock(SessionFactory.class), mock(PlayerDataRepository.class));
 
         Session online = session("uuid-42", Team.sharded);
         online.data.pid = 42;
         service.update(online);
+        Session eventPlayer = session("uuid-event", Team.sharded);
+        eventPlayer.data.pid = -5;
+        service.update(eventPlayer);
 
         assertThat(service.findOnlineByPid(42)).isSameAs(online);
+        assertThat(service.findOnlineByPid(-5)).isSameAs(eventPlayer);
         assertThat(service.findOnlineByPid(999)).isNull();
         assertThat(service.findOnlineByPid(-1)).isNull();
+        assertThat(service.findOnlineByPid(PlayerPids.NONE)).isNull();
     }
 
     @Test
@@ -459,7 +465,7 @@ class SessionServiceTest {
         // Invalid inputs
         assertThat(service.getOrLoadFromDbAsync((String) null).toCompletableFuture().get()).isNull();
         assertThat(service.getOrLoadFromDbAsync("   ").toCompletableFuture().get()).isNull();
-        assertThat(service.getOrLoadFromDbAsync(-1).toCompletableFuture().get()).isNull();
+        assertThat(service.getOrLoadFromDbAsync(PlayerPids.NONE).toCompletableFuture().get()).isNull();
     }
 
     private Session session(String uuid, Team team) {

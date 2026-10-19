@@ -33,13 +33,16 @@ import java.util.Locale;
 import static mindustry.Vars.state;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
  * End-to-end integration test driving MenuService, UiSession, and ServerSelectorUiController
- * through DeterministicUiLoop and HeadlessMenuClient to verify mobile landscape scrolling,
- * responsive layout constraints, partial slot updates on category tabs, and connection handling.
+ * through DeterministicUiLoop and HeadlessMenuClient to verify what the client is sent when the
+ * browser opens, when a category tab is pressed and when the dialog is closed.
  */
 class ServerSelectorUiClientIntegrationTest {
 
@@ -47,6 +50,7 @@ class ServerSelectorUiClientIntegrationTest {
     private DeterministicUiLoop loop;
     private MenuService menuService;
     private Session session;
+    private Player player;
     private SessionService sessionService;
     private ServerRegistryService registryService;
     private ServerMenu serverMenu;
@@ -120,8 +124,9 @@ class ServerSelectorUiClientIntegrationTest {
         menuService = new MenuService(sessionProvider, gateway);
         menuService.init();
 
-        Player player = Player.create();
+        player = spy(Player.create());
         player.con = mock(NetConnection.class);
+        doNothing().when(player).sendMessage(anyString());
 
         session = new Session(
                 new TomlSecretsConfig(),
@@ -168,7 +173,7 @@ class ServerSelectorUiClientIntegrationTest {
     }
 
     @Test
-    @DisplayName("Open servers delivers responsive dialog with buttonTable cards, tabs, and maxHeight 350")
+    @DisplayName("Open servers delivers a window per screen class with tabs and server rows")
     void openServers_deliversResponsiveDialog() {
         serverMenu.open(session);
         int menuId = menuService.getMenuBuilderId();
@@ -188,8 +193,8 @@ class ServerSelectorUiClientIntegrationTest {
         String dsl = UiDslWriter.write((NodeBuilder<?>) lastMsg.body().decode());
 
         assertThat(dsl).contains("pane{");
-        assertThat(dsl).contains("maxHeight: 460");
-        assertThat(dsl).contains("action:close");
+        assertThat(dsl).contains("condition: \"width >= 800\"");
+        assertThat(dsl).doesNotContain("action:close");
         assertThat(dsl).contains("action:tab:all");
         assertThat(dsl).contains("action:tab:pvp");
         assertThat(dsl).contains("action:connect:mini-pvp");
@@ -224,18 +229,36 @@ class ServerSelectorUiClientIntegrationTest {
     }
 
     @Test
-    @DisplayName("Close button dismisses servers dialog cleanly")
-    void closeButton_dismissesDialog() {
+    void rejectedTransfer_keepsClientDialogVisibleAndShowsReason() {
         serverMenu.open(session);
         int menuId = menuService.getMenuBuilderId();
         assertThat(loop.stepServerToClient()).isTrue();
+        loop.client().click(menuId, "action:connect:mini-pvp");
+        assertThat(loop.stepClientToServer()).isTrue();
+        assertThat(loop.stepServerToClient()).isTrue();
+        assertThat(loop.client().isVisible(menuId)).isTrue();
+        assertThat(session.hasActiveUiSession()).isTrue();
+        assertThat(loop.transcript().all()).noneMatch(message -> message instanceof UiWireMessage.Hide);
+        var last = (UiWireMessage.Show) loop.transcript().all().stream()
+                .filter(message -> message instanceof UiWireMessage.Show)
+                .reduce((first, second) -> second).orElseThrow();
+        assertThat(UiDslWriter.write((NodeBuilder<?>) last.body().decode()))
+                .contains("player-servers-already-connected", "action:refresh");
+        verify(player).sendMessage("player-servers-already-connected");
+    }
 
-        // Client clicks close
-        loop.client().click(menuId, "action:close");
+    @Test
+    @DisplayName("closing the dialog with the client's own button ends the session")
+    void dismissDialog_closesSession() {
+        serverMenu.open(session);
+        int menuId = menuService.getMenuBuilderId();
+        assertThat(loop.stepServerToClient()).isTrue();
+        assertThat(loop.client().isVisible(menuId)).isTrue();
+
+        // The dialog has no close button of its own: the client's one reports a cancel.
+        loop.client().dismiss(menuId);
         assertThat(loop.stepClientToServer()).isTrue();
 
-        // Server emits Hide wire message
-        assertThat(loop.stepServerToClient()).isTrue();
         assertThat(loop.client().isVisible(menuId)).isFalse();
         assertThat(session.hasActiveUiSession()).isFalse();
     }

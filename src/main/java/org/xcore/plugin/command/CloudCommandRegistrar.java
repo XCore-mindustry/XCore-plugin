@@ -7,6 +7,7 @@ import org.xcore.plugin.cloud.CloudService;
 import org.xcore.plugin.command.controller.CloudClientController;
 import org.xcore.plugin.command.controller.CloudServerController;
 import org.xcore.plugin.command.controller.client.EventController;
+import org.xcore.plugin.command.controller.client.MiniPvPGuideController;
 import org.xcore.plugin.config.TomlXcoreConfig;
 
 import java.util.List;
@@ -37,11 +38,16 @@ public class CloudCommandRegistrar {
                 .forEach(cloud::registerClient);
 
         serverControllers.forEach(cloud::registerServer);
+
+        cloud.verifyPermissions();
     }
 
     private boolean shouldRegister(CloudClientController controller) {
         if (controller instanceof EventController) {
             return isEventServer();
+        }
+        if (controller instanceof MiniPvPGuideController) {
+            return "mini-pvp".equals(config.server.name);
         }
 
         return true;

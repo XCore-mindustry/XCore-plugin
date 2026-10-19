@@ -1,6 +1,7 @@
 package org.xcore.plugin.service.network;
 
 import org.xcore.plugin.model.PlayerData;
+import org.xcore.plugin.model.PlayerPids;
 import org.xcore.protocol.generated.messages.discord.DiscordLinkStatusChangedV1Action;
 import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordAdminAccessChangedCommandV1;
 import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordLinkCodeCreatedV1;
@@ -237,7 +238,7 @@ public final class DiscordProtocolMapper {
     }
 
     private static Integer normalizeOptionalPid(Integer pid) {
-        return pid == null || pid < 0 ? null : pid;
+        return PlayerPids.orNull(pid);
     }
 
     private static String normalizeOptional(String value) {

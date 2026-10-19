@@ -20,7 +20,7 @@ public class RedisFactory {
     }
 
     @Bean
-    public RedisStreamRouter redisStreamRouter() {
-        return new RedisStreamRouter(redisProtocolRouteAdapter());
+    public RedisStreamRouter redisStreamRouter(RedisProtocolRouteAdapter adapter) {
+        return new RedisStreamRouter(adapter);
     }
 }

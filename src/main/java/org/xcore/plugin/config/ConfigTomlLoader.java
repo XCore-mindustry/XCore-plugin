@@ -1,7 +1,8 @@
 package org.xcore.plugin.config;
 
 import arc.files.Fi;
-import com.fasterxml.jackson.dataformat.toml.TomlMapper;
+import tools.jackson.core.JacksonException;
+import tools.jackson.dataformat.toml.TomlMapper;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -93,15 +94,20 @@ public final class ConfigTomlLoader {
     public static LoadResult<TomlXcoreConfig> loadXcoreConfig(Fi dataDirectory) {
         Fi tomlFile = resolveXcoreToml(dataDirectory);
         if (tomlFile.exists()) {
-            TomlXcoreConfig toml = readToml(tomlFile, TomlXcoreConfig.class);
-            toml.normalize();
+            TomlXcoreConfig toml = readXcoreToml(tomlFile);
             return new LoadResult<>(toml, Source.TOML, tomlFile);
         }
 
         ConfigTomlTemplateWriter.writeDefaultXcoreToml(tomlFile);
-        TomlXcoreConfig toml = readToml(tomlFile, TomlXcoreConfig.class);
-        toml.normalize();
+        TomlXcoreConfig toml = readXcoreToml(tomlFile);
         return new LoadResult<>(toml, Source.DEFAULT_TEMPLATE, tomlFile);
+    }
+
+    /** Parses and normalizes an existing file without creating templates or writing anything. */
+    public static TomlXcoreConfig readXcoreToml(Fi file) {
+        TomlXcoreConfig config = readToml(file, TomlXcoreConfig.class);
+        config.normalize();
+        return config;
     }
 
     /**
@@ -144,7 +150,7 @@ public final class ConfigTomlLoader {
                 content = quoteBareDiscordChannelId(content);
             }
             return mapper.readValue(content, type);
-        } catch (IOException e) {
+        } catch (IOException | JacksonException e) {
             throw new IllegalStateException(
                     "Failed to read TOML from " + file.absolutePath() + ": " + e.getMessage(), e);
         }

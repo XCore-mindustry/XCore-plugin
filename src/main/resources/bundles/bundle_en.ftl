@@ -50,16 +50,14 @@ help-ui-title = COMMANDS GUIDE
 help-ui-summary = [gray]{ $count } commands available
 help-ui-empty-category = [lightgray]No commands available in this category.[]
 help-ui-overloads = ({ $count } variants)
-help-ui-back = « Back to list
-help-ui-aliases = [orange]» [accent]Aliases: [white]{ $aliases }
-help-ui-syntax-title = [orange]» [accent]Syntax:
-help-ui-args-title = [orange]» [accent]Parameters:
+help-ui-aliases = [lightgray]Aliases:[] { $aliases }
+help-ui-syntax-title = Syntax
+help-ui-args-title = Parameters
 help-ui-arg-required = [scarlet]Required
 help-ui-arg-optional = [sky]Optional
 help-ui-btn-run = Run
 help-ui-btn-copy = To Chat
 help-ui-btn-back = Back
-help-ui-hint = Click a command card for detailed syntax and parameters
 help-ui-copied = [accent]Command: [white]/{ $syntax }
 help-ui-executed = [accent]Executing command: [white]/{ $syntax }
 
@@ -277,18 +275,28 @@ commands-announcement-description = Broadcasts a periodic announcement by key, o
 commands-audit-description = View staff and moderation audit history and actions.
 ban-content = [scarlet]⚠ Banned[]
     [accent]{ $nickname }[white] — you are permanently banned from this server.
+    [orange]» [accent]Player ID: [white]{ $pid }
     [lightgray]To appeal, visit Discord channel [gray]{ support-channel }[]:
     [cyan]{ $discordUrl }
 ban-cancelled = [accent]Player [scarlet]{ $nickname }[accent] ban has been cancelled
 tempban-content = [scarlet]⚠ Banned[]
-    [accent]{ $nickname }[white] — you are temporarily banned from this server.
+    { $permanent ->
+        [true] [accent]{ $nickname }[white] — you are permanently banned from this server.
+       *[false] [accent]{ $nickname }[white] — you are temporarily banned from this server.
+    }
+    [orange]» [accent]Ban: [white]{ $banId }
+    [orange]» [accent]Player ID: [white]{ $pid }
     { "" }
     [orange]» [accent]Admin: [white]{ $adminName }
     [orange]» [accent]Reason: [gold]{ $reason }
-    [orange]» [accent]Time left: { DURATION($duration, style: "full", colored: "true", maxUnits: 2) }
-    [orange]» [accent]Expires: [white]{ DATETIME($expireDate, dateStyle: "medium", timeStyle: "short") }
+    { $permanent ->
+        [true] [orange]» [accent]{ audit-menu-duration-permanent }[]
+       *[false] [orange]» [accent]Time left: { DURATION($duration, style: "full", colored: "true", maxUnits: 2) }
+            { "" }[orange]» [accent]Expires: [white]{ DATETIME($expireDate, dateStyle: "medium", timeStyle: "short") }
+    }
     { "" }
     [lightgray]To appeal, visit Discord channel [gray]{ support-channel }[]:
+    [lightgray]Quote { $banId } in your appeal.
     [cyan]{ $discordUrl }
 tempban-player-banned = [scarlet] Admin { $adminName }[scarlet] banned player [gray]'[]{ $playerName }[gray]'
 you-are-muted-by =
@@ -311,7 +319,58 @@ kick-admintools-outdated =
     [scarlet]Your AdminTools version: [grey]{ $version }[]
     { "" }
     [cyan]Please update your AdminTools to join this server.
-support-channel = #reports-appeals
+support-channel = #tickets
+# ==============================================================================
+# Cases: player reports, in-game notices and the /report menu
+# ==============================================================================
+report-menu-title = [orange]{ -xcore } — Report a player
+report-menu-pick-player = Pick a player
+report-menu-left-recently = Left recently
+report-menu-left-ago = { $minutes } min ago
+report-menu-empty = Nobody to report
+report-menu-staff-hint = [lightgray]Complaints about staff go through Discord.
+report-menu-pick-reason = Pick a reason
+report-menu-comment = Comment (optional)
+report-menu-comment-required = A comment is required for "Other".
+report-menu-confirm-title = Confirm report
+report-menu-confirm-note = [lightgray]Recent chat and building history are attached. False reports are punished.
+report-menu-next = Next
+report-menu-back = Back
+report-menu-send = Send
+report-menu-close = Close
+report-result-sent = [green]Report sent. Thank you!
+report-result-cooldown = [scarlet]Wait [accent]{ $seconds } s[scarlet] before the next report.
+report-result-same-target = [scarlet]You have already reported this player recently.
+report-result-daily-limit = [scarlet]Daily report limit reached. Try again tomorrow.
+report-result-invalid-target = [scarlet]This player cannot be reported.
+report-result-playtime = [scarlet]Play for another [accent]{ $minutes } min[scarlet] before sending reports.
+report-result-disabled = [scarlet]Reports are disabled on this server.
+report-result-failed = [scarlet]Could not send the report. Try again.
+report-reason-griefing = Griefing
+report-reason-toxicity = Toxicity
+report-reason-cheating = Cheating
+report-reason-nsfw = NSFW
+report-reason-evasion = Ban evasion
+report-reason-other = Other
+case-notice-report-received = [lightgray]Report registered as [accent]#{ $number }[lightgray]. Thank you!
+case-notice-report-resolved = [lightgray]Report [accent]#{ $number }[lightgray] reviewed: [green]action was taken[lightgray]. Thank you.
+case-notice-report-rejected =
+    { $reason ->
+        [no_violation] [lightgray]Report [accent]#{ $number }[lightgray] reviewed: no rule violation was found. Thank you.
+        [no_evidence] [lightgray]Report [accent]#{ $number }[lightgray] reviewed: there was not enough evidence. Thank you.
+        [already_handled] [lightgray]Report [accent]#{ $number }[lightgray] closed: this had already been dealt with. Thank you.
+        [duplicate] [lightgray]Report [accent]#{ $number }[lightgray] closed: this had already been reported. Thank you.
+        [abuse] [lightgray]Report [accent]#{ $number }[lightgray] rejected: [scarlet]the report itself broke the server rules.
+       *[other] [lightgray]Report [accent]#{ $number }[lightgray] reviewed: no action was taken. Thank you.
+    }
+case-notice-report-not-accepted = [scarlet]Your report was not accepted.
+case-notice-appeal-accepted = [lightgray]Appeal [accent]#{ $number }[lightgray] accepted: the ban was lifted.
+case-notice-appeal-shortened = [lightgray]Appeal [accent]#{ $number }[lightgray] accepted: the ban was shortened.
+case-notice-badge-granted = [lightgray]Badge request [accent]#{ $number }[lightgray] approved: [green]{ $badge }[lightgray] granted.
+case-notice-badge-rejected = [lightgray]Badge request [accent]#{ $number }[lightgray] was rejected.
+case-notice-map-accepted = [lightgray]Map review [accent]#{ $number }[lightgray]: [green]{ $map }[lightgray] was accepted.
+case-notice-map-rejected = [lightgray]Map review [accent]#{ $number }[lightgray]: [scarlet]{ $map }[lightgray] was rejected.
+case-notice-complaint-closed = [lightgray]Complaint [accent]#{ $number }[lightgray] is closed. Thank you.
 # ==============================================================================
 # Voting (VoteKick)
 # ==============================================================================
@@ -336,7 +395,7 @@ commands-map-description = Statistics of a specific map.
 commands-map-title = [orange]{ -xcore } — Map
 commands-map-content =
     [gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
-    [white]{ $name }[] [gray]by [sky]{ $author }[]
+    [white]{ $name }[] [sky]{ $authorLabel }[]
     [lightgray]{ $description }[]
     [gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
     { "" }
@@ -388,16 +447,16 @@ map-vote-dislike-selected = [gray]You disliked it
 map-rtv = [orange]Voting
 map-artv = [red]Instant Change
 map-maps = Maps
-map-maps-back = ← Back to map list
+map-maps-back = Back to map list
 current-map = Current map
 next-map = Next map
 
 # Map UI Modernized
 map-ui-search-hint = Search map or author...
+map-ui-total = [lightgray]Maps: [white]{ $count }[]
+map-ui-about-title = About the map
+map-ui-rtv-title = Map change
 map-ui-no-maps-found = [lightgray]No maps found matching query.[]
-map-ui-page-info = [lightgray]Page [white]{ $page }[] of [white]{ $total }[]
-map-ui-prev = < Prev
-map-ui-next = Next >
 map-ui-by = by [lightgray]{ $author }[]
 map-ui-mode = Mode: [white]{ $mode }[]
 map-ui-loading = [gray]Loading...[]
@@ -408,31 +467,27 @@ map-ui-last-played = [gray]Last Played: [white]{ $lastPlayed }[]
 map-ui-description = [gray]Description: [lightgray]{ $description }[]
 map-ui-no-description = [gray]Description: [lightgray]No description available.[]
 
-map-ui-col-duration = [accent]DURATION[]
+map-ui-col-duration = Duration
 map-ui-duration-min = [gray]Min: [white]{ $value }[]
 map-ui-duration-avg = [gray]Avg: [white]{ $value }[]
 map-ui-duration-max = [gray]Max: [white]{ $value }[]
 
-map-ui-col-popularity = [accent]POPULARITY[]
-map-ui-popularity-score = [gray]Score: [white]+{ $value }[]
-map-ui-popularity-pop = [gray]Pop: [white]{ $value }[]
+map-ui-col-popularity = Popularity
+map-ui-popularity-score = [gray]Score: [white]{ $value }[]
+map-ui-popularity-pop = [gray]Popularity: [white]{ $value }[]
 map-ui-popularity-interest = [gray]Interest: [white]{ $value }[]
 
-map-ui-col-community = [accent]COMMUNITY[]
+map-ui-col-community = Community
 map-ui-community-approval = [gray]Approval: [green]{ $rate }%[]
-map-ui-community-likes = [gray]Likes: [white]{ $value }[]
-map-ui-community-dislikes = [gray]Dislikes: [white]{ $value }[]
 
-map-ui-btn-like = [lightgray]👍 Like ({ $count })[]
-map-ui-btn-liked = [green]✔ Liked ({ $count })[]
-map-ui-btn-dislike = [lightgray]👎 Dislike ({ $count })[]
-map-ui-btn-disliked = [scarlet]✔ Disliked ({ $count })[]
+map-ui-btn-like = Like ({ $count })
+map-ui-btn-dislike = Dislike ({ $count })
 
-map-ui-rtv-active-status = [accent]● RTV Voting: [white]{ $votes }/{ $required }[] [gray](ends in [white]{ $seconds }s[gray])[]
-map-ui-rtv-vote-yes = [accent]✔ Vote YES for this Map[]
-map-ui-rtv-start = [accent]VOTE TO PLAY THIS MAP (RTV)[]
-map-ui-admin-rtv = [red]⚡ Admin: Force Change Map (ARTV)[]
-map-ui-admin-rtv-confirm = [scarlet]⚠ Click again to confirm instant change! ⚠
+map-ui-rtv-active-status = [accent]● Vote in progress: [white]{ $votes }/{ $required }[] [gray](ends in [white]{ $seconds } s[gray])[]
+map-ui-rtv-vote-yes = Vote for this map
+map-ui-rtv-start = Vote to play this map
+map-ui-admin-rtv = Change the map now
+map-ui-admin-rtv-confirm = Press again to confirm
 
 gamemode-survival = Survival
 gamemode-attack = Attack
@@ -498,14 +553,11 @@ player-stats-tab-players = Online ({ $count })
 player-stats-status-online = [lime]● Online[]
 player-stats-status-offline = [gray]○ Offline[]
 player-stats-no-bio = [gray]No bio written yet.[]
-player-stats-full-stats = Full Statistics →
-player-stats-back-to-players = ← Back to Online Players
 player-stats-loading = [lightgray]Loading telemetry...[]
 player-stats-no-stats = [gray]No match telemetry recorded yet.[]
 player-stats-filter-all = Filter: All
 player-stats-filter-admins = Filter: Admins Only
 player-stats-filter-non-admins = Filter: Non-Admins
-player-stats-inspect = Inspect →
 player-stats-refresh = Refresh
 player-stats-combat-efficiency = Combat & Construction Efficiency
 player-stats-waves-summary = [gray]waves: max [lime]{ $best }[], avg [white]{ $avg }[]
@@ -530,12 +582,15 @@ player-stats-hexed-summary = [gray]Legacy Hexed:[]
 player-stats-blocks-built = [gray]Blocks built:[]
 player-stats-blocks-deconstructed = [gray]Deconstructed:[]
 player-stats-blocks-destroyed = [gray]Destroyed:[]
+player-stats-units-produced = [gray]Units produced:[]
+player-stats-units-lost = [gray]Units lost:[]
 
 player-stats-games-played-value = [white]{ $count }[] [gray]games[]
 player-stats-victories-value = [lime]{ $wins }[] [gray]wins[]  [darkgray]|[]  [sky]{ $winRate }%[] [gray]win rate[]
 player-stats-hexed-points = [gray]({ $points } pts)[]
 
 player-stats-btn-settings = Settings
+player-stats-btn-matches = Matches
 player-stats-btn-audit = Audit
 player-stats-btn-players = Online
 player-stats-btn-close = Close
@@ -571,10 +626,11 @@ player-menu-settings-chat-title = [orange]{ -xcore } — Chat Settings
 
 # Modern Player Settings Form
 player-settings-tab-profile = Profile
-player-settings-tab-chat = Chat & Lang
+player-settings-tab-chat = Chat
 player-settings-tab-badges = Badges
 player-settings-chat-preview = Chat Preview
 player-settings-chat-preview-sample = Sample
+player-settings-chat-preview-message = Hello world!
 player-settings-symbol-color-mode = Symbol Color
 player-settings-badges-my = My Badges
 player-settings-badges-all = All Badges
@@ -585,16 +641,22 @@ player-settings-badge-previewing = Previewing
 player-settings-translator-lang = Chat Translator
 player-settings-translator-off = Off
 player-settings-badges-empty = You haven't unlocked any badges yet.
-player-settings-manage-badges = Manage Badges →
+player-settings-manage-badges = Manage badges
 player-settings-global-chat = Global chat
 player-settings-discord-relay = Discord relay
-player-settings-leaderboard = Show in leaderboard
+player-settings-leaderboard = Show the leaderboard
 player-settings-language = Language
 player-settings-saved = [lime]Settings saved![]
 player-settings-reset-feedback = [lightgray]Custom nickname reset.[]
-player-settings-player-label = Player:
 player-settings-edit-badges = [accent]Edit[]
-player-settings-reset-nick-btn = [scarlet]Reset[]
+player-settings-tab-language = Language
+player-settings-identity = Name and description
+player-settings-interface = Screen
+player-settings-leaderboard-hint = The list of top players over the game. Works on Mini-PvP.
+player-settings-global-chat-hint = Messages from players on the other XCore servers.
+player-settings-discord-relay-hint = Messages from the server's Discord channel in the game chat.
+player-settings-translator-hint = Messages from other players are translated into the language you pick.
+player-settings-language-hint = The language of menus and server messages. Auto follows the language of your game.
 player-menu-settings-chat-content =
     [gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
     [accent]■ Chat visibility[]
@@ -634,10 +696,20 @@ audit-menu-filter-bans = Bans
 audit-menu-filter-mutes = Mutes
 audit-menu-filter-warns = Warns
 audit-menu-filter-other = Other
-audit-menu-btn-details = Details >
 audit-menu-btn-back = Back to History
 audit-menu-btn-copy-id = Copy ID
-audit-menu-copy-id-success = Audit ID sent to chat: { $auditId }
+audit-menu-copy-id-success = The record's ID was sent to chat
+audit-menu-field-id = Audit ID
+audit-menu-page = Page { $page }
+audit-menu-details-unavailable = The record is unavailable.
+audit-menu-field-target = Player
+audit-menu-field-actor = Performed by
+audit-menu-field-server = Server
+audit-menu-field-reason = Reason
+audit-menu-section-time = Time
+audit-menu-field-occurred = When
+audit-menu-field-duration = Duration
+audit-menu-field-expires = Expires
 audit-menu-btn-revoke = Revoke Sanction
 audit-menu-revoke-success = Sanction revoked successfully.
 audit-menu-status-active = ACTIVE
@@ -770,6 +842,8 @@ commands-ranks-content =
 commands-ranks-footer = The amount of wins increases only when defeating a player of your rank or higher.
 commands-top-description = Top players.
 commands-season-description = Rating season: time left, your standing and last season's winners.
+commands-matches-description = Your rated matches: results, rating changes and who you played with.
+commands-pvp-description = MiniPvP guide: the round, the server rules and how rating works.
 commands-top-hexed-content = [orange]{ $index }. { $nickname }[accent]: [blue]{ $rankName } [cyan]{ $points } []wins
 commands-top-pvp-content = [orange]{ $index }. { $nickname }[accent]: [cyan]{ $rating }
 top-menu-title = [orange]{ -xcore } — Top Players: [accent]{ $category }
@@ -808,7 +882,7 @@ commands-surrender-success = [green]You surrendered and are now spectating
 commands-observer-success = [green]You are now spectating
 commands-observer-exit-success = [green]You are no longer spectating
 commands-ai-description = Control AI.
-commands-ai-usage = [red]attack(i) []or [accent]idle(i)
+commands-ai-usage = [red]attack(a) []or [accent]idle(i)
 hexed-popup = [blue]{ DURATION($remaining, style: "timer") }[] until the game ends.
 hexed-eliminated = { $nickname } [gold]has been [scarlet]eliminated[]!
 hexed-leaderboard-content = [orange]{ $index }. { $nickname }[accent]: [cyan]{ $hexes } [accent]hexes
@@ -842,6 +916,7 @@ pvp-match-settlement-win = [accent]■ Match Result: [green]Victory![] Your rati
 pvp-match-settlement-loss = [accent]■ Match Result: [scarlet]Defeat![] Your rating: [stat]{ $oldRating }[] -> [stat]{ $newRating }[] [scarlet]({ $delta })[] { $leagueIcon } { $leagueName }
 pvp-match-settlement-draw = [accent]■ Match Result: [yellow]Draw![] Your rating: [stat]{ $oldRating }[] -> [stat]{ $newRating }[] [yellow]({ $delta })[] { $leagueIcon } { $leagueName }
 pvp-match-settlement-exempt = [accent]■ Match Result: [lightgray]Exempt from rating change (insufficient active play time).[]
+pvp-match-settlement-details = [lightgray]Match details: [white]/matches[][]
 season-ending-soon = [accent]■ [white]{ $ladder }[]: season { $number } ends in [stat]{ $remaining }[]. Make your last matches count!
 season-started = [accent]■ [white]{ $ladder }[]: season { $previous } is over. Season { $number } has begun!
 season-reset-soft = [lightgray]Ratings were pulled towards the starting value and match counters start from zero.[]
@@ -881,6 +956,84 @@ season-menu-empty = There are no rating seasons yet.
 pvp-hud-status = [accent]MiniPvP[] | [stat]Alive:[] { $teams } | [gray]{ $time }[]
 pvp-leaderboard-content = [orange]{ $index }. { $nickname }[accent]:[cyan] { $rating } [accent]rating
 pvp-you-spectator = [scarlet]You have been eliminated. Please wait for the next game.
+
+# MiniPvP guide (/pvp info)
+pvp-guide-title = How to play here
+pvp-guide-subtitle = Regular Mindustry PvP: teams build bases and destroy each other's cores. Here is what sets this server apart and how rating works.
+pvp-guide-hint = Open again: [accent]/pvp info[]
+pvp-guide-join-hint = [lightgray]MiniPvP rules and rating:[] [accent]/pvp info[]
+pvp-guide-menu-button = How to play MiniPvP
+pvp-guide-tab-round = Round
+pvp-guide-tab-rules = Rules
+pvp-guide-tab-rating = Rating
+pvp-guide-stat-minutes = minutes played
+pvp-guide-stat-teams = teams in play
+pvp-guide-stat-players = players on teams
+pvp-guide-stat-zone = tiles around a core
+pvp-guide-stat-unitcap = unit cap
+pvp-guide-stat-banned = blocks banned
+pvp-guide-stat-start = starting rating
+pvp-guide-stat-top = top players
+pvp-guide-stat-matches = match history
+
+pvp-guide-now-title = Right now
+pvp-guide-now-map = Map: [accent]{ $map }[]
+pvp-guide-now-players = { $count } { $count ->
+        [one] player
+       *[other] players
+    }
+pvp-guide-win-title = How to win
+pvp-guide-win-text = Destroy every enemy core. The last team with cores and players left wins. A team with nobody left on it is out.
+pvp-guide-out-title = Out: watch until the end
+pvp-guide-out-text =
+    Your team lost its last core: you watch until the next round.
+    Left mid-round and came back: you return to the same team.
+pvp-guide-commands-title = Commands
+pvp-guide-cmd-info = this window
+pvp-guide-cmd-top = leaderboard
+pvp-guide-cmd-season = season and prizes
+pvp-guide-cmd-matches = your matches and their rating
+pvp-guide-cmd-rtv = vote to change the map
+pvp-guide-cmd-observer = watch from the side
+
+pvp-guide-zone-title = No building near enemy cores
+pvp-guide-zone-text = You cannot build within [accent]{ $tiles }[] tiles of an enemy core. To push forward, destroy that core first.
+pvp-guide-zone-polygon-title = The land is split between cores
+pvp-guide-zone-polygon-text = You can build only where the nearest core is yours. To take enemy land, destroy the core it belongs to.
+pvp-guide-unitcap-title = Unit cap
+pvp-guide-unitcap-text = A team starts with a cap of [accent]{ $cap }[], and every core raises it.
+pvp-guide-unitcap-fixed-title = Unit cap
+pvp-guide-unitcap-fixed-text = A team has at most [accent]{ $cap }[] units, however many cores it holds.
+pvp-guide-multipliers-title = Different balance
+pvp-guide-multipliers-text = On this map these numbers differ from the usual:
+pvp-guide-rule-unit-damage = Unit damage
+pvp-guide-rule-unit-health = Unit health
+pvp-guide-rule-unit-cost = Unit cost
+pvp-guide-rule-unit-build-speed = Unit production speed
+pvp-guide-rule-block-damage = Building damage
+pvp-guide-rule-block-health = Building health
+pvp-guide-rule-build-cost = Building cost
+pvp-guide-rule-build-speed = Build speed
+pvp-guide-banned-blocks-title = Banned blocks
+pvp-guide-banned-units-title = Banned units
+pvp-guide-other-title = Also
+pvp-guide-other-fog = Fog of war: you see only what your buildings and units see.
+pvp-guide-other-capture = A destroyed core goes to the team that destroyed it.
+pvp-guide-other-reactors = Reactors do not explode.
+pvp-guide-vanilla-title = Regular rules
+pvp-guide-vanilla-text = This map plays by the rules of regular Mindustry PvP.
+
+pvp-guide-elo-title = ELO rating
+pvp-guide-elo-text = Everyone starts at [accent]{ $start }[]. A win raises your rating, a loss lowers it. By how much depends on the rating of your team and of your opponents: beating stronger teams gives more.
+pvp-guide-leave-title = Leaving does not dodge a loss
+pvp-guide-leave-text = If your team loses, you lose the full rating, even if you left or turned spectator earlier. You lose nothing only if you played less than [accent]{ $seconds }[] s.
+pvp-guide-unrated-title = When rating does not change
+pvp-guide-unrated-text =
+    A round shorter than [accent]{ $seconds }[] s or with fewer than [accent]{ $players }[] rated players does not count.
+    A winner has to play at least [accent]{ $winner }%[] of the round, or the rating does not grow.
+    Joined a losing team late and played less than [accent]{ $late }%[] of the round: your rating does not drop.
+pvp-guide-seasons-title = Leagues and seasons
+pvp-guide-seasons-text = Your rating sets your league. Rating runs in seasons: at the end of a season the best players get prizes. Results of every match: [accent]/matches[].
 # ==============================================================================
 # Events & Notifications
 # ==============================================================================
@@ -935,116 +1088,99 @@ commands-event-description = Event management menu.
 commands-events-description = List of all events on the servers.
 event-events = Events
 event-menu-main = Main events
-event-menu-main-title = [orange]{ -xcore } — Events
-event-menu-main-content =
-    [gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
-    [white]Event hub[]
-    [lightgray]Browse active and planned server events from one place.[]
-    [gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
-    { "" }
-    [accent]■ Current event[]
-    [gray]Status: [white]{ $currentEventState }[]
-    [gray]Selected: [white]{ $currentEventName }[]
-    { "" }
-    [accent]■ Voting[]
-    [gray]Vote session: [white]{ $voteStatus }[]
-    { "" }
-    [accent]■ Actions[]
-    [gray]Open the catalog, inspect the current event, or prepare a new one.[]
 event-menu-event = Event
-event-menu-event-title = [orange]{ -xcore } — Event
-event-menu-event-content =
-    [gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
-    [white]{ $name }[]
-    [lightgray]{ $description }[]
-    [gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
-    { "" }
-    [accent]■ Overview[]
-    [gray]Author: [white]{ $author }[]
-    [gray]Map: [white]{ $mapName }[]
-    [gray]Type: [white]{ $eventType }[] [darkgray]|[gray] State: [white]{ $eventState }[]
-    [gray]Temporary: [white]{ $isTemporary }[]
-    { "" }
-    [accent]■ Schedule[]
-    [gray]Created: [white]{ $createdEventTime }[]
-    [gray]Planned start: [white]{ $plannedStartTime }[]
-    [gray]Planned end: [white]{ $plannedEndTime }[]
-    { "" }
-    [accent]■ Reputation[]
-    [gray]Likes: [white]{ $like }[] [darkgray]|[gray] Dislikes: [white]{ $dislike }[]
-event-menu-event-map = View map
-event-menu-events = Events list
-event-menu-events-title = [orange]{ -xcore } — Events List
-event-menu-events-content =
-    [gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
-    [white]Event catalog[]
-    [lightgray]Page [green]{ $page }[]/[green]{ $total }[] [gold]•[] [lightgray]Events: [green]{ $count }[]
-    [gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
-    { "" }
-    [accent]■ Filters[]
-    [gray]Finished: [white]{ $finished }[]
-    [gray]Major: [white]{ $major }[] [darkgray]|[gray] Active: [white]{ $active }[]
-    { "" }
-    [accent]■ List[]
-    [gray]Select an event below to inspect its card.[]
-event-menu-events-empty =
-    [gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
-    [white]Event catalog[]
-    [lightgray]There are no events matching the current filters yet.[]
-    [gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
-    { "" }
-    [accent]■ Filters[]
-    [gray]Finished: [white]{ $finished }[]
-    [gray]Major: [white]{ $major }[] [darkgray]|[gray] Active: [white]{ $active }[]
-event-menu-events-row = [accent]{ $state }[] [darkgray]•[] [white]{ $type }[] [darkgray]—[] { $name }
-event-menu-events-selected = [green]●[] [accent]{ $state }[] [darkgray]•[] [white]{ $type }[] [darkgray]—[] { $name }
-event-menu-create-start = Create
-event-menu-create-start-title = [orange]{ -xcore } — Event Creation
-event-menu-create-start-message = Enter the name of the future event
 event-menu-create-start-default = { $playerName }'s Event
 event-menu-create-start-map = Create event for this map
-event-menu-edit = Edit
-event-menu-edit-title = [orange]{ -xcore } — Edit Event
-event-menu-edit-content =
-    [gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
-    [white]{ $name }[]
-    [lightgray]{ $description }[]
-    [gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
-    { "" }
-    [accent]■ Identity[]
-    [gray]Author: [white]{ $author }[]
-    [gray]Type: [white]{ $eventType }[]
-    { "" }
-    [accent]■ Map[]
-    [gray]Selected map: [white]{ $mapName }[]
-    { "" }
-    [accent]■ Schedule[]
-    [gray]Planned start: [white]{ $plannedStartTime }[]
-    [gray]Planned end: [white]{ $plannedEndTime }[]
-    { "" }
-    [accent]■ Flags[]
-    [gray]Temporary: [white]{ $isTemporary }[]
-event-menu-edit-name = Name
-event-menu-edit-name-reset = [scarlet]Reset name
-event-menu-edit-name-title = [orange]{ -xcore } — Edit Event
-event-menu-edit-name-message = Edit name:
-event-menu-edit-description = Description
-event-menu-edit-description-title = [orange]{ -xcore } — Edit Event
-event-menu-edit-description-message = Edit description:
-event-menu-edit-map = Edit map
-event-menu-edit-temporary-active = [green]Temporary
-event-menu-edit-temporary-inactive = [gray]Temporary
-event-menu-edit-major-active = [green]Major
-event-menu-edit-major-inactive = [gray]Major
-event-menu-edit-planned-start = Event start
-event-menu-edit-planned-start-title = [orange]{ -xcore } — Edit Event
-event-menu-edit-planned-start-message = Enter start time in ms or using m/h/d:
-event-menu-edit-planned-end = Event end
-event-menu-edit-planned-end-title = [orange]{ -xcore } — Edit Event
-event-menu-edit-planned-end-message = Enter end time in ms or using m/h/d:
-event-menu-maps = Maps
-event-menu-maps-title = [orange]{ -xcore } — Select Map
-event-menu-maps-content = [white]Page [green]{ $page }[] of [green]{ $total }[]
+event-ui-title = Events
+event-ui-server-time = Server time: { $zone }
+event-ui-tab-upcoming = Upcoming
+event-ui-tab-major = Major
+event-ui-tab-past = Past
+event-ui-tab-mine = Mine
+event-ui-now-running = Running now
+event-ui-now-vote = Vote
+event-ui-empty-upcoming = No events are planned yet. Create the first one!
+event-ui-empty-major = No major events are planned yet.
+event-ui-empty-past = No event has finished yet.
+event-ui-empty-mine = You have not created any events yet.
+event-ui-create = Create event
+event-ui-load-failed = Could not load the events. Try again.
+event-ui-state-active = Running now
+event-ui-state-active-until = Running until { $time }
+event-ui-state-finished = Finished
+event-ui-state-finished-at = Finished { $date }
+event-ui-state-unscheduled = No date yet
+event-ui-major = Major
+event-ui-major-hint = Marked with a star and listed on a tab of its own
+event-ui-temporary = Temporary
+event-ui-temporary-hint = Ends by itself at its end time
+event-ui-about = About the event
+event-ui-no-description = No description.
+event-ui-author = Author: { $author }
+event-ui-created = Created: { $date }
+event-ui-map-schedule = Map and schedule
+event-ui-map-none = No map
+event-ui-map-pick = Pick a map
+event-ui-planned-start = Start: { $time }
+event-ui-planned-end = End: { $time }
+event-ui-started = Started: { $time }
+event-ui-ended = Ended: { $time }
+event-ui-not-set = not set
+event-ui-open-map = Open the map
+event-ui-rating = Rating
+event-ui-launch = Launch
+event-ui-launch-hint = Players start an event themselves, by a vote. It begins with the next map change.
+event-ui-launch-again = This event has already been held. It can be started again.
+event-ui-launch-active = The event is running right now.
+event-ui-launch-voting = The vote is on: { $votes } of { $required }. Write y or n in the chat.
+event-ui-launch-busy = Another vote is on. Wait for it to end.
+event-ui-vote = Start a vote
+event-ui-vote-busy = A vote is already on.
+event-ui-vote-stopped = The vote has been stopped.
+event-ui-force = Start now
+event-ui-force-confirm = Really start?
+event-ui-stop = Stop the event
+event-ui-stop-confirm = Really stop?
+event-ui-stop-vote = Stop the vote
+event-ui-stopped = The event has been stopped.
+event-ui-to-list = To the list
+event-ui-edit = Edit
+event-ui-editor-new = New event
+event-ui-editor-edit = Editing the event
+event-ui-texts = Name and description
+event-ui-name = Name
+event-ui-description = Description
+event-ui-description-hint = What the event is about
+event-ui-map = Map
+event-ui-schedule = Schedule and type
+event-ui-start = Start
+event-ui-end = End
+event-ui-save = Save
+event-ui-saved = The event has been saved.
+event-ui-draft-restored = Your unfinished event is back.
+event-ui-maps-title = Pick a map
+event-ui-to-editor = To the editor
+event-ui-time-start = Start of the event
+event-ui-time-end = End of the event
+event-ui-time-unset = Not set
+event-ui-time-unset-hint = Set it with the arrows or a button below
+event-ui-time-hours = { $value } h
+event-ui-time-minutes = { $value } min
+event-ui-time-now = Now
+event-ui-time-in-hour = In an hour
+event-ui-time-today-evening = Today 20:00
+event-ui-time-tomorrow-noon = Tomorrow 12:00
+event-ui-time-plus-hour = +1 h
+event-ui-time-plus-three-hours = +3 h
+event-ui-time-plus-day = +1 day
+event-ui-time-apply = Done
+event-ui-time-clear = Clear
+event-ui-error-no-map = Pick a map first.
+event-ui-error-no-end = A temporary event needs an end time.
+event-ui-error-end-before-start = The end must be later than the start.
+event-ui-error-not-allowed = You may not change this event.
+event-ui-error-gone = This event no longer exists.
+event-ui-error-save-failed = Could not save the event. Try again.
 vote-event-vote =
     { $nickname }[lightgray] voted to change the current event to [orange]{ $name }[lightgray]. ([accent]{ $votes }[]/[accent]{ $votesRequired }[])
     Type [orange]y[] or [orange]n[] to vote.
@@ -1052,54 +1188,6 @@ vote-event-left = { $nickname }[lightgray] left. Their vote to change the event 
 vote-event-fail = [lightgray]Vote failed. Not enough votes to change the event to [orange]{ $name }[].
 vote-event-success = [orange]Vote passed. The event [accent]{ $name }[] will be loaded upon the next map change.
 vote-event-cancelled = [lightgray]The vote to change the event to [orange]{ $name }[lightgray] was cancelled by administrator { $admin }.
-event-vote = [orange]Vote
-event-avote = [red]Instant Change
-event-menu-vote-stop = Stop voting
-event-menu-stop = Stop event
-event-menu-this-event = [orange]Current Event
-event-menu-type-major = Major event
-event-menu-type-regular = Regular event
-event-menu-state-none = No active event
-event-menu-state-planned = Planned
-event-menu-state-active = Active now
-event-menu-state-finished = Finished
-event-menu-vote-status-running = Running
-event-menu-vote-status-idle = Not running
-date-time-picker-title = [orange]{ -xcore } — Date & Time
-date-time-picker-content =
-    [gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
-    [white]{ $field }[]
-    [lightgray]Current value: [white]{ $value }[]
-    [gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
-    { "" }
-    [accent]■ Date[]
-    [gray]Pick a day first, then refine the time below.[]
-    { "" }
-    [accent]■ Time[]
-    [gray]Use presets or fine adjustments for precise planning.[]
-    { "" }
-    [accent]■ Manual input[]
-    [gray]Use manual entry only when you need exact milliseconds or a relative +m/+h/+d value.[]
-date-time-picker-field-generic = Planned time
-date-time-picker-today = Today
-date-time-picker-tomorrow = Tomorrow
-date-time-picker-plus-2d = +2 days
-date-time-picker-plus-7d = +7 days
-date-time-picker-now = Now
-date-time-picker-time-0000 = 00:00
-date-time-picker-time-0600 = 06:00
-date-time-picker-time-1200 = 12:00
-date-time-picker-time-1800 = 18:00
-date-time-picker-minus-1d = -1d
-date-time-picker-plus-1d = +1d
-date-time-picker-minus-1h = -1h
-date-time-picker-plus-1h = +1h
-date-time-picker-minus-15m = -15m
-date-time-picker-plus-15m = +15m
-date-time-picker-reset = Reset
-date-time-picker-manual = Manual input
-date-time-picker-manual-title = [orange]{ -xcore } — Manual Time Input
-date-time-picker-manual-message = Enter absolute milliseconds or relative time like +30m, +2h, +1d.
 event-end = The [green]{ $name }[] event has ended!
 # ==============================================================================
 # Errors
@@ -1145,7 +1233,6 @@ error-admin-password-too-short = [scarlet]⚠ Admin password must be at least 8 
 error-wrong-admin-password = [scarlet]⚠ Incorrect admin password.
 error-internal = [scarlet]Internal error.
 error-processing-request = [scarlet]An error occurred while processing the request.
-error-team-not-found = [scarlet]⚠ Team not found.
 error-no-access = [scarlet]⚠ No Access.
 error-nickname-too-long = [scarlet]⚠ Nickname is too long. Max { $max } visible characters.
 error-private-message-invalid-pid = [scarlet]⚠ Invalid private-message pid. Use format [lightgray]#123[].
@@ -1196,6 +1283,15 @@ argument-parse-failure-flag-duplicate-flag = [scarlet]⚠ Duplicate flag: '{ $fl
 argument-parse-failure-flag-no-flag-started = [scarlet]⚠ No flag started. Don't know what to do with '{ $input }'.
 argument-parse-failure-flag-missing-argument = [scarlet]⚠ Missing argument for flag: '{ $flag }'.
 argument-parse-failure-flag-no-permission = [scarlet]⚠ You don't have permission to use flag '{ $flag }'.
+argument-parse-failure-selector-syntax = [scarlet]⚠ Invalid selector '{ $input }': [lightgray]{ $reason }
+argument-parse-failure-selector-no-such-target = [scarlet]⚠ Nothing matched '{ $input }'.
+argument-parse-failure-selector-too-many-targets = [scarlet]⚠ '{ $input }' matched several targets, but this command needs one.
+argument-parse-failure-selector-denied = [scarlet]⚠ Selectors are not allowed here: [lightgray]{ $reason }
+argument-parse-failure-selector-kind-not-allowed = [scarlet]⚠ Selector '{ $kind }' is not allowed here.
+argument-parse-failure-selector-sender-required = [scarlet]⚠ Selector '{ $kind }' can only be used in game.
+argument-parse-failure-selector-limit-exceeded = [scarlet]⚠ Selector matched { $count } targets, the limit is { $limit }.
+argument-parse-failure-team = [scarlet]⚠ Team '{ $input }' not found.
+argument-parse-failure-content = [scarlet]⚠ '{ $input }' is not a valid { $type }.
 # ==============================================================================
 # Button Status
 # ==============================================================================
@@ -1247,6 +1343,7 @@ off = Off
 error-command-disabled = [scarlet]⚠ Command [accent]/{ $command }[scarlet] is disabled on this server.
 error-feature-disabled = [scarlet]⚠ This feature is disabled on this server.
 none = None
+unknown = Unknown
 error-nickname-badge-glyph = [scarlet]⚠ Custom nickname cannot contain reserved badge icons.
 
 # Server browser (/servers)
@@ -1283,16 +1380,107 @@ announcement-discord =
 announcement-help =
     [gold]★ [accent]XCore Help [lightgray]» [white]Need assistance or command list?
     [lightgray]Type [accent]/help[lightgray] to view all available commands!
+announcement-report =
+    [gold]★ [accent]XCore Reports [lightgray]» [white]Someone griefing or breaking the rules?
+    [lightgray]Report them with [accent]/report[lightgray] — staff will take a look!
 
 
 error-only-players = [scarlet]⚠ This command can only be used by a player.
 
 player-settings-username-editable = [gold]★ Username (Event Reward):[]
 player-settings-username-hint = Enter unique username (4-32 chars)...
-player-settings-username-locked = [gray]Username:[] [accent]@{ $username }[] [darkgray](🔒 Locked)[]
+player-settings-username-locked = [gray]Username:[] [accent]@{ $username }[] [darkgray](Locked)[]
 player-settings-username-none = [gray]Username: [darkgray]Not set (Win an event to unlock)[]
 
 error-username-empty = Username cannot be empty!
 error-username-length = Username length must be between 4 and 32 characters!
 error-username-invalid-chars = Username can only contain Latin letters, numbers, and underscores!
 error-username-taken = This username is already taken by another player!
+
+# ==============================================================================
+# Permission nodes
+# ==============================================================================
+permission-mindustry-admin = Use the game's built-in admin menu and skip waves
+permission-xcore-moderation-mute = Mute players
+permission-xcore-moderation-unmute = Unmute players
+permission-xcore-moderation-kick = Kick players
+permission-xcore-moderation-ban = Ban players
+permission-xcore-moderation-unban = Unban players
+permission-xcore-moderation-audit-others = View the moderation history of other players
+permission-xcore-moderation-votekick-immune = Cannot be vote-kicked
+permission-xcore-admin-tp = Teleport players
+permission-xcore-admin-broadcast = Send announcements to everyone
+permission-xcore-admin-kill = Kill units and players
+permission-xcore-admin-heal = Heal units and players
+permission-xcore-admin-set-team = Change a player's team
+permission-xcore-maps-force-rtv = Change the map without a vote
+permission-xcore-maps-force-vnw = Skip a wave without a vote
+permission-xcore-votes-cancel = Cancel a running vote
+permission-xcore-events-create-major = Create major events
+permission-xcore-events-edit-others = Edit events made by other players
+permission-xcore-events-force-vote = Start an event without a vote
+permission-xcore-events-stop = Stop the running event
+permission-xcore-players-settings-others = Change the settings of other players
+permission-xcore-players-private-info = See private details of players, such as their IP addresses
+permission-xcore-bypass-playtime = Skip the playtime requirements of commands
+permission-xcore-permissions-inspect = See who has which permissions
+permission-xcore-permissions-manage = Change roles and permissions
+
+error-target-outranks = [scarlet]⚠ You cannot do that to a player whose role is not below yours.
+perm-me-legacy = [accent]Roles are off on this server. Admin: [white]{ $admin }
+perm-me-header = [accent]Your roles here (weight [white]{ $weight }[accent]):
+perm-me-none = [lightgray] - none
+perm-me-logged-in = [green]You are logged in as staff.
+perm-me-not-logged-in = [yellow]You are not logged in as staff. Use [white]/login <password>[yellow].
+perm-me-stale = [scarlet]Your staff rights are paused: the server could not refresh them. They return on their own.
+
+help-ui-search-hint = Search commands, aliases or descriptions
+help-ui-search-empty = [lightgray]No commands match your search.[]
+
+match-history-title = Match history
+match-history-rank = #{ $rank } this season
+match-history-form = Last { $count }:
+match-history-empty = Your rated matches will appear here.
+match-history-since = The history is kept since { $date }.
+match-history-load-failed = The match history could not be loaded. Try again in a moment.
+match-history-back-to-list = Back to matches
+match-history-your-result = Your result
+match-history-places = Places
+match-history-team-title = #{ $place } · { $team } · average { $average }
+match-history-time-now = just now
+match-history-time-minutes = { $count } min ago
+match-history-time-hours = { $count } h ago
+match-history-time-yesterday = yesterday
+match-history-outcome-win = [lime]Victory[]
+match-history-outcome-loss = [scarlet]Defeat[]
+match-history-outcome-unrated = [lightgray]Unrated[]
+match-history-outcome-uncounted = [lightgray]Not counted[]
+match-history-lineup = { $own } v { $other }
+match-history-team-place = #{ $place } of { $teams } teams
+match-history-place = #{ $place } of { $players }
+match-history-counted = Counted: { $reason }
+match-history-not-counted = Not counted: { $reason }
+match-history-counted-share = Counted for { $percent }% of the match
+match-history-reason-winner = won
+match-history-reason-defeated = lost
+match-history-reason-short-play = played less than half of the match
+match-history-reason-late-join = joined at the very end
+match-history-reason-left-at-once = left almost at once
+match-history-reason-match-unrated = the match was unrated
+match-history-reason-unknown = no reason recorded
+match-history-skip-not-enough-players = too few players
+match-history-skip-admin-stop = stopped by an admin
+match-history-skip-technical-error = technical error
+match-history-skip-unknown = unrated
+match-history-finish-surrender = by surrender
+match-history-finish-timeout = by timer
+match-history-finish-admin-stop = stopped by an admin
+match-history-finish-technical-error = technical error
+
+# Discord submission attribution; the declared creator is supplied by the uploader.
+map-upload-file-author = File author: { $author }
+map-upload-creator = Declared creator: { $person }
+map-upload-submitter = Added via Discord: { $person }
+map-upload-date = Uploaded: [lightgray]{ $date }[] (UTC)
+
+map-upload-current-creator = [accent]{ $map }[] — { $creator }

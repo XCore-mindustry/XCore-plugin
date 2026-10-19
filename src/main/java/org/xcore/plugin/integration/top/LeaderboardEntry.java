@@ -1,6 +1,7 @@
 package org.xcore.plugin.integration.top;
 
 import org.xcore.plugin.model.PlayerData;
+import org.xcore.plugin.model.PlayerPids;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -54,7 +55,7 @@ public record LeaderboardEntry(
             attributes.put("activeBadge", player.activeBadge);
             attributes.put("badgeColorMode", player.badgeSymbolColorMode != null ? player.badgeSymbolColorMode : "default");
         }
-        if (player.pid > 0) {
+        if (PlayerPids.isAssigned(player.pid)) {
             attributes.put("pid", String.valueOf(player.pid));
         }
         attributes.put("admin", String.valueOf(player.admin));

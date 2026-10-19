@@ -130,7 +130,7 @@ class PlayerControllerObserverTest {
         XCoreSender sender = mock(XCoreSender.class);
         when(sender.player()).thenReturn(player);
 
-        controller.setTeam(sender, Team.crux.id, -1);
+        controller.setTeam(sender, Team.crux.id, null);
 
         verify(session).endObserving();
         verify(observerStateStore).deleteAsync("uuid-1");
@@ -164,7 +164,7 @@ class PlayerControllerObserverTest {
         XCoreSender sender = mock(XCoreSender.class);
         when(sender.player()).thenReturn(player);
 
-        controller.setTeam(sender, 255, -1);
+        controller.setTeam(sender, 255, null);
 
         verify(session, never()).endObserving();
         verify(observerStateStore, never()).delete("uuid-1");

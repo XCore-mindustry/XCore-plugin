@@ -162,7 +162,7 @@ class RedisStreamRouterTest {
     @DisplayName("route maps server-targeted events using event payload server")
     void routeServerTargetedEvents() {
         var discordRoute = router.route(new ChatDiscordIngressCommandV1("bot", "hello", "mini-hexed"), "mini-pvp");
-        var mapsRoute = router.route(new MapsLoadCommandV1("event", List.of(new MapFileSourceV1("https://example/maps/a.msav", "a.msav"))), "mini-pvp");
+        var mapsRoute = router.route(new MapsLoadCommandV1("event", List.of(new MapFileSourceV1("https://example/maps/a.msav", "a.msav", null))), "mini-pvp");
         var customNicknameRoute = router.route(new PlayerCustomNicknameChangedCommandV1("uuid-7", "Commander", "survival"), "mini-pvp");
         var activeBadgeRoute = router.route(new PlayerActiveBadgeChangedCommandV1("uuid-7", "translator", "mini-hexed"), "mini-pvp");
         var badgeRoute = router.route(new PlayerBadgeInventoryChangedCommandV1("uuid-7", "translator", List.of("translator"), "mini-pvp"), "mini-pvp");

@@ -10,6 +10,7 @@ import mindustry.gen.Call;
 import mindustry.gen.Groups;
 import mindustry.gen.Player;
 import mindustry.net.Packets;
+import org.xcore.plugin.model.PlayerPids;
 import org.xcore.protocol.generated.messages.server.ServerMessages.ServerActionV1;
 import org.xcore.plugin.common.VersionComparator;
 import org.xcore.plugin.config.TomlSecretsConfig;
@@ -84,8 +85,8 @@ public class VoteKick extends VoteSession {
         PlayerData playerData = playerSession != null ? playerSession.data : sessionService.getOrLoadFromDb(player.uuid());
         PlayerData targetData = targetSession != null ? targetSession.data : sessionService.getOrLoadFromDb(target.uuid());
 
-        int playerPid = playerData != null ? playerData.pid : -1;
-        int targetPid = targetData != null ? targetData.pid : -1;
+        int playerPid = PlayerPids.of(playerData);
+        int targetPid = PlayerPids.of(targetData);
         String targetNickname = targetData != null ? targetData.nickname : target.plainName();
 
         var bundleArgs = args(
@@ -173,7 +174,7 @@ public class VoteKick extends VoteSession {
     }
 
     private static Integer safePid(PlayerData data) {
-        return data == null || data.pid <= 0 ? null : data.pid;
+        return data == null ? null : PlayerPids.orNull(data.pid);
     }
 
     private static String safeDiscordId(PlayerData data) {

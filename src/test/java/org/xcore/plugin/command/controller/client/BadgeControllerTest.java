@@ -1,7 +1,6 @@
 package org.xcore.plugin.command.controller.client;
 
 import com.ospx.flubundle.Bundle;
-import com.ospx.flubundle.BundleContext;
 import com.ospx.flubundle.Localizer;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -70,9 +69,7 @@ class BadgeControllerTest {
         mindustry.gen.Player player = player(uuid);
         Bundle bundle = mock(Bundle.class);
         Localizer localizer = mock(Localizer.class);
-        BundleContext context = mock(BundleContext.class);
         when(bundle.localizer(any(Supplier.class))).thenReturn(localizer);
-        when(bundle.context(any(mindustry.gen.Player.class), any(Supplier.class))).thenReturn(context);
         when(localizer.locale()).thenReturn(Locale.ENGLISH);
         when(localizer.format(anyString(), anyMap())).thenAnswer(invocation -> invocation.getArgument(0));
 

@@ -22,14 +22,14 @@ public class PrivateMessage extends ModelData {
     @BsonProperty("from_uuid")
     @Builder.Default public String fromUuid = "";
     @BsonProperty("from_pid")
-    @Builder.Default public int fromPid = -1;
+    @Builder.Default public int fromPid = PlayerPids.NONE;
     @BsonProperty("from_name")
     @Builder.Default public String fromName = "Unknown";
 
     @BsonProperty("to_uuid")
     @Builder.Default public String toUuid = "";
     @BsonProperty("to_pid")
-    @Builder.Default public int toPid = -1;
+    @Builder.Default public int toPid = PlayerPids.NONE;
 
     @Builder.Default public String message = "";
 

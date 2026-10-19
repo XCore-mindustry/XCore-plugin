@@ -145,7 +145,7 @@ public class AuthController implements CloudClientController {
 
         // 5. Offload CPU-intensive BCrypt hashing / verification to StorageExecutor
         //
-        // verifyOrSetPassword mutates and saves the PlayerData it is handed, and
+        // checkPassword hashes into the PlayerData it is handed, and
         // session.data is live state: the tick loop and every command read it, and
         // SessionService can replace it wholesale while a reload is in flight. Hashing
         // into the live object from a storage thread is a cross-thread write to shared
@@ -158,7 +158,7 @@ public class AuthController implements CloudClientController {
                 .password(data.password)
                 .build();
         try {
-            storageExecutor.supply(() -> adminAuthService.verifyOrSetPassword(authSnapshot, password))
+            storageExecutor.supply(() -> adminAuthService.checkPassword(authSnapshot, password))
                     .whenComplete((result, error) -> {
                         mainThread.execute(() -> {
                             try {
@@ -169,6 +169,14 @@ public class AuthController implements CloudClientController {
 
                                 if (error != null) {
                                     PLog.err("Error verifying password for @: @", player.plainName(), error.getMessage());
+                                    local.send("error-processing-request", args());
+                                    return;
+                                }
+
+                                // The password may have been created or reset while this
+                                // one was being checked; the result is then about a
+                                // credential that no longer exists.
+                                if (result.success() && !AdminAuthService.credentialsUnchanged(session.data, authSnapshot, result)) {
                                     local.send("error-processing-request", args());
                                     return;
                                 }
@@ -217,9 +225,8 @@ public class AuthController implements CloudClientController {
         // registry: /login is the admin path for players without the admin mod, so this
         // grant is a real registration and logging out is meant to take it back out. The
         // password is untouched, so /login restores it. See AdminAuthService#grantAdmin.
-        if (session.player.admin) {
-            session.player.admin(false);
-            netServer.admins.unAdminPlayer(session.player.uuid());
+        if (adminAuthService.isLoggedIn(session)) {
+            adminAuthService.dropAdmin(session.player, session);
             playerDisplayService.refresh(session);
             local.send("commands-logout-successful", args());
         }

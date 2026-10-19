@@ -8,11 +8,15 @@ import org.incendo.cloud.annotations.Argument;
 import org.incendo.cloud.annotations.Command;
 import org.incendo.cloud.annotations.Default;
 import org.incendo.cloud.annotations.Permission;
+import org.jspecify.annotations.Nullable;
 import org.xcore.plugin.cloud.XCoreSender;
 import org.xcore.plugin.command.controller.CloudClientController;
 import org.xcore.plugin.concurrent.Async;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
 import org.xcore.plugin.model.PlayerData;
+import org.xcore.plugin.model.PlayerPids;
+import org.xcore.plugin.permission.PermissionNodes;
+import org.xcore.plugin.service.LeaderboardService;
 import org.xcore.plugin.session.ObserverService;
 import org.xcore.plugin.session.Session;
 import org.xcore.plugin.session.SessionService;
@@ -32,18 +36,29 @@ public class PlayerController implements CloudClientController {
     private final PlayerMenu menu;
     private final TopMenu topMenu;
     private final Async async;
+    private final LeaderboardService leaderboardService;
 
     @Inject
     public PlayerController(SessionService sessionService,
                             ObserverService observerService,
                             PlayerMenu menu,
                             TopMenu topMenu,
-                            Async async) {
+                            Async async,
+                            LeaderboardService leaderboardService) {
         this.sessionService = sessionService;
         this.observerService = observerService;
         this.menu = menu;
         this.topMenu = topMenu;
         this.async = async;
+        this.leaderboardService = leaderboardService;
+    }
+
+    public PlayerController(SessionService sessionService,
+                            ObserverService observerService,
+                            PlayerMenu menu,
+                            TopMenu topMenu,
+                            Async async) {
+        this(sessionService, observerService, menu, topMenu, async, null);
     }
 
     public PlayerController(SessionService sessionService,
@@ -83,16 +98,13 @@ public class PlayerController implements CloudClientController {
             return;
         }
 
-        String pidCandidate = target.startsWith("#") ? target.substring(1) : target;
-        if (pidCandidate.matches("\\d+")) {
-            try {
-                int pid = Integer.parseInt(pidCandidate);
-                Session targetOnline = sessionService.findOnlineByPid(pid);
-                if (targetOnline != null && targetOnline.data != null) {
-                    openAction.accept(player, targetOnline.data);
-                    return;
-                }
-            } catch (NumberFormatException ignored) {}
+        Integer pid = PlayerPids.parse(target);
+        if (pid != null) {
+            Session targetOnline = sessionService.findOnlineByPid(pid);
+            if (targetOnline != null && targetOnline.data != null) {
+                openAction.accept(player, targetOnline.data);
+                return;
+            }
         }
 
         String userCandidate = target.startsWith("@") ? target.substring(1) : target;
@@ -155,13 +167,13 @@ public class PlayerController implements CloudClientController {
         }
     }
 
-    @Permission("admin")
+    @Permission(PermissionNodes.ADMIN_SET_TEAM)
     @Command("set-team [id] [pid]")
-    public void setTeam(XCoreSender sender, @Argument("id") @Default("-1") int id, @Argument("pid") @Default("-1") int pid) {
+    public void setTeam(XCoreSender sender, @Argument("id") @Default("-1") int id, @Nullable @Argument("pid") Integer pid) {
         Team team = id == -1 ? sender.player().team() : Team.get(id);
 
         Session targetSession;
-        if (pid == -1) {
+        if (pid == null) {
             targetSession = sessionService.get(sender.player().uuid());
         } else {
             targetSession = sessionService.findOnlineByPid(pid);
@@ -188,6 +200,9 @@ public class PlayerController implements CloudClientController {
         }
 
         session.data.leaderboard = !session.data.leaderboard;
+        if (!session.data.leaderboard && leaderboardService != null) {
+            leaderboardService.hide(sender.player());
+        }
 
         sender.send("commands-lb-success", args(
                 "leaderboardEnabled", String.valueOf(session.data.leaderboard)

@@ -51,24 +51,6 @@ public class TranslationCacheService {
                 }), null);
     }
 
-    public CachedTranslation get(String sourceLanguage,
-                                 String targetLanguage,
-                                 String inputText,
-                                 String pipelineSignature) {
-        if (!isEnabled() || !isCacheable(inputText)) {
-            return null;
-        }
-
-        return backend.withCommands(commands -> {
-            String payloadJson = commands.get(cacheKey(sourceLanguage, targetLanguage, inputText, pipelineSignature));
-            if (payloadJson == null || payloadJson.isBlank()) {
-                return null;
-            }
-
-            return redisGson.fromJson(payloadJson, CachedTranslation.class);
-        }, null);
-    }
-
     public CompletionStage<Boolean> putAsync(String sourceLanguage,
                                              String targetLanguage,
                                              String inputText,
@@ -96,32 +78,6 @@ public class TranslationCacheService {
                 .thenApply("OK"::equals), false);
     }
 
-    public boolean put(String sourceLanguage,
-                       String targetLanguage,
-                       String inputText,
-                       String pipelineSignature,
-                       String translatedText,
-                       String providerId) {
-        if (!isEnabled() || !isCacheable(inputText) || translatedText == null || translatedText.isBlank()) {
-            return false;
-        }
-
-        CachedTranslation payload = new CachedTranslation(
-                translatedText,
-                providerId,
-                System.currentTimeMillis()
-        );
-
-        return backend.withCommands(commands -> {
-            commands.set(
-                    cacheKey(sourceLanguage, targetLanguage, inputText, pipelineSignature),
-                    redisGson.toJson(payload),
-                    SetArgs.Builder.ex(config.translation.cache.ttlSeconds)
-            );
-            return true;
-        }, false);
-    }
-
     private boolean isEnabled() {
         return config.translation.enabled && config.translation.cache.enabled;
     }
@@ -141,7 +97,9 @@ public class TranslationCacheService {
         String normalizedPipeline = normalize(pipelineSignature, "default");
         String payload = normalizedSource + "|" + normalizedTarget + "|" + normalizedPipeline + "|" + inputText;
 
-        return "xcore:translation:cache:" + config.server.name + ":" + sha256(payload);
+        // Shared by every server on the same Redis: the pipeline signature already separates
+        // providers, models and prompts that would produce a different translation.
+        return "xcore:translation:cache:v2:" + sha256(payload);
     }
 
     private String normalize(String value, String fallback) {

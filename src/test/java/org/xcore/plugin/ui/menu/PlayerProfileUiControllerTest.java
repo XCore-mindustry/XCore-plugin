@@ -25,6 +25,8 @@ import org.xcore.plugin.session.SessionService;
 import org.xcore.ui.LocalizerResolver;
 import org.xcore.ui.VNode;
 import org.xcore.ui.VNodeCompiler;
+import org.xcore.plugin.ui.kit.LayoutAssert;
+import org.xcore.plugin.ui.kit.Screen;
 import org.xcore.ui.runtime.UpdateResult;
 
 import java.util.List;
@@ -110,12 +112,12 @@ class PlayerProfileUiControllerTest {
     @DisplayName("renderHexedProgressBar formats progress and handles max rank")
     void renderHexedProgressBar_formatsCorrectly() {
         // Advanced rank requires 10 wins; with 5 points it should be 50%
-        String bar = PlayerProfileUiController.renderHexedProgressBar(HexedRanks.HexedRank.advanced, 5, 10);
+        String bar = PlayerProfileUiController.renderHexedProgressBar(HexedRanks.HexedRank.advanced, 5, 10, LayoutAssert.localization("en"));
         assertThat(bar).contains("■");
         assertThat(bar).contains("25%"); // regular -> advanced: regular requirements = 10; 5/20 = 25%
 
         // Max rank
-        String maxBar = PlayerProfileUiController.renderHexedProgressBar(HexedRanks.HexedRank.the_legend, 100, 10);
+        String maxBar = PlayerProfileUiController.renderHexedProgressBar(HexedRanks.HexedRank.the_legend, 100, 10, LayoutAssert.localization("en"));
         assertThat(maxBar).contains("★ MAX RANK ACHIEVED ★");
     }
 
@@ -123,13 +125,13 @@ class PlayerProfileUiControllerTest {
     @DisplayName("renderRatingLeagueProgressBar formats league progress and handles max tier")
     void renderRatingLeagueProgressBar_formatsCorrectly() {
         // Lead (1000) to Graphite (1200): at 1100, progress is 50%
-        String bar = PlayerProfileUiController.renderRatingLeagueProgressBar(RatingLeague.LEAD, 1100, 10);
+        String bar = PlayerProfileUiController.renderRatingLeagueProgressBar(RatingLeague.LEAD, 1100, 10, LayoutAssert.localization("en"));
         assertThat(bar).contains("[sky]");
         assertThat(bar).contains("[darkgray]");
         assertThat(bar).contains("50%");
 
         // Max tier
-        String maxBar = PlayerProfileUiController.renderRatingLeagueProgressBar(RatingLeague.SURGE_ALLOY, 3000, 10);
+        String maxBar = PlayerProfileUiController.renderRatingLeagueProgressBar(RatingLeague.SURGE_ALLOY, 3000, 10, LayoutAssert.localization("en"));
         assertThat(maxBar).contains("★ MAX LEAGUE ACHIEVED ★");
     }
 
@@ -152,6 +154,33 @@ class PlayerProfileUiControllerTest {
 
         String zero = PlayerProfileUiController.formatDuration(0, null);
         assertThat(zero).isEqualTo("0m");
+    }
+
+    @Test
+    @DisplayName("a player's own profile offers their match history; someone else's does not")
+    void matchesButton_onOwnProfileOnly() {
+        Session session = createTestSession("uuid-1", false);
+        PlayerMenu playerMenu = mock(PlayerMenu.class);
+        when(playerMenu.hasMatchHistory()).thenReturn(true);
+        PlayerProfileUiController own = new PlayerProfileUiController(
+                playerMenu, null, null, null, session, session.data);
+        PlayerProfileUiController.ProfileModel ownModel = own.createInitialModel(
+                PlayerProfileUiController.Tab.STATS, null);
+
+        assertThat(LayoutAssert.actions(own.render(ownModel))).contains("action:matches");
+        own.update(ownModel, own.parseEvent(new MenuResult("action:matches")), null);
+        verify(playerMenu).openMatches(eq(session), eq(session.data), eq(PlayerProfileUiController.Tab.STATS), any());
+
+        PlayerData other = new PlayerData("uuid-2", true);
+        other.nickname = "Other";
+        PlayerProfileUiController foreign = new PlayerProfileUiController(
+                playerMenu, null, null, null, session, other);
+        PlayerProfileUiController.ProfileModel foreignModel = foreign.createInitialModel(
+                PlayerProfileUiController.Tab.STATS, null);
+
+        assertThat(LayoutAssert.actions(foreign.render(foreignModel))).doesNotContain("action:matches");
+        foreign.update(foreignModel, new PlayerProfileUiController.ProfileEvent.OpenMatches(), null);
+        verify(playerMenu, times(1)).openMatches(any(), any(), any(), any());
     }
 
     @Test
@@ -606,5 +635,99 @@ class PlayerProfileUiControllerTest {
         assertThat(dsl).contains("[#f7b6c]Ri[#f5a9b]T[#f39cac]r");
         assertThat(dsl).doesNotContain("[[#f7b6c]");
         assertThat(dsl).contains("wrap: true");
+    }
+
+    /** A profile with everything there is to show: sections of two ladders, figures in the millions, a long bio. */
+    private PlayerProfileUiController.ProfileModel crowdedProfile(PlayerProfileUiController controller, Session session,
+                                                                  boolean admin) {
+        session.data.description = "Строю схемы на логике, играю с 2021 года. Пишите в Discord, если нужна помощь с процессорами!";
+        session.data.admin = admin;
+        session.player.admin = admin;
+        session.data.username = "a_username_of_the_longest_kind_1";
+        ProfileSectionView ladder = local -> new ProfileSection(
+                "[accent]\uf7a9[] [white]Mini-PvP:[] [#b4c7dc]Титан III[] [accent]1642[]",
+                List.of("[white]112[] [gray]матчей[]", "[lime]61%[] [gray]побед[]", "[gray]место[] [accent]#4[]"),
+                List.of("[lightgray]Сезон 3 закончится через [white]12 д 4 ч[][]", "[lightgray]58 ELO до [white]Алмаз I[][]"));
+        var stats = new PlayerStatsOverview(
+                new AggregatedPlayerStats(1250, 730, 1_204_000, 220_000, 180_500, 5020, 4100),
+                new ModeStatsSummary(420, 260, 0, 0, 0, 0),
+                new ModeStatsSummary(315, 0, 250, 125, 0, 0),
+                new ModeStatsSummary(115, 40, 1, 38, 1, 38));
+        List<PlayerProfileUiController.OnlinePlayerRow> online = new java.util.ArrayList<>();
+        for (int i = 0; i < 20; i++) {
+            online.add(new PlayerProfileUiController.OnlinePlayerRow("p-" + i, 100 + i,
+                    i % 2 == 0 ? "a_username_of_the_longest_kind_" + i : "",
+                    "A_rather_long_nickname_of_player_" + i, i % 3 == 0 ? "[#2CABFE]Epic[#ff5555]Builder" + i : null,
+                    i % 2 == 0 ? Badge.DEVELOPER.id() : "", "default", i % 4 == 0, "FFD37F"));
+        }
+        return controller.createInitialModel(PlayerProfileUiController.Tab.OVERVIEW,
+                        new ProfileDetails(stats, 3, List.of(ladder, ladder)))
+                .withRefreshedPlayers(online, online.size());
+    }
+
+    @Test
+    @DisplayName("every tab is laid out for every screen in every language")
+    void window_isLaidOutForEveryScreen() {
+        for (String language : LayoutAssert.LANGUAGES) {
+            for (boolean admin : new boolean[]{false, true}) {
+                Session session = createTestSession("uuid-1", false);
+                session.localization = LayoutAssert.localization(language);
+                session.pushHistory(() -> { });
+                var controller = new PlayerProfileUiController(null, null, null, null, session, session.data);
+                var model = crowdedProfile(controller, session, admin);
+
+                for (PlayerProfileUiController.Tab tab : PlayerProfileUiController.Tab.values()) {
+                    var shown = model.withTab(tab).withPlayersPage(2).withFeedback(tab == PlayerProfileUiController.Tab.PLAYERS
+                            ? "[scarlet]" + session.locale().t("error-player-not-found") + "[]" : "");
+                    for (Screen screen : Screen.ALL) {
+                        VNode window = controller.window(shown, screen);
+                        LayoutAssert.assertLaidOut(window, screen);
+                        assertThat(LayoutAssert.allText(window)).doesNotContain("player-stats-", "player-menu-", "audit-menu-");
+                        assertThat(LayoutAssert.actions(window)).contains(
+                                "action:tab:overview", "action:tab:stats", "action:tab:players", "action:back");
+                        assertThat(LayoutAssert.actions(window)).doesNotContain("action:close");
+                    }
+                    LayoutAssert.assertFitsPacket(controller.render(shown), language + " " + tab);
+                }
+            }
+        }
+    }
+
+    @Test
+    @DisplayName("the profile offers what the viewer may do: settings for one's own, audit for an admin")
+    void window_offersActionsByRole() {
+        Session session = createTestSession("uuid-1", false);
+        var controller = new PlayerProfileUiController(null, null, null, null, session, session.data);
+        var own = controller.createInitialModel(PlayerProfileUiController.Tab.OVERVIEW, new ProfileDetails(createSampleStats(), 1, List.of()));
+
+        assertThat(LayoutAssert.actions(controller.window(own, Screen.SMALL)))
+                .contains("action:settings")
+                .doesNotContain("action:audit_history", "action:audit_actions", "action:back", "action:back_to_players");
+
+        session.player.admin = true;
+        var asAdmin = controller.createInitialModel(PlayerProfileUiController.Tab.STATS, new ProfileDetails(createSampleStats(), 1, List.of()));
+        assertThat(LayoutAssert.actions(controller.window(asAdmin, Screen.WIDE)))
+                .contains("action:settings", "action:audit_history", "action:audit_actions");
+
+        // The list of players has none of them: there is no profile on screen to act on.
+        assertThat(LayoutAssert.actions(controller.window(asAdmin.withTab(PlayerProfileUiController.Tab.PLAYERS), Screen.WIDE)))
+                .doesNotContain("action:settings", "action:audit_history");
+    }
+
+    @Test
+    @DisplayName("the players tab shows a page of players as rows that open their profiles, with a pager")
+    void window_listsOnlinePlayers() {
+        Session session = createTestSession("uuid-1", false);
+        var controller = new PlayerProfileUiController(null, null, null, null, session, session.data);
+        var model = crowdedProfile(controller, session, false).withTab(PlayerProfileUiController.Tab.PLAYERS);
+
+        List<String> first = LayoutAssert.actions(controller.window(model, Screen.NARROW));
+        assertThat(first.stream().filter(a -> a.startsWith("action:inspect:")))
+                .hasSize(PlayerProfileUiController.PLAYERS_PER_PAGE).contains("action:inspect:p-0");
+        assertThat(first).contains("action:filter_cycle", "action:refresh_players", "action:page:2").doesNotContain("action:page:0");
+
+        List<String> last = LayoutAssert.actions(controller.window(model.withPlayersPage(3), Screen.NARROW));
+        assertThat(last.stream().filter(a -> a.startsWith("action:inspect:"))).hasSize(20 - 2 * PlayerProfileUiController.PLAYERS_PER_PAGE);
+        assertThat(last).contains("action:page:2").doesNotContain("action:page:4");
     }
 }
