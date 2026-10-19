@@ -8,7 +8,7 @@ export const links = {
   asthosus: "https://github.com/Catana791/Asthosus",
   github: "https://github.com/XCore-mindustry",
   donate: "https://donatello.to/xcore",
-  weblate: "https://xcore.eradication.fun/",
+  weblate: "https://weblate.x-core.org/",
   maven: "https://maven.x-core.org",
 };
 
