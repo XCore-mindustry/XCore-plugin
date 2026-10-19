@@ -224,7 +224,7 @@ const en: Dictionary = {
 
   dev: {
     title: "For developers",
-    lede: "Everything XCore runs on is open source. Java 25, Mindustry v160.",
+    lede: "The libraries XCore's plugins are built on are open source. Java 25, Mindustry v160.",
     count: "open repositories",
     libs: {
       "xcore-ui": "Reactive server-driven menus: state in records, partial updates without flicker.",
