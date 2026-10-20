@@ -357,7 +357,7 @@ report-reason-cheating = Чытэрства
 report-reason-nsfw = NSFW
 report-reason-evasion = Абыход блакіроўкі
 report-reason-other = Іншае
-case-notice-report-received = [lightgray]Скарга зарэгістравана пад нумарам [accent]#{ $number }[lightgray]. Дзякуй!`
+case-notice-report-received = [lightgray]Скарга зарэгістравана пад нумарам [accent]#{ $number }[lightgray]. Дзякуй!
 case-notice-report-resolved = [lightgray]Скарга [accent]#{ $number }[lightgray] разгледжана: [green]прыняты захады[lightgray]. Дзякуй.
 case-notice-report-rejected =
     { $reason ->

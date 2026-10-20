@@ -102,10 +102,10 @@ public class PlayerSettingsUiController implements UiController<PlayerSettingsUi
             new LanguageOption("fr", "Français"),
             new LanguageOption("it", "Italiano"),
             new LanguageOption("pl", "Polski"),
-            new LanguageOption("pt_BR", "Português (Brasil)"),
+            new LanguageOption("pt_BR", "Português"),
             new LanguageOption("ru", "Русский"),
             new LanguageOption("uk_UA", "Українська")
-            );
+    );
 
     private static final java.util.regex.Pattern HEX_COLOR_PATTERN =
             java.util.regex.Pattern.compile("\\[#([0-9a-fA-F]{6})");

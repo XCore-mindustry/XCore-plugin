@@ -63,6 +63,7 @@ class InformationMenuTest {
         TomlXcoreConfig config = new TomlXcoreConfig();
         config.server.name = "xcore";
         secretsConfig = new TomlSecretsConfig();
+        secretsConfig.externalLinks.siteUrl = "https://site.example";
         secretsConfig.externalLinks.discordUrl = "https://discord.example";
         secretsConfig.externalLinks.githubUrl = "https://github.example";
         secretsConfig.externalLinks.donatelloUrl = "https://donate.example";
@@ -115,7 +116,7 @@ class InformationMenuTest {
         informationMenu.main("viewer-1");
         menuService.onMenuOption(session, 0);
 
-        menuService.onMenuOption(session, 5);
+        menuService.onMenuOption(session, 6);
 
         assertThat(session.activeScreen()).isNotNull();
         assertThat(session.activeScreen().mode()).isEqualTo(MenuMode.NORMAL);
@@ -130,7 +131,7 @@ class InformationMenuTest {
 
         assertThat(session.activeScreen()).isNotNull();
         assertThat(session.activeScreen().mode()).isEqualTo(MenuMode.FOLLOW_UP);
-        assertThat(session.activeScreen().actionCount()).isEqualTo(6);
+        assertThat(session.activeScreen().actionCount()).isEqualTo(7);
         verify(gateway).followUpMenu(eq(session.player), eq(0), eq("commands-info-title"), eq("commands-info-text"), any());
     }
 
@@ -142,7 +143,7 @@ class InformationMenuTest {
         informationMenu.information("viewer-1");
 
         assertThat(session.activeScreen()).isNotNull();
-        assertThat(session.activeScreen().actionCount()).isEqualTo(7);
+        assertThat(session.activeScreen().actionCount()).isEqualTo(8);
     }
 
     @Test
@@ -152,7 +153,7 @@ class InformationMenuTest {
         session.pushHistory(() -> ran[0] = true);
         informationMenu.information("viewer-1");
 
-        menuService.onMenuOption(session, 5);
+        menuService.onMenuOption(session, 6);
 
         verify(gateway).hideFollowUpMenu(eq(session.player), eq(0));
         assertThat(ran[0]).isTrue();
@@ -271,7 +272,7 @@ class InformationMenuTest {
     void information_closeActionClearsActiveScreen() {
         informationMenu.information("viewer-1");
 
-        menuService.onMenuOption(session, 5);
+        menuService.onMenuOption(session, 6);
 
         assertThat(session.activeScreen()).isNull();
         verify(gateway).hideFollowUpMenu(eq(session.player), eq(0));
@@ -282,7 +283,7 @@ class InformationMenuTest {
     void information_discordActionRoutesThroughGatewayOpenUri() {
         informationMenu.information("viewer-1");
 
-        menuService.onMenuOption(session, 0);
+        menuService.onMenuOption(session, 1);
 
         verify(gateway).openUri(eq(session.player), eq(secretsConfig.externalLinks.discordUrl));
     }

@@ -280,30 +280,30 @@ commands-toast-description = Exibe uma notificação de aviso rápida para jogad
 commands-announcement-description = Transmite um anúncio periódico por chave ou o próximo na rotação.
 commands-audit-description = Abre o registro de auditoria das ações da equipe e moderação.
 ban-content = [scarlet]⚠ Banido[]
-[accent]{ $nickname }[white] — você foi banido permanentemente deste servidor.
-[orange]» [accent]ID do jogador: [white]{ $pid }
-[lightgray]Para recorrer, visite o canal do Discord [gray]{ support-channel }[]:
-[cyan]{ $discordUrl }
+    [accent]{ $nickname }[white] — você foi banido permanentemente deste servidor.
+    [orange]» [accent]ID do jogador: [white]{ $pid }
+    [lightgray]Para recorrer, visite o canal do Discord [gray]{ support-channel }[]:
+    [cyan]{ $discordUrl }
 ban-cancelled = [accent]O banimento do jogador [scarlet]{ $nickname }[accent] foi cancelado
 tempban-content = [scarlet]⚠ Banido[]
-{ $permanent ->
-[true] [accent]{ $nickname }[white] — você foi banido permanentemente deste servidor.
-*[false] [accent]{ $nickname }[white] — você foi banido temporariamente deste servidor.
-}
-[orange]» [accent]Banimento: [white]{ $banId }
-[orange]» [accent]ID do jogador: [white]{ $pid }
-{ "" }
-[orange]» [accent]Admin: [white]{ $adminName }
-[orange]» [accent]Motivo: [gold]{ $reason }
-{ $permanent ->
-[true] [orange]» [accent]{ audit-menu-duration-permanent }[]
-*[false] [orange]» [accent]Tempo restante: { DURATION($duration, style: "full", colored: "true", maxUnits: 2) }
-{ "" }[orange]» [accent]Expira em: [white]{ DATETIME($expireDate, dateStyle: "medium", timeStyle: "short") }
-}
-{ "" }
-[lightgray]Para recorrer, visite o canal do Discord [gray]{ support-channel }[]:
-[lightgray]Informe { $banId } no seu recurso.
-[cyan]{ $discordUrl }
+    { $permanent ->
+         [true] [accent]{ $nickname }[white] — você foi banido permanentemente deste servidor.
+        *[false] [accent]{ $nickname }[white] — você foi banido temporariamente deste servidor.
+    }
+    [orange]» [accent]Banimento: [white]{ $banId }
+    [orange]» [accent]ID do jogador: [white]{ $pid }
+    { "" }
+    [orange]» [accent]Admin: [white]{ $adminName }
+    [orange]» [accent]Motivo: [gold]{ $reason }
+    { $permanent ->
+         [true] [orange]» [accent]{ audit-menu-duration-permanent }[]
+        *[false] [orange]» [accent]Tempo restante: { DURATION($duration, style: "full", colored: "true", maxUnits: 2) }
+            { "" }[orange]» [accent]Expira em: [white]{ DATETIME($expireDate, dateStyle: "medium", timeStyle: "short") }
+    }
+    { "" }
+    [lightgray]Para recorrer, visite o canal do Discord [gray]{ support-channel }[]:
+    [lightgray]Informe { $banId } no seu recurso.
+    [cyan]{ $discordUrl }
 tempban-player-banned = [scarlet] O admin { $adminName }[scarlet] baniu o jogador [gray]'[]{ $playerName }[gray]'
 you-are-muted-by =
     [orange]⚠ Chat restrito[]

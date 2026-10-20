@@ -30,10 +30,11 @@ class TomlSecretsConfigTest {
         assertThat(toml.database.readOnly).isFalse();
         assertThat(toml.database.migrationEnabled).isFalse();
 
+        assertThat(toml.externalLinks.siteUrl).isEqualTo("https://x-core.org/");
         assertThat(toml.externalLinks.discordUrl).isEqualTo("https://discord.gg/RUMCCa9QAC");
         assertThat(toml.externalLinks.githubUrl).isEqualTo("https://github.com/XCore-mindustry/");
         assertThat(toml.externalLinks.donatelloUrl).isEqualTo("https://donatello.to/xcore");
-        assertThat(toml.externalLinks.weblateUrl).isEqualTo("https://xcore.eradication.fun/");
+        assertThat(toml.externalLinks.weblateUrl).isEqualTo("https://weblate.x-core.org/");
         assertThat(toml.externalLinks.discordRedVSBlueUrl).isEqualTo("https://discord.gg/UdnuFetcNt");
 
         assertThat(toml.moderation.votekick.minPlayTimeMinutes).isEqualTo(60);

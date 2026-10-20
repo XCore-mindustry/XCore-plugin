@@ -264,10 +264,11 @@ This file contains sensitive and shared settings. **It is created automatically*
 | `database.name` | `""` | **Required.** MongoDB database name (for example `xcore`). |
 | `database.read_only` | `false` | When `true`, database writes are suppressed. |
 | `database.migration_enabled` | `false` | When `true`, migration logic runs on startup. |
+| `external_links.site_url` | `https://x-core.org/` | Project website URL. |
 | `external_links.discord_url` | `https://discord.gg/RUMCCa9QAC` | Public Discord invite URL. |
 | `external_links.github_url` | `https://github.com/XCore-mindustry/` | Project GitHub URL. |
 | `external_links.donatello_url` | `https://donatello.to/xcore` | Donation page URL. |
-| `external_links.weblate_url` | `https://xcore.eradication.fun/` | Weblate translation platform URL. |
+| `external_links.weblate_url` | `https://weblate.x-core.org/` | Weblate translation platform URL. |
 | `external_links.discord_red_vs_blue_url` | `https://discord.gg/UdnuFetcNt` | Red vs Blue Discord URL. |
 | `moderation.votekick.min_play_time_minutes` | `60` | Minimum playtime (minutes) required to start a votekick. |
 | `moderation.votekick.ban_duration_minutes` | `30` | Duration of a votekick ban in minutes. |

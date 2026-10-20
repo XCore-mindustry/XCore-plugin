@@ -198,10 +198,11 @@ public final class ConfigTomlTemplateWriter {
         migration_enabled = false
 
         [external_links]
+        site_url = "https://x-core.org/"
         discord_url = "https://discord.gg/RUMCCa9QAC"
         github_url = "https://github.com/XCore-mindustry/"
         donatello_url = "https://donatello.to/xcore"
-        weblate_url = "https://xcore.eradication.fun/"
+        weblate_url = "https://weblate.x-core.org/"
         discord_red_vs_blue_url = "https://discord.gg/UdnuFetcNt"
 
         [moderation.votekick]

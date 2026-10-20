@@ -284,30 +284,30 @@ commands-toast-description = Надіслати спливаюче сповіщ�
 commands-announcement-description = Надіслати періодичне оголошення або наступне з ротації.
 commands-audit-description = Відкрити журнал аудиту дій персоналу та модераторів.
 ban-content = [scarlet]⚠ Доступ заборонено[]
-[accent]{ $nickname }[white] — вас назавжди заблоковано на цьому сервері.
-[orange]» [accent]ID гравця: [white]{ $pid }
-[lightgray]Щоб оскаржити блокування, перейдіть у Discord-канал [gray]{ support-channel }[]:
-[cyan]{ $discordUrl }
+    [accent]{ $nickname }[white] — вас назавжди заблоковано на цьому сервері.
+    [orange]» [accent]ID гравця: [white]{ $pid }
+    [lightgray]Щоб оскаржити блокування, перейдіть у Discord-канал [gray]{ support-channel }[]:
+    [cyan]{ $discordUrl }
 ban-cancelled = [accent]Блокування гравця [scarlet]{ $nickname }[accent] було скасовано
 tempban-content = [scarlet]⚠ Доступ заборонено[]
-{ $permanent ->
-[true] [accent]{ $nickname }[white] — вас назавжди заблоковано на цьому сервері.
-*[false] [accent]{ $nickname }[white] — вас тимчасово заблоковано на цьому сервері.
-}
-[orange]» [accent]Блокування: [white]{ $banId }
-[orange]» [accent]ID гравця: [white]{ $pid }
-{ "" }
-[orange]» [accent]Адміністратор: [white]{ $adminName }
-[orange]» [accent]Причина: [gold]{ $reason }
-{ $permanent ->
-[true] [orange]» [accent]{ audit-menu-duration-permanent }[]
-*[false] [orange]» [accent]До розблокування: { DURATION($duration, style: "full", colored: "true", maxUnits: 2) }
-{ "" }[orange]» [accent]Спливає: [white]{ DATETIME($expireDate, dateStyle: "medium", timeStyle: "short") }
-}
-{ "" }
-[lightgray]Щоб оскаржити блокування, перейдіть у Discord-канал [gray]{ support-channel }[]:
-[lightgray]Вкажіть { $banId } у зверненні.
-[cyan]{ $discordUrl }
+    { $permanent ->
+         [true] [accent]{ $nickname }[white] — вас назавжди заблоковано на цьому сервері.
+        *[false] [accent]{ $nickname }[white] — вас тимчасово заблоковано на цьому сервері.
+    }
+    [orange]» [accent]Блокування: [white]{ $banId }
+    [orange]» [accent]ID гравця: [white]{ $pid }
+    { "" }
+    [orange]» [accent]Адміністратор: [white]{ $adminName }
+    [orange]» [accent]Причина: [gold]{ $reason }
+    { $permanent ->
+         [true] [orange]» [accent]{ audit-menu-duration-permanent }[]
+        *[false] [orange]» [accent]До розблокування: { DURATION($duration, style: "full", colored: "true", maxUnits: 2) }
+            { "" }[orange]» [accent]Спливає: [white]{ DATETIME($expireDate, dateStyle: "medium", timeStyle: "short") }
+    }
+    { "" }
+    [lightgray]Щоб оскаржити блокування, перейдіть у Discord-канал [gray]{ support-channel }[]:
+    [lightgray]Вкажіть { $banId } у зверненні.
+    [cyan]{ $discordUrl }
 tempban-player-banned = [scarlet] Адміністратор { $adminName }[scarlet] заблокував гравця [gray]'[]{ $playerName }[gray]'
 you-are-muted-by =
     [orange]⚠ Чат обмежено[]
