@@ -23,7 +23,6 @@ import org.xcore.plugin.rating.season.SeasonSchedule;
 import org.xcore.plugin.rating.season.SeasonStatus;
 import org.xcore.plugin.rating.season.SeasonStore;
 
-import java.text.NumberFormat;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -237,7 +236,7 @@ public final class LadderTopCategoryProvider implements TopCategoryProvider {
         try {
             long rating = Long.parseLong(primaryValue);
             Locale locale = local != null && local.getLocale() != null ? local.getLocale() : Locale.ROOT;
-            return NumberFormat.getIntegerInstance(locale).format(rating) + " ELO";
+            return Localization.integers(locale).format(rating) + " ELO";
         } catch (NumberFormatException e) {
             return "-";
         }

@@ -5,6 +5,9 @@ import com.ospx.flubundle.Localizer;
 import com.ospx.flubundle.mindustry.Messenger;
 import org.xcore.plugin.session.Session;
 
+import java.text.DecimalFormat;
+import java.text.DecimalFormatSymbols;
+import java.text.NumberFormat;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
@@ -44,6 +47,22 @@ public class Localization {
 
     public Locale getLocale() {
         return localizer.locale();
+    }
+
+    /**
+     * Whole numbers grouped the way {@code locale} groups them, except that the narrow no-break
+     * space French groups with is missing from the client's font, so a no-break space stands in.
+     */
+    public static NumberFormat integers(Locale locale) {
+        NumberFormat format = NumberFormat.getIntegerInstance(locale);
+        if (format instanceof DecimalFormat decimal) {
+            DecimalFormatSymbols symbols = decimal.getDecimalFormatSymbols();
+            if (symbols.getGroupingSeparator() == ' ') {
+                symbols.setGroupingSeparator(' ');
+                decimal.setDecimalFormatSymbols(symbols);
+            }
+        }
+        return format;
     }
 
     public String getLanguageName(String langCode, String fallbackKey) {

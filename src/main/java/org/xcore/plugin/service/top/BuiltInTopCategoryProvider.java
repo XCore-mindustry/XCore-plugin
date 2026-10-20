@@ -95,13 +95,13 @@ public class BuiltInTopCategoryProvider implements TopCategoryProvider {
         return switch (category) {
             case PLAYTIME -> formatPlayTime(value, local);
             case HEXED -> local.t("top-menu-score-points", args(
-                    "points", NumberFormat.getIntegerInstance(local.getLocale()).format(value)));
+                    "points", Localization.integers(local.getLocale()).format(value)));
         };
     }
 
     @Override
     public String formatEntry(LeaderboardEntry entry, Localization local) {
-        NumberFormat numberFormat = NumberFormat.getIntegerInstance(local.getLocale());
+        NumberFormat numberFormat = Localization.integers(local.getLocale());
         String rankLabel = rankLabel(entry.rank());
 
         return switch (category) {

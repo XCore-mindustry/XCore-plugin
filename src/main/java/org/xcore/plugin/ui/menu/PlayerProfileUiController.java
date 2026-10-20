@@ -822,7 +822,7 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
             left.add(Kit.note(card, t(local, "player-stats-loading")));
         } else if (model.stats() != null) {
             AggregatedPlayerStats overall = model.stats().overall();
-            NumberFormat nf = NumberFormat.getIntegerInstance(local != null ? local.getLocale() : Locale.ROOT);
+            NumberFormat nf = Localization.integers(local != null ? local.getLocale() : Locale.ROOT);
             left.add(Kit.card(card, (content, inner) -> content.add(Kit.text(
                     t(local, "player-stats-total-games") + " [white]" + nf.format(overall.gamesPlayed()) + "[]\n"
                             + t(local, "player-stats-victories") + " [lime]" + nf.format(overall.gamesWon())
@@ -881,7 +881,7 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
             return;
         }
         float card = screen.card();
-        NumberFormat nf = NumberFormat.getIntegerInstance(local != null ? local.getLocale() : Locale.ROOT);
+        NumberFormat nf = Localization.integers(local != null ? local.getLocale() : Locale.ROOT);
         PlayerStatsOverview overview = model.stats() != null ? model.stats() : PlayerStatsOverview.EMPTY;
         AggregatedPlayerStats overall = overview.overall();
         List<VNode> left = new ArrayList<>();
