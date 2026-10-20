@@ -1,7 +1,5 @@
 // Facts shared by every language: links, colours and sprites, mirrored from the plugins.
 
-import {formatErrors} from "next/dist/server/mcp/tools/utils/format-errors";
-
 export const links = {
   discord: "https://discord.gg/RUMCCa9QAC",
   rvbDiscord: "https://discord.gg/UdnuFetcNt",

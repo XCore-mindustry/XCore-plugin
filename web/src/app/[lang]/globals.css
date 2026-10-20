@@ -1525,6 +1525,7 @@ a {
 @media (max-width: 639px) {
   .pass-head {
     grid-template-columns: minmax(0, 1fr) auto;
+    column-gap: 12px;
     grid-template-areas:
       "brand lang"
       "tagline tagline";
@@ -1536,6 +1537,11 @@ a {
 
   .lang {
     grid-area: lang;
+  }
+
+  /* Three languages beside the wordmark: tabs keep only the 44px touch minimum. */
+  .lang a {
+    min-width: 44px;
   }
 
   .tagline {
@@ -1612,6 +1618,13 @@ a {
   }
 
   .dock-name {
+    display: none;
+  }
+}
+
+/* Under 380px five 44px dock cells leave the profile link room for the sprite only. */
+@media (max-width: 379px) {
+  .dock-rating {
     display: none;
   }
 }
