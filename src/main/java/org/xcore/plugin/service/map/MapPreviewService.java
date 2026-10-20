@@ -7,7 +7,6 @@ import arc.util.Log;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import mindustry.gen.Player;
-import mindustry.io.MapIO;
 import mindustry.maps.Map;
 import org.xcore.plugin.concurrent.Async;
 import org.xcore.plugin.ui.XcoreImageService;
@@ -25,7 +24,7 @@ import java.util.function.BiConsumer;
  * <ul>
  *   <li>Main tick thread is NEVER blocked on disk I/O, Pixmap generation, or PNG compression.</li>
  *   <li>Off-heap native Pixmap allocations are strictly disposed in {@code finally} blocks.</li>
- *   <li>Map generation concurrency is serialized with a lock to prevent tile corruption.</li>
+ *   <li>Map decoding uses detached values and never changes the live world's content mapper.</li>
  *   <li>Pre-rendered textures are cached in memory (L1 LRU) and streamed via {@link XcoreImageService}.</li>
  * </ul>
  */
@@ -94,9 +93,17 @@ public class MapPreviewService {
             }
         }
 
-        // Slow Path: off-thread resolution via Virtual Threads
+        final DetachedMapPreview preview;
+        try {
+            preview = DetachedMapPreview.capture();
+        } catch (RuntimeException error) {
+            onComplete.accept(null, error);
+            return;
+        }
+
+        // Capture engine values before dispatching any file reads or rendering.
         if (async != null) {
-            async.forPlayer(player, () -> loadOrGeneratePngBytes(map), (p, result) -> {
+            async.forPlayer(player, () -> loadOrGeneratePngBytes(map, preview), (p, result) -> {
                 if (result.error != null || result.bytes == null) {
                     onComplete.accept(null, result.error);
                     return;
@@ -114,7 +121,7 @@ public class MapPreviewService {
             });
         } else {
             // Fallback for headless tests without Async dispatcher
-            PngResult result = loadOrGeneratePngBytes(map);
+            PngResult result = loadOrGeneratePngBytes(map, preview);
             if (result.bytes != null) {
                 String regionName = imageService.ensureDelivered(player, result.bytes);
                 fileNameToRegion.put(fileName, regionName);
@@ -127,7 +134,7 @@ public class MapPreviewService {
 
     private record PngResult(byte[] bytes, Throwable error) {}
 
-    private PngResult loadOrGeneratePngBytes(Map map) {
+    private PngResult loadOrGeneratePngBytes(Map map, DetachedMapPreview preview) {
         try {
             Fi previewFi = map.previewFile();
 
@@ -136,8 +143,7 @@ public class MapPreviewService {
                 return new PngResult(previewFi.readBytes(), null);
             }
 
-            // 2. Serialize worker map reads. The lock does not protect game-thread readers;
-            // inspection uses an immutable registry and never installs a temporary content mapper.
+            // 2. Bound concurrent decoding allocations; no worker installs a content mapper.
             previewGenerationLock.lock();
             Pixmap pixmap = null;
             try {
@@ -146,11 +152,7 @@ public class MapPreviewService {
                     return new PngResult(previewFi.readBytes(), null);
                 }
 
-                MapColorPalette.ensureInitialized();
-                pixmap = MapIO.generatePreview(map);
-                if (pixmap == null) {
-                    return new PngResult(null, new IllegalStateException("MapIO returned null preview"));
-                }
+                pixmap = preview.read(map.file);
 
                 byte[] bytes = PixmapIO.writePngBytes(pixmap);
 

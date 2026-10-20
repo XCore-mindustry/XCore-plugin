@@ -20,13 +20,20 @@ import java.util.zip.Inflater;
  */
 public final class DetachedMsavReader {
     public MapSnapshot read(Path file, String sha256, ContentRegistrySnapshot registry, InspectionSettings settings) throws IOException {
-        long size = Files.size(file);
-        if (size > settings.maxFileBytes()) throw new IOException("Map exceeds maxFileBytes");
+        try (var source = Files.newInputStream(file)) {
+            return read(source, Files.size(file), sha256, registry, settings);
+        }
+    }
+
+    /** Reads and closes a map stream, including maps bundled inside the engine JAR. */
+    public MapSnapshot read(InputStream source, long size, String sha256, ContentRegistrySnapshot registry,
+                            InspectionSettings settings) throws IOException {
         var zlib = new Inflater();
-        try (var compressed = new BufferedInputStream(Files.newInputStream(file));
+        try (var compressed = new BufferedInputStream(new BudgetInput(source, settings.maxFileBytes()));
              var inflated = new InflaterInputStream(compressed, zlib);
              var budget = new BudgetInput(inflated, InspectionSettings.MAX_INFLATED_BYTES);
              var input = new DataInputStream(budget)) {
+            if (size > settings.maxFileBytes()) throw new IOException("Map exceeds maxFileBytes");
             if (input.readInt() != 0x4d534156) throw new IOException("Incorrect MSAV magic");
             int version = input.readInt();
             if (version < 1 || version > 13) throw new IOException("Unsupported save version: " + version);
@@ -46,14 +53,14 @@ public final class DetachedMsavReader {
             if (mapWidth != width || mapHeight != height) throw new IOException("Metadata and map dimensions disagree");
             if (oversized) {
                 // Deliberately stop before tile arrays, buildings or entities. The partial result has no tile claims.
-                return new MapSnapshot(metadata, registry, new int[0], new int[0], new int[0], List.of(),
+                return new MapSnapshot(metadata, registry, new int[0], new int[0], new int[0], new int[0], List.of(),
                         List.copyOf(unknown), false);
             }
             int count = width * height;
-            int[] floors = new int[count], overlays = new int[count], blocks = new int[count];
+            int[] floors = new int[count], overlays = new int[count], blocks = new int[count], teams = new int[count];
             var cores = new ArrayList<MapSnapshot.Core>();
             readFloors(map.data, mapping, registry, unknown, floors, overlays);
-            readBlocks(map, version, mapping, registry, unknown, blocks, cores, width);
+            readBlocks(map, version, mapping, registry, unknown, blocks, teams, cores, width);
             map.end();
             // These engine regions may contain arbitrary mod/entity data. Verify their framing and consume
             // them through the inflation budget, without executing deserializers or allocating their lengths.
@@ -63,7 +70,7 @@ public final class DetachedMsavReader {
             if (input.read() != -1) throw new IOException("Unexpected data after save regions");
             if (!zlib.finished() || zlib.getRemaining() != 0 || compressed.read() != -1)
                 throw new IOException("Unexpected data after zlib stream");
-            return new MapSnapshot(metadata, registry, floors, overlays, blocks, cores, List.copyOf(unknown), true);
+            return new MapSnapshot(metadata, registry, floors, overlays, blocks, teams, cores, List.copyOf(unknown), true);
         } catch (IllegalArgumentException | IllegalStateException ex) {
             throw new IOException("Invalid map metadata or content", ex);
         } finally { zlib.end(); }
@@ -238,7 +245,7 @@ public final class DetachedMsavReader {
     }
 
     private static void readBlocks(Region map, int version, ContentRegistrySnapshot.Entry[] mapping,
-                                   ContentRegistrySnapshot registry, Set<String> unknown, int[] blocks, List<MapSnapshot.Core> cores, int width) throws IOException {
+                                   ContentRegistrySnapshot registry, Set<String> unknown, int[] blocks, int[] teams, List<MapSnapshot.Core> cores, int width) throws IOException {
         // Keep wire parts separate from effective blocks: parts before a center do not place anything,
         // while later ordinary records (including air RLE) remove a previously placed multiblock.
         boolean[] parts = new boolean[blocks.length];
@@ -287,7 +294,7 @@ public final class DetachedMsavReader {
             i += run;
         }
         var air = registry.resolve(ContentRegistrySnapshot.BLOCK_TYPE, "air");
-        reconcileBuildings(version, blocks, parts, centers, cores, width, air == null ? -2 : air.id());
+        reconcileBuildings(version, blocks, teams, parts, centers, cores, width, air == null ? -2 : air.id());
     }
 
     private static int readBuildingBase(Region payload, ContentRegistrySnapshot.Entry block) throws IOException {
@@ -338,7 +345,7 @@ public final class DetachedMsavReader {
 
     private record Building(int index, ContentRegistrySnapshot.Entry block, int team) {}
 
-    private static void reconcileBuildings(int version, int[] blocks, boolean[] parts, List<Building> centers,
+    private static void reconcileBuildings(int version, int[] blocks, int[] teams, boolean[] parts, List<Building> centers,
                                            List<MapSnapshot.Core> cores, int width, int airId) throws IOException {
         int height = blocks.length / width;
         int[] owners = new int[blocks.length];
@@ -364,6 +371,7 @@ public final class DetachedMsavReader {
                 continue;
             }
             Building center = centers.get(owners[i]);
+            teams[i] = center.team;
             if (i == center.index) continue;
             if (parts[i]) {
                 // IDs are resolved registry identities, never hard-coded save/native part IDs.
