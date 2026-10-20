@@ -1,6 +1,7 @@
 package org.xcore.plugin.ui.menu;
 
 import com.ospx.flubundle.Bundle;
+import com.ospx.flubundle.LocaleCodes;
 import arc.util.io.Writes;
 import mindustry.gen.Player;
 import mindustry.net.NetConnection;
@@ -10,7 +11,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
+import org.junit.jupiter.params.provider.FieldSource;
 import org.xcore.plugin.config.TomlSecretsConfig;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
 import org.xcore.plugin.localization.Localization;
@@ -98,7 +99,7 @@ class PlayerSettingsUiControllerTest {
     /** A controller that renders with the real texts of {@code language}. */
     private PlayerSettingsUiController translated(String language) {
         Session session = createTestSession("uuid-1", false);
-        session.localization = new Localization(realBundle, Locale.forLanguageTag(language));
+        session.localization = new Localization(realBundle, LocaleCodes.parse(language));
         return new PlayerSettingsUiController(null, null, session, session.data);
     }
 
@@ -225,7 +226,7 @@ class PlayerSettingsUiControllerTest {
      * all its cells, so one of either without a width stretches the dialog off a phone's screen.
      */
     @ParameterizedTest
-    @ValueSource(strings = {"ru", "uk", "en"})
+    @FieldSource("org.xcore.plugin.ui.kit.LayoutAssert#LANGUAGES")
     @DisplayName("nothing in the dialog is left to find its own width")
     void nothingIsLeftToFindItsOwnWidth(String language) {
         for (PlayerSettingsUiController.SettingsModel model : everyPage(language)) {
@@ -238,7 +239,7 @@ class PlayerSettingsUiControllerTest {
 
     /** A dialog travels as one packet, and the client reads a packet into a 32 KB buffer. */
     @ParameterizedTest
-    @ValueSource(strings = {"ru", "uk", "en"})
+    @FieldSource("org.xcore.plugin.ui.kit.LayoutAssert#LANGUAGES")
     @DisplayName("every page of the dialog fits one packet")
     void everyPageFitsOnePacket(String language) throws Exception {
         for (PlayerSettingsUiController.SettingsModel model : everyPage(language)) {
@@ -254,7 +255,7 @@ class PlayerSettingsUiControllerTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"ru", "uk", "en"})
+    @FieldSource("org.xcore.plugin.ui.kit.LayoutAssert#LANGUAGES")
     @DisplayName("every text of the dialog is translated")
     void everyTextIsTranslated(String language) {
         for (PlayerSettingsUiController.SettingsModel model : everyPage(language)) {

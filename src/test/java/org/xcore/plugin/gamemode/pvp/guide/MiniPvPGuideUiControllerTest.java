@@ -21,8 +21,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 class MiniPvPGuideUiControllerTest {
 
     private static final Rating RATING = new Rating(1000, 2, 15, 15, 50, 25);
-    /** The guide is translated into every bundle, so every one of them has to fit the screens. */
-    private static final List<String> LANGUAGES = List.of("ru", "uk", "en", "be", "cs", "de", "es", "fr", "pl");
 
     /** A round in progress on a map that changes a lot: every card of the rules tab has something to say. */
     private static MiniPvPModeFacts busyFacts() {
@@ -53,7 +51,7 @@ class MiniPvPGuideUiControllerTest {
 
     @Test
     void everyTabIsLaidOutForEveryScreenAndTranslated() {
-        for (String language : LANGUAGES) {
+        for (String language : LayoutAssert.LANGUAGES) {
             MiniPvPGuideUiController controller = controller(language);
             for (MiniPvPModeFacts facts : List.of(busyFacts(), vanillaFacts())) {
                 for (Tab tab : Tab.values()) {

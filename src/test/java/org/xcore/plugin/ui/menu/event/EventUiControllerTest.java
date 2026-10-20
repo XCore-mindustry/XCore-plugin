@@ -11,6 +11,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.FieldSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.xcore.plugin.concurrent.Async;
 import org.xcore.plugin.concurrent.InlineStorageExecutor;
@@ -419,7 +420,7 @@ class EventUiControllerTest {
     // =========================================================================
 
     @ParameterizedTest
-    @ValueSource(strings = {"ru", "uk", "en", "be", "cs", "de", "es", "fr", "pl"})
+    @FieldSource("org.xcore.plugin.ui.kit.LayoutAssert#LANGUAGES")
     @DisplayName("a full page of events, with one running and a vote for another, fits every screen")
     void list_isLaidOutForEveryScreen(String language) {
         session.localization = LayoutAssert.localization(language);
@@ -442,7 +443,7 @@ class EventUiControllerTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"ru", "uk", "en", "be", "cs", "de", "es", "fr", "pl"})
+    @FieldSource("org.xcore.plugin.ui.kit.LayoutAssert#LANGUAGES")
     @DisplayName("a server without events says so on every tab, and before the first page is read says it is loading")
     void emptyList_saysSo(String language) {
         session.localization = LayoutAssert.localization(language);
@@ -464,7 +465,7 @@ class EventUiControllerTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"ru", "uk", "en", "be", "cs", "de", "es", "fr", "pl"})
+    @FieldSource("org.xcore.plugin.ui.kit.LayoutAssert#LANGUAGES")
     @DisplayName("an event fits every screen whatever state it is in, with a description as long as the field takes")
     void event_isLaidOutForEveryScreen(String language) {
         session.localization = LayoutAssert.localization(language);
@@ -520,7 +521,7 @@ class EventUiControllerTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"ru", "uk", "en", "be", "cs", "de", "es", "fr", "pl"})
+    @FieldSource("org.xcore.plugin.ui.kit.LayoutAssert#LANGUAGES")
     @DisplayName("the editor, the maps and the time fit every screen, with what the editor refuses said in words")
     void editor_isLaidOutForEveryScreen(String language) {
         session.localization = LayoutAssert.localization(language);

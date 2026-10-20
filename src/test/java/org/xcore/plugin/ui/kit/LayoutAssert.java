@@ -3,6 +3,7 @@ package org.xcore.plugin.ui.kit;
 import arc.files.Fi;
 import arc.util.io.Writes;
 import com.ospx.flubundle.Bundle;
+import com.ospx.flubundle.LocaleCodes;
 import mindustry.ui.builder.UiDslWriter;
 import org.xcore.plugin.localization.Localization;
 import org.xcore.ui.LocalizerResolver;
@@ -22,7 +23,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
+import java.util.Objects;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -36,8 +37,12 @@ public final class LayoutAssert {
     /** A dialog travels as one packet and the client reads a packet into a 32 KB buffer; this leaves a margin. */
     public static final int PACKET_LIMIT = 24_000;
 
-    /** The languages whose bundles are complete; the others fall back to one of these. */
-    public static final String[] LANGUAGES = {"ru", "uk", "en"};
+    /** Every language the plugin has a bundle for, read from the files so a new one is checked as well. */
+    public static final String[] LANGUAGES = new Fi("src/main/resources/bundles").seq()
+            .map(file -> LocaleCodes.fromFileName(file.nameWithoutExtension()))
+            .select(Objects::nonNull)
+            .sort()
+            .toArray(String.class);
 
     private LayoutAssert() {
     }
@@ -46,7 +51,7 @@ public final class LayoutAssert {
     public static Localization localization(String language) {
         Bundle.INSTANCE.addSource(new Fi("src/main/resources/bundles"));
         Bundle.INSTANCE.addLocaleAlias("uk", "uk_UA");
-        return new Localization(Bundle.INSTANCE, Locale.forLanguageTag(language));
+        return new Localization(Bundle.INSTANCE, LocaleCodes.parse(language));
     }
 
     /**
