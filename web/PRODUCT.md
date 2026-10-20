@@ -40,7 +40,7 @@ XCore is a full infrastructure built specifically for Mindustry, not a single se
 
 ## Capabilities and Constraints
 
-**Game modes in the ecosystem**: nine public servers, in the order the Discord #information channel lists them (159.195.205.212, ports 7001-7009; 7010 is a test server):
+**Game modes in the ecosystem**: eight public servers, in the order the Discord #information channel lists them (159.195.205.212, ports 7001-7007 and 7009; 7010 is a test server):
 - Mini-PvP (XCore-plugin): team PvP on small maps; rated matches, seasons.
 - Mini-Surv: classic co-op survival; vote for the next wave.
 - Mini-Attack: storm an AI-run enemy base.
@@ -48,7 +48,6 @@ XCore is a full infrastructure built specifically for Mindustry, not a single se
 - HexedCore (aethercore-plugin): free-for-all hex capture with a core in every hex; Elo by placement, seasons, leagues Scrap to Surge Alloy. Not the legacy Hexed with Newbie-to-Devastator ranks.
 - Red vs Blue (rvsb-plugin): survivors against the infected; has its own Discord.
 - Siege (TheSiege): attackers against defenders on a timer.
-- Asthosus: modded server (the Asthosus planet mod); not on the public list, joined by IP.
 - Experimental slot (port 7009): its mode changes about once a month. Now Quadset, a free-for-all with new content that players suggest on the #quadset-content forum; before it, Tower Defence (Tower-defence-plugin). The site must present it as experimental, not as a permanent mode.
 
 Mini-PvP and HexedCore have separate rating ladders with the same leagues; season 1 ends January 1, 2027.

@@ -22,6 +22,15 @@ cp -r .next/static .next/standalone/.next/
 PORT=3000 node .next/standalone/server.js
 ```
 
+## Deploy
+
+x-core.org runs the standalone build on the game server: a systemd user unit `xcore-web` serves `~/services/xcore-web` on 127.0.0.1:3100, and Caddy proxies the domain to it. After a build and the two `cp` steps above:
+
+```bash
+rsync -az --delete .next/standalone/ <server>:services/xcore-web/
+ssh <server> systemctl --user restart xcore-web
+```
+
 ## Where things live
 
 - `src/content.ts`: facts shared by both languages: links, accents, badges, leagues, modes, the sample player.

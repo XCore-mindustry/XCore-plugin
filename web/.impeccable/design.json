@@ -364,36 +364,6 @@
           "oklch(95% 0.047 53.8)"
         ]
       },
-      "teal": {
-        "role": "secondary",
-        "displayName": "Coolant Teal",
-        "canonical": "#7fe0d0",
-        "tonalRamp": [
-          "oklch(15% 0.095 182.1)",
-          "oklch(26% 0.095 182.1)",
-          "oklch(37% 0.095 182.1)",
-          "oklch(48% 0.095 182.1)",
-          "oklch(60% 0.095 182.1)",
-          "oklch(71% 0.095 182.1)",
-          "oklch(83% 0.095 182.1)",
-          "oklch(95% 0.095 182.1)"
-        ]
-      },
-      "teal-band": {
-        "role": "secondary",
-        "displayName": "Teal Band",
-        "canonical": "#24443f",
-        "tonalRamp": [
-          "oklch(15% 0.039 182.9)",
-          "oklch(26% 0.039 182.9)",
-          "oklch(37% 0.039 182.9)",
-          "oklch(48% 0.039 182.9)",
-          "oklch(60% 0.039 182.9)",
-          "oklch(71% 0.039 182.9)",
-          "oklch(83% 0.039 182.9)",
-          "oklch(95% 0.039 182.9)"
-        ]
-      },
       "gray": {
         "role": "secondary",
         "displayName": "Steel Gray",
@@ -681,7 +651,7 @@
       "Do scope every section and card to one accent pair through `--ac` and `--band`.",
       "Do put a command chip on every field that has an in-game command, and only there.",
       "Do draw locked, unreached or unseen things as ghost cells (1px dashed Ghost Line, 30% desaturated sprite) instead of hiding them.",
-      "Do give each section exactly one loud number in its accent, and only a real count (9 modes, 9 menu languages, 8 open repositories) or a value inside a labelled example (rating 1487, 34 restored blocks).",
+      "Do give each section exactly one loud number in its accent, and only a real count (8 modes, 9 menu languages, 8 open repositories) or a value inside a labelled example (rating 1487, 34 restored blocks).",
       "Do render sprites with `image-rendering: pixelated` at whole-number scales.",
       "Do draw icons from Mindustry's icon font (`--font-icons`) or as masks of game sprites, marked `aria-hidden` next to a text label.",
       "Do keep every touch target at least 44px.",

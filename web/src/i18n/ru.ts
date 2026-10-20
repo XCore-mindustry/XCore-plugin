@@ -4,7 +4,7 @@ const ru: Dictionary = {
   meta: {
     title: "XCore — сеть серверов Mindustry",
     description:
-      "Девять режимов и один профиль: Mini-PvP, HexedCore, Red vs Blue и другие. Сезонный рейтинг, бейджи, общий чат с переводом и открытый код.",
+      "Восемь режимов и один профиль: Mini-PvP, HexedCore, Red vs Blue и другие. Сезонный рейтинг, бейджи, общий чат с переводом и открытый код.",
   },
   skip: "К содержимому",
   langLabel: "Язык",
@@ -166,16 +166,6 @@ const ru: Dictionary = {
         ],
         commands: [["/changeteam", "сменить команду"]],
       },
-      asthosus: {
-        name: "Asthosus",
-        line: "Мод с новой планетой",
-        body: "Сервер с модом Asthosus, который добавляет в игру новую планету. Модовые серверы не пускают в общий список, поэтому сюда заходят по IP, а мод ставят заранее.",
-        facts: [
-          ["Адрес", "159.195.205.212:7008"],
-          ["Нужен", "мод Asthosus"],
-        ],
-        commands: [],
-      },
       lab: {
         name: "Quadset",
         line: "Экспериментальный режим",
@@ -188,7 +178,6 @@ const ru: Dictionary = {
       },
     },
     rvbDiscord: "У Red vs Blue свой Discord",
-    asthosusMod: "Мод Asthosus на GitHub",
     labSuggest: "Предложить контент в Discord",
   },
 

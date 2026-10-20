@@ -78,11 +78,6 @@ export function ModeBoard({ t }: { t: Dictionary["modes"] }) {
                     <Glyph c={glyph.discord} /> {t.rvbDiscord}
                   </a>
                 )}
-                {m.id === "asthosus" && (
-                  <a className="text-link" href={links.asthosus}>
-                    <Glyph c={glyph.github} /> {t.asthosusMod}
-                  </a>
-                )}
                 {m.id === "lab" && (
                   <a className="text-link" href={links.discord}>
                     <Glyph c={glyph.discord} /> {t.labSuggest}

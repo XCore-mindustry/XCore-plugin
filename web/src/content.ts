@@ -5,7 +5,6 @@ import {formatErrors} from "next/dist/server/mcp/tools/utils/format-errors";
 export const links = {
   discord: "https://discord.gg/RUMCCa9QAC",
   rvbDiscord: "https://discord.gg/UdnuFetcNt",
-  asthosus: "https://github.com/Catana791/Asthosus",
   github: "https://github.com/XCore-mindustry",
   donate: "https://donatello.to/xcore",
   weblate: "https://weblate.x-core.org/",
@@ -20,7 +19,6 @@ export const accents = {
   purple: ["#d79bff", "#402c4f"],
   red: ["#ff8f8f", "#4f2a2a"],
   orange: ["#ffb074", "#4f3524"],
-  teal: ["#7fe0d0", "#24443f"],
   gray: ["#c9ced9", "#353a48"],
 } as const;
 export type Accent = keyof typeof accents;
@@ -56,7 +54,6 @@ export const glyph = {
   modeSurvival: "",
   admin: "",
   planeOutline: "",
-  planet: "",
   defense: "",
   crafting: "",
   download: "",
@@ -98,7 +95,7 @@ export const leagues = [
   { id: "surge-alloy", from: 2500 },
 ] as const;
 
-export type ModeId = "pvp" | "surv" | "attack" | "event" | "hexed" | "rvb" | "siege" | "asthosus" | "lab";
+export type ModeId = "pvp" | "surv" | "attack" | "event" | "hexed" | "rvb" | "siege" | "lab";
 
 /** The network's servers in port order, as #information lists them; glyphs as in ServerRegistryService. */
 export const modes: { id: ModeId; accent: Accent; glyph: string; sprites: { src: string; size: number; scale: number }[] }[] = [
@@ -133,7 +130,6 @@ export const modes: { id: ModeId; accent: Accent; glyph: string; sprites: { src:
       { src: "/sprites/foreshadow.png", size: 128, scale: 2 },
     ],
   },
-  { id: "asthosus", accent: "teal", glyph: glyph.planet, sprites: [{ src: "/sprites/accelerator.png", size: 224, scale: 1 }] },
   // The experimental slot (port 7009): its mode changes every month or so, the id stays.
   { id: "lab", accent: "green", glyph: glyph.crafting, sprites: [{ src: "/sprites/quad.png", size: 220, scale: 1 }] },
 ];

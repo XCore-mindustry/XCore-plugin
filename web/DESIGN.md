@@ -26,8 +26,6 @@ colors:
   red-band: "#4f2a2a"
   orange: "#ffb074"
   orange-band: "#4f3524"
-  teal: "#7fe0d0"
-  teal-band: "#24443f"
   gray: "#c9ced9"
   gray-band: "#353a48"
   discord: "#8f99ff"
@@ -176,10 +174,9 @@ The topic accents. Each section or card takes one pair and applies it through tw
 - **Steel Gray / Gray Band** (gray, gray-band): fair play and moderation; the pass's badge card; the Event server, which is off between events.
 - **Console Purple / Purple Band** (purple, purple-band): developers and libraries; also HexedCore.
 - **Turret Green / Green Band** (green, green-band): Mini-Surv and the experimental slot (now Quadset); also string literals in code samples.
-- **Coolant Teal / Teal Band** (teal, teal-band): Asthosus.
 - **Crux Red / Red Band** (red, red-band): Mini-PvP.
 
-Nine modes share eight accents, so the two survival modes share green. Siege takes Core Gold, the only mode on the house colour.
+Eight modes share seven accents, so the two survival modes share green. Siege takes Core Gold, the only mode on the house colour.
 
 Badge colours (developer, translator, map maker and the rest) are game data copied from `Badge.java` and set per cell; they are not topic accents and do not join this palette.
 
@@ -231,7 +228,7 @@ Content sits in windows capped at 1320px and centred, with a fluid outer gutter 
 
 The pass fills the first viewport on desktop and laptop (`min-height: 100svh` minus the gutter). A short-screen block, `(min-width: 900px) and (max-height: 860px)`, tightens paddings, cell heights and the rating size so the pass and its route fit 1280x800 and 1366x768. At 899px and below the pass becomes one column and the route strip moves under the header with CSS `order`, so phones see the way in on the first screen; in the DOM it stays after the body, so reading order is unchanged.
 
-Other breakpoints: at 899px dock cells drop their labels and become 44px squares; at 639px the pass header wraps, the ladder goes to 5 columns, the badge row to 2 and the mode row to 3, route steps stack vertically with rotated arrows, and the primary action goes full width. The pass's mode row is 5 columns (9 cells in two rows, like the badges) so it adds no height. The open mode panel puts stage and text side by side through container queries: on the board when it is 1040px or wider, on the mode itself at 640px in the phone column.
+Other breakpoints: at 899px dock cells drop their labels and become 44px squares; at 639px the pass header wraps, the ladder goes to 5 columns, the badge row to 2 and the mode row to 3, route steps stack vertically with rotated arrows, and the primary action goes full width. The pass's mode row is 4 columns (8 cells in two rows, like the badges) so it adds no height. The open mode panel puts stage and text side by side through container queries: on the board when it is 1040px or wider, on the mode itself at 640px in the phone column.
 
 **The First Screen Rule.** On every viewport the first screen holds the way in: the route and the primary action. Fit it with a scoped media query and `order`, not by moving it in the DOM.
 
@@ -291,7 +288,7 @@ The shared grid unit for badges, leagues, modes, languages and dock sections.
 A fixed 64px strip in Head Band with a 3px Edge bottom line. It is the pass folded: avatar sprite, player name and rating at the left (name hidden under 640px), section cells at the right, then Discord. It slides in (0.5s) once the whole pass section is above the viewport; the observer watches the section itself so anchor jumps and mid-page reloads work. Section cells are ghost cells that light and stamp when their section is seen. It is `inert` while hidden.
 
 ### Mode Board
-A rail and a panel. All nine modes stand as rows in a 20rem rail, in the order the Discord #information channel lists the servers: a 48px sprite, the name in the mode's accent, a one-line summary and a chevron pointing at the panel. The open row takes its band fill and a 3px accent bar on the left. The open panel spans the whole rail height beside it: a sprite stage on the floor texture, a description, a fact grid and the mode's commands (omitted when a mode has none). The markup stays an accordion (each `.mode` holds its head button and panel); on the rail `.mode` is `display: contents` so both land on the board's grid. Below 900px it becomes a vertical list, each mode its own box, with chevrons pointing down.
+A rail and a panel. All eight modes stand as rows in a 20rem rail, in the order the Discord #information channel lists the servers: a 48px sprite, the name in the mode's accent, a one-line summary and a chevron pointing at the panel. The open row takes its band fill and a 3px accent bar on the left. The open panel spans the whole rail height beside it: a sprite stage on the floor texture, a description, a fact grid and the mode's commands (omitted when a mode has none). The markup stays an accordion (each `.mode` holds its head button and panel); on the rail `.mode` is `display: contents` so both land on the board's grid. Below 900px it becomes a vertical list, each mode its own box, with chevrons pointing down.
 
 ### Log Rows
 TileLogger history: inset rows with a Fira Code timestamp, a bold player name and the action; the resolving line (rollback) takes the Success fill.
@@ -305,7 +302,7 @@ A dashed gold chip that marks synthetic data as an example. It is reserved for t
 - **Do** scope every section and card to one accent pair through `--ac` and `--band`.
 - **Do** put a command chip on every field that has an in-game command, and only there.
 - **Do** draw locked, unreached or unseen things as ghost cells (1px dashed Ghost Line, 30% desaturated sprite) instead of hiding them.
-- **Do** give each section exactly one loud number in its accent, and only a real count (9 modes, 9 menu languages, 8 open repositories) or a value inside a labelled example (rating 1487, 34 restored blocks).
+- **Do** give each section exactly one loud number in its accent, and only a real count (8 modes, 9 menu languages, 8 open repositories) or a value inside a labelled example (rating 1487, 34 restored blocks).
 - **Do** render sprites with `image-rendering: pixelated` at whole-number scales.
 - **Do** draw icons from Mindustry's icon font (`--font-icons`) or as masks of game sprites, marked `aria-hidden` next to a text label.
 - **Do** keep every touch target at least 44px.
@@ -331,4 +328,4 @@ Left open after the finish review; these describe the current build, not rules t
 - Dock cells do not use the kit's pressed-tab sign (a 3px accent line underneath); only the language switch does.
 - The Одна сеть (Network) and Для разработчиков (Developers) sections use no sprites.
 - The fair-play text card leaves empty space at 1440px.
-- Rail sprites (48px) and the pass's mode cells (40px) fit large sprites such as Quad (220px) and the accelerator (224px) by fractional ratios, against The Whole Pixel Rule.
+- Rail sprites (48px) and the pass's mode cells (40px) fit large sprites such as Quad (220px) by fractional ratios, against The Whole Pixel Rule.

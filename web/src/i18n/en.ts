@@ -2,7 +2,7 @@ const en = {
   meta: {
     title: "XCore — a network of Mindustry servers",
     description:
-      "Nine modes, one profile: Mini-PvP, HexedCore, Red vs Blue and more. Seasonal rating, badges, cross-server chat with translation, and open source.",
+      "Eight modes, one profile: Mini-PvP, HexedCore, Red vs Blue and more. Seasonal rating, badges, cross-server chat with translation, and open source.",
   },
   skip: "Skip to content",
   langLabel: "Language",
@@ -164,16 +164,6 @@ const en = {
         ],
         commands: [["/changeteam", "switch team"]],
       },
-      asthosus: {
-        name: "Asthosus",
-        line: "A mod with a new planet",
-        body: "A server running the Asthosus mod, which adds a new planet to the game. Modded servers aren't allowed on the public list, so you join by IP with the mod installed.",
-        facts: [
-          ["Address", "159.195.205.212:7008"],
-          ["Needs", "the Asthosus mod"],
-        ],
-        commands: [],
-      },
       lab: {
         name: "Quadset",
         line: "Experimental mode",
@@ -186,7 +176,6 @@ const en = {
       },
     },
     rvbDiscord: "Red vs Blue has its own Discord",
-    asthosusMod: "The Asthosus mod on GitHub",
     labSuggest: "Suggest content on Discord",
   },
 
