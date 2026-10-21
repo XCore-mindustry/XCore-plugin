@@ -314,6 +314,7 @@ This file contains sensitive and shared settings. **It is created automatically*
 Bundles are stored in `src/main/resources/bundles/` and distributed via FluBundle. Supported languages include English, Russian, Ukrainian, and Belarusian. Locale resolution follows player preference with automatic fallback.
 
 ## Testing
+- Real-client menu screenshots and geometry checks: [tools/ui-render](tools/ui-render/README.md).
 - Unit and integration tests use JUnit 5 with AssertJ.
 - Avaje service tests use `BeanScope.builder().forTesting().mock(...)` setups.
 - Run the full suite:

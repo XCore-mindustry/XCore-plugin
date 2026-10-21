@@ -1,0 +1,80 @@
+#!/usr/bin/env bash
+set -euo pipefail
+cd "$(dirname "$0")/../.."
+
+usage() {
+    echo "Usage: tools/ui-render/render <fixture> <phone|android1080|pc|landscape>"
+    echo "       tools/ui-render/render <matrix|selfcheck>"
+}
+if [[ $# -lt 1 || $# -gt 2 ]]; then usage; exit 2; fi
+case "$1" in
+    matrix|selfcheck) [[ $# == 1 ]] || { usage; exit 2; } ;;
+    *)
+        [[ $# == 2 && "$1" =~ ^[a-zA-Z0-9_-]+$ ]] || { usage; exit 2; }
+        case "$2" in phone|android1080|pc|landscape) ;; *) usage; exit 2 ;; esac
+        ;;
+esac
+
+./gradlew exportUiFixtures --console=plain
+docker build -t xcore-ui-render tools/ui-render
+mkdir -p build/ui-render/results
+project_dir="$PWD"
+
+render_one() {
+    local fixture="$1" profile="$2" width height scale mobile code
+    case "$profile" in
+        phone)       width=480;  height=800;  scale=1; mobile=true ;;
+        android1080) width=1080; height=2400; scale=2; mobile=true ;;
+        pc)          width=1920; height=1080; scale=1; mobile=false ;;
+        landscape)   width=800;  height=480;  scale=1; mobile=true ;;
+    esac
+    local stem="build/ui-render/results/$fixture-$profile"
+    [[ -f "build/ui-render/packets/$fixture.packet" ]] || { echo "Unknown fixture: $fixture" >&2; return 2; }
+    # Remove old outputs so a failed launch cannot look like a successful prior capture.
+    rm -f "$stem.png" "$stem.checks.txt" "$stem.tree.txt" "$stem.metrics.txt"
+    if docker run --rm --init --network none --user "$(id -u):$(id -g)" \
+        -v "$project_dir/build/ui-render/packets:/packets:ro" \
+        -v "$project_dir/build/ui-render/results:/results" \
+        xcore-ui-render "/packets/$fixture.packet" "/results/$fixture-$profile" \
+        "$width" "$height" "$scale" "$mobile" > "$stem.log" 2>&1; then
+        cat "$stem.metrics.txt"
+    else
+        code=$?
+        if [[ "$code" == 1 && -s "$stem.checks.txt" ]]; then
+            cat "$stem.checks.txt" >&2
+        else
+            tail -n 15 "$stem.log" >&2
+        fi
+        return "$code"
+    fi
+}
+
+case "$1" in
+    matrix)
+        failed=0
+        for fixture in settings-de-profile settings-de-badges settings-en-language settings-ru-chat top-ru-crowded top-en-crowded; do
+            for profile in phone android1080 pc; do
+                render_one "$fixture" "$profile" || failed=1
+            done
+        done
+        exit "$failed"
+        ;;
+    selfcheck)
+        for fixture in negative-row negative-text negative-button; do
+            code=0
+            render_one "$fixture" phone || code=$?
+            stem="build/ui-render/results/$fixture-phone"
+            [[ "$code" == 1 && -s "$stem.png" && -s "$stem.checks.txt" ]] || {
+                echo "Negative control did not fail with geometry findings: $fixture (exit $code)" >&2
+                exit 2
+            }
+            case "$fixture" in
+                negative-row) grep -Eq 'STAGE_X|DIALOG_X' "$stem.checks.txt" ;;
+                negative-text) grep -q TEXT_X "$stem.checks.txt" ;;
+                negative-button) grep -q BUTTON_TEXT "$stem.checks.txt" ;;
+            esac
+        done
+        echo "All three negative controls were rejected; PNG and geometry artifacts exist."
+        ;;
+    *) render_one "$1" "$2" ;;
+esac
