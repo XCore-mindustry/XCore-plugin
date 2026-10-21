@@ -1,22 +1,18 @@
 package org.xcore.plugin.service.map;
 
-import arc.graphics.Color;
 import arc.struct.ObjectIntMap;
-import mindustry.Vars;
 import mindustry.world.Block;
-import mindustry.world.ColorMapper;
 
 /**
  * Provides static color mappings for environment blocks on headless servers.
  *
  * <p>In headless mode, Mindustry skips sprite atlas generation, leaving {@code block.mapColor}
- * as default black (0, 0, 0, 1). This palette assigns authentic center-pixel colors to all
- * vanilla floors and walls so {@code MapIO.generatePreview} creates rich, accurate minimaps.
+ * as default black (0, 0, 0, 1). This palette supplies preview colors for vanilla floors
+ * and walls without mutating blocks.
  */
 public final class MapColorPalette {
 
     private static final ObjectIntMap<String> PALETTE = new ObjectIntMap<>();
-    private static volatile boolean initialized = false;
 
     static {
         // Extracted authentic center-pixel RGBA colors for vanilla Mindustry environment blocks
@@ -123,29 +119,14 @@ public final class MapColorPalette {
         PALETTE.put(name, rgba);
     }
 
-    /** Ensures environment blocks have their mapColor populated on headless servers. */
-    public static void ensureInitialized() {
-        if (initialized || Vars.content == null) return;
-        synchronized (MapColorPalette.class) {
-            if (initialized) return;
-
-            for (Block block : Vars.content.blocks()) {
-                if (block.synthetic()) continue;
-
-                // If block.mapColor is default pure black, assign from palette
-                if (block.mapColor.r == 0f && block.mapColor.g == 0f && block.mapColor.b == 0f) {
-                    int color = PALETTE.get(block.name, 0);
-                    if (color == 0) {
-                        color = PALETTE.get(block.name.replace("-floor", ""), 0);
-                    }
-                    if (color != 0) {
-                        block.mapColor.set(Color.valueOf(String.format("%08X", color)));
-                    }
-                }
-            }
-
-            ColorMapper.load();
-            initialized = true;
+    /** Returns a preview color without changing the live content registry. */
+    public static int colorFor(Block block) {
+        int color = block.mapColor.rgba();
+        if (!block.synthetic() && block.mapColor.r == 0f && block.mapColor.g == 0f && block.mapColor.b == 0f) {
+            color = PALETTE.get(block.name, 0);
+            if (color == 0) color = PALETTE.get(block.name.replace("-floor", ""), 0);
+            if (color == 0) color = block.mapColor.rgba();
         }
+        return color;
     }
 }

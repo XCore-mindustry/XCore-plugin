@@ -120,41 +120,43 @@ class MapInspectionServiceTest {
 
     @Test
     void inspectionWaitsForTheActualPreviewReadAndBothUseOneLock() throws Exception {
-        var lock = spy(new DetachedMapReadLock());
-        var previewInside = new CountDownLatch(1); var releasePreview = new CountDownLatch(1); var inspectionAttempt = new CountDownLatch(1);
-        doAnswer(invocation -> {
-            if (Thread.currentThread().getName().equals("inspection-worker")) inspectionAttempt.countDown();
-            return invocation.callRealMethod();
-        }).when(lock).lock();
-        var previewFile = mock(Fi.class); when(previewFile.exists()).thenReturn(false, true);
-        when(previewFile.readBytes()).thenAnswer(ignored -> {
-            previewInside.countDown();
-            if (!releasePreview.await(3, TimeUnit.SECONDS)) throw new AssertionError("Preview not released");
-            return new byte[]{1};
-        });
-        var previewMap = mock(mindustry.maps.Map.class); when(previewMap.previewFile()).thenReturn(previewFile);
-        when(previewMap.plainName()).thenReturn("Fixture");
-        var image = mock(XcoreImageService.class); when(image.ensureDelivered(any(), any())).thenReturn("region");
-        var preview = new MapPreviewService(null, image, lock);
-        var downloader = mock(MapDownloader.class);
-        Path file = new MsavFixture().write(directory);
-        when(downloader.download(anyString(), anyInt())).thenReturn(new MapDownloader.Download(file, "d".repeat(64), (int) Files.size(file)));
-        var inspection = new MapInspectionService(new TomlSecretsConfig(), downloader, lock);
-        try (var workers = Executors.newVirtualThreadPerTaskExecutor()) {
-            var previewDone = workers.submit(() -> preview.requestPreview(mock(mindustry.gen.Player.class), previewMap, (region, error) -> assertThat(error).isNull()));
-            assertThat(previewInside.await(2, TimeUnit.SECONDS)).isTrue();
-            var inspectionDone = workers.submit(() -> {
-                Thread.currentThread().setName("inspection-worker");
-                return inspection.inspect(source, null, new MapInspectionService.Context(MsavFixture.registry(), MsavFixture.settings()));
+        try (var engine = HeadlessWorld.builder().dimensions(8, 8).build()) {
+            var lock = spy(new DetachedMapReadLock());
+            var previewInside = new CountDownLatch(1); var releasePreview = new CountDownLatch(1); var inspectionAttempt = new CountDownLatch(1);
+            doAnswer(invocation -> {
+                if (Thread.currentThread().getName().equals("inspection-worker")) inspectionAttempt.countDown();
+                return invocation.callRealMethod();
+            }).when(lock).lock();
+            var previewFile = mock(Fi.class); when(previewFile.exists()).thenReturn(false, true);
+            when(previewFile.readBytes()).thenAnswer(ignored -> {
+                previewInside.countDown();
+                if (!releasePreview.await(3, TimeUnit.SECONDS)) throw new AssertionError("Preview not released");
+                return new byte[]{1};
             });
-            try {
-                assertThat(inspectionAttempt.await(2, TimeUnit.SECONDS)).isTrue();
-                assertThat(inspectionDone.isDone()).isFalse();
+            var previewMap = mock(mindustry.maps.Map.class); when(previewMap.previewFile()).thenReturn(previewFile);
+            when(previewMap.plainName()).thenReturn("Fixture");
+            var image = mock(XcoreImageService.class); when(image.ensureDelivered(any(), any())).thenReturn("region");
+            var preview = new MapPreviewService(null, image, lock);
+            var downloader = mock(MapDownloader.class);
+            Path file = new MsavFixture().write(directory);
+            when(downloader.download(anyString(), anyInt())).thenReturn(new MapDownloader.Download(file, "d".repeat(64), (int) Files.size(file)));
+            var inspection = new MapInspectionService(new TomlSecretsConfig(), downloader, lock);
+            try (var workers = Executors.newVirtualThreadPerTaskExecutor()) {
+                var previewDone = workers.submit(() -> preview.requestPreview(mock(mindustry.gen.Player.class), previewMap, (region, error) -> assertThat(error).isNull()));
+                assertThat(previewInside.await(2, TimeUnit.SECONDS)).isTrue();
+                var inspectionDone = workers.submit(() -> {
+                    Thread.currentThread().setName("inspection-worker");
+                    return inspection.inspect(source, null, new MapInspectionService.Context(MsavFixture.registry(), MsavFixture.settings()));
+                });
+                try {
+                    assertThat(inspectionAttempt.await(2, TimeUnit.SECONDS)).isTrue();
+                    assertThat(inspectionDone.isDone()).isFalse();
+                } finally { releasePreview.countDown(); }
+                previewDone.get(2, TimeUnit.SECONDS);
+                assertThat(inspectionDone.get(2, TimeUnit.SECONDS).status()).isEqualTo(MapInspectionResult.Status.OK);
+                verify(lock, times(2)).lock(); verify(lock, times(2)).unlock();
             } finally { releasePreview.countDown(); }
-            previewDone.get(2, TimeUnit.SECONDS);
-            assertThat(inspectionDone.get(2, TimeUnit.SECONDS).status()).isEqualTo(MapInspectionResult.Status.OK);
-            verify(lock, times(2)).lock(); verify(lock, times(2)).unlock();
-        } finally { releasePreview.countDown(); }
+        }
     }
 
     @Test

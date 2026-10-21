@@ -11,7 +11,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
+import org.junit.jupiter.params.provider.FieldSource;
 import org.mockito.ArgumentCaptor;
 import org.xcore.plugin.concurrent.Async;
 import org.xcore.plugin.concurrent.InlineStorageExecutor;
@@ -220,7 +220,7 @@ class MatchHistoryUiControllerTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"ru", "uk", "en", "be", "cs", "de", "es", "fr", "pl"})
+    @FieldSource("org.xcore.plugin.ui.kit.LayoutAssert#LANGUAGES")
     @DisplayName("a full page of matches fits every screen, and no button carries a player's UUID")
     void list_isLaidOutForEveryScreen(String language) {
         session.localization = LayoutAssert.localization(language);
@@ -247,7 +247,7 @@ class MatchHistoryUiControllerTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"ru", "uk", "en", "be", "cs", "de", "es", "fr", "pl"})
+    @FieldSource("org.xcore.plugin.ui.kit.LayoutAssert#LANGUAGES")
     @DisplayName("a two-team match fits every screen, with the viewer's result and both teams")
     void teamMatch_isLaidOutForEveryScreen(String language) {
         session.localization = LayoutAssert.localization(language);
@@ -274,7 +274,7 @@ class MatchHistoryUiControllerTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"ru", "uk", "en", "be", "cs", "de", "es", "fr", "pl"})
+    @FieldSource("org.xcore.plugin.ui.kit.LayoutAssert#LANGUAGES")
     @DisplayName("a round of 24 is shown a page of participants at a time and still fits")
     void bigRound_isPaged(String language) {
         session.localization = LayoutAssert.localization(language);

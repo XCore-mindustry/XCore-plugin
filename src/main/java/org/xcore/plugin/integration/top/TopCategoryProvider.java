@@ -2,7 +2,6 @@ package org.xcore.plugin.integration.top;
 
 import org.xcore.plugin.localization.Localization;
 
-import java.text.NumberFormat;
 import java.util.List;
 import java.util.Locale;
 
@@ -89,7 +88,7 @@ public interface TopCategoryProvider {
         }
         try {
             long value = Long.parseLong(primaryValue);
-            return NumberFormat.getIntegerInstance(local != null ? local.getLocale() : Locale.ROOT).format(value);
+            return Localization.integers(local != null ? local.getLocale() : Locale.ROOT).format(value);
         } catch (NumberFormatException e) {
             return primaryValue;
         }

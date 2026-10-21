@@ -18,6 +18,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 class LocalizationRenderTest {
 
     @Test
+    @DisplayName("numbers are grouped with a space the client's font can draw")
+    void numbersAreGroupedWithADrawableSpace() {
+        assertThat(Localization.integers(Locale.FRENCH).format(1_204_000)).isEqualTo("1 204 000");
+        assertThat(Localization.integers(Locale.ENGLISH).format(1_204_000)).isEqualTo("1,204,000");
+    }
+
+    @Test
     @DisplayName("every translated message renders without errors the English message does not have")
     void translationsRenderWithoutNewErrors() {
         Bundle bundle = new Bundle(Locale.ENGLISH);

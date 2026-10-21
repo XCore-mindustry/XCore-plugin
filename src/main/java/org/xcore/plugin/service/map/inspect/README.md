@@ -27,10 +27,12 @@ both download failures and inspection completion delete it.
 
 `SaveVersion.readContentHeader` and `MapIO.generatePreview` install a global temporary
 content mapper. `readMap` resolves IDs through that mapper and constructs buildings;
-preview also toggles `Vars.world`'s generating flag. A worker lock cannot protect
+the engine preview also toggles `Vars.world`'s generating flag. A worker lock cannot protect
 game-thread readers from those mutations. Inspection therefore uses an independent
 decoder, rather than `MapIO.createMap` / `SaveVersion.readMap` with a collecting context.
-It never calls `SaveIO.load`, `JsonIO`/engine object/content/entity deserializers or events, and
+Preview generation uses the same detached decoder and captures colors on the game thread.
+Neither path installs a mapper or constructs engine buildings.
+Inspection never calls `SaveIO.load`, `JsonIO`/engine object/content/entity deserializers or events, and
 never writes `Vars.*`, content mappers, tiles, rules, teams, groups or asset caches.
 Metadata uses Arc's pure syntax parser with depth, duplicate-field and single-root
 checks. This accepts Arc minimal JSON's unquoted strings with spaces or quotation
@@ -38,9 +40,9 @@ marks, including campaign objective text and logic code, without resolving conte
 
 The immutable registry is copied from `ContentLoader.getContentMap()`, which bypasses
 the temporary mapper even if preview is currently running. Inspection and preview
-share the Avaje `DetachedMapReadLock` bean. The lock serializes worker map reads; it
-does not claim to fix preview's pre-existing interactions with live game readers.
-Preview's generation behavior is preserved within the approved scope.
+share the Avaje `DetachedMapReadLock` bean to bound concurrent decoding allocations.
+Preview colors are immutable values, and building teams are copied from the decoded map.
+Embedded patches and custom rendering callbacks are not executed for previews.
 
 ## Supported formats and bounds
 

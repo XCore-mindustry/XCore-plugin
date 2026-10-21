@@ -231,10 +231,15 @@ public final class Kit {
 
     // ------------------------------------------------------------------ buttons
 
-    /** Choices as buttons of one size, in rows of as many as {@code width} holds at {@code minWidth} each. */
+    /**
+     * Choices as buttons of one size, in rows of as many as {@code width} holds at the widest
+     * of {@code minWidth} and their texts; a text wider than a whole row is wrapped.
+     */
     public static void options(Ui.TableBuilder content, float width, float minWidth, String group,
                                List<Option> options) {
-        int perRow = Math.max(1, Math.min(options.size(), (int) ((width + TAB_GAP) / (minWidth + TAB_GAP))));
+        float widest = minWidth;
+        for (Option option : options) widest = Math.max(widest, TextWidth.of(option.text()) + BUTTON_INSET);
+        int perRow = Math.max(1, Math.min(options.size(), (int) ((width + TAB_GAP) / (widest + TAB_GAP))));
         float optionWidth = (width - (perRow - 1) * TAB_GAP) / perRow;
         for (int from = 0; from < options.size(); from += perRow) {
             List<Option> rowOptions = options.subList(from, Math.min(options.size(), from + perRow));
@@ -243,13 +248,20 @@ public final class Kit {
                 for (int i = 0; i < rowOptions.size(); i++) {
                     Option option = rowOptions.get(i);
                     boolean last = i == rowOptions.size() - 1;
-                    row.button(Text.raw((option.selected() ? "[accent]" : "[lightgray]") + option.text() + "[]"),
-                            option.action(), b -> b
-                                    .style("flatTogglet")
-                                    .group(group)
-                                    .checked(option.selected())
-                                    .layout(l -> l.width(optionWidth).height(BUTTON_HEIGHT)
-                                            .padRight(last ? 0f : TAB_GAP)));
+                    String label = (option.selected() ? "[accent]" : "[lightgray]") + option.text() + "[]";
+                    if (TextWidth.of(label) + BUTTON_INSET > optionWidth) {
+                        row.add(Ui.buttonTable(option.action(), button -> {
+                            button.style("flatTogglet").group(group).checked(option.selected()).margin(BUTTON_INSET / 2f);
+                            button.layout(l -> l.width(optionWidth).minHeight(BUTTON_HEIGHT)
+                                    .padRight(last ? 0f : TAB_GAP));
+                            button.add(centered(TextWidth.breakWords(label, optionWidth - BUTTON_INSET), optionWidth - BUTTON_INSET));
+                        }));
+                    } else {
+                        row.button(Text.raw(label), option.action(), b -> b
+                                .style("flatTogglet").group(group).checked(option.selected())
+                                .layout(l -> l.width(optionWidth).height(BUTTON_HEIGHT)
+                                        .padRight(last ? 0f : TAB_GAP)));
+                    }
                 }
             })).row();
         }
@@ -257,11 +269,7 @@ public final class Kit {
 
     /** Choices as buttons of one size, as many in a row as the longest of their texts allows. */
     public static void options(Ui.TableBuilder content, float width, String group, List<Option> options) {
-        float widest = 0f;
-        for (Option option : options) {
-            widest = Math.max(widest, TextWidth.of(option.text()) + BUTTON_INSET);
-        }
-        options(content, width, Math.min(widest, width), group, options);
+        options(content, width, 0f, group, options);
     }
 
     /**

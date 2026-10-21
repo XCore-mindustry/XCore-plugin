@@ -10,7 +10,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
+import org.junit.jupiter.params.provider.FieldSource;
 import org.mockito.ArgumentCaptor;
 import org.xcore.plugin.concurrent.Async;
 import org.xcore.plugin.concurrent.InlineStorageExecutor;
@@ -542,7 +542,7 @@ class TopUiControllerTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"ru", "uk", "en"})
+    @FieldSource("org.xcore.plugin.ui.kit.LayoutAssert#LANGUAGES")
     @DisplayName("nothing in the leaderboard is left to find its own width, and every text fits its place")
     void window_isLaidOutForEveryScreen(String language) {
         TopUiController.TopModel model = crowdedPage(language);

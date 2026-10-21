@@ -345,7 +345,7 @@ class DetachedMsavReaderTest {
     void snapshotAndRegistryAreImmutableCopies() throws Exception {
         var snapshot = read(new MsavFixture().compressed());
         int[] floors = new int[25], overlays = new int[25], blocks = new int[25];
-        var copy = new MapSnapshot(snapshot.metadata(), snapshot.registry(), floors, overlays, blocks, snapshot.cores(), List.of(), true);
+        var copy = new MapSnapshot(snapshot.metadata(), snapshot.registry(), floors, overlays, blocks, new int[blocks.length], snapshot.cores(), List.of(), true);
         floors[0] = 999; overlays[0] = 999; blocks[0] = 999;
         assertThat(copy.floor(0)).isZero(); assertThat(copy.overlay(0)).isZero(); assertThat(copy.block(0)).isZero();
         assertThatThrownBy(() -> copy.cores().clear()).isInstanceOf(UnsupportedOperationException.class);

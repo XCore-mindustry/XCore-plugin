@@ -710,7 +710,6 @@ public class PlayerSettingsUiController implements UiController<PlayerSettingsUi
     private void profile(Ui.TableBuilder body, Screen screen, SettingsModel model) {
         VNode identity = Kit.card(screen.card(), Tab.PROFILE.accent, Iconc.pencil + " " + t(session, "player-settings-identity"),
                 (content, inner) -> {
-                    float half = (inner - TAB_GAP) / 2f;
                     content.labelWrap(Text.raw("[lightgray]" + t(session, "player-menu-settings-customNickname") + "[]"),
                             l -> l.width(inner).padBottom(2f)).row();
                     content.field("field_nickname", f -> f
@@ -725,16 +724,9 @@ public class PlayerSettingsUiController implements UiController<PlayerSettingsUi
                             .maxLength(200)
                             .layout(l -> l.width(inner).height(FIELD_HEIGHT).padBottom(GAP))).row();
                     username(content, inner, model);
-                    content.add(Ui.table(actions -> {
-                        actions.button(Text.raw(t(session, "player-menu-settings-customNickname-reset")),
-                                "action:reset_nick", b -> b
-                                        .style("flatBordert")
-                                        .layout(l -> l.width(half).height(BUTTON_HEIGHT).padRight(TAB_GAP)));
-                        actions.button(Text.raw("[accent]" + Iconc.save + " " + t(session, "save") + "[]"),
-                                "action:save", b -> b
-                                        .style("flatBordert")
-                                        .layout(l -> l.width(half).height(BUTTON_HEIGHT)));
-                    })).row();
+                    content.add(Kit.actions(inner, List.of(
+                            new Kit.Action(t(session, "player-menu-settings-customNickname-reset"), "action:reset_nick"),
+                            new Kit.Action("[accent]" + Iconc.save + " " + t(session, "save") + "[]", "action:save")))).row();
                 });
 
         VNode display = Kit.card(screen.card(), Tab.PROFILE.accent, Iconc.chartBar + " " + t(session, "player-settings-interface"),
@@ -935,27 +927,18 @@ public class PlayerSettingsUiController implements UiController<PlayerSettingsUi
         }
         String description = t(session, badge.descriptionKey());
 
-        List<VNode> actions = new ArrayList<>();
+        List<Kit.Action> actions = new ArrayList<>();
         boolean canWear = equipped || (unlocked && badge.selectable() && !badge.system());
-        float buttonWidth = canWear ? (inner - TAB_GAP) / 2f : inner;
-        if (previewing) {
-            actions.add(Ui.button(Text.raw(t(session, "player-settings-badge-previewing")), "action:preview_badge:" + badge.id(),
-                    b -> b.style("flatBordert").disabled()
-                            .layout(l -> l.width(buttonWidth).height(BUTTON_HEIGHT).padRight(canWear ? TAB_GAP : 0f))));
-        } else {
-            actions.add(Ui.button(Text.raw("[sky]" + Iconc.eye + " " + t(session, "player-settings-badge-preview") + "[]"),
-                    "action:preview_badge:" + badge.id(),
-                    b -> b.style("flatBordert")
-                            .layout(l -> l.width(buttonWidth).height(BUTTON_HEIGHT).padRight(canWear ? TAB_GAP : 0f))));
-        }
+        actions.add(new Kit.Action(previewing
+                ? t(session, "player-settings-badge-previewing")
+                : "[sky]" + Iconc.eye + " " + t(session, "player-settings-badge-preview") + "[]",
+                "action:preview_badge:" + badge.id(), !previewing));
         if (equipped) {
-            actions.add(Ui.button(Text.raw("[scarlet]" + t(session, "player-settings-badge-unequip") + "[]"),
-                    "action:unequip_badge",
-                    b -> b.style("flatBordert").layout(l -> l.width(buttonWidth).height(BUTTON_HEIGHT))));
+            actions.add(new Kit.Action("[scarlet]" + t(session, "player-settings-badge-unequip") + "[]",
+                    "action:unequip_badge"));
         } else if (canWear) {
-            actions.add(Ui.button(Text.raw("[accent]" + t(session, "player-settings-badge-equip") + "[]"),
-                    "action:equip_badge:" + badge.id(),
-                    b -> b.style("flatBordert").layout(l -> l.width(buttonWidth).height(BUTTON_HEIGHT))));
+            actions.add(new Kit.Action("[accent]" + t(session, "player-settings-badge-equip") + "[]",
+                    "action:equip_badge:" + badge.id()));
         }
 
         return Ui.table(card -> {
@@ -974,7 +957,7 @@ public class PlayerSettingsUiController implements UiController<PlayerSettingsUi
                     l -> l.width(inner).padTop(GAP).padBottom(GAP)).row();
             card.add(Ui.table(row -> {
                 row.layout(l -> l.width(inner).padBottom(PAD));
-                actions.forEach(row::add);
+                row.add(Kit.actions(inner, actions));
             })).row();
         });
     }
