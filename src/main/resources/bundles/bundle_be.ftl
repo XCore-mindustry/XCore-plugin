@@ -796,8 +796,8 @@ badge-menu-symbol-color-content =
     [white]Бягучы рэжым: [green]{ $mode }[]
     [lightgray]Выберыце, як павінен афарбоўвацца сімвал бэйджа.
 badge-menu-symbol-color-default = Стандартны колер бэйджа
-badge-menu-symbol-color-player-color = Сімвал колеру гульца
-badge-menu-symbol-color-player-color-full = Увесь бэйдж колеру гульца
+badge-menu-symbol-color-player-color = Сімвал у колеры гульца
+badge-menu-symbol-color-player-color-full = Увесь бэйдж у колеры гульца
 badge-menu-view-all = Усе бэйджы
 badge-menu-all-title = [orange]{ -xcore } — Усе бэйджы
 badge-menu-all-content = [lightgray]Прагляд усіх бэйджаў, іх статусу і апісання.

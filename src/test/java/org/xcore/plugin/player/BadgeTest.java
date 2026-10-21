@@ -38,5 +38,6 @@ class BadgeTest {
         assertThat(Badge.DEVELOPER.tag("default", "[#ff8844]")).isEqualTo(Badge.DEVELOPER.tag());
         assertThat(Badge.DEVELOPER.tag("player-color-full", "")).isEqualTo(Badge.DEVELOPER.tag());
         assertThat(Badge.DEVELOPER.tag(null, "[#ff8844]")).isEqualTo(Badge.DEVELOPER.tag());
+        assertThat(Badge.ADMIN.tag("player-color-full", "[#ff8844]")).isEqualTo(Badge.ADMIN.tag());
     }
 }

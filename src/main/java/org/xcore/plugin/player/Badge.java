@@ -55,9 +55,12 @@ public enum Badge {
         return tagPrefix + glyphColorTag + glyph + "[]" + tagSuffix;
     }
 
-    /** The tag as a player's badge colour mode draws it: "player-color" recolours the symbol, "player-color-full" the whole badge. */
+    /**
+     * The tag as a player's badge colour mode draws it: "player-color" recolours the symbol, "player-color-full" the
+     * whole badge. A system badge keeps its own colour so it stays recognisable.
+     */
     public String tag(String colorMode, String playerColorTag) {
-        if (colorMode == null || playerColorTag == null || playerColorTag.isBlank()) {
+        if (system() || colorMode == null || playerColorTag == null || playerColorTag.isBlank()) {
             return tag();
         }
 

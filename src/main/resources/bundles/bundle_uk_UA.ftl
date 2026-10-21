@@ -805,8 +805,8 @@ badge-menu-symbol-color-content =
     [white]Поточний режим: [green]{ $mode }[]
     [lightgray]Виберіть, як має зафарбовуватися символ відзнаки.
 badge-menu-symbol-color-default = Стандартний колір відзнаки
-badge-menu-symbol-color-player-color = Символ кольору гравця
-badge-menu-symbol-color-player-color-full = Уся відзнака кольору гравця
+badge-menu-symbol-color-player-color = Символ у кольорі гравця
+badge-menu-symbol-color-player-color-full = Уся відзнака в кольорі гравця
 badge-menu-view-all = Усі відзнаки
 badge-menu-all-title = [orange]{ -xcore } — Усі відзнаки
 badge-menu-all-content = [lightgray]Перегляд усіх відзнак, їхнього статусу та опису.
