@@ -262,3 +262,20 @@ tasks.withType<Test>().configureEach {
     val strictThreads = providers.gradleProperty("xcoreStrictThreads").orElse("true").get()
     systemProperty("xcore.strictThreads", strictThreads)
 }
+
+tasks.test {
+    useJUnitPlatform { excludeTags("ui-render") }
+}
+
+tasks.register<Test>("exportUiFixtures") {
+    description = "Export localized Settings and Top packets for the real-client renderer."
+    group = "verification"
+    testClassesDirs = sourceSets.test.get().output.classesDirs
+    classpath = sourceSets.test.get().runtimeClasspath
+    useJUnitPlatform { includeTags("ui-render") }
+    val output = layout.buildDirectory.dir("ui-render/packets")
+    systemProperty("xcore.uiRenderOutput", output.get().asFile.absolutePath)
+    outputs.dir(output)
+    // A removed locale or fixture must not leave a stale packet in the render matrix.
+    doFirst { delete(output) }
+}
