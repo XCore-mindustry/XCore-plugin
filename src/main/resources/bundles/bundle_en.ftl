@@ -1349,6 +1349,7 @@ error-nickname-badge-glyph = [scarlet]⚠ Custom nickname cannot contain reserve
 # Server browser (/servers)
 player-servers-title = XCORE SERVER NETWORK
 player-servers-cat-all = All
+player-servers-cat-attack = Attack
 player-servers-cat-pvp = PvP
 player-servers-cat-survival = Survival
 player-servers-cat-special = Special

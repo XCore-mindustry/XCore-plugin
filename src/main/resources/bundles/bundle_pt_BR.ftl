@@ -1365,6 +1365,7 @@ error-nickname-badge-glyph = [scarlet]⚠ O nome personalizado não pode conter 
 # Server browser (/servers)
 player-servers-title = REDE DE SERVIDORES XCORE
 player-servers-cat-all = Todos
+player-servers-cat-attack = Ataque
 player-servers-cat-pvp = PvP
 player-servers-cat-survival = Sobrevivência
 player-servers-cat-special = Especial

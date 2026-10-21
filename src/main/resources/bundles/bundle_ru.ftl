@@ -1375,6 +1375,7 @@ error-nickname-badge-glyph = [scarlet]⚠ Пользовательский ни�
 # Серверный браузер (/servers)
 player-servers-title = ИГРОВЫЕ СЕРВЕРЫ XCORE
 player-servers-cat-all = Все
+player-servers-cat-attack = Нападение
 player-servers-cat-pvp = PvP
 player-servers-cat-survival = Выживание
 player-servers-cat-special = Спец

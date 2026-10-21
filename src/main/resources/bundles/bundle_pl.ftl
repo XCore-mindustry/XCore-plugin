@@ -1377,6 +1377,7 @@ error-nickname-badge-glyph = [scarlet]⚠ Własny nick nie może zawierać zarez
 # Server browser (/servers)
 player-servers-title = SIEĆ SERWERÓW XCORE
 player-servers-cat-all = Wszystkie
+player-servers-cat-attack = Atak
 player-servers-cat-pvp = PvP
 player-servers-cat-survival = Przetrwanie
 player-servers-cat-special = Specjalne

@@ -150,7 +150,8 @@ public class ServerSelectorUiController implements UiController<ServerSelectorUi
         return switch (category) {
             case ALL -> Accent.GOLD;
             case PVP -> Accent.RED;
-            case SURVIVAL -> Accent.GREEN;
+            case ATTACK -> Accent.GREEN;
+            case SURVIVAL -> Accent.BLUE;
             case SPECIAL -> Accent.PURPLE;
         };
     }

@@ -102,6 +102,7 @@ public class TomlXcoreConfig implements SelfNormalizing {
 
     public static class ServerConfig {
         public String name = "server";
+        public String displayName = "";
         public String publicHostOverride = "";
         public int playerLimit = 30;
         public boolean gameStartedTimer = true;
@@ -123,6 +124,9 @@ public class TomlXcoreConfig implements SelfNormalizing {
         public void normalize() {
             if (name == null || name.isBlank()) {
                 name = "server";
+            }
+            if (displayName == null || displayName.isBlank()) {
+                displayName = "";
             }
             if (publicHostOverride != null && publicHostOverride.isBlank()) {
                 publicHostOverride = null;

@@ -1348,6 +1348,7 @@ error-nickname-badge-glyph = [scarlet]⚠ Der eigene Name darf keine reservierte
 # Server browser (/servers)
 player-servers-title = XCORE-SERVERNETZWERK
 player-servers-cat-all = Alle
+player-servers-cat-attack = Angriff
 player-servers-cat-pvp = PvP
 player-servers-cat-survival = Überleben
 player-servers-cat-special = Spezial

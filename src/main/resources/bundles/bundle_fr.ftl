@@ -1351,6 +1351,7 @@ error-nickname-badge-glyph = [scarlet]⚠ Le pseudo personnalisé ne peut pas co
 # Server browser (/servers)
 player-servers-title = RÉSEAU DE SERVEURS XCORE
 player-servers-cat-all = Tous
+player-servers-cat-attack = Attaque
 player-servers-cat-pvp = PvP
 player-servers-cat-survival = Survie
 player-servers-cat-special = Spécial

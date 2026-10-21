@@ -148,8 +148,9 @@ public class InformationMenu extends Menu {
                     )
                     .row(MenuButton.of(local.t("discord-red-vs-blue"), "discord-red-vs-blue"))
                     .defaultNavigation(context.session(), local);
+            var name = config.server.displayName.isEmpty() ? config.server.name : config.server.displayName;
             return MenuScreen.followUp(
-                    local.t("commands-info-title", args("server-name", config.server.name)),
+                    local.t("commands-info-title", args("server-name", name)),
                     local.t("commands-info-text", args("version", buildInfo.getVersion())),
                     grid.build()
             );

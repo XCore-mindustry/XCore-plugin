@@ -28,10 +28,11 @@ import java.util.concurrent.ConcurrentHashMap;
 public class ServerRegistryService {
 
     public enum Category {
-        ALL("player-servers-cat-all", "Все", Iconc.grid),
+        ALL("player-servers-cat-all", "All", Iconc.grid),
         PVP("player-servers-cat-pvp", "PvP", Iconc.modePvp),
-        SURVIVAL("player-servers-cat-survival", "Выживание", Iconc.modeSurvival),
-        SPECIAL("player-servers-cat-special", "Спец", Iconc.star);
+        ATTACK("player-servers-cat-attack", "Attack", Iconc.modeAttack),
+        SURVIVAL("player-servers-cat-survival", "Survival", Iconc.modeSurvival),
+        SPECIAL("player-servers-cat-special", "Special", Iconc.star);
 
         private final String bundleKey;
         private final String fallbackName;
@@ -94,26 +95,30 @@ public class ServerRegistryService {
 
     private static final List<ServerTemplate> TEMPLATES = List.of(
             // PVP
-            new ServerTemplate("mini-pvp", "Mini-PvP", Category.PVP, String.valueOf(Iconc.modePvp), "ff5555", "PVP", 7001, 25),
-            new ServerTemplate("hexedcore", "HexedCore", Category.PVP, String.valueOf(Iconc.admin), "bd93f9", "HEXED", 7005, 16),
-            new ServerTemplate("rvsb", "RVSB", Category.PVP, String.valueOf(Iconc.planeOutline), "50fa7b", "RVSB", 7006, 16),
-            new ServerTemplate("anarchy", "Anarchy PvP", Category.PVP, String.valueOf(Iconc.power), "ff5555", "ANARCHY", 7010, 32),
-            new ServerTemplate("spacewar", "Space Fleet", Category.PVP, String.valueOf(Iconc.units), "ff79c6", "PVP", 7011, 20),
+            new ServerTemplate("mini-pvp", "[brick]Mini [scarlet]PvP[][]", Category.PVP, String.valueOf(Iconc.modePvp), "ff5555", "", 7001, 50),
+            new ServerTemplate("hexedcore", "[orange]Hexed[accent]Core[][]", Category.PVP, String.valueOf(Iconc.itemSurgeAlloy), "bd93f9", "", 7005, 50),
+            new ServerTemplate("quadset", "[cyan]Quadset[]", Category.PVP, String.valueOf(Iconc.itemGraphite), "bd93f9", "", 7008, 50),
+
+            // ATTACK
+            new ServerTemplate("mini-attack", "[forest]Mini [acid]Attack[][]", Category.ATTACK, String.valueOf(Iconc.modeAttack), "ffb86c", "", 7003, 50),
+            new ServerTemplate("event", "[lime]Event[]", Category.ATTACK, String.valueOf(Iconc.star), "bd93f9", "", 7004, 50),
+            new ServerTemplate("asthosus", "[olive]Asthosus[]", Category.ATTACK, String.valueOf(Iconc.planet), "50fa7b", "", 7011, 50),
 
             // SURVIVAL
-            new ServerTemplate("mini-surv", "Mini-Surv", Category.SURVIVAL, String.valueOf(Iconc.modeSurvival), "50fa7b", "SURVIVAL", 7002, 20),
-            new ServerTemplate("towerdefence", "Tower Defence", Category.SURVIVAL, String.valueOf(Iconc.turret), "50fa7b", "TD", 7009, 12),
-            new ServerTemplate("asthosus", "Asthosus", Category.SURVIVAL, String.valueOf(Iconc.planet), "50fa7b", "SURVIVAL", 7008, 16),
-            new ServerTemplate("hardcore", "Hardcore Surv", Category.SURVIVAL, String.valueOf(Iconc.warning), "ffb86c", "HARDCORE", 7012, 16),
-            new ServerTemplate("sandbox", "Creative Sandbox", Category.SURVIVAL, String.valueOf(Iconc.hammer), "8be9fd", "SANDBOX", 7013, 20),
+            new ServerTemplate("mini-surv", "[royal]Mini [sky]Survival[][]", Category.SURVIVAL, String.valueOf(Iconc.modeSurvival), "50fa7b", "", 7002, 50),
+            new ServerTemplate("tower-defence", "[violet]Tower[] [purple]Defence[]", Category.SURVIVAL, String.valueOf(Iconc.turret), "50fa7b", "", 7009, 50),
 
             // SPECIAL
-            new ServerTemplate("mini-attack", "Mini-Attack", Category.SPECIAL, String.valueOf(Iconc.modeAttack), "ffb86c", "ATTACK", 7003, 20),
-            new ServerTemplate("siege", "The Siege", Category.SPECIAL, String.valueOf(Iconc.defense), "ffb86c", "SIEGE", 7007, 20),
-            new ServerTemplate("event", "Event Hub", Category.SPECIAL, String.valueOf(Iconc.star), "bd93f9", "EVENT", 7004, 30),
-            new ServerTemplate("bossrush", "Boss Rush", Category.SPECIAL, String.valueOf(Iconc.unitToxopid), "ff5555", "BOSS", 7014, 16),
-            new ServerTemplate("strategy", "Grand Strategy", Category.SPECIAL, String.valueOf(Iconc.map), "f1fa8c", "RTS", 7015, 20)
-    );
+            new ServerTemplate("rvsb", "[crimson]Red[] [pink]vs[] [royal]Blue[]", Category.SPECIAL, String.valueOf(Iconc.planeOutline), "50fa7b", "", 7006, 50),
+            new ServerTemplate("siege", "[green]The[] [blue]Siege[]", Category.SPECIAL, String.valueOf(Iconc.defense), "ffb86c", "", 7007, 50),
+            new ServerTemplate("sandbox", "[magenta]Sand[][pink]box[]", Category.SPECIAL, String.valueOf(Iconc.itemSand), "8be9fd", "", 7010, 50)
+
+//            new ServerTemplate("bossrush", "Boss Rush", Category.SPECIAL, String.valueOf(Iconc.unitToxopid), "ff5555", "BOSS", 7014, 16),
+//            new ServerTemplate("strategy", "Grand Strategy", Category.SPECIAL, String.valueOf(Iconc.map), "f1fa8c", "RTS", 7015, 20),
+//            new ServerTemplate("anarchy", "Anarchy PvP", Category.PVP, String.valueOf(Iconc.power), "ff5555", "ANARCHY", 7010, 32),
+//            new ServerTemplate("spacewar", "Space Fleet", Category.PVP, String.valueOf(Iconc.units), "ff79c6", "PVP", 7011, 20),
+//            new ServerTemplate("hardcore", "Hardcore Surv", Category.SURVIVAL, String.valueOf(Iconc.warning), "ffb86c", "HARDCORE", 7012, 16),
+            );
 
     private static final long HEARTBEAT_EXPIRATION_MS = 75_000L;
 
@@ -170,25 +175,29 @@ public class ServerRegistryService {
     public void populateDevMockServers() {
         long now = System.currentTimeMillis();
         // PVP
-        heartbeats.put("mini-pvp", new HeartbeatEntry(12, 25, "127.0.0.1", 7001, "Fast-paced 1v1 and 2v2 tactical duels", "Crossing", 4, "pvp", 61, 28, now));
-        heartbeats.put("hexedcore", new HeartbeatEntry(8, 16, "127.0.0.1", 7005, "Battle royale: conquer hexes and expand", "Hexed Isles", 1, "hexed", 60, 32, now));
-        heartbeats.put("rvsb", new HeartbeatEntry(14, 16, "127.0.0.1", 7006, "Build stations and engage fleet battles", "Orbit Omega", 1, "rvsb", 60, 35, now));
-        heartbeats.put("anarchy", new HeartbeatEntry(19, 32, "127.0.0.1", 7010, "No rules, high tech, ruthless warfare", "Wasteland", 12, "anarchy", 59, 41, now));
-        heartbeats.put("spacewar", new HeartbeatEntry(6, 20, "127.0.0.1", 7011, "Naval fleet combat with massive flagships", "Deep Void", 2, "pvp", 61, 30, now));
+        heartbeats.put("mini-pvp", new HeartbeatEntry(12, 50, "127.0.0.1", 7001, "Fast-paced 1v1 and 2v2 tactical duels", "Crossing", 4, "pvp", 61, 28, now));
+        heartbeats.put("hexedcore", new HeartbeatEntry(8, 50, "127.0.0.1", 7005, "Battle royale: conquer hexes and expand", "Hexed Isles", 1, "hexed", 60, 32, now));
+        heartbeats.put("quadset", new HeartbeatEntry(8, 50, "127.0.0.1", 7008, "Battle royale: conquer hexes and expand", "Hexed Isles", 1, "hexed", 60, 32, now));
+        
+        // ATTACK
+        heartbeats.put("mini-attack", new HeartbeatEntry(11, 50, "127.0.0.1", 7003, "Assault fortified enemy cores on compact maps", "Fortress", 8, "attack", 60, 29, now));
+        heartbeats.put("event", new HeartbeatEntry(24, 60, "127.0.0.1", 7004, "Weekend community tournament and minigames", "Stadium", 1, "event", 61, 26, now));
+        heartbeats.put("asthosus", new HeartbeatEntry(4, 50, "127.0.0.1", 7011, "Deep exploration campaign on Serpulo", "Ruins", 15, "survival", 60, 39, now));
 
         // SURVIVAL
-        heartbeats.put("mini-surv", new HeartbeatEntry(15, 20, "127.0.0.1", 7002, "Co-op classic survival with custom maps", "Glacier", 45, "survival", 60, 25, now));
-        heartbeats.put("towerdefence", new HeartbeatEntry(9, 12, "127.0.0.1", 7009, "Automated maze defense against boss waves", "Spiral Core", 28, "td", 60, 33, now));
-        heartbeats.put("asthosus", new HeartbeatEntry(4, 16, "127.0.0.1", 7008, "Deep exploration campaign on Serpulo", "Ruins", 15, "survival", 60, 39, now));
-        heartbeats.put("hardcore", new HeartbeatEntry(7, 16, "127.0.0.1", 7012, "Permadeath waves and extreme resource limits", "Inferno", 62, "hardcore", 58, 44, now));
-        heartbeats.put("sandbox", new HeartbeatEntry(5, 20, "127.0.0.1", 7013, "Unlimited building, testing, and schematics", "Testing Ground", 1, "sandbox", 62, 22, now));
+        heartbeats.put("mini-surv", new HeartbeatEntry(15, 50, "127.0.0.1", 7002, "Co-op classic survival with custom maps", "Glacier", 45, "survival", 60, 25, now));
+        heartbeats.put("tower-defence", new HeartbeatEntry(9, 50, "127.0.0.1", 7009, "Automated maze defense against boss waves", "Spiral Core", 28, "td", 60, 33, now));
 
         // SPECIAL
-        heartbeats.put("mini-attack", new HeartbeatEntry(11, 20, "127.0.0.1", 7003, "Assault fortified enemy cores on compact maps", "Fortress", 8, "attack", 60, 29, now));
-        heartbeats.put("siege", new HeartbeatEntry(13, 20, "127.0.0.1", 7007, "Coordinate defenses against legendary siege engines", "Citadel", 34, "siege", 60, 36, now));
-        heartbeats.put("event", new HeartbeatEntry(24, 30, "127.0.0.1", 7004, "Weekend community tournament and minigames", "Stadium", 1, "event", 61, 26, now));
-        heartbeats.put("bossrush", new HeartbeatEntry(6, 16, "127.0.0.1", 7014, "Continuous boss titan waves with mythic loot", "Titan Crater", 19, "boss", 60, 31, now));
-        heartbeats.put("strategy", new HeartbeatEntry(10, 20, "127.0.0.1", 7015, "Sector capture RTS with macro resource flow", "Archipelago", 3, "rts", 60, 34, now));
+        heartbeats.put("rvsb", new HeartbeatEntry(14, 50, "127.0.0.1", 7006, "Build stations and engage fleet battles", "Orbit Omega", 1, "rvsb", 60, 35, now));
+        heartbeats.put("siege", new HeartbeatEntry(13, 50, "127.0.0.1", 7007, "Coordinate defenses against legendary siege engines", "Citadel", 34, "siege", 60, 36, now));
+        heartbeats.put("sandbox", new HeartbeatEntry(5, 50, "127.0.0.1", 7010, "Unlimited building, testing, and schematics", "Testing Ground", 1, "sandbox", 62, 22, now));
+
+//        heartbeats.put("bossrush", new HeartbeatEntry(6, 16, "127.0.0.1", 7014, "Continuous boss titan waves with mythic loot", "Titan Crater", 19, "boss", 60, 31, now));
+//        heartbeats.put("strategy", new HeartbeatEntry(10, 20, "127.0.0.1", 7015, "Sector capture RTS with macro resource flow", "Archipelago", 3, "rts", 60, 34, now));
+//        heartbeats.put("anarchy", new HeartbeatEntry(19, 32, "127.0.0.1", 7010, "No rules, high tech, ruthless warfare", "Wasteland", 12, "anarchy", 59, 41, now));
+//        heartbeats.put("spacewar", new HeartbeatEntry(6, 20, "127.0.0.1", 7011, "Naval fleet combat with massive flagships", "Deep Void", 2, "pvp", 61, 30, now));
+//        heartbeats.put("hardcore", new HeartbeatEntry(7, 16, "127.0.0.1", 7012, "Permadeath waves and extreme resource limits", "Inferno", 62, "hardcore", 58, 44, now));
     }
 
     public void registerListeners() {

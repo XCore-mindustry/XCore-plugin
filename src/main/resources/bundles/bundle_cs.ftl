@@ -1365,6 +1365,7 @@ error-nickname-badge-glyph = [scarlet]⚠ Vlastní jméno nesmí obsahovat vyhra
 # Server browser (/servers)
 player-servers-title = SÍŤ SERVERŮ XCORE
 player-servers-cat-all = Vše
+player-servers-cat-attack = Útok
 player-servers-cat-pvp = PvP
 player-servers-cat-survival = Přežití
 player-servers-cat-special = Speciální

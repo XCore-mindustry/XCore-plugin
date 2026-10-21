@@ -77,15 +77,17 @@ public class SocialController implements CloudClientController {
         Session session = resolveSession(sender, sessionService);
         if (session == null || session.data == null) return;
 
+        var name = config.server.displayName.isEmpty() ? config.server.name : config.server.displayName;
+
         network.post(new ChatGlobalV1(
                 session.player.coloredName(),
                 message,
-                config.server.name
+                name
         ));
 
         network.post(new ChatMessageV1(
                 session.player.plainName(),
-                "[" + config.server.name + "] " + message.replace("`", "*"),
+                "[" + name + "] " + message.replace("`", "*"),
                 "global"
         ));
     }

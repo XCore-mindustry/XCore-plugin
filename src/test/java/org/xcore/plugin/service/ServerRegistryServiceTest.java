@@ -116,7 +116,7 @@ class ServerRegistryServiceTest {
 
         assertThat(service.findServer("mini-attack")).isPresent();
         assertThat(service.findServer("MINI-ATTACK")).isPresent();
-        assertThat(service.findServer("The Siege")).isPresent();
+        assertThat(service.findServer("[green]The[] [blue]Siege[]")).isPresent();
         assertThat(service.findServer("unknown-server-xyz")).isEmpty();
     }
 
@@ -131,8 +131,8 @@ class ServerRegistryServiceTest {
         service.populateDevMockServers();
 
         List<ServerStatus> snapshot = service.snapshot();
-        assertThat(snapshot).hasSize(15);
-        assertThat(service.totalOnlineServers()).isEqualTo(15);
+        assertThat(snapshot).hasSize(11);
+        assertThat(service.totalOnlineServers()).isEqualTo(11);
         assertThat(service.totalOnlinePlayers()).isGreaterThan(100);
     }
 }

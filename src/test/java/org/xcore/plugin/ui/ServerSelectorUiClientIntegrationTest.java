@@ -223,9 +223,9 @@ class ServerSelectorUiClientIntegrationTest {
                 .orElseThrow();
 
         String showDsl = UiDslWriter.write((NodeBuilder<?>) showMsg.body().decode());
-        assertThat(showDsl).contains("Mini-PvP");
-        assertThat(showDsl).contains("HexedCore");
-        assertThat(showDsl).doesNotContain("Mini-Surv");
+        assertThat(showDsl).contains("[brick]Mini [scarlet]PvP[][]");
+        assertThat(showDsl).contains("[orange]Hexed[accent]Core[][]");
+        assertThat(showDsl).doesNotContain("[royal]Mini [sky]Survival[][]");
     }
 
     @Test
