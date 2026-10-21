@@ -631,7 +631,7 @@ player-settings-tab-badges = Badges
 player-settings-chat-preview = Chat Preview
 player-settings-chat-preview-sample = Sample
 player-settings-chat-preview-message = Hello world!
-player-settings-symbol-color-mode = Symbol Color
+player-settings-symbol-color-mode = Badge Color
 player-settings-badges-my = My Badges
 player-settings-badges-all = All Badges
 player-settings-badge-equip = Equip
@@ -784,7 +784,8 @@ badge-menu-symbol-color-content =
     [white]Current mode: [green]{ $mode }[]
     [lightgray]Choose how the badge symbol should be colored.
 badge-menu-symbol-color-default = Default badge color
-badge-menu-symbol-color-player-color = Match player color
+badge-menu-symbol-color-player-color = Symbol in player color
+badge-menu-symbol-color-player-color-full = Whole badge in player color
 badge-menu-view-all = View all badges
 badge-menu-all-title = [orange]{ -xcore } — All badges
 badge-menu-all-content = [lightgray]Browse all badges, their status, and descriptions.

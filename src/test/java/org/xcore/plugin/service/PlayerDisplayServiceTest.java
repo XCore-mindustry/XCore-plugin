@@ -63,6 +63,22 @@ class PlayerDisplayServiceTest {
     }
 
     @Test
+    @DisplayName("buildDisplayName draws the whole selected badge in the player color when mode is player-color-full")
+    void selectedBadgeWhollyInPlayerColorWhenConfigured() {
+        var service = new PlayerDisplayService(config("mini-pvp"));
+        var data = basePlayer();
+        data.unlockedBadges.add("developer");
+        data.activeBadge = "developer";
+        data.badgeSymbolColorMode = "player-color-full";
+
+        Player player = Mockito.mock(Player.class);
+        player.color = new Color();
+        player.color.set(Color.valueOf("ff8844"));
+
+        assertThat(service.buildDisplayName(data, player)).isEqualTo("[#ff8844]<" + Iconc.wrench + ">[] PlayerOne");
+    }
+
+    @Test
     @DisplayName("buildDisplayName falls back to default badge color when player color is unavailable")
     void selectedBadgeFallsBackWhenPlayerColorUnavailable() {
         var service = new PlayerDisplayService(config("mini-pvp"));

@@ -1,5 +1,6 @@
 package org.xcore.plugin.player;
 
+import arc.util.Strings;
 import mindustry.gen.Iconc;
 
 import java.util.Arrays;
@@ -52,6 +53,19 @@ public enum Badge {
 
         // Mindustry colour tags form a stack: "[]" pops the glyph colour so both brackets keep the badge colour.
         return tagPrefix + glyphColorTag + glyph + "[]" + tagSuffix;
+    }
+
+    /** The tag as a player's badge colour mode draws it: "player-color" recolours the symbol, "player-color-full" the whole badge. */
+    public String tag(String colorMode, String playerColorTag) {
+        if (colorMode == null || playerColorTag == null || playerColorTag.isBlank()) {
+            return tag();
+        }
+
+        return switch (colorMode.toLowerCase(Locale.ROOT)) {
+            case "player-color" -> tagWithGlyphColor(playerColorTag);
+            case "player-color-full" -> playerColorTag + Strings.stripColors(tag()) + "[]";
+            default -> tag();
+        };
     }
 
     public char glyph() {

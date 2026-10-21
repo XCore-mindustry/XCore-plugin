@@ -630,7 +630,7 @@ player-settings-tab-badges = Abzeichen
 player-settings-chat-preview = Chat-Vorschau
 player-settings-chat-preview-sample = Beispiel
 player-settings-chat-preview-message = Hallo Welt!
-player-settings-symbol-color-mode = Symbolfarbe
+player-settings-symbol-color-mode = Abzeichenfarbe
 player-settings-badges-my = Meine Abzeichen
 player-settings-badges-all = Alle Abzeichen
 player-settings-badge-equip = Anlegen
@@ -783,7 +783,8 @@ badge-menu-symbol-color-content =
     [white]Aktueller Modus: [green]{ $mode }[]
     [lightgray]Wähle, wie das Symbol des Abzeichens gefärbt wird.
 badge-menu-symbol-color-default = Standardfarbe des Abzeichens
-badge-menu-symbol-color-player-color = Spielerfarbe übernehmen
+badge-menu-symbol-color-player-color = Symbol in Spielerfarbe
+badge-menu-symbol-color-player-color-full = Ganzes Abzeichen in Spielerfarbe
 badge-menu-view-all = Alle Abzeichen anzeigen
 badge-menu-all-title = [orange]{ -xcore } — Alle Abzeichen
 badge-menu-all-content = [lightgray]Alle Abzeichen mit Status und Beschreibung.
