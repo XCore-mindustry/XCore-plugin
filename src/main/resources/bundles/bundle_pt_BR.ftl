@@ -641,7 +641,7 @@ player-settings-tab-badges = Emblemas
 player-settings-chat-preview = Prévia do chat
 player-settings-chat-preview-sample = Exemplo
 player-settings-chat-preview-message = Olá a todos!
-player-settings-symbol-color-mode = Cor do símbolo
+player-settings-symbol-color-mode = Cor do emblema
 player-settings-badges-my = Meus emblemas
 player-settings-badges-all = Todos os emblemas
 player-settings-badge-equip = Equipar
@@ -795,7 +795,8 @@ badge-menu-symbol-color-content =
     [white]Modo atual: [green]{ $mode }[]
     [lightgray]Escolha como o símbolo do emblema deve ser colorido.
 badge-menu-symbol-color-default = Cor padrão do emblema
-badge-menu-symbol-color-player-color = Seguir cor do jogador
+badge-menu-symbol-color-player-color = Símbolo na cor do jogador
+badge-menu-symbol-color-player-color-full = Emblema inteiro na cor do jogador
 badge-menu-view-all = Ver todos os emblemas
 badge-menu-all-title = [orange]{ -xcore } — Todos os emblemas
 badge-menu-all-content = [lightgray]Veja todos os emblemas, seu status e descrições.

@@ -454,14 +454,13 @@ public class PlayerSettingsUiController implements UiController<PlayerSettingsUi
 
     public static String renderBadgeTagExact(Badge badge, String symbolColorMode, String playerColorHex) {
         if (badge == null) return "";
-        if ("player-color".equalsIgnoreCase(symbolColorMode) && playerColorHex != null && !playerColorHex.isBlank()) {
-            return badge.tagWithGlyphColor("[#" + playerColorHex + "]");
-        }
-        return badge.tag();
+        return badge.tag(symbolColorMode, playerColorHex == null || playerColorHex.isBlank() ? "" : "[#" + playerColorHex + "]");
     }
 
-    public static boolean usesPlayerBadgeSymbolColor(String mode) {
-        return "player-color".equalsIgnoreCase(mode);
+    /** The stored mode as one of the menu's choices; an unknown value draws the badge in its own colour. */
+    public static String symbolColorMode(String mode) {
+        String lower = mode == null ? "" : mode.toLowerCase(Locale.ROOT);
+        return lower.equals("player-color") || lower.equals("player-color-full") ? lower : "default";
     }
 
     public static String buildChatPreviewText(SettingsModel model, Localization local) {
@@ -609,8 +608,7 @@ public class PlayerSettingsUiController implements UiController<PlayerSettingsUi
             }
 
             case SettingsEvent.SelectSymbolColorMode(String mode) -> {
-                String current = usesPlayerBadgeSymbolColor(model.badgeSymbolColorMode()) ? "player-color" : "default";
-                if (current.equals(mode)) {
+                if (symbolColorMode(model.badgeSymbolColorMode()).equals(mode)) {
                     yield UpdateResult.of(model);
                 }
                 if (profileSettings != null) {
@@ -850,13 +848,15 @@ public class PlayerSettingsUiController implements UiController<PlayerSettingsUi
             }
         })).row();
 
-        boolean playerColor = usesPlayerBadgeSymbolColor(model.badgeSymbolColorMode());
+        String colorMode = symbolColorMode(model.badgeSymbolColorMode());
         body.add(Kit.card(full, Tab.BADGES.accent, Iconc.pick + " " + t(session, "player-settings-symbol-color-mode"), (content, inner) ->
                 Kit.options(content, inner, COLOR_OPTION, "symbol", List.of(
                         new Option("[white]● []" + t(session, "badge-menu-symbol-color-default"),
-                                "action:symbol_color:default", !playerColor),
+                                "action:symbol_color:default", colorMode.equals("default")),
                         new Option("[#" + model.playerColorHex() + "]● []" + t(session, "badge-menu-symbol-color-player-color"),
-                                "action:symbol_color:player-color", playerColor))))).row();
+                                "action:symbol_color:player-color", colorMode.equals("player-color")),
+                        new Option("[#" + model.playerColorHex() + "]● []" + t(session, "badge-menu-symbol-color-player-color-full"),
+                                "action:symbol_color:player-color-full", colorMode.equals("player-color-full")))))).row();
 
         List<Badge> mine = new ArrayList<>();
         for (Badge badge : Badge.selectableManualBadges()) {
@@ -984,6 +984,7 @@ public class PlayerSettingsUiController implements UiController<PlayerSettingsUi
         if ("action:reset_nick".equals(res)) return new SettingsEvent.ResetNickname(result);
         if ("action:symbol_color:default".equals(res)) return new SettingsEvent.SelectSymbolColorMode("default");
         if ("action:symbol_color:player-color".equals(res)) return new SettingsEvent.SelectSymbolColorMode("player-color");
+        if ("action:symbol_color:player-color-full".equals(res)) return new SettingsEvent.SelectSymbolColorMode("player-color-full");
         if ("action:unequip_badge".equals(res)) return new SettingsEvent.UnequipBadge();
 
         if (res.startsWith("action:tab:")) {

@@ -214,6 +214,7 @@ class PlayerSettingsUiControllerTest {
 
         assertThat(dsl).contains("action:symbol_color:default");
         assertThat(dsl).contains("action:symbol_color:player-color");
+        assertThat(dsl).contains("action:symbol_color:player-color-full");
         assertThat(dsl).contains("action:badges_filter:my");
         assertThat(dsl).contains("action:badges_filter:all");
         assertThat(dsl).contains("action:unequip_badge");
@@ -373,6 +374,12 @@ class PlayerSettingsUiControllerTest {
         verify(profileSettings).updateBadgeSymbolColorMode(eq(session.data), eq("player-color"), eq(true), eq(true));
         assertThat(changed.model().badgeSymbolColorMode()).isEqualTo("player-color");
         assertThat(changed.fullRerender()).isTrue();
+
+        UpdateResult<PlayerSettingsUiController.SettingsModel> full = controller.update(
+                changed.model(), new PlayerSettingsUiController.SettingsEvent.SelectSymbolColorMode("player-color-full"), null
+        );
+        verify(profileSettings).updateBadgeSymbolColorMode(eq(session.data), eq("player-color-full"), eq(true), eq(true));
+        assertThat(full.model().badgeSymbolColorMode()).isEqualTo("player-color-full");
     }
 
     @Test
@@ -508,6 +515,8 @@ class PlayerSettingsUiControllerTest {
 
         assertThat(controller.parseEvent(new MenuResult("action:symbol_color:player-color"))).isEqualTo(
                 new PlayerSettingsUiController.SettingsEvent.SelectSymbolColorMode("player-color"));
+        assertThat(controller.parseEvent(new MenuResult("action:symbol_color:player-color-full"))).isEqualTo(
+                new PlayerSettingsUiController.SettingsEvent.SelectSymbolColorMode("player-color-full"));
         assertThat(controller.parseEvent(new MenuResult("action:symbol_color:rainbow"))).isNull();
 
         MenuResult filterAllRes = new MenuResult("action:badges_filter:all");

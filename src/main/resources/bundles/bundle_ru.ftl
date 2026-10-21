@@ -641,7 +641,7 @@ player-settings-tab-badges = Значки
 player-settings-chat-preview = Превью в чате
 player-settings-chat-preview-sample = Пример
 player-settings-chat-preview-message = Всем привет!
-player-settings-symbol-color-mode = Цвет символа
+player-settings-symbol-color-mode = Цвет бейджа
 player-settings-badges-my = Мои значки
 player-settings-badges-all = Все значки
 player-settings-badge-equip = Надеть
@@ -712,7 +712,8 @@ badge-menu-symbol-color-content =
     [white]Текущий режим: [green]{ $mode }[]
     [lightgray]Выберите, как должен окрашиваться символ бейджа.
 badge-menu-symbol-color-default = Стандартный цвет бейджа
-badge-menu-symbol-color-player-color = Цвет игрока
+badge-menu-symbol-color-player-color = Символ цвета игрока
+badge-menu-symbol-color-player-color-full = Весь бейдж цвета игрока
 badge-menu-view-all = Все бейджи
 badge-menu-all-title = [orange]{ -xcore } — Все бейджи
 badge-menu-all-content = [lightgray]Просмотр всех бейджей, их статуса и описания.

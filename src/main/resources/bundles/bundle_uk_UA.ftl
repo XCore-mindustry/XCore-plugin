@@ -651,7 +651,7 @@ player-settings-tab-badges = Значки
 player-settings-chat-preview = Прев'ю в чаті
 player-settings-chat-preview-sample = Приклад
 player-settings-chat-preview-message = Всім привіт!
-player-settings-symbol-color-mode = Колір символу
+player-settings-symbol-color-mode = Колір відзнаки
 player-settings-badges-my = Мої значки
 player-settings-badges-all = Всі значки
 player-settings-badge-equip = Одягти
@@ -805,7 +805,8 @@ badge-menu-symbol-color-content =
     [white]Поточний режим: [green]{ $mode }[]
     [lightgray]Виберіть, як має зафарбовуватися символ відзнаки.
 badge-menu-symbol-color-default = Стандартний колір відзнаки
-badge-menu-symbol-color-player-color = Колір гравця
+badge-menu-symbol-color-player-color = Символ у кольорі гравця
+badge-menu-symbol-color-player-color-full = Уся відзнака в кольорі гравця
 badge-menu-view-all = Усі відзнаки
 badge-menu-all-title = [orange]{ -xcore } — Усі відзнаки
 badge-menu-all-content = [lightgray]Перегляд усіх відзнак, їхнього статусу та опису.

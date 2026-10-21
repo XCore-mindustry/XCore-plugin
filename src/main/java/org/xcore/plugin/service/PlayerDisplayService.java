@@ -154,24 +154,7 @@ public class PlayerDisplayService {
     }
 
     private String renderBadgeTag(Badge badge, PlayerData data, Player player) {
-        if (!usesPlayerColorMode(data)) {
-            return badge.tag();
-        }
-
-        String glyphColorTag = playerGlyphColorTag(player);
-        if (glyphColorTag.isEmpty()) {
-            return badge.tag();
-        }
-
-        return badge.tagWithGlyphColor(glyphColorTag);
-    }
-
-    private boolean usesPlayerColorMode(PlayerData data) {
-        if (data == null || data.badgeSymbolColorMode == null) {
-            return false;
-        }
-
-        return "player-color".equalsIgnoreCase(data.badgeSymbolColorMode);
+        return badge.tag(data == null ? null : data.badgeSymbolColorMode, playerGlyphColorTag(player));
     }
 
     private String playerGlyphColorTag(Player player) {

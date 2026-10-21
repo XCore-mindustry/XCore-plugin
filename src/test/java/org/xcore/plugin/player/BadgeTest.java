@@ -27,4 +27,17 @@ class BadgeTest {
             assertThat(closed).as(badge.id()).isEqualTo(opened);
         }
     }
+
+    @Test
+    @DisplayName("player-color-full draws the brackets and the symbol in the player's colour")
+    void fullPlayerColorRecoloursTheWholeBadge() {
+        assertThat(Badge.DEVELOPER.tag("player-color-full", "[#ff8844]"))
+                .isEqualTo("[#ff8844]<" + Iconc.wrench + ">[]");
+        assertThat(Badge.DEVELOPER.tag("player-color", "[#ff8844]"))
+                .isEqualTo(Badge.DEVELOPER.tagWithGlyphColor("[#ff8844]"));
+        assertThat(Badge.DEVELOPER.tag("default", "[#ff8844]")).isEqualTo(Badge.DEVELOPER.tag());
+        assertThat(Badge.DEVELOPER.tag("player-color-full", "")).isEqualTo(Badge.DEVELOPER.tag());
+        assertThat(Badge.DEVELOPER.tag(null, "[#ff8844]")).isEqualTo(Badge.DEVELOPER.tag());
+        assertThat(Badge.ADMIN.tag("player-color-full", "[#ff8844]")).isEqualTo(Badge.ADMIN.tag());
+    }
 }

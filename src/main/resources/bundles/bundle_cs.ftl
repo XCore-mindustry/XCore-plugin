@@ -638,7 +638,7 @@ player-settings-tab-badges = Odznaky
 player-settings-chat-preview = Náhled chatu
 player-settings-chat-preview-sample = Ukázka
 player-settings-chat-preview-message = Ahoj světe!
-player-settings-symbol-color-mode = Barva symbolu
+player-settings-symbol-color-mode = Barva odznaku
 player-settings-badges-my = Moje odznaky
 player-settings-badges-all = Všechny odznaky
 player-settings-badge-equip = Nasadit
@@ -791,7 +791,8 @@ badge-menu-symbol-color-content =
     [white]Aktuální režim: [green]{ $mode }[]
     [lightgray]Vyber, jak se má symbol odznaku obarvit.
 badge-menu-symbol-color-default = Výchozí barva odznaku
-badge-menu-symbol-color-player-color = Barva hráče
+badge-menu-symbol-color-player-color = Symbol v barvě hráče
+badge-menu-symbol-color-player-color-full = Celý odznak v barvě hráče
 badge-menu-view-all = Zobrazit všechny odznaky
 badge-menu-all-title = [orange]{ -xcore } — Všechny odznaky
 badge-menu-all-content = [lightgray]Všechny odznaky s jejich stavem a popisem.

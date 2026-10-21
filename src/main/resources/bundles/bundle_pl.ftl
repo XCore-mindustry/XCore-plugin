@@ -643,7 +643,7 @@ player-settings-tab-badges = Odznaki
 player-settings-chat-preview = Podgląd czatu
 player-settings-chat-preview-sample = Przykład
 player-settings-chat-preview-message = Witaj, świecie!
-player-settings-symbol-color-mode = Kolor symbolu
+player-settings-symbol-color-mode = Kolor odznaki
 player-settings-badges-my = Moje odznaki
 player-settings-badges-all = Wszystkie odznaki
 player-settings-badge-equip = Załóż
@@ -796,7 +796,8 @@ badge-menu-symbol-color-content =
     [white]Obecny tryb: [green]{ $mode }[]
     [lightgray]Wybierz, jak ma być pokolorowany symbol odznaki.
 badge-menu-symbol-color-default = Domyślny kolor odznaki
-badge-menu-symbol-color-player-color = Kolor gracza
+badge-menu-symbol-color-player-color = Symbol w kolorze gracza
+badge-menu-symbol-color-player-color-full = Cała odznaka w kolorze gracza
 badge-menu-view-all = Wszystkie odznaki
 badge-menu-all-title = [orange]{ -xcore } — Wszystkie odznaki
 badge-menu-all-content = [lightgray]Wszystkie odznaki z ich statusem i opisem.

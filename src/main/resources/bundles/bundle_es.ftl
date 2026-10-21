@@ -633,7 +633,7 @@ player-settings-tab-badges = Insignias
 player-settings-chat-preview = Vista previa del chat
 player-settings-chat-preview-sample = Ejemplo
 player-settings-chat-preview-message = ¡Hola, mundo!
-player-settings-symbol-color-mode = Color del símbolo
+player-settings-symbol-color-mode = Color de la insignia
 player-settings-badges-my = Mis insignias
 player-settings-badges-all = Todas las insignias
 player-settings-badge-equip = Equipar
@@ -786,7 +786,8 @@ badge-menu-symbol-color-content =
     [white]Modo actual: [green]{ $mode }[]
     [lightgray]Elige cómo se colorea el símbolo de la insignia.
 badge-menu-symbol-color-default = Color por defecto de la insignia
-badge-menu-symbol-color-player-color = Color del jugador
+badge-menu-symbol-color-player-color = Símbolo del color del jugador
+badge-menu-symbol-color-player-color-full = Insignia entera del color del jugador
 badge-menu-view-all = Ver todas las insignias
 badge-menu-all-title = [orange]{ -xcore } — Todas las insignias
 badge-menu-all-content = [lightgray]Todas las insignias con su estado y descripción.

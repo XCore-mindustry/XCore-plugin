@@ -641,7 +641,7 @@ player-settings-tab-badges = Distintivi
 player-settings-chat-preview = Anteprima chat
 player-settings-chat-preview-sample = Esempio
 player-settings-chat-preview-message = Ciao a tutti!
-player-settings-symbol-color-mode = Colore del simbolo
+player-settings-symbol-color-mode = Colore del distintivo
 player-settings-badges-my = I miei distintivi
 player-settings-badges-all = Tutti i distintivi
 player-settings-badge-equip = Equipaggia
@@ -795,7 +795,8 @@ badge-menu-symbol-color-content =
     [white]Modalità attuale: [green]{ $mode }[]
     [lightgray]Scegli come colorare il simbolo del distintivo.
 badge-menu-symbol-color-default = Colore predefinito del distintivo
-badge-menu-symbol-color-player-color = Segui colore del giocatore
+badge-menu-symbol-color-player-color = Simbolo del colore del giocatore
+badge-menu-symbol-color-player-color-full = Distintivo intero del colore del giocatore
 badge-menu-view-all = Mostra tutti i distintivi
 badge-menu-all-title = [orange]{ -xcore } — Tutti i distintivi
 badge-menu-all-content = [lightgray]Consulta tutti i distintivi con stato e descrizione.
