@@ -50,21 +50,8 @@ public enum Badge {
             return tag();
         }
 
-        return tagPrefix + glyphColorTag + glyph + glyphBaseColorTag() + tagSuffix;
-    }
-
-    private String glyphBaseColorTag() {
-        int colorStart = tagPrefix.lastIndexOf('[');
-        if (colorStart < 0) {
-            return "";
-        }
-
-        int colorEnd = tagPrefix.indexOf(']', colorStart);
-        if (colorEnd < 0) {
-            return "";
-        }
-
-        return tagPrefix.substring(colorStart, colorEnd + 1);
+        // Mindustry colour tags form a stack: "[]" pops the glyph colour so both brackets keep the badge colour.
+        return tagPrefix + glyphColorTag + glyph + "[]" + tagSuffix;
     }
 
     public char glyph() {

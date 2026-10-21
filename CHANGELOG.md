@@ -46,6 +46,7 @@ All notable changes to this project will be documented in this file.
 - Optional translation of global chat from other servers (`translation.channels.remote_global`) and of Discord chat (`translation.channels.discord`), both off by default.
 
 ### Fixed
+- Badge symbol colour "Player colour": the closing `>` no longer takes the nickname colour while `<` keeps the badge colour. Only the symbol is coloured now, and the badge no longer leaves extra colours on the stack for the text after it.
 - Chat translation: concurrent Google translations no longer share one JSON parser, which could hand a player a translation into another language. An exception inside the translation chain is now handled like a failed translation (the original is delivered) instead of silently dropping the message for that language group, and `translation.metrics.minuteBucketsEnabled = false` is honoured.
 
 ## [5.0.0] - 2026-10-07

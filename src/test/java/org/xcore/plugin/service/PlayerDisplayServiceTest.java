@@ -59,7 +59,7 @@ class PlayerDisplayServiceTest {
         player.color = new Color();
         player.color.set(Color.valueOf("ff8844"));
 
-        assertThat(service.buildDisplayName(data, player)).isEqualTo("[#86dca2]<[white][#ff8844]" + Iconc.wrench + "[white][]>[] PlayerOne");
+        assertThat(service.buildDisplayName(data, player)).isEqualTo("[#86dca2]<[white][#ff8844]" + Iconc.wrench + "[][]>[] PlayerOne");
     }
 
     @Test
@@ -134,7 +134,7 @@ class PlayerDisplayServiceTest {
         player.color.set(Color.valueOf("44ccff"));
 
         assertThat(service.buildChatBadgePrefix(data, player))
-                .isEqualTo("[#79d7ff]<[white][#44ccff]" + Iconc.bookOpen + "[white][]>[]");
+                .isEqualTo("[#79d7ff]<[white][#44ccff]" + Iconc.bookOpen + "[][]>[]");
     }
 
     @Test
