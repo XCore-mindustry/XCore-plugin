@@ -92,7 +92,20 @@ Client simulation, transport wire snapshots, and actual-client oracle tests.
 - **`DeterministicUiLoop`**: Orchestrates two isolated FIFO transport queues (`serverToClient` and `clientToServer`) alongside a snapshot-drain `serverPost` queue. Enables exact step-by-step control over network propagation delays and interleaved async completions.
 - **`UiSnapshot`**: Immutable wire copy of `NodeBuilder<?>` trees captured at send time using Mindustry's native binary codec (`builder.write(Writes)` / `NodeBuilder.read(Reads)`). Completely eliminates mutable object reference leaks between server and client.
 - **`UiWireMessage` & `UiTranscript`**: Sealed wire message records (`Show`, `Update`, `Hide`, `Choose`) and an append-only transcript logging every transport step for deterministic test assertions.
+- **`MenuFixtures`**: Writes a `MenuBuilderCallPacket` to disk as the server sends it (`.packet`, plus a readable `.msui`), after checking that it fits a packet and survives the wire unchanged. Input for the real-client renderer below.
 - **Actual-Client Oracle (`ActualMenusOracleTest`, `ActualDialogHideTest`)**: Executes the **real** `mindustry.ui.Menus` and `arc.scene.ui.Dialog` under Arc's official `MockGL20`, `MockGraphics`, `MockAudio`, and `MockApplication` in a plain JVM without rendering. Proves exact behavioral parity between `HeadlessMenuClient` and real client bytecode.
+
+### 4. `render/` (tool, not published)
+
+Opens server menus in the **official desktop client** under Xvfb, saves a screenshot of each on
+phone, Android and desktop screens, and reports what runs off the screen, out of its dialog or out
+of its button. It is the one part of the kit that needs graphics: everything above runs in a plain
+JVM, so this stays a separate, opt-in tool. See [`render/README.md`](render/README.md).
+
+```sh
+./gradlew exportUiFixtures                      # in a plugin: writes .packet fixtures with MenuFixtures
+../mindustry-testkit/render/render build/ui-render/packets
+```
 
 ---
 

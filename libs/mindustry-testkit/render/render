@@ -1,0 +1,146 @@
+#!/usr/bin/env bash
+# Opens server menus in the real Mindustry desktop client and checks their layout. See README.md.
+set -euo pipefail
+
+here="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck source=client.env
+source "$here/client.env"
+
+usage() {
+    cat >&2 <<EOF
+Usage: $0 [--profiles phone,pc,...] [--out DIR] [--host] <input|dir>...
+       $0 selfcheck [--host]
+
+Inputs are .packet files (a MenuBuilderCallPacket as the server writes it) or .msui files (the
+menu DSL); a directory stands for every input in it. Profiles: phone, android1080, pc, landscape
+(default: phone,android1080,pc). Results go to DIR (default: build/menu-render).
+--host renders with the local Java 25 and xvfb-run instead of Docker.
+
+Exit status: 0 no findings, 1 findings, 2 an input could not be rendered or the harness failed.
+EOF
+    exit 2
+}
+
+profiles="phone,android1080,pc"
+out="build/menu-render"
+host=false
+selfcheck=false
+inputs=()
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --profiles) profiles="$2"; shift 2 ;;
+        --out) out="$2"; shift 2 ;;
+        --host) host=true; shift ;;
+        selfcheck) selfcheck=true; shift ;;
+        -h|--help) usage ;;
+        -*) usage ;;
+        *)
+            if [[ -d "$1" ]]; then
+                # A .msui beside a .packet of the same name is its readable copy, not another menu.
+                while IFS= read -r file; do
+                    [[ "$file" == *.msui && -f "${file%.msui}.packet" ]] || inputs+=("$file")
+                done < <(find "$1" -maxdepth 1 -type f \( -name '*.packet' -o -name '*.msui' \) | sort)
+            elif [[ -f "$1" ]]; then
+                inputs+=("$1")
+            else
+                echo "No such input: $1" >&2; exit 2
+            fi
+            shift ;;
+    esac
+done
+if $selfcheck; then
+    profiles="phone"
+    out="$(mktemp -d)"
+    inputs=("$here"/selfcheck/*.msui)
+fi
+[[ ${#inputs[@]} -gt 0 ]] || usage
+
+mkdir -p "$out"
+out="$(cd "$out" && pwd)"
+# Inputs are staged in one directory, so a container sees them under one mount; names must be unique.
+stage="$(mktemp -d)"
+trap 'rm -rf "$stage"' EXIT
+for file in "${inputs[@]}"; do
+    name="$(basename "$file")"
+    # Results are named after the input without its extension.
+    compgen -G "$stage/${name%.*}.*" > /dev/null && { echo "Two inputs are named ${name%.*}" >&2; exit 2; }
+    cp "$file" "$stage/$name"
+done
+names=()
+for file in "$stage"/*; do names+=("$(basename "$file")"); done
+# Old results of these inputs go first, so a failed run cannot pass for a successful earlier one.
+for name in "${names[@]}"; do rm -f "$out/${name%.*}"-*.{png,json,tree.txt}; done
+# Opening, settling and closing take well under a second each; the client itself takes ~10 s to start.
+limit=$((60 + 10 * ${#names[@]}))
+
+prepare_host() {
+    local cache="${XDG_CACHE_HOME:-$HOME/.cache}/mindustry-menu-render/$MINDUSTRY_VERSION"
+    mkdir -p "$cache"
+    if [[ ! -f "$cache/Mindustry.jar" ]]; then
+        curl -fL --retry 3 "https://github.com/Anuken/Mindustry/releases/download/$MINDUSTRY_VERSION/Mindustry.jar" \
+            -o "$cache/Mindustry.jar.part"
+        mv "$cache/Mindustry.jar.part" "$cache/Mindustry.jar"
+    fi
+    echo "$MINDUSTRY_SHA256  $cache/Mindustry.jar" | sha256sum -c --quiet -
+    rm -rf "$cache/classes"
+    javac -cp "$cache/Mindustry.jar" -d "$cache/classes" $(find "$here/src" -name '*.java')
+    jar_dir="$cache"
+}
+
+render_profile() {
+    local profile="$1" args=()
+    for name in "${names[@]}"; do args+=("/inputs/$name"); done
+    if $host; then
+        local host_args=()
+        for name in "${names[@]}"; do host_args+=("$stage/$name"); done
+        LIBGL_ALWAYS_SOFTWARE=1 HOME="$(mktemp -d)" timeout --kill-after=5s "${limit}s" \
+            xvfb-run -a -s "-screen 0 1920x2400x24" java -Xmx512m --enable-native-access=ALL-UNNAMED \
+            -cp "$jar_dir/Mindustry.jar:$jar_dir/classes" org.xcore.testkit.render.MenuRender \
+            --profile "$profile" --out "$out" "${host_args[@]}" > "$out/$profile.log" 2>&1
+    else
+        timeout --kill-after=5s "${limit}s" docker run --rm --init --network none --user "$(id -u):$(id -g)" \
+            -v "$stage:/inputs:ro" -v "$out:/out" "$image" \
+            --profile "$profile" --out /out "${args[@]}" > "$out/$profile.log" 2>&1
+    fi
+}
+
+if $host; then
+    prepare_host
+else
+    image="mindustry-menu-render:$MINDUSTRY_VERSION-$(cat "$here/Dockerfile" "$here"/src/org/xcore/testkit/render/*.java | sha256sum | cut -c1-12)"
+    docker image inspect "$image" > /dev/null 2>&1 || docker build -q -t "$image" \
+        --build-arg MINDUSTRY_VERSION="$MINDUSTRY_VERSION" --build-arg MINDUSTRY_SHA256="$MINDUSTRY_SHA256" "$here" > /dev/null
+fi
+
+status=0
+IFS=',' read -r -a profile_list <<< "$profiles"
+for profile in "${profile_list[@]}"; do
+    code=0
+    render_profile "$profile" || code=$?
+    # The renderer prints one line per capture, then its findings; the client's own log stays in the file.
+    grep -E '^[^ ].* (findings=[0-9]+|FAILED: .*)$|^  [A-Z_]+ ' "$out/$profile.log" || true
+    case "$code" in
+        0) ;;
+        1) [[ $status == 2 ]] || status=1 ;;
+        *) echo "Profile $profile: the renderer exited with $code; see $out/$profile.log" >&2; status=2 ;;
+    esac
+done
+
+if $selfcheck; then
+    [[ $status != 2 ]] || { echo "Selfcheck: the renderer failed; a launch error is not a caught menu" >&2; exit 2; }
+    expect() {
+        local capture="$1" pattern="$2"
+        [[ -s "$out/$capture.png" && -s "$out/$capture.json" ]] && grep -Eq "$pattern" "$out/$capture.json" || {
+            echo "Selfcheck: $capture did not come out as expected ($pattern)" >&2
+            exit 2
+        }
+    }
+    expect negative-row-phone '"code": "(STAGE_X|DIALOG_X)"'
+    expect negative-text-phone '"code": "TEXT_X"'
+    expect negative-button-phone '"code": "BUTTON_TEXT"'
+    expect positive-fits-phone '"findings": \[\]'
+    echo "Selfcheck passed: three broken menus were caught and one that fits was not; results in $out"
+    exit 0
+fi
+echo "Results in $out"
+exit "$status"

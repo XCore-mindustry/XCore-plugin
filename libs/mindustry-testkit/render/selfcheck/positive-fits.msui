@@ -1,0 +1,1 @@
+table{label{text:"A menu that fits" width:200} row button{text:OK clicked:ok width:120 height:44}}
