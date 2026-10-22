@@ -341,3 +341,15 @@ resolver.
 A dialog travels as one packet and the client reads it into a 32 KB buffer. `UiSession` refuses to
 send a dialog or a slot body over `UiPackets.LIMIT` and throws `UiPackets.TooLargeException` instead;
 `UiPackets.size(compiled)` measures one in tests.
+
+### Checking on the real client
+`./gradlew exportUiFixtures` writes the menus whose real-client layout backs this guide (a root
+with a width, a slot with rows, variants per screen) to `build/ui-render/`. Render them with the
+renderer of [mindustry-testkit](https://github.com/XCore-mindustry/mindustry-testkit/tree/main/render):
+
+```sh
+../mindustry-testkit/render/render --profiles phone,android1080,pc build/ui-render
+```
+
+What each menu must show is in the javadoc of `RealClientFixtures`. A change to the compiler or
+to `Variants` should be rendered before it is released.
