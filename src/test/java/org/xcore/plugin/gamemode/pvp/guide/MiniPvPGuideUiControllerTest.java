@@ -122,6 +122,7 @@ class MiniPvPGuideUiControllerTest {
         assertThat(controller.update(model, select, null).model().tab()).isEqualTo(Tab.RATING);
 
         assertThat(controller.parseEvent(new MenuResult("action:close"))).isInstanceOf(GuideEvent.Close.class);
-        assertThat(controller.parseEvent(null)).isInstanceOf(GuideEvent.Close.class);
+        assertThat(controller.parseEvent(null)).isNull();
+        assertThat(controller.parseEvent(new MenuResult("action:unknown"))).isNull();
     }
 }

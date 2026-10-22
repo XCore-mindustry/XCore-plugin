@@ -14,6 +14,7 @@ import org.xcore.plugin.ui.menu.HelpMenu;
 import org.xcore.ui.Ui;
 import org.xcore.ui.Text;
 import org.xcore.ui.VNode;
+import org.xcore.ui.runtime.ActionRouter;
 import org.xcore.ui.runtime.ControllerContext;
 import org.xcore.ui.runtime.SlotKey;
 import org.xcore.ui.runtime.UiController;
@@ -83,16 +84,17 @@ public class HelpUiController implements UiController<HelpUiModel, HelpUiEvent> 
             }
             case HelpUiEvent.ExecuteCommand e -> {
                 String cmdName = e.syntax().replaceAll("^/+", "").trim();
-                if (session != null && session.player != null) {
-                    session.locale().send("help-ui-executed", Map.of("syntax", cmdName));
-                    arc.Core.app.post(() -> {
-                        if (Vars.netServer != null && Vars.netServer.clientCommands != null
-                                && session.player != null && session.player.con != null) {
-                            Vars.netServer.clientCommands.handleMessage("/" + cmdName, session.player);
-                        }
-                    });
+                if (session == null || session.player == null) {
+                    yield UpdateResult.close(model);
                 }
-                yield UpdateResult.close(model);
+                session.locale().send("help-ui-executed", Map.of("syntax", cmdName));
+                // The command may open a menu of its own, so it runs once this dialog has closed.
+                yield UpdateResult.close(model).effect(dialog -> {
+                    if (Vars.netServer != null && Vars.netServer.clientCommands != null
+                            && session.player != null && session.player.con != null) {
+                        Vars.netServer.clientCommands.handleMessage("/" + cmdName, session.player);
+                    }
+                });
             }
             case HelpUiEvent.CopyCommand e -> {
                 String cmdSyntax = e.syntax().replaceAll("^/+", "").trim();
@@ -107,49 +109,29 @@ public class HelpUiController implements UiController<HelpUiModel, HelpUiEvent> 
         };
     }
 
+    private static final ActionRouter<HelpUiEvent> ACTIONS = ActionRouter.<HelpUiEvent>create()
+            .on("action:close", HelpUiEvent.Close::new)
+            .on("action:back", HelpUiEvent.BackToList::new)
+            .onResult("action:search", result -> new HelpUiEvent.Search(result.getString("field_help_search", "")))
+            .on("action:clear_search", () -> new HelpUiEvent.Search(""))
+            .prefix("action:tab:", name -> new HelpUiEvent.SelectCategory(category(name)))
+            .prefixInt("action:page:", HelpUiEvent.OpenPage::new)
+            .prefix("action:cmd:", HelpUiEvent.SelectCommand::new)
+            .prefix("action:run:", HelpUiEvent.ExecuteCommand::new)
+            .prefix("action:copy:", HelpUiEvent.CopyCommand::new);
+
     @Override
     public HelpUiEvent parseEvent(MenuResult result) {
-        if (result == null || result.wasCancelled()) {
-            return new HelpUiEvent.Close();
+        return ACTIONS.parse(result);
+    }
+
+    /** The category a tab names; an unknown name shows them all. */
+    private static HelpCategory category(String name) {
+        try {
+            return HelpCategory.valueOf(name.toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException ignored) {
+            return HelpCategory.ALL;
         }
-        String action = result.result != null ? result.result.trim() : "";
-        if (action.isBlank() || "action:close".equals(action)) {
-            return new HelpUiEvent.Close();
-        }
-        if ("action:back".equals(action)) {
-            return new HelpUiEvent.BackToList();
-        }
-        if ("action:search".equals(action)) {
-            return new HelpUiEvent.Search(result.getString("field_help_search", ""));
-        }
-        if ("action:clear_search".equals(action)) {
-            return new HelpUiEvent.Search("");
-        }
-        if (action.startsWith("action:tab:")) {
-            String catName = action.substring("action:tab:".length()).toUpperCase(Locale.ROOT);
-            try {
-                return new HelpUiEvent.SelectCategory(HelpCategory.valueOf(catName));
-            } catch (IllegalArgumentException ignored) {
-                return new HelpUiEvent.SelectCategory(HelpCategory.ALL);
-            }
-        }
-        if (action.startsWith("action:page:")) {
-            try {
-                return new HelpUiEvent.OpenPage(Integer.parseInt(action.substring("action:page:".length())));
-            } catch (NumberFormatException ignored) {
-                return new HelpUiEvent.OpenPage(0);
-            }
-        }
-        if (action.startsWith("action:cmd:")) {
-            return new HelpUiEvent.SelectCommand(action.substring("action:cmd:".length()));
-        }
-        if (action.startsWith("action:run:")) {
-            return new HelpUiEvent.ExecuteCommand(action.substring("action:run:".length()));
-        }
-        if (action.startsWith("action:copy:")) {
-            return new HelpUiEvent.CopyCommand(action.substring("action:copy:".length()));
-        }
-        return new HelpUiEvent.Close();
     }
 
     @Override

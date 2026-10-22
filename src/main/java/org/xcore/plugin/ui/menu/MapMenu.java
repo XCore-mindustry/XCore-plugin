@@ -133,8 +133,10 @@ public class MapMenu extends Menu {
 
         var controller = controller(session);
         var initialModel = controller.createInitialBrowserModel(session, page);
-        menuService.openUi(session, controller, initialModel, true);
-        controller.requestSummariesAsync();
+        var dialog = menuService.openUi(session, controller, initialModel, true);
+        if (dialog != null) {
+            dialog.run("summaries", controller.loadSummaries());
+        }
     }
 
     public void openMapDetailsUi(Session session, MapData m) {
@@ -143,11 +145,13 @@ public class MapMenu extends Menu {
 
         var controller = controller(session);
         var initialModel = controller.createInitialDetailsModel(session, m);
-        menuService.openUi(session, controller, initialModel, true);
+        var dialog = menuService.openUi(session, controller, initialModel, true);
         if (mapVoteObserverService != null) {
             mapVoteObserverService.registerViewing(session.player.uuid(), initialModel.selectedMapId());
         }
-        controller.requestPreviewAsync(session, initialModel.selectedMapId());
+        if (dialog != null) {
+            dialog.run(org.xcore.plugin.ui.menu.map.MapUiController.PREVIEW, controller.loadPreview(initialModel.selectedMapId()));
+        }
     }
 
     /** The maps menu of {@code session}; on the events server a map can be given an event from it. */

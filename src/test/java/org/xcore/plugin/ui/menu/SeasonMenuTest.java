@@ -228,8 +228,8 @@ class SeasonMenuTest {
                 .isEqualTo(new SeasonUiController.SeasonEvent.OpenTop("DUEL"));
         assertThat(controller.parseEvent(new MenuResult("action:close")))
                 .isInstanceOf(SeasonUiController.SeasonEvent.Close.class);
-        assertThat(controller.parseEvent(new MenuResult((String) null)))
-                .isInstanceOf(SeasonUiController.SeasonEvent.Close.class);
+        assertThat(controller.parseEvent(new MenuResult((String) null))).isNull();
+        assertThat(controller.parseEvent(new MenuResult("action:unknown"))).isNull();
 
         UpdateResult<SeasonUiController.SeasonModel> result =
                 controller.update(model, new SeasonUiController.SeasonEvent.OpenTop("DUEL"), null);

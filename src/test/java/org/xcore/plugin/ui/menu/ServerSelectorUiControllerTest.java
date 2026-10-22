@@ -215,8 +215,8 @@ class ServerSelectorUiControllerTest {
     }
 
     @Test
-    @DisplayName("Close closes controller context")
-    void close_closesContext() {
+    @DisplayName("Close closes the dialog through its result alone")
+    void close_closesThroughResult() {
         ServerRegistryService registry = createRegistry();
         Session session = createTestSession("uuid-1");
         ServerSelectorUiController controller = new ServerSelectorUiController(registry, session);
@@ -232,7 +232,7 @@ class ServerSelectorUiControllerTest {
                 model, new ServerSelectorUiController.ServerSelectorEvent.Close(), ctx
         );
 
-        assertThat(closed.get()).isTrue();
+        assertThat(closed.get()).isFalse();
         assertThat(result.close()).isTrue();
     }
 
@@ -253,6 +253,11 @@ class ServerSelectorUiControllerTest {
 
         var connectRes = new MenuResult("action:connect:mini-surv");
         assertThat(controller.parseEvent(connectRes)).isEqualTo(new ServerSelectorUiController.ServerSelectorEvent.Connect("mini-surv"));
+
+        assertThat(controller.parseEvent(new MenuResult("action:tab:unknown")))
+                .isEqualTo(new ServerSelectorUiController.ServerSelectorEvent.SelectCategory(Category.ALL));
+        assertThat(controller.parseEvent(new MenuResult((String) null))).isNull();
+        assertThat(controller.parseEvent(new MenuResult("action:unknown"))).isNull();
     }
 
     @Test
@@ -329,7 +334,8 @@ class ServerSelectorUiControllerTest {
             var result = controller.update(ServerSelectorUiController.createModel(registry, Category.ALL),
                     new ServerSelectorUiController.ServerSelectorEvent.Connect("mini-surv"), ctx);
             assertThat(result.close()).isTrue();
-            verify(ctx).close();
+            // The result closes the dialog; closing it through the context as well would close it twice.
+            verify(ctx, never()).close();
             call.verify(() -> mindustry.gen.Call.connect(eq(player.con), anyString(), anyInt()));
         }
     }

@@ -111,16 +111,19 @@ public class MiniPvPGuideUiController
 
     @Override
     public GuideEvent parseEvent(MenuResult result) {
-        if (result == null || result.wasCancelled() || result.result == null) {
-            return new GuideEvent.Close();
+        if (result == null || result.wasCancelled()) {
+            return null;
         }
         String action = result.result.trim();
+        if ("action:close".equals(action)) {
+            return new GuideEvent.Close();
+        }
         for (Tab tab : Tab.values()) {
             if (tab.action().equals(action)) {
                 return new GuideEvent.SelectTab(tab);
             }
         }
-        return new GuideEvent.Close();
+        return null;
     }
 
     @Override
