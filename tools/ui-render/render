@@ -18,5 +18,6 @@ for arg in "$@"; do
     previous="$arg"
 done
 $has_input || set -- "$@" build/ui-render/packets
-./gradlew exportUiFixtures --console=plain
+# On CI the snapshots are the ones just published, as in build.yml, not those of the Gradle cache.
+./gradlew exportUiFixtures --console=plain ${CI:+--refresh-dependencies}
 exec "$renderer" --out build/ui-render/results "$@"
