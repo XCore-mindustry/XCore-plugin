@@ -1,9 +1,14 @@
 package org.xcore.plugin.ui;
 
+import io.avaje.inject.PostConstruct;
+import io.avaje.inject.PreDestroy;
 import jakarta.inject.Singleton;
 import mindustry.Vars;
+import mindustry.game.EventType;
 import mindustry.gen.Groups;
 import mindustry.gen.Player;
+import org.xcore.plugin.event.EventSubscriptions;
+import org.xcore.plugin.startup.ShutdownOrder;
 import org.xcore.ui.texture.TextureRegistry;
 
 import java.util.Objects;
@@ -16,9 +21,10 @@ import java.util.Objects;
 public class XcoreImageService {
 
     private final TextureRegistry registry;
+    private final EventSubscriptions subscriptions = new EventSubscriptions();
 
     public XcoreImageService() {
-        this.registry = new TextureRegistry((connectionId, regionName, bytes) -> {
+        this((connectionId, regionName, bytes) -> {
             Player player = Groups.player != null ? Groups.player.find(p -> Objects.equals(p.uuid(), connectionId)) : null;
             if (player != null && player.con != null && Vars.netServer != null) {
                 String name = regionName.startsWith(TextureRegistry.NET_PREFIX)
@@ -27,6 +33,31 @@ public class XcoreImageService {
                 Vars.netServer.sendTexture(player.con, name, bytes);
             }
         });
+    }
+
+    XcoreImageService(TextureRegistry.TextureSender sender) {
+        this.registry = new TextureRegistry(sender);
+    }
+
+    /**
+     * The client drops every texture the server streamed when it disconnects and whenever it loads
+     * a world, so what the registry counts as delivered has to be forgotten then, or the dialogs
+     * opened after a map change show placeholders until the server restarts.
+     */
+    @PostConstruct
+    public void init() {
+        subscriptions.on(EventType.PlayerLeave.class, event -> reset(event.player));
+        subscriptions.on(EventType.WorldLoadEvent.class, event -> onWorldLoad());
+    }
+
+    @PreDestroy(priority = ShutdownOrder.STOP_PRODUCERS)
+    public void stop() {
+        subscriptions.close();
+    }
+
+    /** Every client reloads the world, and with it drops the textures it was sent. */
+    void onWorldLoad() {
+        registry.resetAllDeliveries();
     }
 
     public TextureRegistry registry() {
@@ -55,6 +86,13 @@ public class XcoreImageService {
         byte[] bytes = registry.bytes(regionName);
         if (bytes != null) {
             registry.ensureDeliveredName(player.uuid(), regionName);
+        }
+    }
+
+    /** Forgets a texture no dialog will show again, such as one a cache evicted. */
+    public void unregister(String regionName) {
+        if (regionName != null) {
+            registry.unregister(regionName);
         }
     }
 

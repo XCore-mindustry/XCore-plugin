@@ -44,7 +44,12 @@ public class MapPreviewService {
     private final java.util.Map<String, byte[]> lruBytesCache = new LinkedHashMap<>(16, 0.75f, true) {
         @Override
         protected boolean removeEldestEntry(java.util.Map.Entry<String, byte[]> eldest) {
-            return size() > MAX_MEMORY_CACHE_ENTRIES;
+            if (size() <= MAX_MEMORY_CACHE_ENTRIES) {
+                return false;
+            }
+            // The registry holds the bytes too; without this it keeps every preview ever drawn.
+            imageService.unregister(eldest.getKey());
+            return true;
         }
     };
 
