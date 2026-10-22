@@ -111,6 +111,10 @@ public final class VNodeCompiler {
         for (Object entry : entries) {
             if (entry instanceof VTable.RowMarker) {
                 builder.row();
+            } else if (entry instanceof VTable.Defaults defaults) {
+                UiBuilder.DefaultsBuilder cells = UiBuilder.defaults();
+                applyLayout(cells, defaults.layout());
+                builder.add(cells);
             } else if (entry instanceof VNode node) {
                 compileNode(builder, node);
             } else if (entry != null) {
@@ -248,7 +252,10 @@ public final class VNodeCompiler {
 
     private void applyCommon(UiBuilder.NodeBuilder<?> builder, VNode node) {
         if (node.id() != null) builder.id(node.id());
-        UiLayout l = node.layout();
+        applyLayout(builder, node.layout());
+    }
+
+    private static void applyLayout(UiBuilder.NodeBuilder<?> builder, UiLayout l) {
         if (l == null || l.isDefault()) return;
         if (l.width() != null) builder.width(l.width());
         if (l.height() != null) builder.height(l.height());
