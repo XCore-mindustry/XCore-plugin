@@ -16,7 +16,13 @@ import java.util.function.Consumer;
  *
  * <p>For layout that cannot be expressed relatively, use {@link Responsive#portrait} /
  * {@link Responsive#landscape} inside the header or body callbacks.
+ *
+ * @deprecated The caps do not hold on the client: a wrapped label inside the scrolling body asks
+ *             for the width of its whole line and the pane grants it, so long text widens the
+ *             dialog past a phone's screen. Give every piece a width and lay the dialog out per
+ *             class of screens with {@link Variants#byWidth}.
  */
+@Deprecated
 public final class DialogScaffold {
 
     private final DialogMetrics metrics;
