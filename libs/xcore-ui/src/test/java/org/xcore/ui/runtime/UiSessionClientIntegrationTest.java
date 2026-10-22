@@ -61,7 +61,7 @@ class UiSessionClientIntegrationTest {
         var ctx = new RecordingContext();
 
         UiSession<UiSessionTest.TestModel, UiSessionTest.TestEvent> session = UiSession.start(
-                controller, controller.initialModel(null), ctx, gateway, LocalizerResolver.IDENTITY);
+                controller, new UiSessionTest.TestModel(0, "main"), ctx, gateway, LocalizerResolver.IDENTITY);
         session.open();
 
         assertThat(gateway.lastShow).isNotNull();
@@ -91,8 +91,6 @@ class UiSessionClientIntegrationTest {
 
     /** Synthetic cancel-ignoring policy; this is NOT a regression test of MapUiController. */
     private static class RerenderController implements UiController<RModel, REvent> {
-        @Override public RModel initialModel(Object context) { return new RModel("v1"); }
-
         @Override
         public UpdateResult<RModel> update(RModel model, REvent event, ControllerContext ctx) {
             return switch (event) {
@@ -128,7 +126,7 @@ class UiSessionClientIntegrationTest {
         var ctx = new RecordingContext();
 
         UiSession<RModel, REvent> session = UiSession.start(
-                controller, controller.initialModel(null), ctx, gateway, LocalizerResolver.IDENTITY);
+                controller, new RModel("v1"), ctx, gateway, LocalizerResolver.IDENTITY);
         session.open();
 
         long token = session.token();
@@ -176,7 +174,7 @@ class UiSessionClientIntegrationTest {
         var controller = new UiSessionTest.CounterController();
         var ctx = new RecordingContext();
         UiSession<UiSessionTest.TestModel, UiSessionTest.TestEvent> session = UiSession.start(
-                controller, controller.initialModel(null), ctx, gateway, LocalizerResolver.IDENTITY);
+                controller, new UiSessionTest.TestModel(0, "main"), ctx, gateway, LocalizerResolver.IDENTITY);
 
         loop.onClientMessage(msg -> {
             if (msg instanceof UiWireMessage.Choose choose) {

@@ -11,7 +11,10 @@ public interface ControllerContext {
     /** Player uuid or another stable identifier of the dialog owner. */
     String playerId();
 
-    /** Closes the dialog on the client. */
+    /**
+     * Closes the dialog on the client, outside the reducer's own result. A reducer closes its
+     * dialog by returning {@link UpdateResult#close}; calling this as well closes it twice.
+     */
     void close();
 
     /** Queues arbitrary follow-up work (e.g. re-opening a parent screen); implementation-defined. */
