@@ -40,7 +40,7 @@ public final class UiSession<Model, Event> {
     private final UiController<Model, Event> controller;
     private final ControllerContext ctx;
     private final DeliveryGateway gateway;
-    private final Map<String, Long> effectGenerations = new ConcurrentHashMap<>();
+    private final EffectRunner<Event> effects = new EffectRunner<>(this::dispatch, this::isActive);
     private volatile VNodeCompiler compiler;
     private volatile long token;
     private volatile boolean active = true;
@@ -152,7 +152,7 @@ public final class UiSession<Model, Event> {
             patchSlots(update.dirtySlots());
         }
 
-        runEffects(update.effects());
+        effects.run(update.effects());
     }
 
     /**
@@ -160,7 +160,7 @@ public final class UiSession<Model, Event> {
      * outside the reducer, such as the first load once the dialog is open.
      */
     public void run(String key, Effect<Event> effect) {
-        runEffects(List.of(new UpdateResult.Command(key, effect)));
+        effects.run(key, effect);
     }
 
     /** Feeds a client result into the reducer and delivers render directives. */
@@ -186,33 +186,6 @@ public final class UiSession<Model, Event> {
         if (event != null) {
             dispatch(event);
         }
-    }
-
-    @SuppressWarnings("unchecked")
-    private void runEffects(List<UpdateResult.Command> effects) {
-        for (UpdateResult.Command command : effects) {
-            Dispatcher<Event> dispatcher = dispatcher(command.key());
-            ((Effect<Event>) command.effect()).run(dispatcher);
-        }
-    }
-
-    private Dispatcher<Event> dispatcher(String key) {
-        Long generation = key == null ? null : effectGenerations.merge(key, 1L, Long::sum);
-        return new Dispatcher<>() {
-            @Override
-            public boolean dispatch(Event event) {
-                if (!isCurrent()) {
-                    return false;
-                }
-                UiSession.this.dispatch(event);
-                return true;
-            }
-
-            @Override
-            public boolean isCurrent() {
-                return active && (key == null || generation.equals(effectGenerations.get(key)));
-            }
-        };
     }
 
     private void patchSlots(List<SlotKey<?>> dirty) {
