@@ -131,6 +131,24 @@ class UiSessionLifecycleTest {
     }
 
     @Test
+    void renderContextKnowsTheLanguageOfItsResolver() {
+        LocalizerResolver german = new LocalizerResolver() {
+            @Override
+            public String format(String key, java.util.Map<String, Object> args) {
+                return key;
+            }
+
+            @Override
+            public java.util.Locale locale() {
+                return java.util.Locale.GERMAN;
+            }
+        };
+
+        assertThat(RenderContext.of(german).locale()).isEqualTo(java.util.Locale.GERMAN);
+        assertThat(RenderContext.of(LocalizerResolver.IDENTITY).locale()).isEqualTo(java.util.Locale.ENGLISH);
+    }
+
+    @Test
     void cancelGoesToClosedAndSendsNothing() {
         session.open();
         session.handle(cancel());

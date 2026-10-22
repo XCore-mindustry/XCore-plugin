@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReference;
@@ -104,6 +105,14 @@ public interface LocalizerResolver {
      */
     default boolean has(String key) {
         return true;
+    }
+
+    /**
+     * The language this resolver speaks, for what the bundle does not hold: names of game content,
+     * number formats. Resolvers that do not know theirs answer English.
+     */
+    default Locale locale() {
+        return Locale.ENGLISH;
     }
 
     /**
@@ -250,6 +259,11 @@ public interface LocalizerResolver {
 
         I18NBundleResolver(I18NBundle bundle) {
             this.bundle = bundle;
+        }
+
+        @Override
+        public Locale locale() {
+            return bundle.getLocale() != null ? bundle.getLocale() : Locale.ENGLISH;
         }
 
         @Override

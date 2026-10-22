@@ -2,6 +2,7 @@ package org.xcore.ui.runtime;
 
 import org.xcore.ui.LocalizerResolver;
 
+import java.util.Locale;
 import java.util.Map;
 
 /**
@@ -13,6 +14,11 @@ import java.util.Map;
 public interface RenderContext {
 
     LocalizerResolver resolver();
+
+    /** The language of the player the view is drawn for. */
+    default Locale locale() {
+        return resolver().locale();
+    }
 
     default String t(String key) {
         return resolver().format(key);
