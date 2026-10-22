@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Opens server menus in the real Mindustry desktop client and checks their layout. See README.md.
-set -euo pipefail
+set -Eeuo pipefail
+# A failure of the runner itself (a download, a checksum, a build) is exit 2, never 1, which means findings.
+trap 'exit 2' ERR
 
 here="$(cd "$(dirname "$0")" && pwd)"
 # shellcheck source=client.env

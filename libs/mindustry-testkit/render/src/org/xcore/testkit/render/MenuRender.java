@@ -27,8 +27,10 @@ import java.nio.file.Path;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 
 /**
  * Opens server menus in the real desktop client and checks how it lays them out.
@@ -79,7 +81,19 @@ public final class MenuRender {
         this.inputs = new ArrayDeque<>(inputs);
     }
 
-    public static void main(String[] args) throws Exception {
+    public static void main(String[] args) {
+        int status;
+        try {
+            status = run(args);
+        } catch (Throwable failure) {
+            // Left to the JVM, a failure to start would exit with 1, which reads as findings.
+            failure.printStackTrace();
+            status = 2;
+        }
+        System.exit(status);
+    }
+
+    private static int run(String[] args) throws Exception {
         Profile profile = null;
         Path out = null;
         List<Path> inputs = new ArrayList<>();
@@ -92,12 +106,18 @@ public final class MenuRender {
         }
         if (profile == null || out == null || inputs.isEmpty()) {
             System.err.println("Usage: MenuRender --profile <" + Profile.ids() + "> --out <dir> <input.packet|input.msui>...");
-            System.exit(2);
+            return 2;
+        }
+        // Results are named after the input without its extension, so two such inputs would overwrite each other.
+        Set<String> stems = new HashSet<>();
+        for (Path input : inputs) {
+            if (!stems.add(stem(input))) {
+                System.err.println("Two inputs are named " + stem(input));
+                return 2;
+            }
         }
         Files.createDirectories(out);
-        MenuRender render = new MenuRender(profile, out, inputs);
-        int status = render.start();
-        System.exit(status);
+        return new MenuRender(profile, out, inputs).start();
     }
 
     private int start() {
@@ -150,8 +170,17 @@ public final class MenuRender {
     /** One drawn frame: opens the next input, waits for it to settle or to close. */
     private void frame() throws Exception {
         if (phase != Phase.OPEN && System.nanoTime() - inputStarted > INPUT_TIMEOUT_NANOS) {
-            fail(input, "did not " + (phase == Phase.SETTLE ? "settle" : "close") + " in time");
-            closeAndContinue();
+            if (phase == Phase.SETTLE) {
+                fail(input, "did not settle in time");
+                // Closing gets a timeout of its own.
+                inputStarted = System.nanoTime();
+                closeAndContinue();
+            } else {
+                fail(input, "did not close in time");
+                // Taken off the scene by hand, so the next input opens on its own.
+                dialog.remove();
+                next();
+            }
             return;
         }
         switch (phase) {
