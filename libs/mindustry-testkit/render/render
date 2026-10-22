@@ -109,7 +109,8 @@ render_profile() {
 if $host; then
     prepare_host
 else
-    image="mindustry-menu-render:$MINDUSTRY_VERSION-$(cat "$here/Dockerfile" "$here"/src/org/xcore/testkit/render/*.java | sha256sum | cut -c1-12)"
+    # The tag covers the pinned client too, so a new checksum builds and verifies a new image.
+    image="mindustry-menu-render:$MINDUSTRY_VERSION-$(cat "$here/client.env" "$here/Dockerfile" "$here"/src/org/xcore/testkit/render/*.java | sha256sum | cut -c1-12)"
     docker image inspect "$image" > /dev/null 2>&1 || docker build -q -t "$image" \
         --build-arg MINDUSTRY_VERSION="$MINDUSTRY_VERSION" --build-arg MINDUSTRY_SHA256="$MINDUSTRY_SHA256" "$here" > /dev/null
 fi
