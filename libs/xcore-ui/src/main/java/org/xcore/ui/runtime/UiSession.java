@@ -28,6 +28,8 @@ import java.util.concurrent.ConcurrentHashMap;
  *
  * <p>A session that has ended, or has been {@link #detach() detached} because another dialog
  * took its place, sends nothing more: events, effects and renders addressed to it are dropped.
+ * The effects of the update that closes the dialog still run, for what follows the close such as
+ * going back to the previous menu; what they dispatch is dropped all the same.
  *
  * <p>Transmission is delegated to a {@link DeliveryGateway} so the runtime stays
  * testable without a live server.
@@ -160,6 +162,9 @@ public final class UiSession<Model, Event> {
      * outside the reducer, such as the first load once the dialog is open.
      */
     public void run(String key, Effect<Event> effect) {
+        if (!active) {
+            return;
+        }
         effects.run(key, effect);
     }
 

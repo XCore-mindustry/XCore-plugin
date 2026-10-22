@@ -80,7 +80,7 @@ public final class Ui {
     // ------------------------------------------------------------------
 
     /** A label; the spec takes its layout and, ahead of it in a chain, {@code labelAlign} and {@code style}. */
-    public static VLabel label(Text text, Consumer<LabelSpec> spec) {
+    public static VLabel label(Text text, Consumer<? super LabelSpec> spec) {
         return label(text, false, spec);
     }
 
@@ -89,7 +89,7 @@ public final class Ui {
     }
 
     /** A label that wraps its text to the width of its cell. */
-    public static VLabel labelWrap(Text text, Consumer<LabelSpec> spec) {
+    public static VLabel labelWrap(Text text, Consumer<? super LabelSpec> spec) {
         return label(text, true, spec);
     }
 
@@ -97,7 +97,7 @@ public final class Ui {
         return labelWrap(text, null);
     }
 
-    private static VLabel label(Text text, boolean wrap, Consumer<LabelSpec> spec) {
+    private static VLabel label(Text text, boolean wrap, Consumer<? super LabelSpec> spec) {
         LabelSpec s = new LabelSpec();
         if (wrap) s.wrap();
         if (spec != null) spec.accept(s);
@@ -105,7 +105,7 @@ public final class Ui {
     }
 
     /** An image; the spec takes its layout and, ahead of it in a chain, {@code scaling} and {@code placeholder}. */
-    public static VImage image(String region, Consumer<ImageSpec> spec) {
+    public static VImage image(String region, Consumer<? super ImageSpec> spec) {
         ImageSpec s = new ImageSpec();
         if (spec != null) spec.accept(s);
         return s.toNode(region);
@@ -198,7 +198,7 @@ public final class Ui {
             return this;
         }
 
-        public TableBuilder label(Text text, Consumer<LabelSpec> spec) {
+        public TableBuilder label(Text text, Consumer<? super LabelSpec> spec) {
             return add(Ui.label(text, spec));
         }
 
@@ -206,7 +206,7 @@ public final class Ui {
             return add(Ui.label(text));
         }
 
-        public TableBuilder labelWrap(Text text, Consumer<LabelSpec> spec) {
+        public TableBuilder labelWrap(Text text, Consumer<? super LabelSpec> spec) {
             return add(Ui.labelWrap(text, spec));
         }
 
@@ -214,7 +214,7 @@ public final class Ui {
             return add(Ui.labelWrap(text));
         }
 
-        public TableBuilder image(String region, Consumer<ImageSpec> spec) {
+        public TableBuilder image(String region, Consumer<? super ImageSpec> spec) {
             return add(Ui.image(region, spec));
         }
 
@@ -290,7 +290,7 @@ public final class Ui {
 
         public PaneBuilder add(VNode node) { children.add(node); return this; }
 
-        public PaneBuilder label(Text text, Consumer<LabelSpec> spec) {
+        public PaneBuilder label(Text text, Consumer<? super LabelSpec> spec) {
             return add(Ui.label(text, spec));
         }
 
@@ -298,7 +298,7 @@ public final class Ui {
             return add(Ui.label(text));
         }
 
-        public PaneBuilder labelWrap(Text text, Consumer<LabelSpec> spec) {
+        public PaneBuilder labelWrap(Text text, Consumer<? super LabelSpec> spec) {
             return add(Ui.labelWrap(text, spec));
         }
 
@@ -326,7 +326,7 @@ public final class Ui {
 
         public StackBuilder add(VNode node) { children.add(node); return this; }
 
-        public StackBuilder label(Text text, Consumer<LabelSpec> spec) {
+        public StackBuilder label(Text text, Consumer<? super LabelSpec> spec) {
             return add(Ui.label(text, spec));
         }
 
@@ -334,7 +334,7 @@ public final class Ui {
             return add(Ui.label(text));
         }
 
-        public StackBuilder labelWrap(Text text, Consumer<LabelSpec> spec) {
+        public StackBuilder labelWrap(Text text, Consumer<? super LabelSpec> spec) {
             return add(Ui.labelWrap(text, spec));
         }
 
@@ -342,7 +342,7 @@ public final class Ui {
             return add(Ui.labelWrap(text));
         }
 
-        public StackBuilder image(String region, Consumer<ImageSpec> spec) {
+        public StackBuilder image(String region, Consumer<? super ImageSpec> spec) {
             return add(Ui.image(region, spec));
         }
 
@@ -565,7 +565,7 @@ public final class Ui {
             return this;
         }
 
-        public ButtonTableBuilder label(Text text, Consumer<LabelSpec> spec) {
+        public ButtonTableBuilder label(Text text, Consumer<? super LabelSpec> spec) {
             return add(Ui.label(text, spec));
         }
 
@@ -573,7 +573,7 @@ public final class Ui {
             return add(Ui.label(text));
         }
 
-        public ButtonTableBuilder labelWrap(Text text, Consumer<LabelSpec> spec) {
+        public ButtonTableBuilder labelWrap(Text text, Consumer<? super LabelSpec> spec) {
             return add(Ui.labelWrap(text, spec));
         }
 
@@ -585,7 +585,7 @@ public final class Ui {
             return this;
         }
 
-        public ButtonTableBuilder image(String region, Consumer<ImageSpec> spec) {
+        public ButtonTableBuilder image(String region, Consumer<? super ImageSpec> spec) {
             return add(Ui.image(region, spec));
         }
 

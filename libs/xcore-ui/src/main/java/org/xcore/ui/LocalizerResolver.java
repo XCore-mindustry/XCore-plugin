@@ -158,6 +158,12 @@ public interface LocalizerResolver {
                 I18NBundle b = Core.bundle;
                 return b != null && b.has(key);
             }
+
+            @Override
+            public Locale locale() {
+                I18NBundle b = Core.bundle;
+                return b == null ? Locale.ENGLISH : LocalizerResolver.from(b).locale();
+            }
         };
     }
 
@@ -361,6 +367,12 @@ public interface LocalizerResolver {
                 if (r.has(key)) return true;
             }
             return false;
+        }
+
+        /** The language of the first resolver: the others are its fallbacks. */
+        @Override
+        public Locale locale() {
+            return resolvers.getFirst().locale();
         }
 
         @Override

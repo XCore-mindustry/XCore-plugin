@@ -26,7 +26,7 @@ class UiSessionLifecycleTest {
         record Close() implements Event {}
     }
 
-    static final class Controller implements UiController<Model, Event> {
+    static class Controller implements UiController<Model, Event> {
         final List<Dispatcher<Event>> pending = new ArrayList<>();
         final List<String> log = new ArrayList<>();
         Model closedWith;
@@ -214,6 +214,36 @@ class UiSessionLifecycleTest {
         assertThat(controller.pending.getFirst().isCurrent()).isFalse();
         assertThat(controller.pending.getFirst().dispatch(new Event.Loaded(5))).isFalse();
         assertThat(session.model().count()).isZero();
+    }
+
+    @Test
+    void closingUpdateRunsItsEffectsButTakesNothingBack() {
+        List<Boolean> seen = new ArrayList<>();
+        UiSession<Model, Event> closing = UiSession.start(new Controller() {
+            @Override
+            public UpdateResult<Model> update(Model model, Event event, ControllerContext ctx) {
+                return UpdateResult.close(model).effect((Dispatcher<Event> d) -> {
+                    seen.add(d.isCurrent());
+                    d.dispatch(new Event.Loaded(9));
+                });
+            }
+        }, new Model(0, 1), CTX, gateway, (key, args) -> "Count");
+        closing.open();
+        closing.dispatch(new Event.Close());
+
+        assertThat(seen).containsExactly(false);
+        assertThat(closing.model().count()).isZero();
+        assertThat(gateway.sent).containsExactly("show", "hide");
+    }
+
+    @Test
+    void runOnAnEndedSessionStartsNothing() {
+        session.open();
+        session.handle(cancel());
+        List<String> started = new ArrayList<>();
+        session.run("load", d -> started.add("load"));
+
+        assertThat(started).isEmpty();
     }
 
     @Test

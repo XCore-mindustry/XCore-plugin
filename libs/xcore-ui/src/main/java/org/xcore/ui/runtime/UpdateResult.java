@@ -46,7 +46,10 @@ public record UpdateResult<Model>(Model model, List<SlotKey<?>> dirtySlots, bool
         return new UpdateResult<>(model, List.of(), true, false);
     }
 
-    /** Close the dialog; model is the terminal state. */
+    /**
+     * Close the dialog; model is the terminal state. Its effects still run, after the close, for what
+     * follows it such as opening another menu; the session takes nothing they dispatch.
+     */
     public static <Model> UpdateResult<Model> close(Model model) {
         return new UpdateResult<>(model, List.of(), false, true);
     }
