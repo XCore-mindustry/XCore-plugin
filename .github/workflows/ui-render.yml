@@ -25,6 +25,7 @@ jobs:
         with:
           repository: XCore-mindustry/mindustry-testkit
           path: mindustry-testkit
+          persist-credentials: false
       - uses: actions/setup-java@v6
         with:
           distribution: temurin

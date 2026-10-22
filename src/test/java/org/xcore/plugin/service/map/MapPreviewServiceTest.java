@@ -46,4 +46,25 @@ class MapPreviewServiceTest {
         // When not cached and no preview file exists, it fails gracefully without throwing
         assertThat(delivered.get()).isNull();
     }
+
+    @Test
+    @DisplayName("an evicted preview is forgotten by its map file and drawn again")
+    void evictedPreviewIsForgottenByItsMapFile() {
+        XcoreImageService imageService = mock(XcoreImageService.class);
+        MapPreviewService service = new MapPreviewService(null, imageService, new org.xcore.plugin.service.map.inspect.DetachedMapReadLock());
+
+        for (int i = 0; i <= 32; i++) {
+            service.remember("map" + i + ".msav", "region" + i, new byte[]{(byte) i});
+        }
+
+        verify(imageService).unregister("region0");
+        assertThat(service.getCachedRegionName(map("map0.msav"))).isNull();
+        assertThat(service.getCachedRegionName(map("map32.msav"))).isEqualTo("region32");
+    }
+
+    private static Map map(String fileName) {
+        arc.files.Fi file = mock(arc.files.Fi.class);
+        when(file.name()).thenReturn(fileName);
+        return new Map(file, 100, 100, new arc.struct.StringMap(), true);
+    }
 }
