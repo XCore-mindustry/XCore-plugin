@@ -59,6 +59,12 @@ Once the dialog's geometry has stayed the same for several frames and its action
 | `TEXT_X`, `TEXT_Y` | text wider or taller than its label |
 | `BUTTON_TEXT` | a label sticking out of the button that owns it |
 
+A `TEXT_X` on a wrapped label that holds colour markup is often the client's own doing: Arc
+places the first glyph after a colour tag without checking the width, so a coloured word at the
+end of a line can stick out by up to a glyph instead of wrapping. Put the space before the word
+inside the tag (`you have[accent] { $n }[]`, not `you have [accent]{ $n }[]`), and the whole coloured
+run moves to the next line.
+
 Vertical overflow inside a vertical scroll pane is allowed. The policy suits ordinary
 axis-aligned menus, not intentional horizontal scrollers, rotated elements or decorative overflow.
 
