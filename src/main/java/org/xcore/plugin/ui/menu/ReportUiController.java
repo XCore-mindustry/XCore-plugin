@@ -17,8 +17,8 @@ import org.xcore.plugin.ui.kit.TextWidth;
 import org.xcore.ui.Ui;
 import org.xcore.ui.VNode;
 import org.xcore.ui.runtime.ControllerContext;
+import org.xcore.ui.runtime.Dispatcher;
 import org.xcore.ui.runtime.UiController;
-import org.xcore.ui.runtime.UiSession;
 import org.xcore.ui.runtime.UpdateResult;
 
 import java.util.List;
@@ -132,34 +132,35 @@ public class ReportUiController implements UiController<ReportUiController.Model
     @Override public UpdateResult<Model> update(Model model, Event event, ControllerContext context) {
         var update = transition(model, event);
         if (model.stage() == Stage.CONFIRM && update.model().stage() == Stage.SENDING && context != null) {
+            Model sending = update.model();
             long version = session.uiVersion();
-            // Posting lets UiSession install SENDING first, including for an immediately completed refusal.
-            context.post(() -> submit(update.model(), version));
+            // The effect runs once SENDING is on screen, so even a refusal that completes at once lands
+            // after it; the submission itself waits a frame, so a close or another menu before then calls it off.
+            return update.effect((Dispatcher<Event> dialog) -> context.post(() -> submit(sending, version, dialog)));
         }
         return update;
     }
 
-    private boolean current(Model sending, long version) {
+    /** Whether the reporter this dialog was opened for is still the one on this session, online, with no newer menu. */
+    private boolean current(long version) {
         return session.player == player && player.con == connection && Async.isPlayerOnline(player)
                 && session.data != null && Objects.equals(session.data.uuid, reporter)
-                && sessions.getActive(player) == session && session.uiVersion() == version
-                && session.activeUiSession() != null && session.activeUiSession().model() == sending;
+                && sessions.getActive(player) == session && session.uiVersion() == version;
     }
 
-    private void submit(Model sending, long version) {
-        if (!current(sending, version)) return;
+    private void submit(Model sending, long version, Dispatcher<Event> dialog) {
+        if (!dialog.isCurrent() || !current(version)) return;
         try {
             async.onMain(reports.submit(session, new ReportDraft(reporter, sending.target(), sending.reason(), sending.comment())),
-                    (result, error) -> deliver(sending, version, error == null ? result : new ReportResult.Failed()));
+                    (result, error) -> deliver(dialog, version, error == null ? result : new ReportResult.Failed()));
         } catch (RuntimeException error) {
-            deliver(sending, version, new ReportResult.Failed());
+            deliver(dialog, version, new ReportResult.Failed());
         }
     }
 
-    @SuppressWarnings("unchecked")
-    private void deliver(Model sending, long version, ReportResult result) {
-        if (current(sending, version)) {
-            ((UiSession<Model, Event>) session.activeUiSession()).dispatch(new Event.Completed(result));
+    private void deliver(Dispatcher<Event> dialog, long version, ReportResult result) {
+        if (current(version)) {
+            dialog.dispatch(new Event.Completed(result));
         }
     }
 
