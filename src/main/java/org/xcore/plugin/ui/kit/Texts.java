@@ -2,8 +2,11 @@ package org.xcore.plugin.ui.kit;
 
 import org.xcore.plugin.localization.Localization;
 import org.xcore.plugin.session.Session;
+import org.xcore.ui.LocalizerResolver;
 
+import java.util.Locale;
 import java.util.Map;
+import java.util.function.Supplier;
 
 /**
  * The texts of a menu in the language of the player it is open for.
@@ -17,6 +20,45 @@ import java.util.Map;
 public final class Texts {
 
     private Texts() {
+    }
+
+    /**
+     * The words of a player's language for the library: what {@link org.xcore.ui.Text#t} and
+     * {@link org.xcore.ui.runtime.RenderContext#t} resolve against. The localization is asked for
+     * on every use, so a player who changes language is spoken to in the new one at the next
+     * render; without one the key itself is shown.
+     */
+    public static LocalizerResolver resolver(Supplier<Localization> localization) {
+        return new LocalizerResolver() {
+            @Override
+            public String format(String key, Map<String, Object> args) {
+                Localization local = localization.get();
+                return local != null ? local.format(key, args) : key;
+            }
+
+            @Override
+            public String format(String key) {
+                Localization local = localization.get();
+                return local != null ? local.format(key) : key;
+            }
+
+            @Override
+            public boolean has(String key) {
+                Localization local = localization.get();
+                return local != null && local.bundle().has(local.getLocale(), key);
+            }
+
+            @Override
+            public Locale locale() {
+                Localization local = localization.get();
+                return local != null ? local.getLocale() : Locale.ENGLISH;
+            }
+        };
+    }
+
+    /** {@link #resolver(Supplier)} for a localization that does not change. */
+    public static LocalizerResolver resolver(Localization localization) {
+        return resolver(() -> localization);
     }
 
     /** The localization of {@code session}; none without a session. */

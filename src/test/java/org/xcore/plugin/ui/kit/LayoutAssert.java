@@ -16,6 +16,7 @@ import org.xcore.ui.VLabel;
 import org.xcore.ui.VNode;
 import org.xcore.ui.VNodeCompiler;
 import org.xcore.ui.VNodes;
+import org.xcore.ui.runtime.RenderContext;
 import org.xcore.ui.VPane;
 import org.xcore.ui.VTable;
 
@@ -52,6 +53,11 @@ public final class LayoutAssert {
         Bundle.INSTANCE.addSource(new Fi("src/main/resources/bundles"));
         Bundle.INSTANCE.addLocaleAlias("uk", "uk_UA");
         return new Localization(Bundle.INSTANCE, LocaleCodes.parse(language));
+    }
+
+    /** What a view is drawn with for a player who speaks {@code language}. */
+    public static RenderContext context(String language) {
+        return RenderContext.of(Texts.resolver(localization(language)));
     }
 
     /**
