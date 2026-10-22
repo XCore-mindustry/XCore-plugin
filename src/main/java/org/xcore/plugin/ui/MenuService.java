@@ -289,16 +289,18 @@ public class MenuService {
         };
 
         UiSession.DeliveryGateway deliveryGateway = new UiSession.DeliveryGateway() {
+            // A session another dialog replaced must not reach the client: its dialog is gone, and
+            // a show or a patch under the shared menu id would land on the dialog that replaced it.
             @Override
             public void show(String playerId, long token, UiBuilder.NodeBuilder<?> ui) {
-                if (session.activeUiSession() == sessionRef[0]) {
-                    session.markUiShown();
-                }
+                if (session.activeUiSession() != sessionRef[0]) return;
+                session.markUiShown();
                 gateway.menuBuilder(session.player, globalMenuBuilderId, token, null, false, true, fillScreen, ui);
             }
 
             @Override
             public void update(String playerId, long token, String elementId, UiBuilder.NodeBuilder<?> ui) {
+                if (session.activeUiSession() != sessionRef[0]) return;
                 gateway.menuBuilderUpdate(session.player, globalMenuBuilderId, elementId, ui);
             }
 
@@ -306,6 +308,15 @@ public class MenuService {
             public void hide(String playerId) {
                 if (session.activeUiSession() == sessionRef[0]) {
                     gateway.hideMenuBuilder(session.player, globalMenuBuilderId);
+                    session.clearActiveUiSession();
+                    notifyMenuClosed(session);
+                }
+            }
+
+            @Override
+            public void closed(String playerId) {
+                // The client closed the dialog itself; there is nothing to hide.
+                if (session.activeUiSession() == sessionRef[0]) {
                     session.clearActiveUiSession();
                     notifyMenuClosed(session);
                 }
@@ -542,13 +553,8 @@ public class MenuService {
                 // wasHidden), and a patch keeps that same dialog up.
                 session.markUiPressed();
             }
+            // A close the client reports ends the session, which clears it here through its gateway.
             uiSession.handle(result);
-            if (currentWindow && result.wasCancelled()
-                    && session.activeUiSession() == uiSession && uiSession.token() == result.token) {
-                // The client closed the dialog and the controller neither closed nor re-sent it.
-                session.clearActiveUiSession();
-                notifyMenuClosed(session);
-            }
             return;
         }
 
