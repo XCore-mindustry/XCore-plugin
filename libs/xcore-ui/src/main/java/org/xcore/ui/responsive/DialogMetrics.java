@@ -5,8 +5,8 @@ import java.util.Objects;
 /**
  * Upper bounds for a server-driven dialog, resolved by the client.
  *
- * <p>The truncation helpers hold for any layout. The caps are what {@link DialogScaffold} lays out
- * with, and share its limits: see there, and {@link Variants} for a layout that fits a phone.
+ * <p>The truncation helpers hold for any layout. The caps do not keep a dialog on a phone's
+ * screen by themselves: see {@link Variants} for a layout that fits one.
  *
  * <p>These are caps, not sizes. Mindustry ships literal floats for {@code width}/{@code maxWidth},
  * and a cell only honours {@code maxWidth} when it also fills
@@ -73,15 +73,6 @@ public record DialogMetrics(
 
     public DialogMetrics withTextBudget(int budget) {
         return new DialogMetrics(maxDialogWidth, maxBodyHeight, budget);
-    }
-
-    /** Caps a card at the dialog cap minus the scaffold's own horizontal inset. */
-    public float maxCardWidth() {
-        return maxDialogWidth - cardInset();
-    }
-
-    private static float cardInset() {
-        return 40f;
     }
 
     /** Truncates untrusted text to {@link #textBudget()} without splitting a surrogate pair. */

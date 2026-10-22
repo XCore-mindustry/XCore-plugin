@@ -25,7 +25,6 @@ class ResponsiveUiTest {
         assertThat(metrics.maxDialogWidth()).isEqualTo(760f);
         assertThat(metrics.maxBodyHeight()).isEqualTo(460f);
         assertThat(metrics.textBudget()).isEqualTo(44);
-        assertThat(metrics.maxCardWidth()).isLessThan(metrics.maxDialogWidth());
 
         assertThatThrownBy(() -> DialogMetrics.of(0f, 100f))
                 .isInstanceOf(IllegalArgumentException.class);
@@ -68,47 +67,6 @@ class ResponsiveUiTest {
 
         // the reason budget must not be a regression against what desktop users saw before
         assertThat(DialogMetrics.REASON_BUDGET).isGreaterThanOrEqualTo(65);
-    }
-
-    @Test
-    @DisplayName("DialogScaffold emits caps the client resolves, not fixed widths")
-    void dialogScaffoldEmitsCapsNotFixedWidths() {
-        VNode root = Ui.scaffold(DialogMetrics.standard(), scaffold -> {
-            scaffold.header(h -> h.label(Text.raw("Header Title")));
-            scaffold.body(cards -> scaffold.card(cards, "action:1",
-                    card -> card.label(Text.raw("Item 1"))));
-            scaffold.footer(f -> f.button(Text.raw("Close"), "action:close"));
-        });
-
-        String out = dsl(root);
-
-        // the dialog fills and caps; it never pins a width the phone might not have
-        assertThat(out).contains("growX: true").contains("maxWidth: 760");
-        assertThat(out).doesNotContain("width: 760");
-
-        // the body takes the leftover height but cannot push the footer off screen
-        assertThat(out).contains("maxHeight: 460");
-    }
-
-    @Test
-    @DisplayName("DialogScaffold keeps header, body, and footer actions addressable")
-    void dialogScaffoldStructure() {
-        VNode root = Ui.scaffold(DialogMetrics.standard(), scaffold -> {
-            scaffold.header(h -> h.label(Text.raw("Header Title")));
-            scaffold.tabs(t -> t.button(Text.raw("Tab 1"), "tab:1"));
-            scaffold.body(cards -> scaffold.card(cards, "action:1",
-                    card -> card.label(Text.raw("Item 1"))));
-            scaffold.footer(f -> f.button(Text.raw("Close"), "action:close"));
-        });
-
-        String out = dsl(root);
-
-        assertThat(out).contains("Header Title");
-        assertThat(out).contains("tab:1");
-        assertThat(out).contains("action:1");
-        assertThat(out).contains("action:close");
-        // tabs wrap instead of assuming a fixed column count
-        assertThat(out).contains("wrap: true");
     }
 
     @Test

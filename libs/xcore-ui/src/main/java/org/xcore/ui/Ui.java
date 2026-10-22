@@ -27,23 +27,6 @@ public final class Ui {
     }
 
     // ------------------------------------------------------------------
-    // Responsive Scaffolds
-    // ------------------------------------------------------------------
-
-    /**
-     * Builds a dialog scaffold: sticky header, bounded scrolling body, sticky footer.
-     *
-     * @deprecated see {@link org.xcore.ui.responsive.DialogScaffold}
-     */
-    @Deprecated
-    @SuppressWarnings("deprecation")
-    public static VNode scaffold(org.xcore.ui.responsive.DialogMetrics metrics, Consumer<org.xcore.ui.responsive.DialogScaffold> consumer) {
-        org.xcore.ui.responsive.DialogScaffold scaffold = org.xcore.ui.responsive.DialogScaffold.create(metrics);
-        if (consumer != null) consumer.accept(scaffold);
-        return scaffold.build();
-    }
-
-    // ------------------------------------------------------------------
     // Containers
     // ------------------------------------------------------------------
 
