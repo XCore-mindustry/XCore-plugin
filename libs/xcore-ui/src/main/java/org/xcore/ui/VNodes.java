@@ -31,7 +31,6 @@ public final class VNodes {
     /** All slots in the tree keyed by their path. Nested slots included. */
     public static Map<String, VSlot> slotsByKey(VNode root) {
         Map<String, VSlot> map = new LinkedHashMap<>();
-        collectInto(root, n -> n.isSlot(), new LinkedHashMap<>());
         for (VNode node : walk(root)) {
             if (node instanceof VSlot slot) {
                 map.putIfAbsent(slot.slotKey(), slot);

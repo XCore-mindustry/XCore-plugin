@@ -233,8 +233,8 @@ public final class Ui {
             return add(Ui.pane(consumer));
         }
 
-        public TableBuilder component(Component<?> component) {
-            return add(new org.xcore.ui.VComponentNode(component, List.of()));
+        public <P> TableBuilder component(Component<P> component, P props) {
+            return add(component.with(props));
         }
 
         VTable build() {
