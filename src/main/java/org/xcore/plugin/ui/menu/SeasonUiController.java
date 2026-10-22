@@ -60,11 +60,6 @@ public class SeasonUiController implements UiController<SeasonUiController.Seaso
     }
 
     @Override
-    public SeasonModel initialModel(Object context) {
-        return context instanceof SeasonModel model ? model : new SeasonModel(List.of());
-    }
-
-    @Override
     public UpdateResult<SeasonModel> update(SeasonModel model, SeasonEvent event, ControllerContext context) {
         return switch (event) {
             case SeasonEvent.OpenTop(String categoryId) -> {

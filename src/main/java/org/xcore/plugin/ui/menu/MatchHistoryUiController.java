@@ -23,9 +23,9 @@ import org.xcore.ui.Text;
 import org.xcore.ui.Ui;
 import org.xcore.ui.VNode;
 import org.xcore.ui.runtime.ControllerContext;
+import org.xcore.ui.runtime.Dispatcher;
 import org.xcore.ui.runtime.SlotKey;
 import org.xcore.ui.runtime.UiController;
-import org.xcore.ui.runtime.UiSession;
 import org.xcore.ui.runtime.UpdateResult;
 
 import java.time.Clock;
@@ -188,8 +188,8 @@ public class MatchHistoryUiController implements UiController<MatchHistoryUiCont
     private final Async async;
     private final Session session;
     private final Clock clock;
-    /** Counts the loads this dialog started; only the latest one may change it. */
-    private long loadGeneration;
+    /** The key of every load: only the latest one may change the dialog. */
+    private static final String LOAD = "load";
 
     public MatchHistoryUiController(MatchHistoryMenu menu, Async async, Session session, Clock clock) {
         this.menu = Objects.requireNonNull(menu, "menu");
@@ -265,51 +265,31 @@ public class MatchHistoryUiController implements UiController<MatchHistoryUiCont
      */
     private UpdateResult<Model> load(Model model, Query query) {
         String owner = model.ownerUuid();
-        long generation = ++loadGeneration;
-        async.supply(() -> fetch(query, owner)).thenMain((data, error) -> {
-            if (error != null) {
-                Log.err("Failed to load the matches of " + owner + " on ladder " + query.ladderId(), error);
-            }
-            deliver(model, generation, error == null ? new Event.Loaded(data) : new Event.LoadFailed());
-        });
-        return UpdateResult.of(model);
+        return UpdateResult.of(model).effect(LOAD, (Dispatcher<Event> dialog) ->
+                async.supply(() -> fetch(query, owner)).thenMain((data, error) -> {
+                    if (error != null) {
+                        Log.err("Failed to load the matches of " + owner + " on ladder " + query.ladderId(), error);
+                    }
+                    dialog.dispatch(error == null ? new Event.Loaded(data) : new Event.LoadFailed());
+                }));
     }
 
     private UpdateResult<Model> loadMatch(Model model, MatchRecord row) {
-        long generation = ++loadGeneration;
-        async.supply(() -> {
-            Ladder ladder = menu.ladder(row.ladder());
-            return ladder == null ? null : ladder.match(row.matchId()).orElse(null);
-        }).thenMain((match, error) -> {
-            if (error != null) {
-                Log.err("Failed to load match " + row.id(), error);
-            }
-            deliver(model, generation, match != null ? new Event.MatchLoaded(match) : new Event.LoadFailed());
-        });
-        return UpdateResult.of(model);
-    }
-
-    private void deliver(Model model, long generation, Event event) {
-        if (generation != loadGeneration || session == null) {
-            return; // Superseded: applying it would make the newer request look stale.
-        }
-        var active = session.activeUiSession();
-        if (active != null && active.model() == model) {
-            @SuppressWarnings("unchecked")
-            var ui = (UiSession<Model, Event>) active;
-            ui.dispatch(event);
-        }
+        return UpdateResult.of(model).effect(LOAD, (Dispatcher<Event> dialog) ->
+                async.supply(() -> {
+                    Ladder ladder = menu.ladder(row.ladder());
+                    return ladder == null ? null : ladder.match(row.matchId()).orElse(null);
+                }).thenMain((match, error) -> {
+                    if (error != null) {
+                        Log.err("Failed to load match " + row.id(), error);
+                    }
+                    dialog.dispatch(match != null ? new Event.MatchLoaded(match) : new Event.LoadFailed());
+                }));
     }
 
     // =========================================================================
     // Events
     // =========================================================================
-
-    @Override
-    public Model initialModel(Object context) {
-        return model(fetch(query(context instanceof String ladderId ? ladderId : null),
-                session != null && session.data != null ? session.data.uuid : ""));
-    }
 
     @Override
     public UpdateResult<Model> update(Model model, Event event, ControllerContext ctx) {
@@ -504,7 +484,7 @@ public class MatchHistoryUiController implements UiController<MatchHistoryUiCont
             }
 
             // The parts a turned page changes are slots, so the rest of the window stays as it is.
-            window.slot(screen.slot(SLOT_LIST).path(), slot ->
+            window.slot(screen.slot(SLOT_LIST), slot ->
                     slot.add(Kit.pane(screen, list -> rows(list, model, screen, local)))).row();
 
             if (!model.feedback().isBlank()) {
@@ -514,7 +494,7 @@ public class MatchHistoryUiController implements UiController<MatchHistoryUiCont
                 })).row();
             }
 
-            window.slot(screen.slot(SLOT_PAGER).path(), slot -> slot.add(Kit.pager(width,
+            window.slot(screen.slot(SLOT_PAGER), slot -> slot.add(Kit.pager(width,
                     model.page() + " / " + Math.max(model.page(), model.totalPages()),
                     model.backStack().isEmpty() ? null : "action:page:prev",
                     model.nextCursor() == null ? null : "action:page:next",

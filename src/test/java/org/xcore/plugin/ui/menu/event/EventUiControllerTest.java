@@ -457,7 +457,7 @@ class EventUiControllerTest {
                             "action:page:next", "action:page:prev");
         }
 
-        Dialog unread = new Dialog(dialog.controller.initialModel(null));
+        Dialog unread = new Dialog(dialog.controller.openingModel());
         assertThat(unread.model.catalog().loaded()).isFalse();
         assertLaidOut(unread, "the list being read in " + language);
         assertThat(LayoutAssert.allText(unread.controller.render(unread.model)))

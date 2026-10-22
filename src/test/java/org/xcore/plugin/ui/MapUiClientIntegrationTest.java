@@ -478,7 +478,6 @@ class MapUiClientIntegrationTest {
         // Open a completely new session (e.g. settings or another dialog)
         record ForeignModel(String value) {}
         class ForeignController implements org.xcore.ui.runtime.UiController<ForeignModel, Void> {
-            @Override public ForeignModel initialModel(Object ctx) { return new ForeignModel("intact"); }
             @Override public org.xcore.ui.runtime.UpdateResult<ForeignModel> update(ForeignModel m, Void e, org.xcore.ui.runtime.ControllerContext c) { return org.xcore.ui.runtime.UpdateResult.of(m); }
             @Override public org.xcore.ui.VNode render(ForeignModel m) { return org.xcore.ui.Ui.table(t -> t.label(org.xcore.ui.Text.raw(m.value()))); }
             @Override public Void parseEvent(MenuResult r) { return null; }
@@ -494,7 +493,7 @@ class MapUiClientIntegrationTest {
             @Override public void update(String p, long t, String e, NodeBuilder<?> u) {}
             @Override public void hide(String p) {}
         };
-        var newSession = org.xcore.ui.runtime.UiSession.start(newController, newController.initialModel(null),
+        var newSession = org.xcore.ui.runtime.UiSession.start(newController, new ForeignModel("intact"),
                 newContext, newGateway, org.xcore.ui.LocalizerResolver.IDENTITY);
         session.setActiveUiSession(newSession);
 

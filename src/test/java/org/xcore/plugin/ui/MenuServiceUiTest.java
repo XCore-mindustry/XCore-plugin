@@ -75,11 +75,6 @@ class MenuServiceUiTest {
     /** A controller with one fixed screen. */
     private static final class StaticController implements UiController<String, String> {
         @Override
-        public String initialModel(Object context) {
-            return "model";
-        }
-
-        @Override
         public UpdateResult<String> update(String model, String event, ControllerContext context) {
             return UpdateResult.of(model);
         }

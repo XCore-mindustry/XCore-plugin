@@ -3,7 +3,6 @@ package org.xcore.plugin.ui.kit;
 import mindustry.gen.Iconc;
 import org.xcore.ui.Text;
 import org.xcore.ui.Ui;
-import org.xcore.ui.VLabel;
 import org.xcore.ui.VNode;
 
 import java.util.ArrayList;
@@ -221,12 +220,12 @@ public final class Kit {
 
     /** Wrapped text centred in {@code width}. */
     public static VNode centered(String text, float width) {
-        return new VLabel(null, Ui.layout().width(width).build(), Text.raw(text), true, null, "center");
+        return Ui.labelWrap(Text.raw(text), l -> l.labelAlign("center").width(width));
     }
 
     /** Wrapped text set against the right edge of {@code width}. */
     public static VNode right(String text, float width) {
-        return new VLabel(null, Ui.layout().width(width).build(), Text.raw(text), true, null, "right");
+        return Ui.labelWrap(Text.raw(text), l -> l.labelAlign("right").width(width));
     }
 
     // ------------------------------------------------------------------ buttons

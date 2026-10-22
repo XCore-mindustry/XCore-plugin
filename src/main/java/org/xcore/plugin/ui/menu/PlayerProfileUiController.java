@@ -51,6 +51,9 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
 
     public static final int PLAYERS_PER_PAGE = 8;
 
+    /** The key of the details load: inspecting another player supersedes the load of the one before. */
+    public static final String DETAILS = "details";
+
     private static final DateTimeFormatter DATE_TIME_FORMATTER =
             DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm").withZone(ZoneId.systemDefault());
 
@@ -441,12 +444,6 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
     }
 
     @Override
-    public ProfileModel initialModel(Object context) {
-        Tab tab = context instanceof Tab t ? t : Tab.OVERVIEW;
-        return createInitialModel(tab, null);
-    }
-
-    @Override
     public UpdateResult<ProfileModel> update(ProfileModel model, ProfileEvent event, ControllerContext ctx) {
         return switch (event) {
             case ProfileEvent.SelectTab(Tab tab) ->
@@ -520,11 +517,8 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
 
                 String colorHex = PlayerSettingsUiController.resolvePlayerColorHex(session, target);
                 ProfileModel newModel = model.withTarget(target, isOnline, colorHex, null, true);
-                if (playerMenu != null) {
-                    playerMenu.loadDetails(session, target);
-                }
-
-                yield UpdateResult.rerender(newModel);
+                UpdateResult<ProfileModel> shown = UpdateResult.rerender(newModel);
+                yield playerMenu != null ? shown.effect(DETAILS, playerMenu.loadDetails(session, target)) : shown;
             }
 
             case ProfileEvent.OpenSettings() -> {

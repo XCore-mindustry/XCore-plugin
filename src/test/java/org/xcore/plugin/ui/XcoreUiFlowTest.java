@@ -34,11 +34,6 @@ class XcoreUiFlowTest {
 
     static class ServerConfigController implements UiController<ServerConfigModel, ConfigEvent> {
         @Override
-        public ServerConfigModel initialModel(Object context) {
-            return new ServerConfigModel("general", 60f, true);
-        }
-
-        @Override
         public UpdateResult<ServerConfigModel> update(ServerConfigModel model, ConfigEvent event, ControllerContext ctx) {
             return switch (event) {
                 case ConfigEvent.SelectTab(var tab) ->
@@ -127,7 +122,7 @@ class XcoreUiFlowTest {
         MockContext ctx = new MockContext();
 
         UiSession<ServerConfigModel, ConfigEvent> session = UiSession.start(
-                controller, controller.initialModel(null), ctx, gateway, LocalizerResolver.IDENTITY);
+                controller, new ServerConfigModel("general", 60f, true), ctx, gateway, LocalizerResolver.IDENTITY);
 
         // 1. Initial show -> renders general tab content
         session.open();

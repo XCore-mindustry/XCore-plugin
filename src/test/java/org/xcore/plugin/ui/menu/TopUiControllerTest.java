@@ -11,7 +11,6 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.FieldSource;
-import org.mockito.ArgumentCaptor;
 import org.xcore.plugin.concurrent.Async;
 import org.xcore.plugin.concurrent.InlineStorageExecutor;
 import org.xcore.plugin.config.TomlSecretsConfig;
@@ -31,7 +30,7 @@ import org.xcore.ui.VNode;
 import org.xcore.ui.VNodeCompiler;
 import org.xcore.ui.VNodes;
 import org.xcore.ui.LocalizerResolver;
-import org.xcore.ui.runtime.UiSession;
+import org.xcore.ui.runtime.EffectRunner;
 import org.xcore.ui.runtime.UpdateResult;
 
 import java.util.ArrayDeque;
@@ -42,6 +41,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiConsumer;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -121,26 +121,23 @@ class TopUiControllerTest {
      * Sends {@code event} to a dialog showing {@code model} and, once the page it asks for
      * has been read, the {@link TopUiController.TopEvent.Loaded} that follows.
      */
-    @SuppressWarnings("unchecked")
     private UpdateResult<TopUiController.TopModel> loadThrough(TopUiController controller,
                                                                TopUiController.TopModel model,
                                                                TopUiController.TopEvent event) {
-        UiSession<TopUiController.TopModel, TopUiController.TopEvent> ui = mock(UiSession.class);
-        when(ui.model()).thenReturn(model);
-        session.setActiveUiSession(ui);
+        List<TopUiController.TopEvent> dispatched = new ArrayList<>();
+        EffectRunner<TopUiController.TopEvent> effects = new EffectRunner<>(dispatched::add, () -> true);
 
         UpdateResult<TopUiController.TopModel> pending = controller.update(model, event, null);
         // Until the page arrives the dialog keeps showing what it had.
         assertThat(pending.isNoop()).isTrue();
-        verify(ui, never()).dispatch(any());
+        effects.run(pending.effects());
+        assertThat(dispatched).isEmpty();
 
         while (!mainThread.isEmpty()) {
             mainThread.poll().run();
         }
-        ArgumentCaptor<TopUiController.TopEvent> dispatched = ArgumentCaptor.forClass(TopUiController.TopEvent.class);
-        verify(ui).dispatch(dispatched.capture());
-        assertThat(dispatched.getValue()).isInstanceOf(TopUiController.TopEvent.Loaded.class);
-        return controller.update(model, dispatched.getValue(), null);
+        assertThat(dispatched).singleElement().isInstanceOf(TopUiController.TopEvent.Loaded.class);
+        return controller.update(model, dispatched.getFirst(), null);
     }
 
     @Test
@@ -332,47 +329,43 @@ class TopUiControllerTest {
 
     @Test
     @DisplayName("a page that arrives after the dialog moved on is dropped")
-    @SuppressWarnings("unchecked")
     void load_dropsStaleResult() {
         registry.register(seasonalProvider());
         TopUiController controller = new TopUiController(topMenu, registry, playerMenu, sessionService, async, session);
         TopUiController.TopModel initial = controller.createInitialModel("DUEL", null, 1, null, null);
-        UiSession<TopUiController.TopModel, TopUiController.TopEvent> ui = mock(UiSession.class);
-        when(ui.model()).thenReturn(initial);
-        session.setActiveUiSession(ui);
+        List<TopUiController.TopEvent> dispatched = new ArrayList<>();
+        AtomicBoolean open = new AtomicBoolean(true);
+        EffectRunner<TopUiController.TopEvent> effects = new EffectRunner<>(dispatched::add, open::get);
 
-        controller.update(initial, new TopUiController.TopEvent.SelectScope("1"), null);
-        // The player switched to something else before the page came back.
-        when(ui.model()).thenReturn(controller.createInitialModel("DUEL", null, 1, null, null));
+        effects.run(controller.update(initial, new TopUiController.TopEvent.SelectScope("1"), null).effects());
+        // The player left the dialog before the page came back.
+        open.set(false);
         mainThread.forEach(Runnable::run);
 
-        verify(ui, never()).dispatch(any());
+        assertThat(dispatched).isEmpty();
     }
 
     @Test
     @DisplayName("of two requests still loading only the latest one is applied")
-    @SuppressWarnings("unchecked")
     void load_appliesOnlyTheLatestRequest() {
         registerMockProvider("MINI_PVP", 30, List.of(), false, null, null);
         registerMockProvider("PLAYTIME", 20, List.of(), false, null, null);
         registerMockProvider("HEXED", 10, List.of(), false, null, null);
         TopUiController controller = new TopUiController(topMenu, registry, playerMenu, sessionService, async, session);
         TopUiController.TopModel initial = controller.createInitialModel("MINI_PVP", null, 1, null, null);
-        UiSession<TopUiController.TopModel, TopUiController.TopEvent> ui = mock(UiSession.class);
-        when(ui.model()).thenReturn(initial);
-        session.setActiveUiSession(ui);
+        List<TopUiController.TopEvent> dispatched = new ArrayList<>();
+        EffectRunner<TopUiController.TopEvent> effects = new EffectRunner<>(dispatched::add, () -> true);
 
         // Both taps land before either page is back, so both start from the same model.
-        controller.update(initial, new TopUiController.TopEvent.SelectCategory("PLAYTIME"), null);
-        controller.update(initial, new TopUiController.TopEvent.SelectCategory("HEXED"), null);
+        effects.run(controller.update(initial, new TopUiController.TopEvent.SelectCategory("PLAYTIME"), null).effects());
+        effects.run(controller.update(initial, new TopUiController.TopEvent.SelectCategory("HEXED"), null).effects());
         while (!mainThread.isEmpty()) {
             mainThread.poll().run();
         }
 
-        ArgumentCaptor<TopUiController.TopEvent> dispatched = ArgumentCaptor.forClass(TopUiController.TopEvent.class);
-        verify(ui).dispatch(dispatched.capture());
-        assertThat(((TopUiController.TopEvent.Loaded) dispatched.getValue()).data().query().categoryId())
-                .isEqualTo("HEXED");
+        assertThat(dispatched).singleElement()
+                .satisfies(event -> assertThat(((TopUiController.TopEvent.Loaded) event).data().query().categoryId())
+                        .isEqualTo("HEXED"));
     }
 
     @Test
@@ -448,11 +441,10 @@ class TopUiControllerTest {
 
         TopUiController controller = new TopUiController(topMenu, registry, playerMenu, sessionService, async, session);
         TopUiController.TopModel model = controller.createInitialModel("MINI_PVP", null, 1, null, null);
-        org.xcore.ui.runtime.UiSession mockSession = mock(org.xcore.ui.runtime.UiSession.class);
-        when(mockSession.model()).thenReturn(model);
-        session.setActiveUiSession(mockSession);
+        EffectRunner<TopUiController.TopEvent> effects =
+                new EffectRunner<>(event -> controller.update(model, event, null), () -> true);
 
-        controller.update(model, new TopUiController.TopEvent.InspectPlayer("offline-uuid"), null);
+        effects.run(controller.update(model, new TopUiController.TopEvent.InspectPlayer("offline-uuid"), null).effects());
 
         verify(playerMenu).openProfileUi(eq(session), eq(offlineTarget));
         assertThat(session.hasHistory()).isTrue();
@@ -480,7 +472,8 @@ class TopUiControllerTest {
         assertThat(controller.parseEvent(new MenuResult("action:tab:HEXED"))).isEqualTo(new TopUiController.TopEvent.SelectCategory("HEXED"));
         assertThat(controller.parseEvent(new MenuResult("action:scope:2"))).isEqualTo(new TopUiController.TopEvent.SelectScope("2"));
         assertThat(controller.parseEvent(new MenuResult("action:inspect:some-uuid"))).isEqualTo(new TopUiController.TopEvent.InspectPlayer("some-uuid"));
-        assertThat(controller.parseEvent(new MenuResult((String) null))).isInstanceOf(TopUiController.TopEvent.Close.class);
+        assertThat(controller.parseEvent(new MenuResult((String) null))).isNull();
+        assertThat(controller.parseEvent(new MenuResult("action:unknown"))).isNull();
     }
 
     @Test

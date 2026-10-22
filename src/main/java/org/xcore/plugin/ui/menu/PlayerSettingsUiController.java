@@ -501,12 +501,6 @@ public class PlayerSettingsUiController implements UiController<PlayerSettingsUi
     }
 
     @Override
-    public SettingsModel initialModel(Object context) {
-        Tab tab = context instanceof Tab t ? t : Tab.PROFILE;
-        return createModel(session, targetData, tab);
-    }
-
-    @Override
     public UpdateResult<SettingsModel> update(SettingsModel model, SettingsEvent event, ControllerContext ctx) {
         return switch (event) {
             case SettingsEvent.Save(MenuResult result) -> {

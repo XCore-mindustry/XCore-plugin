@@ -51,8 +51,8 @@ public class HelpUiController implements UiController<HelpUiModel, HelpUiEvent> 
         this.helpMenu = helpMenu;
     }
 
-    @Override
-    public HelpUiModel initialModel(Object context) {
+    /** The list of every command the player may run, as the dialog opens. */
+    public HelpUiModel openingModel() {
         XCoreSender sender = helpMenu != null ? helpMenu.resolveSender(session) : null;
         List<HelpCommandItem> commands = (helpMenu != null && sender != null)
                 ? helpMenu.buildHelpCommandItems(session, sender)
@@ -185,12 +185,12 @@ public class HelpUiController implements UiController<HelpUiModel, HelpUiEvent> 
             }
             window.add(Kit.tabs(width, "help_tabs", tabs)).row();
             window.add(Kit.line(width, Accent.of(model.selectedCategory().colorHex()))).row();
-            window.slot(screen.slot(SLOT_SEARCH).path(), slot -> slot.add(search(model, width))).row();
+            window.slot(screen.slot(SLOT_SEARCH), slot -> slot.add(search(model, width))).row();
 
             // A turned page changes these two and leaves the rest of the window as it is.
-            window.slot(screen.slot(SLOT_COMMANDS).path(), slot ->
+            window.slot(screen.slot(SLOT_COMMANDS), slot ->
                     slot.add(Kit.pane(screen, commands -> commands(commands, model, screen)))).row();
-            window.slot(screen.slot(SLOT_PAGER).path(), slot -> {
+            window.slot(screen.slot(SLOT_PAGER), slot -> {
                 if (model.pages() > 1) {
                     int page = model.page();
                     slot.add(Kit.pager(width, (page + 1) + " / " + model.pages(),

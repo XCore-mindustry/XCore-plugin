@@ -267,12 +267,6 @@ public class AuditHistoryUiController implements UiController<AuditHistoryUiCont
     }
 
     @Override
-    public AuditHistoryModel initialModel(Object context) {
-        AuditViewMode mode = context instanceof AuditViewMode m ? m : AuditViewMode.TARGET;
-        return createInitialModel(mode);
-    }
-
-    @Override
     public UpdateResult<AuditHistoryModel> update(AuditHistoryModel model, AuditHistoryEvent event, ControllerContext ctx) {
         return switch (event) {
             case AuditHistoryEvent.SelectMode(var newMode) -> {
@@ -421,10 +415,10 @@ public class AuditHistoryUiController implements UiController<AuditHistoryUiCont
     private VNode list(AuditHistoryModel model, Screen screen, Localization local) {
         float width = screen.width();
         return Kit.window(window -> {
-            window.slot(screen.slot(SLOT_HEADER).path(), slot -> slot.add(header(model, width, local))).row();
-            window.slot(screen.slot(SLOT_TABS).path(), slot -> tabs(slot, model, width, local)).row();
-            window.slot(screen.slot(SLOT_LIST).path(), slot -> slot.add(records(model, screen, local))).row();
-            window.slot(screen.slot(SLOT_PAGINATION).path(), slot -> slot.add(Kit.pager(width,
+            window.slot(screen.slot(SLOT_HEADER), slot -> slot.add(header(model, width, local))).row();
+            window.slot(screen.slot(SLOT_TABS), slot -> tabs(slot, model, width, local)).row();
+            window.slot(screen.slot(SLOT_LIST), slot -> slot.add(records(model, screen, local))).row();
+            window.slot(screen.slot(SLOT_PAGINATION), slot -> slot.add(Kit.pager(width,
                     t(local, "audit-menu-page", args("page", model.pageIndex())),
                     model.cursorBackStack().isEmpty() ? null : "action:page:prev",
                     model.hasNext() && model.nextCursor() != null ? "action:page:next" : null,
@@ -549,7 +543,7 @@ public class AuditHistoryUiController implements UiController<AuditHistoryUiCont
         float width = screen.width();
         AuditRecord rec = model.inspectedRecord();
         return Kit.window(window -> {
-            window.slot(screen.slot(SLOT_HEADER).path(), slot -> slot.add(header(model, width, local))).row();
+            window.slot(screen.slot(SLOT_HEADER), slot -> slot.add(header(model, width, local))).row();
             window.add(Kit.line(width, rec == null ? Accent.GRAY : accent(rec.action))).row();
 
             Kit.body(window, screen, body -> {

@@ -72,7 +72,7 @@ public class HelpMenu extends Menu {
         }
 
         var controller = new HelpUiController(session, this);
-        var initialModel = controller.initialModel(null);
+        var initialModel = controller.openingModel();
 
         if (initialModel.allCommands().isEmpty()) {
             session.locale().send("empty");

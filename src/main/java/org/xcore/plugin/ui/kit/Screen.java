@@ -1,10 +1,9 @@
 package org.xcore.plugin.ui.kit;
 
-import org.xcore.ui.Ui;
 import org.xcore.ui.VNode;
+import org.xcore.ui.responsive.Variants;
 import org.xcore.ui.runtime.SlotKey;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
 
@@ -48,29 +47,20 @@ public record Screen(String id, int columns, float card) {
         return columns > 1 ? cards() + Kit.SCROLLBAR : cards();
     }
 
-    /**
-     * The same menu for every class of screens, each under the condition of the screens it is
-     * for. The client evaluates one comparison per node, so a range of widths takes a table
-     * inside a table.
-     */
+    /** Each class with the narrowest screen it is for; {@link #SMALL} takes whatever is left. */
+    private static final List<Variants.Variant<Screen>> VARIANTS = List.of(
+            new Variants.Variant<>(WIDE.id, WIDE_WIDTH, WIDE),
+            new Variants.Variant<>(NARROW.id, NARROW_WIDTH, NARROW),
+            new Variants.Variant<>(SMALL.id, 0f, SMALL));
+
+    /** The classes for a menu of one column, which a desktop shows as a phone held upright does. */
+    private static final List<Variants.Variant<Screen>> COMPACT = List.of(
+            new Variants.Variant<>(NARROW.id, NARROW_WIDTH, NARROW),
+            new Variants.Variant<>(SMALL.id, 0f, SMALL));
+
+    /** The same menu for every class of screens, each under the condition of the screens it is for. */
     public static VNode each(Function<Screen, VNode> window) {
-        return Ui.table(root -> {
-            root.add(Ui.table(wide -> {
-                wide.layout(l -> l.condition("width >= " + WIDE_WIDTH));
-                wide.add(window.apply(WIDE));
-            }));
-            root.add(Ui.table(phones -> {
-                phones.layout(l -> l.condition("width < " + WIDE_WIDTH));
-                phones.add(Ui.table(narrow -> {
-                    narrow.layout(l -> l.condition("width >= " + NARROW_WIDTH));
-                    narrow.add(window.apply(NARROW));
-                }));
-                phones.add(Ui.table(small -> {
-                    small.layout(l -> l.condition("width < " + NARROW_WIDTH));
-                    small.add(window.apply(SMALL));
-                }));
-            }));
-        });
+        return Variants.byWidth(VARIANTS, variant -> window.apply(variant.value()));
     }
 
     /**
@@ -78,16 +68,7 @@ public record Screen(String id, int columns, float card) {
      * nothing from two columns, so a desktop is given the layout of a phone held upright.
      */
     public static VNode compact(Function<Screen, VNode> window) {
-        return Ui.table(root -> {
-            root.add(Ui.table(narrow -> {
-                narrow.layout(l -> l.condition("width >= " + NARROW_WIDTH));
-                narrow.add(window.apply(NARROW));
-            }));
-            root.add(Ui.table(small -> {
-                small.layout(l -> l.condition("width < " + NARROW_WIDTH));
-                small.add(window.apply(SMALL));
-            }));
-        });
+        return Variants.byWidth(COMPACT, variant -> window.apply(variant.value()));
     }
 
     /** The slot {@code base} of this class's layout: every layout has its own, since a client builds one. */
@@ -100,12 +81,6 @@ public record Screen(String id, int columns, float card) {
      * the one it has built and ignores the rest.
      */
     public static List<SlotKey<?>> slots(SlotKey<?>... bases) {
-        List<SlotKey<?>> all = new ArrayList<>();
-        for (SlotKey<?> base : bases) {
-            for (Screen screen : ALL) {
-                all.add(screen.slot(base));
-            }
-        }
-        return all;
+        return Variants.slots(VARIANTS, bases);
     }
 }

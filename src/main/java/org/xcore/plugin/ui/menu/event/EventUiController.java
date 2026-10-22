@@ -261,8 +261,8 @@ public class EventUiController implements UiController<EventUiModel, EventUiEven
     // Events
     // =========================================================================
 
-    @Override
-    public EventUiModel initialModel(Object context) {
+    /** The upcoming events, as the dialog opens before its list has loaded. */
+    public EventUiModel openingModel() {
         return EventUiModel.opening(viewer(session), Tab.UPCOMING);
     }
 
@@ -886,7 +886,7 @@ public class EventUiController implements UiController<EventUiModel, EventUiEven
             window.add(Kit.header(width, TextWidth.fit("[accent]" + Iconc.star + "[] [white]"
                     + t(local, "event-ui-title") + "[]", inner) + "\n" + serverTime(inner, local))).row();
 
-            window.slot(screen.slot(SLOT_NOW).path(), slot -> now(slot, model, width, local)).row();
+            window.slot(screen.slot(SLOT_NOW), slot -> now(slot, model, width, local)).row();
 
             List<Kit.Tab> tabs = new ArrayList<>();
             for (Tab tab : Tab.values()) {
@@ -898,9 +898,9 @@ public class EventUiController implements UiController<EventUiModel, EventUiEven
             feedback(window, model, width);
 
             // The parts a turned page changes are slots, so the rest of the window stays as it is.
-            window.slot(screen.slot(SLOT_LIST).path(), slot ->
+            window.slot(screen.slot(SLOT_LIST), slot ->
                     slot.add(Kit.pane(screen, list -> rows(list, catalog, screen, local)))).row();
-            window.slot(screen.slot(SLOT_PAGER).path(), slot -> slot.add(Kit.pager(width,
+            window.slot(screen.slot(SLOT_PAGER), slot -> slot.add(Kit.pager(width,
                     catalog.page() + " / " + Math.max(catalog.page(), catalog.totalPages()),
                     catalog.page() > 1 ? "action:page:prev" : null,
                     catalog.page() < catalog.totalPages() ? "action:page:next" : null,
@@ -1033,7 +1033,7 @@ public class EventUiController implements UiController<EventUiModel, EventUiEven
         EventData event = details.event();
         MapData map = details.map();
         return Kit.card(screen.card(), Accent.GOLD, Iconc.map + " " + t(local, "event-ui-map-schedule"), (content, inner) -> {
-            content.slot(screen.slot(SLOT_PREVIEW).path(), slot -> preview(slot, details, inner, local)).row();
+            content.slot(screen.slot(SLOT_PREVIEW), slot -> preview(slot, details, inner, local)).row();
 
             String name = map == null || blank(map.name)
                     ? "[gray]" + t(local, "event-ui-map-none") + "[]"
@@ -1072,8 +1072,7 @@ public class EventUiController implements UiController<EventUiModel, EventUiEven
         }
         if (details.preview() != null) {
             // A map is rarely square: the picture keeps its shape inside the square.
-            slot.add(new VImage(null, Ui.layout().width(PREVIEW_SIZE).height(PREVIEW_SIZE).build(),
-                    details.preview(), null, VImage.SCALING_FIT));
+            slot.image(details.preview(), l -> l.scaling(VImage.SCALING_FIT).width(PREVIEW_SIZE).height(PREVIEW_SIZE));
             return;
         }
         String note = Strings.stripColors(t(local, details.previewLoading() ? "map-ui-loading" : "map-ui-no-preview"));
@@ -1087,7 +1086,7 @@ public class EventUiController implements UiController<EventUiModel, EventUiEven
     private VNode ratingCard(Details details, Screen screen, Localization local) {
         EventData event = details.event();
         return Kit.card(screen.card(), Accent.GREEN, Iconc.up + " " + t(local, "event-ui-rating"), (content, inner) ->
-                content.slot(screen.slot(SLOT_RATING).path(), slot -> {
+                content.slot(screen.slot(SLOT_RATING), slot -> {
                     slot.layout(l -> l.width(inner));
                     boolean liked = Boolean.TRUE.equals(details.ownVote());
                     boolean disliked = Boolean.FALSE.equals(details.ownVote());
@@ -1102,7 +1101,7 @@ public class EventUiController implements UiController<EventUiModel, EventUiEven
 
     private VNode launchCard(EventUiModel model, Details details, Screen screen, Localization local) {
         return Kit.card(screen.card(), Accent.ORANGE, Iconc.play + " " + t(local, "event-ui-launch"), (content, inner) ->
-                content.slot(screen.slot(SLOT_LAUNCH).path(), slot -> {
+                content.slot(screen.slot(SLOT_LAUNCH), slot -> {
                     slot.layout(l -> l.width(inner));
                     launch(slot, model, details, inner, local);
                 }).row());
@@ -1214,7 +1213,7 @@ public class EventUiController implements UiController<EventUiModel, EventUiEven
                     time(draft.plannedStart(), local), Kit.TAB_GAP)).row();
             content.add(choice("action:edit:end", inner, "[lightgray]" + t(local, "event-ui-end") + "[]",
                     time(draft.plannedEnd(), local), GAP)).row();
-            content.slot(screen.slot(SLOT_FLAGS).path(), slot -> {
+            content.slot(screen.slot(SLOT_FLAGS), slot -> {
                 slot.layout(l -> l.width(inner));
                 boolean major = model.viewer().createMajor();
                 slot.add(toggle("action:edit:temporary", draft.temporary(), t(local, "event-ui-temporary"),
@@ -1279,9 +1278,9 @@ public class EventUiController implements UiController<EventUiModel, EventUiEven
 
             int pages = mapsPages(editing);
             int page = mapsPage(editing);
-            window.slot(screen.slot(SLOT_MAPS).path(), slot ->
+            window.slot(screen.slot(SLOT_MAPS), slot ->
                     slot.add(Kit.pane(screen, list -> mapRows(list, editing, page, screen, local)))).row();
-            window.slot(screen.slot(SLOT_MAPS_PAGER).path(), slot -> slot.add(Kit.pager(width, page + " / " + pages,
+            window.slot(screen.slot(SLOT_MAPS_PAGER), slot -> slot.add(Kit.pager(width, page + " / " + pages,
                     page > 1 ? "action:maps:prev" : null,
                     page < pages ? "action:maps:next" : null, null))).row();
 
@@ -1334,7 +1333,7 @@ public class EventUiController implements UiController<EventUiModel, EventUiEven
                     + "\n" + serverTime(inner, local))).row();
             window.add(Kit.line(width, Accent.ORANGE)).row();
 
-            window.slot(screen.slot(SLOT_TIME).path(), slot ->
+            window.slot(screen.slot(SLOT_TIME), slot ->
                     slot.add(Kit.pane(screen, body -> time(body, editing, width, local)))).row();
 
             bar(window, width, List.of(

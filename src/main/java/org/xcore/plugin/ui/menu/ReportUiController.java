@@ -88,8 +88,6 @@ public class ReportUiController implements UiController<ReportUiController.Model
         reporter = session.data.uuid;
     }
 
-    @Override public Model initialModel(Object context) { return (Model) context; }
-
     /** The state calculation is independently testable and never touches game state or performs I/O. */
     public static UpdateResult<Model> transition(Model model, Event event) {
         if (model.stage() == Stage.CLOSED) return UpdateResult.of(model);

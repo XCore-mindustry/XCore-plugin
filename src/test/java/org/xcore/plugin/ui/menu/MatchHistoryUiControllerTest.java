@@ -12,7 +12,6 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.FieldSource;
-import org.mockito.ArgumentCaptor;
 import org.xcore.plugin.concurrent.Async;
 import org.xcore.plugin.concurrent.InlineStorageExecutor;
 import org.xcore.plugin.config.TomlSecretsConfig;
@@ -42,7 +41,7 @@ import org.xcore.plugin.ui.MenuService;
 import org.xcore.plugin.ui.kit.LayoutAssert;
 import org.xcore.plugin.ui.kit.Screen;
 import org.xcore.ui.VNode;
-import org.xcore.ui.runtime.UiSession;
+import org.xcore.ui.runtime.EffectRunner;
 import org.xcore.ui.runtime.UpdateResult;
 
 import java.time.Clock;
@@ -199,24 +198,21 @@ class MatchHistoryUiControllerTest {
      * Sends {@code event} to a dialog showing {@code model} and, once storage has answered, the
      * event that answer comes back as.
      */
-    @SuppressWarnings("unchecked")
     private UpdateResult<MatchHistoryUiController.Model> loadThrough(MatchHistoryUiController controller,
                                                                      MatchHistoryUiController.Model model,
                                                                      MatchHistoryUiController.Event event) {
-        UiSession<MatchHistoryUiController.Model, MatchHistoryUiController.Event> ui = mock(UiSession.class);
-        when(ui.model()).thenReturn(model);
-        session.setActiveUiSession(ui);
+        List<MatchHistoryUiController.Event> dispatched = new ArrayList<>();
+        EffectRunner<MatchHistoryUiController.Event> effects = new EffectRunner<>(dispatched::add, () -> true);
 
         UpdateResult<MatchHistoryUiController.Model> pending = controller.update(model, event, null);
         // Until storage answers the dialog keeps showing what it had.
         assertThat(pending.isNoop()).isTrue();
+        effects.run(pending.effects());
         while (!mainThread.isEmpty()) {
             mainThread.poll().run();
         }
-        ArgumentCaptor<MatchHistoryUiController.Event> dispatched =
-                ArgumentCaptor.forClass(MatchHistoryUiController.Event.class);
-        verify(ui).dispatch(dispatched.capture());
-        return controller.update(model, dispatched.getValue(), null);
+        assertThat(dispatched).hasSize(1);
+        return controller.update(model, dispatched.getFirst(), null);
     }
 
     @ParameterizedTest

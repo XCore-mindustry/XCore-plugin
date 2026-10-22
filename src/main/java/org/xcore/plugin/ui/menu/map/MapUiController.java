@@ -107,11 +107,6 @@ public class MapUiController implements UiController<MapUiModel, MapUiEvent> {
     }
 
     @Override
-    public MapUiModel initialModel(Object context) {
-        throw new UnsupportedOperationException("Open via MapMenu.open* methods with pre-computed initial model");
-    }
-
-    @Override
     public UpdateResult<MapUiModel> update(MapUiModel model, MapUiEvent event, ControllerContext ctx) {
         return switch (event) {
             case MapUiEvent.DetailsReady(var mapId, var data) -> {
@@ -318,7 +313,7 @@ public class MapUiController implements UiController<MapUiModel, MapUiEvent> {
             window.add(search(model, width)).row();
 
             // The list and its pager change together; the field above them keeps what is typed.
-            window.slot(screen.slot(SLOT_MAP_TABLE).path(), slot -> {
+            window.slot(screen.slot(SLOT_MAP_TABLE), slot -> {
                 slot.add(Kit.pane(screen, body -> maps(body, model, screen))).row();
                 slot.add(Kit.pager(width, model.page() + " / " + model.totalPages(),
                         model.page() > 1 ? "action:page:prev" : null,
@@ -405,12 +400,12 @@ public class MapUiController implements UiController<MapUiModel, MapUiEvent> {
 
     private VNode previewCard(MapUiModel model, Screen screen) {
         return Kit.card(screen.card(), (content, inner) ->
-                content.slot(screen.slot(SLOT_PREVIEW).path(), slot -> {
+                content.slot(screen.slot(SLOT_PREVIEW), slot -> {
                     slot.layout(l -> l.width(inner));
                     if (model.previewTextureRegion() != null) {
                         // A map is rarely square: the picture keeps its shape inside the square.
-                        slot.add(new VImage(null, Ui.layout().width(PREVIEW_SIZE).height(PREVIEW_SIZE).build(),
-                                model.previewTextureRegion(), null, VImage.SCALING_FIT));
+                        slot.image(model.previewTextureRegion(),
+                                l -> l.scaling(VImage.SCALING_FIT).width(PREVIEW_SIZE).height(PREVIEW_SIZE));
                         return;
                     }
                     String note = model.previewLoading() ? t(session, "map-ui-loading") : t(session, "map-ui-no-preview");
@@ -442,7 +437,7 @@ public class MapUiController implements UiController<MapUiModel, MapUiEvent> {
     /** The vote for this map: how it stands while one runs, and the buttons that start or join it. */
     private VNode rtvCard(MapUiModel model, Screen screen) {
         return Kit.card(screen.card(), Accent.ORANGE, Iconc.refresh + " " + t(session, "map-ui-rtv-title"), (content, inner) ->
-                content.slot(screen.slot(SLOT_RTV).path(), slot -> {
+                content.slot(screen.slot(SLOT_RTV), slot -> {
                     slot.layout(l -> l.width(inner));
                     List<Kit.Action> actions = new ArrayList<>();
                     if (model.rtvActive()) {
@@ -477,7 +472,7 @@ public class MapUiController implements UiController<MapUiModel, MapUiEvent> {
     /** What players think of the map, and the player's own vote on it. */
     private VNode communityCard(MapUiModel model, Screen screen) {
         return Kit.card(screen.card(), Accent.GREEN, Iconc.players + " " + t(session, "map-ui-col-community"), (content, inner) ->
-                content.slot(screen.slot(SLOT_REPUTATION).path(), slot -> {
+                content.slot(screen.slot(SLOT_REPUTATION), slot -> {
                     slot.layout(l -> l.width(inner));
                     String score = (model.reputation() > 0 ? "+" : "") + model.reputation();
                     slot.add(Ui.table(numbers -> {

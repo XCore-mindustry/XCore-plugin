@@ -101,11 +101,6 @@ public class MiniPvPGuideUiController
     }
 
     @Override
-    public GuideModel initialModel(Object context) {
-        return context instanceof GuideModel model ? model : null;
-    }
-
-    @Override
     public UpdateResult<GuideModel> update(GuideModel model, GuideEvent event, ControllerContext context) {
         return switch (event) {
             case GuideEvent.SelectTab(Tab tab) ->
@@ -343,8 +338,9 @@ public class MiniPvPGuideUiController
 
     /** A square icon that keeps the proportions of its sprite; units are rarely square. */
     private static VNode icon(String region, float size, Consumer<UiLayout.Builder> layout) {
-        var builder = Ui.layout().width(size).height(size);
-        layout.accept(builder);
-        return new VImage(null, builder.build(), region, null, VImage.SCALING_FIT);
+        return Ui.image(region, l -> {
+            l.scaling(VImage.SCALING_FIT).width(size).height(size);
+            layout.accept(l);
+        });
     }
 }

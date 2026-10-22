@@ -110,12 +110,6 @@ public class ServerSelectorUiController implements UiController<ServerSelectorUi
     }
 
     @Override
-    public ServerSelectorModel initialModel(Object context) {
-        Category category = context instanceof Category cat ? cat : Category.ALL;
-        return createModel(registryService, category);
-    }
-
-    @Override
     public VNode render(ServerSelectorModel model) {
         return Screen.each(screen -> window(model, screen));
     }
