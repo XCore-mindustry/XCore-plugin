@@ -420,9 +420,10 @@ class MatchHistoryUiControllerTest {
                 .isEqualTo(new MatchHistoryUiController.Event.BackToList());
         assertThat(controller.parseEvent(result("action:page:next")))
                 .isEqualTo(new MatchHistoryUiController.Event.NextPage());
-        assertThat(controller.parseEvent(result("action:player:someone")))
-                .isEqualTo(new MatchHistoryUiController.Event.Close());
-        assertThat(controller.parseEvent(null)).isEqualTo(new MatchHistoryUiController.Event.Close());
+        // A button of another dialog, or none at all, changes nothing.
+        assertThat(controller.parseEvent(result("action:player:someone"))).isNull();
+        assertThat(controller.parseEvent(null)).isNull();
+        assertThat(controller.parseEvent(result("action:close"))).isEqualTo(new MatchHistoryUiController.Event.Close());
     }
 
     @Test

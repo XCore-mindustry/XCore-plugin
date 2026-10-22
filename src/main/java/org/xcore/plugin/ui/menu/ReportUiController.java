@@ -164,7 +164,7 @@ public class ReportUiController implements UiController<ReportUiController.Model
     }
 
     @Override public Event parseEvent(MenuResult result) {
-        if (result == null || result.wasCancelled() || result.result == null) return new Event.Close();
+        if (result == null || result.wasCancelled()) return null;
         String action = result.result;
         String comment = result.values != null && result.values.containsKey("field_comment")
                 ? result.getString("field_comment", "") : null;

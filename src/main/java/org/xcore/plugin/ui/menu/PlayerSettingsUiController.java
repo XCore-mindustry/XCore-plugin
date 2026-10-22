@@ -968,11 +968,10 @@ public class PlayerSettingsUiController implements UiController<PlayerSettingsUi
 
     @Override
     public SettingsEvent parseEvent(MenuResult result) {
-        if (result == null) return null;
-        if (result.wasCancelled()) return new SettingsEvent.Close();
+        // A close of the dialog never reaches here; the session ends it.
+        if (result == null || result.wasCancelled()) return null;
 
         String res = result.result;
-        if (res == null) return null;
 
         if ("action:save".equals(res)) return new SettingsEvent.Save(result);
         if ("action:reset_nick".equals(res)) return new SettingsEvent.ResetNickname(result);

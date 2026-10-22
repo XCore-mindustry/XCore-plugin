@@ -539,7 +539,8 @@ class PlayerSettingsUiControllerTest {
         assertThat(controller.parseEvent(selectTransRes)).isEqualTo(new PlayerSettingsUiController.SettingsEvent.SelectTranslatorLanguage("en", selectTransRes));
 
         MenuResult cancelledRes = new MenuResult((String) null);
-        assertThat(controller.parseEvent(cancelledRes)).isInstanceOf(PlayerSettingsUiController.SettingsEvent.Close.class);
+        // A close of the dialog never reaches parseEvent; the session ends it.
+        assertThat(controller.parseEvent(cancelledRes)).isNull();
     }
 
     @Test

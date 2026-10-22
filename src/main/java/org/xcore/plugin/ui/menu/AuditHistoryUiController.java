@@ -23,6 +23,7 @@ import org.xcore.plugin.ui.kit.Screen;
 import org.xcore.plugin.ui.kit.TextWidth;
 import org.xcore.ui.Ui;
 import org.xcore.ui.VNode;
+import org.xcore.ui.runtime.ActionRouter;
 import org.xcore.ui.runtime.ControllerContext;
 import org.xcore.ui.runtime.SlotKey;
 import org.xcore.ui.runtime.UiController;
@@ -358,41 +359,36 @@ public class AuditHistoryUiController implements UiController<AuditHistoryUiCont
         };
     }
 
+    private static final ActionRouter<AuditHistoryEvent> ACTIONS = ActionRouter.<AuditHistoryEvent>create()
+            .on("action:close", AuditHistoryEvent.Close::new)
+            .on("action:back", AuditHistoryEvent.Back::new)
+            .on("action:back_to_list", AuditHistoryEvent.BackToList::new)
+            .on("action:page:next", AuditHistoryEvent.NextPage::new)
+            .on("action:page:prev", AuditHistoryEvent.PrevPage::new)
+            .on("action:refresh", AuditHistoryEvent.Refresh::new)
+            .prefix("action:mode:", name -> {
+                AuditViewMode mode = constant(AuditViewMode.class, name);
+                return mode == null ? null : new AuditHistoryEvent.SelectMode(mode);
+            })
+            .prefix("action:filter:", name -> {
+                ActionFilter filter = constant(ActionFilter.class, name);
+                return filter == null ? null : new AuditHistoryEvent.SelectFilter(filter);
+            })
+            .prefix("action:inspect:", AuditHistoryEvent.InspectRecord::new)
+            .prefix("action:copy_id:", AuditHistoryEvent.CopyAuditId::new);
+
     @Override
     public AuditHistoryEvent parseEvent(MenuResult result) {
-        if (result == null || result.wasCancelled() || result.result == null) {
-            return new AuditHistoryEvent.Close();
-        }
-        String res = result.result.trim();
-        if ("action:close".equals(res)) return new AuditHistoryEvent.Close();
-        if ("action:back".equals(res)) return new AuditHistoryEvent.Back();
-        if ("action:back_to_list".equals(res)) return new AuditHistoryEvent.BackToList();
-        if ("action:page:next".equals(res)) return new AuditHistoryEvent.NextPage();
-        if ("action:page:prev".equals(res)) return new AuditHistoryEvent.PrevPage();
-        if ("action:refresh".equals(res)) return new AuditHistoryEvent.Refresh();
+        return ACTIONS.parse(result);
+    }
 
-        if (res.startsWith("action:mode:")) {
-            try {
-                return new AuditHistoryEvent.SelectMode(
-                        AuditViewMode.valueOf(res.substring("action:mode:".length()))
-                );
-            } catch (Exception ignored) {}
+    /** The constant {@code name} names, or {@code null} for a name that is not one. */
+    private static <T extends Enum<T>> T constant(Class<T> type, String name) {
+        try {
+            return Enum.valueOf(type, name);
+        } catch (IllegalArgumentException ignored) {
+            return null;
         }
-        if (res.startsWith("action:filter:")) {
-            try {
-                return new AuditHistoryEvent.SelectFilter(
-                        ActionFilter.valueOf(res.substring("action:filter:".length()))
-                );
-            } catch (Exception ignored) {}
-        }
-        if (res.startsWith("action:inspect:")) {
-            return new AuditHistoryEvent.InspectRecord(res.substring("action:inspect:".length()));
-        }
-        if (res.startsWith("action:copy_id:")) {
-            return new AuditHistoryEvent.CopyAuditId(res.substring("action:copy_id:".length()));
-        }
-
-        return new AuditHistoryEvent.Close();
     }
 
     // =========================================================================

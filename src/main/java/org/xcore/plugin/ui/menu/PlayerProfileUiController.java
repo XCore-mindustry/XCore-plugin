@@ -22,6 +22,7 @@ import org.xcore.plugin.ui.kit.Screen;
 import org.xcore.plugin.ui.kit.TextWidth;
 import org.xcore.ui.Ui;
 import org.xcore.ui.VNode;
+import org.xcore.ui.runtime.ActionRouter;
 import org.xcore.ui.runtime.ControllerContext;
 import org.xcore.ui.runtime.UiController;
 import org.xcore.ui.runtime.UpdateResult;
@@ -591,42 +592,31 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
         return initialTargetData;
     }
 
+    private static final ActionRouter<ProfileEvent> ACTIONS = ActionRouter.<ProfileEvent>create()
+            .on("action:close", ProfileEvent.Close::new)
+            .on("action:back", ProfileEvent.Back::new)
+            .on("action:settings", ProfileEvent.OpenSettings::new)
+            .on("action:audit_history", ProfileEvent.OpenAuditHistory::new)
+            .on("action:audit_actions", ProfileEvent.OpenAuditActions::new)
+            .on("action:matches", ProfileEvent.OpenMatches::new)
+            .on("action:back_to_players", ProfileEvent.BackToPlayers::new)
+            .on("action:tab:overview", () -> new ProfileEvent.SelectTab(Tab.OVERVIEW))
+            .on("action:tab:stats", () -> new ProfileEvent.SelectTab(Tab.STATS))
+            .on("action:tab:players", () -> new ProfileEvent.SelectTab(Tab.PLAYERS))
+            .on("action:filter_cycle", ProfileEvent.CycleAdminFilter::new)
+            .on("action:refresh_players", ProfileEvent.RefreshPlayers::new)
+            .prefix("action:page:", page -> {
+                try {
+                    return new ProfileEvent.ChangePlayersPage(Integer.parseInt(page));
+                } catch (NumberFormatException ignored) {
+                    return new ProfileEvent.RefreshPlayers();
+                }
+            })
+            .prefix("action:inspect:", ProfileEvent.InspectPlayer::new);
+
     @Override
     public ProfileEvent parseEvent(MenuResult result) {
-        if (result == null || result.wasCancelled() || result.result == null) {
-            return new ProfileEvent.Close();
-        }
-        String res = result.result;
-
-        if ("action:close".equals(res)) return new ProfileEvent.Close();
-        if ("action:back".equals(res)) return new ProfileEvent.Back();
-        if ("action:settings".equals(res)) return new ProfileEvent.OpenSettings();
-        if ("action:audit_history".equals(res)) return new ProfileEvent.OpenAuditHistory();
-        if ("action:audit_actions".equals(res)) return new ProfileEvent.OpenAuditActions();
-        if ("action:matches".equals(res)) return new ProfileEvent.OpenMatches();
-        if ("action:back_to_players".equals(res)) return new ProfileEvent.BackToPlayers();
-
-        if ("action:tab:overview".equals(res)) return new ProfileEvent.SelectTab(Tab.OVERVIEW);
-        if ("action:tab:stats".equals(res)) return new ProfileEvent.SelectTab(Tab.STATS);
-        if ("action:tab:players".equals(res)) return new ProfileEvent.SelectTab(Tab.PLAYERS);
-
-        if ("action:filter_cycle".equals(res)) return new ProfileEvent.CycleAdminFilter();
-        if ("action:refresh_players".equals(res)) return new ProfileEvent.RefreshPlayers();
-
-        if (res.startsWith("action:page:")) {
-            try {
-                int p = Integer.parseInt(res.substring("action:page:".length()));
-                return new ProfileEvent.ChangePlayersPage(p);
-            } catch (NumberFormatException ignored) {
-                return new ProfileEvent.RefreshPlayers();
-            }
-        }
-
-        if (res.startsWith("action:inspect:")) {
-            return new ProfileEvent.InspectPlayer(res.substring("action:inspect:".length()));
-        }
-
-        return new ProfileEvent.Close();
+        return ACTIONS.parse(result);
     }
 
     @Override

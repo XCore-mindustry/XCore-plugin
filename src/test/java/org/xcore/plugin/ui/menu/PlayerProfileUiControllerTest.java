@@ -570,7 +570,8 @@ class PlayerProfileUiControllerTest {
         assertThat(controller.parseEvent(new MenuResult("action:filter_cycle"))).isInstanceOf(PlayerProfileUiController.ProfileEvent.CycleAdminFilter.class);
         assertThat(controller.parseEvent(new MenuResult("action:refresh_players"))).isInstanceOf(PlayerProfileUiController.ProfileEvent.RefreshPlayers.class);
         assertThat(controller.parseEvent(new MenuResult("action:inspect:some-uuid"))).isEqualTo(new PlayerProfileUiController.ProfileEvent.InspectPlayer("some-uuid"));
-        assertThat(controller.parseEvent(new MenuResult((String) null))).isInstanceOf(PlayerProfileUiController.ProfileEvent.Close.class);
+        assertThat(controller.parseEvent(new MenuResult((String) null))).isNull();
+        assertThat(controller.parseEvent(new MenuResult("action:unknown"))).isNull();
     }
 
     @Test

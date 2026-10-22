@@ -22,6 +22,7 @@ import org.xcore.plugin.ui.kit.TextWidth;
 import org.xcore.ui.Text;
 import org.xcore.ui.Ui;
 import org.xcore.ui.VNode;
+import org.xcore.ui.runtime.ActionRouter;
 import org.xcore.ui.runtime.ControllerContext;
 import org.xcore.ui.runtime.Dispatcher;
 import org.xcore.ui.runtime.SlotKey;
@@ -370,44 +371,21 @@ public class MatchHistoryUiController implements UiController<MatchHistoryUiCont
         };
     }
 
+    private static final ActionRouter<Event> ACTIONS = ActionRouter.<Event>create()
+            .on("action:close", Event.Close::new)
+            .on("action:page:next", Event.NextPage::new)
+            .on("action:page:prev", Event.PrevPage::new)
+            .on("action:refresh", Event.Refresh::new)
+            .on("action:list", Event.BackToList::new)
+            .on("action:back", Event.Back::new)
+            .prefix("action:ladder:", Event.SelectLadder::new)
+            .prefixInt("action:match:", Event.OpenMatch::new)
+            .prefixInt("action:players:", Event.ParticipantsPage::new)
+            .prefixInt("action:player:", Event.InspectPlayer::new);
+
     @Override
     public Event parseEvent(MenuResult result) {
-        if (result == null || result.wasCancelled() || result.result == null) {
-            return new Event.Close();
-        }
-        String res = result.result.trim();
-        return switch (res) {
-            case "action:page:next" -> new Event.NextPage();
-            case "action:page:prev" -> new Event.PrevPage();
-            case "action:refresh" -> new Event.Refresh();
-            case "action:list" -> new Event.BackToList();
-            case "action:back" -> new Event.Back();
-            default -> {
-                if (res.startsWith("action:ladder:")) {
-                    yield new Event.SelectLadder(res.substring("action:ladder:".length()));
-                }
-                Integer number = null;
-                String kind = null;
-                for (String prefix : List.of("action:match:", "action:player:", "action:players:")) {
-                    if (res.startsWith(prefix)) {
-                        kind = prefix;
-                        try {
-                            number = Integer.parseInt(res.substring(prefix.length()));
-                        } catch (NumberFormatException ignored) {
-                            // Not a button of this dialog.
-                        }
-                    }
-                }
-                if (number == null) {
-                    yield new Event.Close();
-                }
-                yield switch (kind) {
-                    case "action:match:" -> new Event.OpenMatch(number);
-                    case "action:player:" -> new Event.InspectPlayer(number);
-                    default -> new Event.ParticipantsPage(number);
-                };
-            }
-        };
+        return ACTIONS.parse(result);
     }
 
     /** The participants of a match in the order they are shown: by team and place, best first. */
