@@ -3,20 +3,14 @@ package org.xcore.plugin.ui;
 import arc.Application;
 import arc.Core;
 import arc.mock.MockApplication;
-import arc.util.io.Reads;
-import arc.util.io.Writes;
 import com.ospx.flubundle.Bundle;
 import mindustry.core.GameState;
 import mindustry.gen.MenuBuilderCallPacket;
 import mindustry.gen.Player;
 import mindustry.net.NetConnection;
-import mindustry.ui.builder.UiBuilder;
-import mindustry.ui.builder.UiBuilder.NodeBuilder;
-import mindustry.ui.builder.UiDslWriter;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.FieldSource;
 import org.xcore.plugin.concurrent.Async;
@@ -39,13 +33,9 @@ import org.xcore.plugin.ui.menu.PlayerMenu;
 import org.xcore.plugin.ui.menu.PlayerSettingsUiController;
 import org.xcore.plugin.ui.menu.TopMenu;
 import org.xcore.plugin.ui.menu.TopUiController;
+import org.xcore.testkit.ui.MenuFixtures;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
 import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -58,7 +48,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
-/** Opt-in fixtures: the production gateway boundary supplies both the tree and its envelope. */
+/**
+ * Opt-in fixtures for the real-client renderer of mindustry-testkit ({@code tools/ui-render/render}):
+ * the production gateway boundary supplies both the tree and its envelope.
+ */
 @Tag("ui-render")
 class MenuRenderFixtureTest {
     private final Path output = Path.of(System.getProperty("xcore.uiRenderOutput", "build/ui-render/packets"));
@@ -162,38 +155,7 @@ class MenuRenderFixtureTest {
         assertThat(output.resolve(fixture + ".packet")).isNotEmptyFile();
     }
 
-    @Test
-    void exportNegativeControls() throws IOException {
-        writeNegative("negative-row", UiBuilder.parse("table{width:330 label{text:Left width:250} label{text:Right width:250}}"));
-        writeNegative("negative-text", UiBuilder.parse("table{label{text:WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW width:60}}"));
-        writeNegative("negative-button", UiBuilder.parse("table{buttonTable{width:100 height:24 style:flatBordert label{text:OK width:80 height:60}}}"));
-    }
-
-    private void writeNegative(String name, NodeBuilder<?> builder) throws IOException {
-        MenuBuilderCallPacket packet = new MenuBuilderCallPacket();
-        packet.id = 1;
-        packet.fillScreen = true;
-        packet.hidePrevious = true;
-        packet.builder = builder;
-        writePacket(name, packet);
-    }
-
     private void writePacket(String name, MenuBuilderCallPacket packet) throws IOException {
-        Files.createDirectories(output);
-        ByteArrayOutputStream bytes = new ByteArrayOutputStream();
-        packet.write(new Writes(new DataOutputStream(bytes)));
-        assertThat(bytes.size()).as("full packet for %s", name).isLessThan(LayoutAssert.PACKET_LIMIT);
-        MenuBuilderCallPacket decoded = new MenuBuilderCallPacket();
-        decoded.read(new Reads(new DataInputStream(new ByteArrayInputStream(bytes.toByteArray()))), bytes.size());
-        decoded.handled();
-        assertThat(decoded.id).isEqualTo(packet.id);
-        assertThat(decoded.token).isEqualTo(packet.token);
-        assertThat(decoded.title).isEqualTo(packet.title);
-        assertThat(decoded.fillScreen).isEqualTo(packet.fillScreen);
-        assertThat(decoded.hidePrevious).isEqualTo(packet.hidePrevious);
-        assertThat(decoded.hideOnClick).isEqualTo(packet.hideOnClick);
-        assertThat(UiDslWriter.write(decoded.builder)).isEqualTo(UiDslWriter.write(packet.builder));
-        Files.write(output.resolve(name + ".packet"), bytes.toByteArray());
-        Files.writeString(output.resolve(name + ".msui"), UiDslWriter.write(packet.builder));
+        MenuFixtures.write(output, name, packet);
     }
 }
