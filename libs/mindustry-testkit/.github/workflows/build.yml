@@ -67,3 +67,12 @@ jobs:
           path: |
             **/build/reports/tests/test/
             **/build/test-results/test/
+
+  render-selfcheck:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Check the real-client renderer catches broken menus
+        run: render/render selfcheck
