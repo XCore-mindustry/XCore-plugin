@@ -87,6 +87,11 @@ class UiSessionLifecycleTest {
         public void hide(String playerId) {
             sent.add("hide");
         }
+
+        @Override
+        public void closed(String playerId) {
+            sent.add("closed by " + playerId);
+        }
     }
 
     static final ControllerContext CTX = new ControllerContext() {
@@ -133,7 +138,7 @@ class UiSessionLifecycleTest {
         assertThat(controller.closedWith).isEqualTo(new Model(0, 1));
         assertThat(controller.log).noneMatch(line -> line.startsWith("parse"));
         assertThat(session.isActive()).isFalse();
-        assertThat(gateway.sent).containsExactly("show");
+        assertThat(gateway.sent).containsExactly("show", "closed by p");
     }
 
     @Test

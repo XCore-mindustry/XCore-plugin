@@ -178,6 +178,7 @@ public final class UiSession<Model, Event> {
             active = false;
             closeReported = false;
             controller.closed(model);
+            gateway.closed(ctx.playerId());
             return;
         }
         // The client stops reporting a close once something in the dialog was pressed.
@@ -223,6 +224,10 @@ public final class UiSession<Model, Event> {
         void update(String playerId, long token, String elementId, UiBuilder.NodeBuilder<?> ui);
 
         void hide(String playerId);
+
+        /** The player closed the dialog on the client: nothing is to be sent, only bookkeeping done. */
+        default void closed(String playerId) {
+        }
     }
 
     /**
