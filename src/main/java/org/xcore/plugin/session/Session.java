@@ -158,8 +158,14 @@ public class Session {
         this.activeScreen = null;
     }
 
-    /** Makes {@code uiSession} the active one; it is about to show the client a fresh dialog. */
+    /**
+     * Makes {@code uiSession} the active one; it is about to show the client a fresh dialog. The
+     * one it replaces is detached: it sends nothing more and its pending loads stop delivering.
+     */
     public void setActiveUiSession(org.xcore.ui.runtime.UiSession<?, ?> uiSession) {
+        if (activeUiSession != null && activeUiSession != uiSession) {
+            activeUiSession.detach();
+        }
         this.activeUiSession = uiSession;
         this.uiCloseReportable = uiSession != null;
     }
@@ -172,7 +178,11 @@ public class Session {
         return activeUiSession != null;
     }
 
+    /** No UI session is active any more; the one that was is detached. */
     public void clearActiveUiSession() {
+        if (activeUiSession != null) {
+            activeUiSession.detach();
+        }
         this.activeUiSession = null;
         this.uiCloseReportable = false;
     }

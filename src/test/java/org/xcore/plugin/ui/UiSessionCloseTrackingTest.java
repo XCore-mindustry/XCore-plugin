@@ -254,11 +254,6 @@ class UiSessionCloseTrackingTest {
         }
 
         @Override
-        public String initialModel(Object context) {
-            return "a";
-        }
-
-        @Override
         public UpdateResult<String> update(String model, String event, ControllerContext ctx) {
             return switch (event) {
                 case "close" -> UpdateResult.close(model);

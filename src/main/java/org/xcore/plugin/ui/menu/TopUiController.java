@@ -24,7 +24,9 @@ import org.xcore.plugin.ui.kit.TextWidth;
 import org.xcore.ui.Text;
 import org.xcore.ui.Ui;
 import org.xcore.ui.VNode;
+import org.xcore.ui.runtime.ActionRouter;
 import org.xcore.ui.runtime.ControllerContext;
+import org.xcore.ui.runtime.Dispatcher;
 import org.xcore.ui.runtime.SlotKey;
 import org.xcore.ui.runtime.UiController;
 import org.xcore.ui.runtime.UpdateResult;
@@ -139,6 +141,8 @@ public class TopUiController implements UiController<TopUiController.TopModel, T
         record InspectPlayer(String playerUuid) implements TopEvent {}
         /** A page requested by an earlier event has arrived from storage. */
         record Loaded(TopData data) implements TopEvent {}
+        /** A player inspected while offline has been read from storage. */
+        record TargetLoaded(PlayerData target) implements TopEvent {}
         record Close() implements TopEvent {}
     }
 
@@ -148,8 +152,6 @@ public class TopUiController implements UiController<TopUiController.TopModel, T
     private final SessionService sessionService;
     private final Async async;
     private final Session session;
-    /** Counts the page loads this dialog started; only the latest one may change it. */
-    private long loadGeneration;
 
     public TopUiController(TopMenu topMenu,
                            TopCategoryRegistry categoryRegistry,
@@ -163,12 +165,6 @@ public class TopUiController implements UiController<TopUiController.TopModel, T
         this.sessionService = sessionService;
         this.async = async;
         this.session = session;
-    }
-
-    /** Blocking: loads the first page on the calling thread. Use {@link TopMenu#openTopUi} from the game thread. */
-    @Override
-    public TopModel initialModel(Object context) {
-        return createInitialModel(context instanceof String categoryId ? categoryId : null, null, 1, null, null);
     }
 
     /** Blocking. The same as {@link #query}, {@link #fetch} and {@link #model} in one go. */
@@ -311,23 +307,15 @@ public class TopUiController implements UiController<TopUiController.TopModel, T
      */
     private UpdateResult<TopModel> load(TopModel model, TopQuery query) {
         PlayerData viewer = viewer();
-        long generation = ++loadGeneration;
-        async.supply(() -> fetch(query, viewer)).thenMain((data, error) -> {
-            if (generation != loadGeneration) {
-                return; // Superseded: applying it would make the newer request look stale.
-            }
-            if (error != null) {
-                Log.err("Failed to load top category " + query.categoryId(), error);
-                return;
-            }
-            var active = session != null ? session.activeUiSession() : null;
-            if (active != null && active.model() == model) {
-                @SuppressWarnings("unchecked")
-                var topSession = (org.xcore.ui.runtime.UiSession<TopModel, TopEvent>) active;
-                topSession.dispatch(new TopEvent.Loaded(data));
-            }
-        });
-        return UpdateResult.of(model);
+        // Keyed: a newer request supersedes this one, and applying this one after it would make it look stale.
+        return UpdateResult.of(model).effect("page", (Dispatcher<TopEvent> dialog) ->
+                async.supply(() -> fetch(query, viewer)).thenMain((data, error) -> {
+                    if (error != null) {
+                        Log.err("Failed to load top category " + query.categoryId(), error);
+                        return;
+                    }
+                    dialog.dispatch(new TopEvent.Loaded(data));
+                }));
     }
 
     @Override
@@ -402,16 +390,19 @@ public class TopUiController implements UiController<TopUiController.TopModel, T
                 }
 
                 // If target is offline -> non-blocking async load
-                if (async != null && session != null && session.player != null && sessionService != null) {
-                    async.onMainForPlayer(session.player,
-                            sessionService.getOrLoadFromDbAsync(e.playerUuid()),
-                            (player, loaded) -> {
-                                var active = session.activeUiSession();
-                                if (loaded != null && active != null && active.model() == model) {
-                                    openProfileWithReturn(model, loaded);
-                                }
-                            });
+                if (async == null || session == null || session.player == null || sessionService == null) {
+                    yield UpdateResult.of(model);
                 }
+                yield UpdateResult.of(model).effect("inspect", (Dispatcher<TopEvent> dialog) ->
+                        async.onMainForPlayer(session.player, sessionService.getOrLoadFromDbAsync(e.playerUuid()),
+                                (player, loaded) -> {
+                                    if (loaded != null) {
+                                        dialog.dispatch(new TopEvent.TargetLoaded(loaded));
+                                    }
+                                }));
+            }
+            case TopEvent.TargetLoaded(PlayerData target) -> {
+                openProfileWithReturn(model, target);
                 yield UpdateResult.of(model);
             }
             case TopEvent.Close() -> UpdateResult.close(model);
@@ -435,26 +426,18 @@ public class TopUiController implements UiController<TopUiController.TopModel, T
         playerMenu.openProfileUi(session, target);
     }
 
+    private static final ActionRouter<TopEvent> ACTIONS = ActionRouter.<TopEvent>create()
+            .on("action:close", TopEvent.Close::new)
+            .on("action:page:next", TopEvent.NextPage::new)
+            .on("action:page:prev", TopEvent.PrevPage::new)
+            .on("action:refresh", TopEvent.Refresh::new)
+            .prefix("action:tab:", TopEvent.SelectCategory::new)
+            .prefix("action:scope:", TopEvent.SelectScope::new)
+            .prefix("action:inspect:", TopEvent.InspectPlayer::new);
+
     @Override
     public TopEvent parseEvent(MenuResult result) {
-        if (result == null || result.wasCancelled() || result.result == null) {
-            return new TopEvent.Close();
-        }
-        String res = result.result.trim();
-        if ("action:close".equals(res)) return new TopEvent.Close();
-        if ("action:page:next".equals(res)) return new TopEvent.NextPage();
-        if ("action:page:prev".equals(res)) return new TopEvent.PrevPage();
-        if ("action:refresh".equals(res)) return new TopEvent.Refresh();
-        if (res.startsWith("action:tab:")) {
-            return new TopEvent.SelectCategory(res.substring("action:tab:".length()));
-        }
-        if (res.startsWith("action:scope:")) {
-            return new TopEvent.SelectScope(res.substring("action:scope:".length()));
-        }
-        if (res.startsWith("action:inspect:")) {
-            return new TopEvent.InspectPlayer(res.substring("action:inspect:".length()));
-        }
-        return new TopEvent.Close();
+        return ACTIONS.parse(result);
     }
 
     // =========================================================================
@@ -509,9 +492,9 @@ public class TopUiController implements UiController<TopUiController.TopModel, T
             window.add(Kit.line(width, lineAccent)).row();
 
             // The parts a turned page changes are slots, so the rest of the window stays as it is.
-            window.slot(screen.slot(SLOT_ENTRIES).path(), slot ->
+            window.slot(screen.slot(SLOT_ENTRIES), slot ->
                     slot.add(Kit.pane(screen, list -> entries(list, model, screen, local, categoryName)))).row();
-            window.slot(screen.slot(SLOT_SELF_RANK).path(), slot -> {
+            window.slot(screen.slot(SLOT_SELF_RANK), slot -> {
                 slot.layout(l -> l.padTop(GAP));
                 slot.add(Kit.band(width, Kit.HEADER, Kit.BAND_MARGIN, selfRank(model, local)));
             }).row();
@@ -523,7 +506,7 @@ public class TopUiController implements UiController<TopUiController.TopModel, T
                 })).row();
             }
 
-            window.slot(screen.slot(SLOT_PAGINATION).path(), slot -> {
+            window.slot(screen.slot(SLOT_PAGINATION), slot -> {
                 boolean canPrev = !model.cursorBackStack().isEmpty() && model.currentPage() > 1;
                 boolean canNext = model.hasNext() && model.nextCursor() != null;
                 slot.add(Kit.pager(width, model.currentPage() + " / " + model.totalPages(),

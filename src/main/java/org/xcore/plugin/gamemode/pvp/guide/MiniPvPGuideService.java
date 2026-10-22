@@ -83,7 +83,7 @@ public class MiniPvPGuideService {
     public boolean open(Session session) {
         if (session == null || session.player == null || session.player.con == null) return false;
         session.clear();
-        var controller = new MiniPvPGuideUiController(session.locale());
+        var controller = new MiniPvPGuideUiController();
         var model = new GuideModel(Tab.ROUND, currentFacts());
         // Filling the screen is what lets the cards scroll on a screen shorter than the guide.
         return menuService.openUi(session, controller, model, true) != null;

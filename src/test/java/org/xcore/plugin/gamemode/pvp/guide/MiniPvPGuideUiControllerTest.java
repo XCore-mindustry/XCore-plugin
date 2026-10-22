@@ -46,7 +46,15 @@ class MiniPvPGuideUiControllerTest {
     }
 
     private static MiniPvPGuideUiController controller(String language) {
-        return new MiniPvPGuideUiController(LayoutAssert.localization(language));
+        return new MiniPvPGuideUiController();
+    }
+
+    private static VNode render(String language, GuideModel model) {
+        return controller(language).render(model, LayoutAssert.context(language));
+    }
+
+    private static VNode window(String language, GuideModel model, Screen screen) {
+        return controller(language).window(model, screen, LayoutAssert.context(language));
     }
 
     @Test
@@ -57,7 +65,7 @@ class MiniPvPGuideUiControllerTest {
                 for (Tab tab : Tab.values()) {
                     GuideModel model = new GuideModel(tab, facts);
                     for (Screen screen : Screen.ALL) {
-                        VNode window = controller.window(model, screen);
+                        VNode window = window(language, model, screen);
                         LayoutAssert.assertLaidOut(window, screen);
                         assertThat(LayoutAssert.allText(window))
                                 .as("%s in %s", tab, language)
@@ -65,7 +73,7 @@ class MiniPvPGuideUiControllerTest {
                                 .doesNotContain("{ $")
                                 .doesNotContain("{$");
                     }
-                    LayoutAssert.assertFitsPacket(controller.render(model), tab + " in " + language);
+                    LayoutAssert.assertFitsPacket(render(language, model), tab + " in " + language);
                 }
             }
         }
@@ -73,7 +81,7 @@ class MiniPvPGuideUiControllerTest {
 
     @Test
     void theWindowOnlySwitchesTabs() {
-        VNode window = controller("ru").window(new GuideModel(Tab.RULES, busyFacts()), Screen.WIDE);
+        VNode window = window("ru", new GuideModel(Tab.RULES, busyFacts()), Screen.WIDE);
 
         // The dialog of the client closes the guide; the window itself only switches tabs.
         assertThat(LayoutAssert.actions(window))
@@ -82,14 +90,14 @@ class MiniPvPGuideUiControllerTest {
 
     @Test
     void theRoundTabShowsTheRoundAsItStands() {
-        String text = LayoutAssert.allText(controller("ru").render(new GuideModel(Tab.ROUND, busyFacts())));
+        String text = LayoutAssert.allText(render("ru", new GuideModel(Tab.ROUND, busyFacts())));
 
         assertThat(text).contains("Glacier", "12", "4 игрока", "1 игрок", "/pvp info", "/matches");
     }
 
     @Test
     void theRulesTabShowsWhatDiffersFromVanilla() {
-        String text = LayoutAssert.allText(controller("ru").render(new GuideModel(Tab.RULES, busyFacts())));
+        String text = LayoutAssert.allText(render("ru", new GuideModel(Tab.RULES, busyFacts())));
 
         assertThat(text).contains("Урон юнитов: [accent]150%", "Прочность построек: [accent]300%",
                 "[accent]50[] тайлов", "[accent]40[]", "Туман войны", "Реакторы не взрываются");
@@ -98,7 +106,7 @@ class MiniPvPGuideUiControllerTest {
 
     @Test
     void aVanillaMapSaysSoInsteadOfListingNothing() {
-        String text = LayoutAssert.allText(controller("ru").render(new GuideModel(Tab.RULES, vanillaFacts())));
+        String text = LayoutAssert.allText(render("ru", new GuideModel(Tab.RULES, vanillaFacts())));
 
         assertThat(text).contains("Обычные правила");
         assertThat(text).doesNotContain("Туман", "Лимит юнитов", "Другой баланс", "Запрещённые");
@@ -106,7 +114,7 @@ class MiniPvPGuideUiControllerTest {
 
     @Test
     void theRatingTabNamesTheThresholds() {
-        String text = LayoutAssert.allText(controller("en").render(new GuideModel(Tab.RATING, busyFacts())));
+        String text = LayoutAssert.allText(render("en", new GuideModel(Tab.RATING, busyFacts())));
 
         assertThat(text).contains("[accent]1000[]", "[accent]15[] s", "[accent]2[] rated players",
                 "[accent]50%[]", "[accent]25%[]");
@@ -122,6 +130,7 @@ class MiniPvPGuideUiControllerTest {
         assertThat(controller.update(model, select, null).model().tab()).isEqualTo(Tab.RATING);
 
         assertThat(controller.parseEvent(new MenuResult("action:close"))).isInstanceOf(GuideEvent.Close.class);
-        assertThat(controller.parseEvent(null)).isInstanceOf(GuideEvent.Close.class);
+        assertThat(controller.parseEvent(null)).isNull();
+        assertThat(controller.parseEvent(new MenuResult("action:unknown"))).isNull();
     }
 }

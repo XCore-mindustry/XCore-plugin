@@ -533,6 +533,9 @@ class PlayerProfileUiControllerTest {
         when(sessionService.get("uuid-2")).thenReturn(otherSession);
         when(sessionService.getAllCachedSnapshot()).thenReturn(List.of(session, otherSession));
         PlayerMenu playerMenu = mock(PlayerMenu.class);
+        org.xcore.ui.runtime.Effect<PlayerProfileUiController.ProfileEvent> load = dialog -> {
+        };
+        when(playerMenu.loadDetails(session, otherSession.data)).thenReturn(load);
         PlayerProfileUiController controller = new PlayerProfileUiController(
                 playerMenu, null, sessionService, null, session, session.data
         );
@@ -546,7 +549,10 @@ class PlayerProfileUiControllerTest {
         assertThat(res.model().isStatsLoading()).isTrue();
         assertThat(res.model().sections()).isEmpty();
         assertThat(res.model().details()).isNull();
-        verify(playerMenu).loadDetails(session, otherSession.data);
+        assertThat(res.effects()).singleElement().satisfies(command -> {
+            assertThat(command.key()).isEqualTo(PlayerProfileUiController.DETAILS);
+            assertThat(command.effect()).isSameAs(load);
+        });
     }
 
     @Test
@@ -564,7 +570,8 @@ class PlayerProfileUiControllerTest {
         assertThat(controller.parseEvent(new MenuResult("action:filter_cycle"))).isInstanceOf(PlayerProfileUiController.ProfileEvent.CycleAdminFilter.class);
         assertThat(controller.parseEvent(new MenuResult("action:refresh_players"))).isInstanceOf(PlayerProfileUiController.ProfileEvent.RefreshPlayers.class);
         assertThat(controller.parseEvent(new MenuResult("action:inspect:some-uuid"))).isEqualTo(new PlayerProfileUiController.ProfileEvent.InspectPlayer("some-uuid"));
-        assertThat(controller.parseEvent(new MenuResult((String) null))).isInstanceOf(PlayerProfileUiController.ProfileEvent.Close.class);
+        assertThat(controller.parseEvent(new MenuResult((String) null))).isNull();
+        assertThat(controller.parseEvent(new MenuResult("action:unknown"))).isNull();
     }
 
     @Test

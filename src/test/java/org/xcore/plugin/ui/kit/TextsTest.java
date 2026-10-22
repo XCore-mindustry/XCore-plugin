@@ -53,4 +53,26 @@ class TextsTest {
         assertThat(Texts.t((Session) null, "none")).isEqualTo("none");
         assertThat(Texts.t(mock(Session.class), "audit-menu-page", args("page", 3))).isEqualTo("audit-menu-page");
     }
+
+    @Test
+    @DisplayName("the resolver speaks the language of the localization it is asked for at each use")
+    void resolver_followsTheLocalization() {
+        java.util.concurrent.atomic.AtomicReference<Localization> current =
+                new java.util.concurrent.atomic.AtomicReference<>(LayoutAssert.localization("ru"));
+        var resolver = Texts.resolver(current::get);
+
+        assertThat(resolver.format("none")).isEqualTo("Нет");
+        assertThat(resolver.has("none")).isTrue();
+        assertThat(resolver.has("no-such-text")).isFalse();
+        assertThat(resolver.locale().getLanguage()).isEqualTo("ru");
+
+        current.set(LayoutAssert.localization("en"));
+        assertThat(resolver.format("none")).isEqualTo("None");
+        assertThat(resolver.locale().getLanguage()).isEqualTo("en");
+
+        current.set(null);
+        assertThat(resolver.format("none")).isEqualTo("none");
+        assertThat(resolver.has("none")).isFalse();
+        assertThat(resolver.locale()).isEqualTo(java.util.Locale.ENGLISH);
+    }
 }

@@ -20,7 +20,9 @@ import org.xcore.ui.Text;
 import org.xcore.ui.Ui;
 import org.xcore.ui.VImage;
 import org.xcore.ui.VNode;
+import org.xcore.ui.runtime.ActionRouter;
 import org.xcore.ui.runtime.ControllerContext;
+import org.xcore.ui.runtime.Effect;
 import org.xcore.ui.runtime.SlotKey;
 import org.xcore.ui.runtime.UiController;
 import org.xcore.ui.runtime.UpdateResult;
@@ -49,6 +51,10 @@ public class MapUiController implements UiController<MapUiModel, MapUiEvent> {
     public static final SlotKey<Object> SLOT_PREVIEW = SlotKey.of("slot_preview");
     public static final SlotKey<Object> SLOT_REPUTATION = SlotKey.of("slot_reputation");
     public static final SlotKey<Object> SLOT_RTV = SlotKey.of("slot_rtv");
+
+    /** Keys of the loads of the map the details view shows: opening another supersedes them. */
+    public static final String DETAILS = "details";
+    public static final String PREVIEW = "preview";
 
     public static final int MAPS_PER_PAGE = 10;
 
@@ -107,11 +113,6 @@ public class MapUiController implements UiController<MapUiModel, MapUiEvent> {
     }
 
     @Override
-    public MapUiModel initialModel(Object context) {
-        throw new UnsupportedOperationException("Open via MapMenu.open* methods with pre-computed initial model");
-    }
-
-    @Override
     public UpdateResult<MapUiModel> update(MapUiModel model, MapUiEvent event, ControllerContext ctx) {
         return switch (event) {
             case MapUiEvent.DetailsReady(var mapId, var data) -> {
@@ -156,18 +157,17 @@ public class MapUiController implements UiController<MapUiModel, MapUiEvent> {
             case MapUiEvent.OpenMapDetails(var mapId) -> {
                 MapUiModel details = loadDetailsModel(model, mapId);
                 String selectedId = details.selectedMapId();
-                if (ctx != null) ctx.post(() -> requestDetailsAsync(selectedId));
-                else requestDetailsAsync(selectedId);
                 if (observerService != null) {
                     observerService.registerViewing(model.playerUuid(), selectedId);
                 }
-                requestPreviewAsync(session, selectedId);
-                yield UpdateResult.rerender(details);
+                // Keyed: opening another map supersedes what is still loading for this one.
+                yield UpdateResult.rerender(details)
+                        .effect(DETAILS, loadDetails(selectedId))
+                        .effect(PREVIEW, loadPreview(selectedId));
             }
 
             // --- Navigation: Details -> Browser ---
             case MapUiEvent.BackToBrowser() -> {
-                currentDetailsRequestId++;
                 if (observerService != null) {
                     observerService.unregisterViewing(model.playerUuid());
                 }
@@ -257,7 +257,6 @@ public class MapUiController implements UiController<MapUiModel, MapUiEvent> {
                     if (mindustryMap != null && session != null && session.player != null && mapService != null) {
                         mapService.startRtvSession(session.player, mindustryMap, true, true);
                     }
-                    if (ctx != null) ctx.close();
                     yield UpdateResult.close(model);
                 } else {
                     MapUiModel confirming = model.withAdminConfirm(true, now + 3000L);
@@ -277,19 +276,11 @@ public class MapUiController implements UiController<MapUiModel, MapUiEvent> {
                 }
                 // The editor takes the place of this dialog, so it opens once this press is dealt with.
                 MapData map = model.resolvedDetails();
-                if (ctx != null) {
-                    ctx.post(() -> eventCreator.accept(map));
-                } else {
-                    eventCreator.accept(map);
-                }
-                yield UpdateResult.of(model);
+                yield UpdateResult.of(model).effect(dialog -> eventCreator.accept(map));
             }
 
             case MapUiEvent.Close() -> {
-                if (observerService != null) {
-                    observerService.unregisterViewing(model.playerUuid());
-                }
-                if (ctx != null) ctx.close();
+                closed(model);
                 yield UpdateResult.close(model);
             }
         };
@@ -318,7 +309,7 @@ public class MapUiController implements UiController<MapUiModel, MapUiEvent> {
             window.add(search(model, width)).row();
 
             // The list and its pager change together; the field above them keeps what is typed.
-            window.slot(screen.slot(SLOT_MAP_TABLE).path(), slot -> {
+            window.slot(screen.slot(SLOT_MAP_TABLE), slot -> {
                 slot.add(Kit.pane(screen, body -> maps(body, model, screen))).row();
                 slot.add(Kit.pager(width, model.page() + " / " + model.totalPages(),
                         model.page() > 1 ? "action:page:prev" : null,
@@ -405,12 +396,12 @@ public class MapUiController implements UiController<MapUiModel, MapUiEvent> {
 
     private VNode previewCard(MapUiModel model, Screen screen) {
         return Kit.card(screen.card(), (content, inner) ->
-                content.slot(screen.slot(SLOT_PREVIEW).path(), slot -> {
+                content.slot(screen.slot(SLOT_PREVIEW), slot -> {
                     slot.layout(l -> l.width(inner));
                     if (model.previewTextureRegion() != null) {
                         // A map is rarely square: the picture keeps its shape inside the square.
-                        slot.add(new VImage(null, Ui.layout().width(PREVIEW_SIZE).height(PREVIEW_SIZE).build(),
-                                model.previewTextureRegion(), null, VImage.SCALING_FIT));
+                        slot.image(model.previewTextureRegion(),
+                                l -> l.scaling(VImage.SCALING_FIT).width(PREVIEW_SIZE).height(PREVIEW_SIZE));
                         return;
                     }
                     String note = model.previewLoading() ? t(session, "map-ui-loading") : t(session, "map-ui-no-preview");
@@ -442,7 +433,7 @@ public class MapUiController implements UiController<MapUiModel, MapUiEvent> {
     /** The vote for this map: how it stands while one runs, and the buttons that start or join it. */
     private VNode rtvCard(MapUiModel model, Screen screen) {
         return Kit.card(screen.card(), Accent.ORANGE, Iconc.refresh + " " + t(session, "map-ui-rtv-title"), (content, inner) ->
-                content.slot(screen.slot(SLOT_RTV).path(), slot -> {
+                content.slot(screen.slot(SLOT_RTV), slot -> {
                     slot.layout(l -> l.width(inner));
                     List<Kit.Action> actions = new ArrayList<>();
                     if (model.rtvActive()) {
@@ -477,7 +468,7 @@ public class MapUiController implements UiController<MapUiModel, MapUiEvent> {
     /** What players think of the map, and the player's own vote on it. */
     private VNode communityCard(MapUiModel model, Screen screen) {
         return Kit.card(screen.card(), Accent.GREEN, Iconc.players + " " + t(session, "map-ui-col-community"), (content, inner) ->
-                content.slot(screen.slot(SLOT_REPUTATION).path(), slot -> {
+                content.slot(screen.slot(SLOT_REPUTATION), slot -> {
                     slot.layout(l -> l.width(inner));
                     String score = (model.reputation() > 0 ? "+" : "") + model.reputation();
                     slot.add(Ui.table(numbers -> {
@@ -517,32 +508,31 @@ public class MapUiController implements UiController<MapUiModel, MapUiEvent> {
     // Event Parsing
     // ==================================================================
 
+    private static final ActionRouter<MapUiEvent> ACTIONS = ActionRouter.<MapUiEvent>create()
+            .onResult("action:search", result -> new MapUiEvent.SearchChanged(result.getString("field_search", "")))
+            .on("action:page:prev", MapUiEvent.PrevPage::new)
+            .on("action:page:next", MapUiEvent.NextPage::new)
+            .prefix("action:select_map:", MapUiEvent.OpenMapDetails::new)
+            .on("action:back_to_list", MapUiEvent.BackToBrowser::new)
+            .on("action:like", () -> new MapUiEvent.ToggleReputation(true))
+            .on("action:dislike", () -> new MapUiEvent.ToggleReputation(false))
+            .on("action:rtv", MapUiEvent.TriggerRtv::new)
+            .on("action:admin_rtv", MapUiEvent.AdminForceRtvClick::new)
+            .on("action:admin_rtv_cancel", MapUiEvent.AdminCancelForceRtv::new)
+            .on("action:create_event", MapUiEvent.CreateEvent::new)
+            .on("action:close", MapUiEvent.Close::new);
+
     @Override
     public MapUiEvent parseEvent(MenuResult result) {
-        if (result == null) return null;
-        if (result.wasCancelled()) return new MapUiEvent.Close();
+        return ACTIONS.parse(result);
+    }
 
-        String res = result.result;
-        if ("action:search".equals(res)) {
-            String q = result.values != null && result.values.get("field_search") instanceof String s ? s : "";
-            return new MapUiEvent.SearchChanged(q);
+    /** The player closed the dialog: it no longer follows the vote of the map it showed. */
+    @Override
+    public void closed(MapUiModel model) {
+        if (observerService != null) {
+            observerService.unregisterViewing(model.playerUuid());
         }
-        if ("action:page:prev".equals(res)) return new MapUiEvent.PrevPage();
-        if ("action:page:next".equals(res)) return new MapUiEvent.NextPage();
-
-        if (res.startsWith("action:select_map:")) {
-            return new MapUiEvent.OpenMapDetails(res.substring("action:select_map:".length()));
-        }
-        if ("action:back_to_list".equals(res)) return new MapUiEvent.BackToBrowser();
-        if ("action:like".equals(res)) return new MapUiEvent.ToggleReputation(true);
-        if ("action:dislike".equals(res)) return new MapUiEvent.ToggleReputation(false);
-        if ("action:rtv".equals(res)) return new MapUiEvent.TriggerRtv();
-        if ("action:admin_rtv".equals(res)) return new MapUiEvent.AdminForceRtvClick();
-        if ("action:admin_rtv_cancel".equals(res)) return new MapUiEvent.AdminCancelForceRtv();
-        if ("action:create_event".equals(res)) return new MapUiEvent.CreateEvent();
-        if ("action:close".equals(res)) return new MapUiEvent.Close();
-
-        return null;
     }
 
     // ==================================================================
@@ -626,21 +616,19 @@ public class MapUiController implements UiController<MapUiModel, MapUiEvent> {
         return model.withPagination(page, totalPages, pageItems, all.size());
     }
 
-    /** Called after UiSession installation; late results never enter another dialog. */
-    public void requestSummariesAsync() {
-        if (summaryCache == null || session == null || session.activeUiSession() == null) return;
-        var target = session.activeUiSession();
-        summaryCache.refresh().whenComplete((rows, error) ->
-                org.xcore.plugin.concurrent.MainThreadDispatcher.mindustry().execute(() -> {
-                    if (session.activeUiSession() != target) return;
-                    if (error != null) {
-                        org.xcore.plugin.common.PLog.warn("Map summaries refresh failed: @", error.toString());
-                        return;
-                    }
-                    @SuppressWarnings("unchecked")
-                    var typed = (org.xcore.ui.runtime.UiSession<MapUiModel, MapUiEvent>) target;
-                    typed.dispatch(new MapUiEvent.SummariesReady());
-                }));
+    /** Refreshes the summaries of every map; the browser shows them once they are back. */
+    public Effect<MapUiEvent> loadSummaries() {
+        return dialog -> {
+            if (summaryCache == null) return;
+            summaryCache.refresh().whenComplete((rows, error) ->
+                    org.xcore.plugin.concurrent.MainThreadDispatcher.mindustry().execute(() -> {
+                        if (error != null) {
+                            org.xcore.plugin.common.PLog.warn("Map summaries refresh failed: @", error.toString());
+                            return;
+                        }
+                        dialog.dispatch(new MapUiEvent.SummariesReady());
+                    }));
+        };
     }
 
     public int mapsPerPage() {
@@ -802,26 +790,24 @@ public class MapUiController implements UiController<MapUiModel, MapUiEvent> {
         );
     }
 
-    public void requestPreviewAsync(Session session, String mapId) {
-        if (session == null || session.player == null || previewService == null) return;
-        Map mindustryMap = findMindustryMap(mapId);
-        if (mindustryMap == null) return;
+    /** Streams the preview of {@code mapId} to the player and shows it once it has arrived. */
+    public Effect<MapUiEvent> loadPreview(String mapId) {
+        return dialog -> {
+            if (session == null || session.player == null || previewService == null) return;
+            Map mindustryMap = findMindustryMap(mapId);
+            if (mindustryMap == null) return;
 
-        var target = session.activeUiSession();
-        java.util.function.BiConsumer<String, Throwable> deliver = (region, error) ->
-                org.xcore.plugin.concurrent.MainThreadDispatcher.mindustry().execute(() -> {
-                    if (target == null || session.activeUiSession() != target) return;
-                    @SuppressWarnings("unchecked")
-                    var typed = (org.xcore.ui.runtime.UiSession<?, MapUiEvent>) target;
-                    typed.dispatch(region != null ? new MapUiEvent.PreviewReady(mapId, region)
-                            : new MapUiEvent.PreviewFailed(mapId));
-                });
-        String cached = previewService.getCachedRegionName(mindustryMap);
-        if (cached != null) {
-            deliver.accept(cached, null);
-        } else {
-            previewService.requestPreview(session.player, mindustryMap, deliver);
-        }
+            java.util.function.BiConsumer<String, Throwable> deliver = (region, error) ->
+                    org.xcore.plugin.concurrent.MainThreadDispatcher.mindustry().execute(() ->
+                            dialog.dispatch(region != null ? new MapUiEvent.PreviewReady(mapId, region)
+                                    : new MapUiEvent.PreviewFailed(mapId)));
+            String cached = previewService.getCachedRegionName(mindustryMap);
+            if (cached != null) {
+                deliver.accept(cached, null);
+            } else {
+                previewService.requestPreview(session.player, mindustryMap, deliver);
+            }
+        };
     }
 
     private boolean isSameMap(String id1, String id2) {
@@ -836,20 +822,14 @@ public class MapUiController implements UiController<MapUiModel, MapUiEvent> {
         return false;
     }
 
-    private long currentDetailsRequestId;
-
-    private void requestDetailsAsync(String mapId) {
-        var target = session == null ? null : session.activeUiSession();
-        long reqId = ++currentDetailsRequestId;
-        resolveMapData(mapId).whenComplete((data, error) ->
+    /** Reads what storage holds on {@code mapId}; the details view fills in once it is back. */
+    private Effect<MapUiEvent> loadDetails(String mapId) {
+        return dialog -> resolveMapData(mapId).whenComplete((data, error) ->
                 org.xcore.plugin.concurrent.MainThreadDispatcher.mindustry().execute(() -> {
-                    if (target == null || session.activeUiSession() != target || reqId != currentDetailsRequestId) return;
-                    @SuppressWarnings("unchecked")
-                    var typed = (org.xcore.ui.runtime.UiSession<MapUiModel, MapUiEvent>) target;
                     if (error == null && data != null) {
-                        typed.dispatch(new MapUiEvent.DetailsReady(mapId, data));
+                        dialog.dispatch(new MapUiEvent.DetailsReady(mapId, data));
                     } else if (findMindustryMap(mapId) == null) {
-                        typed.dispatch(new MapUiEvent.DetailsFailed(mapId));
+                        dialog.dispatch(new MapUiEvent.DetailsFailed(mapId));
                     }
                 }));
     }

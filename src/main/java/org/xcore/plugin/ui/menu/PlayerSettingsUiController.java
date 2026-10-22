@@ -15,9 +15,12 @@ import org.xcore.plugin.ui.kit.Kit;
 import org.xcore.plugin.ui.kit.Kit.Option;
 import org.xcore.plugin.ui.kit.Screen;
 import org.xcore.plugin.ui.kit.TextWidth;
+import org.xcore.ui.Lens;
 import org.xcore.ui.Text;
 import org.xcore.ui.Ui;
 import org.xcore.ui.VNode;
+import org.xcore.ui.form.FormSchema;
+import org.xcore.ui.form.ValueCodec;
 import org.xcore.ui.runtime.ControllerContext;
 import org.xcore.ui.runtime.UiController;
 import org.xcore.ui.runtime.UpdateResult;
@@ -391,19 +394,17 @@ public class PlayerSettingsUiController implements UiController<PlayerSettingsUi
         return "FFD37F";
     }
 
+    /** The text fields of the settings. A press carries only the fields built alongside it; the rest keep their value. */
+    private static final FormSchema<SettingsModel> FORM = new FormSchema<SettingsModel>()
+            .bind("field_nickname", Lens.of(SettingsModel::customNickname, SettingsModel::withCustomNickname),
+                    ValueCodec.string(), List.of())
+            .bind("field_description", Lens.of(SettingsModel::description, SettingsModel::withDescription),
+                    ValueCodec.string(), List.of())
+            .bind("field_username", Lens.of(SettingsModel::usernameDraft, SettingsModel::withUsernameDraft),
+                    ValueCodec.string(), List.of());
+
     public static SettingsModel syncFormValues(SettingsModel current, MenuResult result) {
-        if (result == null || result.values == null) return current;
-        SettingsModel m = current;
-        if (result.values.containsKey("field_nickname")) {
-            m = m.withCustomNickname(result.getString("field_nickname", m.customNickname()));
-        }
-        if (result.values.containsKey("field_description")) {
-            m = m.withDescription(result.getString("field_description", m.description()));
-        }
-        if (result.values.containsKey("field_username")) {
-            m = m.withUsernameDraft(result.getString("field_username", m.usernameDraft()));
-        }
-        return m;
+        return result == null ? current : FORM.apply(current, result).model();
     }
 
     public static String resolveLanguageDisplay(String code, Localization local) {
@@ -498,12 +499,6 @@ public class PlayerSettingsUiController implements UiController<PlayerSettingsUi
         sb.append("[white][lightgray]: [white]").append(t(local, "player-settings-chat-preview-message")).append("[]");
 
         return sb.toString();
-    }
-
-    @Override
-    public SettingsModel initialModel(Object context) {
-        Tab tab = context instanceof Tab t ? t : Tab.PROFILE;
-        return createModel(session, targetData, tab);
     }
 
     @Override
@@ -974,11 +969,10 @@ public class PlayerSettingsUiController implements UiController<PlayerSettingsUi
 
     @Override
     public SettingsEvent parseEvent(MenuResult result) {
-        if (result == null) return null;
-        if (result.wasCancelled()) return new SettingsEvent.Close();
+        // A close of the dialog never reaches here; the session ends it.
+        if (result == null || result.wasCancelled()) return null;
 
         String res = result.result;
-        if (res == null) return null;
 
         if ("action:save".equals(res)) return new SettingsEvent.Save(result);
         if ("action:reset_nick".equals(res)) return new SettingsEvent.ResetNickname(result);

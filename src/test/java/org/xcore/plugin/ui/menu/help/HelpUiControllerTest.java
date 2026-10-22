@@ -350,8 +350,9 @@ class HelpUiControllerTest {
         assertThat(controller.parseEvent(new MenuResult("action:close")))
                 .isEqualTo(new HelpUiEvent.Close());
 
-        assertThat(controller.parseEvent(new MenuResult((String) null)))
-                .isEqualTo(new HelpUiEvent.Close());
+        // A close of the dialog never reaches parseEvent, and a stray action changes nothing.
+        assertThat(controller.parseEvent(new MenuResult((String) null))).isNull();
+        assertThat(controller.parseEvent(new MenuResult("action:unknown"))).isNull();
 
         assertThat(controller.parseEvent(new MenuResult("action:back")))
                 .isEqualTo(new HelpUiEvent.BackToList());

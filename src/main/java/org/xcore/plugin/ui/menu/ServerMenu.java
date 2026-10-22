@@ -41,7 +41,7 @@ public class ServerMenu {
         }
 
         var controller = new ServerSelectorUiController(registryService, session);
-        var initialModel = controller.initialModel(category);
+        var initialModel = ServerSelectorUiController.createModel(registryService, category);
         menuService.openUi(session, controller, initialModel, true);
     }
 }

@@ -3,7 +3,8 @@ package org.xcore.plugin.ui.kit;
 import mindustry.gen.Iconc;
 import org.xcore.ui.Text;
 import org.xcore.ui.Ui;
-import org.xcore.ui.VLabel;
+import org.xcore.ui.UiLayout;
+import org.xcore.ui.VImage;
 import org.xcore.ui.VNode;
 
 import java.util.ArrayList;
@@ -41,6 +42,14 @@ public final class Kit {
     public static final float GLYPH_BUTTON = 56f;
     /** What a button keeps free around its text, both sides together. */
     public static final float BUTTON_INSET = 14f;
+    /** The picture in the band of a card. */
+    public static final float CARD_ICON = 30f;
+    /** A picture of a list of content, such as banned blocks. */
+    public static final float ROW_ICON = 32f;
+    public static final float TILE_ICON = 26f;
+    private static final float ICON_GAP = 4f;
+    /** A caption is a couple of short words; a tile narrower than this would break them apart. */
+    private static final float TILE_MIN = 140f;
 
     private Kit() {
     }
@@ -195,6 +204,27 @@ public final class Kit {
         });
     }
 
+    /** A card whose title band carries an icon, such as the block or unit the card is about. */
+    public static VNode card(float width, Accent accent, String region, String title, Content content) {
+        float inner = width - 2f * PAD;
+        return Ui.table(card -> {
+            card.background("whiteui");
+            card.layout(l -> l.width(width).padBottom(GAP).color(CARD));
+            card.add(Ui.table(band -> {
+                band.background("whiteui");
+                band.margin(BAND_MARGIN);
+                band.layout(l -> l.width(width).color(accent.band()));
+                band.add(icon(region, CARD_ICON, l -> l.padRight(GAP)));
+                band.labelWrap(Text.raw("[#" + accent.color() + "]" + title + "[]"),
+                        l -> l.width(width - 2f * BAND_MARGIN - CARD_ICON - GAP));
+            })).row();
+            card.add(Ui.table(body -> {
+                body.layout(l -> l.width(inner).padTop(PAD).padBottom(PAD));
+                content.render(body, inner);
+            })).row();
+        });
+    }
+
     /** A card with no title. */
     public static VNode card(float width, Content content) {
         float inner = width - 2f * PAD;
@@ -221,12 +251,103 @@ public final class Kit {
 
     /** Wrapped text centred in {@code width}. */
     public static VNode centered(String text, float width) {
-        return new VLabel(null, Ui.layout().width(width).build(), Text.raw(text), true, null, "center");
+        return Ui.labelWrap(Text.raw(text), l -> l.labelAlign("center").width(width));
     }
 
     /** Wrapped text set against the right edge of {@code width}. */
     public static VNode right(String text, float width) {
-        return new VLabel(null, Ui.layout().width(width).build(), Text.raw(text), true, null, "right");
+        return Ui.labelWrap(Text.raw(text), l -> l.labelAlign("right").width(width));
+    }
+
+    // ------------------------------------------------------------------ pictures
+
+    /** A square picture that keeps the proportions of its sprite; units are rarely square. */
+    public static VNode icon(String region, float size) {
+        return icon(region, size, l -> {
+        });
+    }
+
+    /** {@link #icon(String, float)} with more to say about its cell. */
+    public static VNode icon(String region, float size, Consumer<UiLayout.Builder> layout) {
+        return Ui.image(region, l -> {
+            l.scaling(VImage.SCALING_FIT).width(size).height(size);
+            layout.accept(l);
+        });
+    }
+
+    /** Pictures in rows as long as {@code width} allows, and under them their {@code names}. */
+    public static void icons(Ui.TableBuilder content, List<String> regions, String names, float width) {
+        int perRow = Math.max(1, (int) (width / (ROW_ICON + ICON_GAP)));
+        for (int from = 0; from < regions.size(); from += perRow) {
+            List<String> rowRegions = regions.subList(from, Math.min(regions.size(), from + perRow));
+            content.add(Ui.table(row -> {
+                row.layout(l -> l.expandX().align("left").padTop(ICON_GAP));
+                for (String region : rowRegions) {
+                    row.add(icon(region, ROW_ICON, l -> l.padRight(ICON_GAP)));
+                }
+            })).row();
+        }
+        if (!regions.isEmpty() && !names.isBlank()) {
+            content.add(Ui.table(row -> {
+                row.layout(l -> l.padTop(2f));
+                row.add(text("[lightgray]" + names + "[]", width));
+            })).row();
+        }
+    }
+
+    /**
+     * A number worth seeing before reading anything: its value, or a picture in its place, over a
+     * caption that is already in the viewer's language.
+     */
+    public record Tile(String value, String region, String caption) {
+        public static Tile number(String value, String caption) {
+            return new Tile(value, null, caption);
+        }
+
+        public static Tile icon(String region, String caption) {
+            return new Tile(null, region, caption);
+        }
+    }
+
+    /** The key numbers of a topic as a strip of tiles in its colour, above its cards. */
+    public static void tiles(Ui.TableBuilder body, Screen screen, Accent accent, List<Tile> tiles) {
+        if (tiles.isEmpty()) return;
+        // A caption wraps between words only, so its longest word sets how narrow a tile may be.
+        float widest = TILE_MIN - 2f * BAND_MARGIN;
+        for (Tile tile : tiles) {
+            if (tile.value() != null) widest = Math.max(widest, TextWidth.of(tile.value()));
+            for (String word : tile.caption().split("\\s+")) {
+                widest = Math.max(widest, TextWidth.of(word));
+            }
+        }
+        float tileMin = widest + 2f * BAND_MARGIN;
+        int perRow = Math.clamp((int) ((screen.cards() + GAP) / (tileMin + GAP)), 1, 4);
+        for (int from = 0; from < tiles.size(); from += perRow) {
+            List<Tile> rowTiles = tiles.subList(from, Math.min(tiles.size(), from + perRow));
+            float tileWidth = (screen.cards() - (rowTiles.size() - 1) * GAP) / rowTiles.size();
+            body.add(Ui.table(row -> {
+                row.layout(l -> l.padBottom(GAP));
+                for (int i = 0; i < rowTiles.size(); i++) {
+                    boolean last = i == rowTiles.size() - 1;
+                    row.add(tile(accent, rowTiles.get(i), tileWidth, last ? 0f : GAP));
+                }
+            })).row();
+        }
+    }
+
+    private static VNode tile(Accent accent, Tile tile, float width, float padRight) {
+        float inner = width - 2f * BAND_MARGIN;
+        return Ui.table(cell -> {
+            cell.background("whiteui");
+            cell.margin(BAND_MARGIN);
+            cell.layout(l -> l.width(width).fillY().padRight(padRight).color(accent.band()));
+            if (tile.region() != null) {
+                cell.add(icon(tile.region(), TILE_ICON)).row();
+            } else {
+                cell.add(centered("[#" + accent.color() + "]" + tile.value() + "[]", inner)).row();
+            }
+            cell.add(centered("[lightgray]" + tile.caption() + "[]", inner)).row();
+        });
     }
 
     // ------------------------------------------------------------------ buttons

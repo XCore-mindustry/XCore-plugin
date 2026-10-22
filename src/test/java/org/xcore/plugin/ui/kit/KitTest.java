@@ -152,4 +152,58 @@ class KitTest {
         }
         return widths;
     }
+
+    @Test
+    @DisplayName("tiles show a value or a picture over a caption, and fit the cards they sit above")
+    void tiles_fitTheCards() {
+        for (Screen screen : Screen.ALL) {
+            VNode strip = org.xcore.ui.Ui.table(body -> Kit.tiles(body, screen, Accent.GOLD, List.of(
+                    Kit.Tile.number("61", "Hexes"), Kit.Tile.number("/season", "Season"),
+                    Kit.Tile.icon("unit-flare-ui", "Flying units"))));
+
+            for (VNode node : VNodes.walk(strip)) {
+                Float width = node.layout() == null ? null : node.layout().width();
+                if (width != null) {
+                    assertThat(width).as("%s on %s", node, screen).isLessThanOrEqualTo(screen.cards());
+                }
+            }
+            assertThat(LayoutAssert.allText(strip)).contains("61", "Hexes", "/season", "Flying units");
+            assertThat(VNodes.walk(strip)).anyMatch(node -> node instanceof org.xcore.ui.VImage image
+                    && image.region().equals("unit-flare-ui"));
+        }
+    }
+
+    @Test
+    @DisplayName("icons run in rows no longer than the place and are named under them; none, nothing")
+    void icons_areNamed() {
+        List<String> regions = List.of("unit-a-ui", "unit-b-ui", "unit-c-ui", "unit-d-ui", "unit-e-ui", "unit-f-ui",
+                "unit-g-ui", "unit-h-ui", "unit-i-ui", "unit-j-ui");
+        VNode shown = org.xcore.ui.Ui.table(content -> Kit.icons(content, regions, "A, B, C", 200f));
+        VNode none = org.xcore.ui.Ui.table(content -> Kit.icons(content, List.of(), "", 200f));
+
+        int perRow = (int) (200f / (Kit.ROW_ICON + 4f));
+        long pictures = 0;
+        for (VNode node : VNodes.walk(shown)) {
+            if (node instanceof org.xcore.ui.VTable table) {
+                assertThat(table.children().stream().filter(child -> child instanceof org.xcore.ui.VImage).count())
+                        .isLessThanOrEqualTo(perRow);
+            }
+            if (node instanceof org.xcore.ui.VImage) pictures++;
+        }
+        assertThat(pictures).isEqualTo(regions.size());
+        assertThat(LayoutAssert.allText(shown)).isEqualTo("[lightgray]A, B, C[]");
+        assertThat(VNodes.walk(none)).noneMatch(node -> node instanceof org.xcore.ui.VImage
+                || node instanceof org.xcore.ui.VLabel);
+    }
+
+    @Test
+    @DisplayName("a card can carry the picture of what it is about in its band")
+    void card_withIcon() {
+        VNode card = Kit.card(Screen.NARROW.card(), Accent.BLUE, "block-core-shard-ui", "Capture",
+                (content, inner) -> content.add(Kit.text("Take hexes", inner)).row());
+
+        assertThat(VNodes.walk(card)).anyMatch(node -> node instanceof org.xcore.ui.VImage image
+                && image.region().equals("block-core-shard-ui"));
+        assertThat(LayoutAssert.allText(card)).contains("Capture", "Take hexes");
+    }
 }

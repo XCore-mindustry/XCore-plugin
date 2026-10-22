@@ -123,17 +123,17 @@ class MapUiControllerTest {
         var map = new Map(new Fi("arena.msav"), 10, 10, StringMap.of("name", "Arena"), true);
         when(mapService.findMapByFileName("arena.msav")).thenReturn(map);
         session.player = mindustry.gen.Player.create();
-        var original = mock(org.xcore.ui.runtime.UiSession.class);
-        var replacement = mock(org.xcore.ui.runtime.UiSession.class);
-        session.setActiveUiSession(original);
         var controller = new MapUiController(mapService, mapDataRepository, previewService, observerService, session);
-        controller.requestPreviewAsync(session, "arena.msav");
+        var dispatched = new java.util.ArrayList<MapUiEvent>();
+        var open = new java.util.concurrent.atomic.AtomicBoolean(true);
+        new org.xcore.ui.runtime.EffectRunner<MapUiEvent>(dispatched::add, open::get)
+                .run(MapUiController.PREVIEW, controller.loadPreview("arena.msav"));
         var callback = org.mockito.ArgumentCaptor.forClass(java.util.function.BiConsumer.class);
         verify(previewService).requestPreview(any(), eq(map), callback.capture());
-        session.setActiveUiSession(replacement);
+        // Another dialog took this one's place before the preview arrived.
+        open.set(false);
         callback.getValue().accept("texture", null);
-        verify(replacement, never()).dispatch(any());
-        verify(original, never()).dispatch(any());
+        assertThat(dispatched).isEmpty();
     }
 
     @Test
@@ -170,6 +170,17 @@ class MapUiControllerTest {
         assertThat(ui.model().dislikes()).isEqualTo(2);
         assertThat(ui.model().avgGameTime()).isNotEqualTo("-");
         verify(mapDataRepository, never()).findOrCreate(anyString(), anyString(), anyString(), anyString());
+    }
+
+    @Test
+    @DisplayName("a dialog the player closed stops following the vote of its map")
+    void closedByPlayer_unregistersViewing() {
+        var controller = new MapUiController(mapService, mapDataRepository, previewService, observerService, session);
+        var model = createTestBrowserModel();
+
+        controller.closed(model);
+
+        verify(observerService).unregisterViewing(model.playerUuid());
     }
 
     @Test
@@ -536,7 +547,7 @@ class MapUiControllerTest {
         );
 
         assertThat(secondClick.close()).isTrue();
-        verify(ctx).close();
+        verify(ctx, never()).close();
     }
 
     @Test
@@ -586,9 +597,10 @@ class MapUiControllerTest {
         MenuResult closeRes = new MenuResult("action:close");
         assertThat(controller.parseEvent(closeRes)).isEqualTo(new MapUiEvent.Close());
 
-        // Cancelled dialog results (Escape on the active window) trigger Close
+        // A close of the dialog never reaches parseEvent; the controller hears of it through closed()
         assertThat(controller.parseEvent(null)).isNull();
-        assertThat(controller.parseEvent(new MenuResult())).isEqualTo(new MapUiEvent.Close());
+        assertThat(controller.parseEvent(new MenuResult())).isNull();
+        assertThat(controller.parseEvent(new MenuResult("action:unknown"))).isNull();
     }
 
     @Test
@@ -675,6 +687,7 @@ class MapUiControllerTest {
         MapUiModel browserModel = createTestBrowserModel();
 
         UpdateResult<MapUiModel> result = controller.update(browserModel, new MapUiEvent.OpenMapDetails("in_research_of_power.msav"), null);
+        new org.xcore.ui.runtime.EffectRunner<MapUiEvent>(event -> { }, () -> true).run(result.effects());
 
         assertThat(result.model().playedTimes()).isZero();
         verify(mapDataRepository, never()).findOrCreate(anyString(), anyString(), anyString(), anyString());

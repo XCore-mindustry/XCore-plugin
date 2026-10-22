@@ -44,7 +44,14 @@ public class MapPreviewService {
     private final java.util.Map<String, byte[]> lruBytesCache = new LinkedHashMap<>(16, 0.75f, true) {
         @Override
         protected boolean removeEldestEntry(java.util.Map.Entry<String, byte[]> eldest) {
-            return size() > MAX_MEMORY_CACHE_ENTRIES;
+            if (size() <= MAX_MEMORY_CACHE_ENTRIES) {
+                return false;
+            }
+            // The registry holds the bytes too; without this it keeps every preview ever drawn.
+            imageService.unregister(eldest.getKey());
+            // A map file must not keep naming a texture that is gone, or it is never drawn again.
+            fileNameToRegion.values().removeIf(eldest.getKey()::equals);
+            return true;
         }
     };
 
@@ -111,12 +118,7 @@ public class MapPreviewService {
 
                 // Main Thread: register in TextureRegistry and stream to player connection
                 String regionName = imageService.ensureDelivered(p, result.bytes);
-                fileNameToRegion.put(fileName, regionName);
-
-                synchronized (lruBytesCache) {
-                    lruBytesCache.put(regionName, result.bytes);
-                }
-
+                remember(fileName, regionName, result.bytes);
                 onComplete.accept(regionName, null);
             });
         } else {
@@ -129,6 +131,14 @@ public class MapPreviewService {
             } else {
                 onComplete.accept(null, result.error);
             }
+        }
+    }
+
+    /** Keeps a drawn preview; past the limit the least recently used one is forgotten, texture and all. */
+    void remember(String fileName, String regionName, byte[] bytes) {
+        fileNameToRegion.put(fileName, regionName);
+        synchronized (lruBytesCache) {
+            lruBytesCache.put(regionName, bytes);
         }
     }
 

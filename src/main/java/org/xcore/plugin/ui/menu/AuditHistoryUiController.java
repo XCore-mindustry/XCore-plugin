@@ -23,6 +23,7 @@ import org.xcore.plugin.ui.kit.Screen;
 import org.xcore.plugin.ui.kit.TextWidth;
 import org.xcore.ui.Ui;
 import org.xcore.ui.VNode;
+import org.xcore.ui.runtime.ActionRouter;
 import org.xcore.ui.runtime.ControllerContext;
 import org.xcore.ui.runtime.SlotKey;
 import org.xcore.ui.runtime.UiController;
@@ -267,12 +268,6 @@ public class AuditHistoryUiController implements UiController<AuditHistoryUiCont
     }
 
     @Override
-    public AuditHistoryModel initialModel(Object context) {
-        AuditViewMode mode = context instanceof AuditViewMode m ? m : AuditViewMode.TARGET;
-        return createInitialModel(mode);
-    }
-
-    @Override
     public UpdateResult<AuditHistoryModel> update(AuditHistoryModel model, AuditHistoryEvent event, ControllerContext ctx) {
         return switch (event) {
             case AuditHistoryEvent.SelectMode(var newMode) -> {
@@ -364,41 +359,36 @@ public class AuditHistoryUiController implements UiController<AuditHistoryUiCont
         };
     }
 
+    private static final ActionRouter<AuditHistoryEvent> ACTIONS = ActionRouter.<AuditHistoryEvent>create()
+            .on("action:close", AuditHistoryEvent.Close::new)
+            .on("action:back", AuditHistoryEvent.Back::new)
+            .on("action:back_to_list", AuditHistoryEvent.BackToList::new)
+            .on("action:page:next", AuditHistoryEvent.NextPage::new)
+            .on("action:page:prev", AuditHistoryEvent.PrevPage::new)
+            .on("action:refresh", AuditHistoryEvent.Refresh::new)
+            .prefix("action:mode:", name -> {
+                AuditViewMode mode = constant(AuditViewMode.class, name);
+                return mode == null ? null : new AuditHistoryEvent.SelectMode(mode);
+            })
+            .prefix("action:filter:", name -> {
+                ActionFilter filter = constant(ActionFilter.class, name);
+                return filter == null ? null : new AuditHistoryEvent.SelectFilter(filter);
+            })
+            .prefix("action:inspect:", AuditHistoryEvent.InspectRecord::new)
+            .prefix("action:copy_id:", AuditHistoryEvent.CopyAuditId::new);
+
     @Override
     public AuditHistoryEvent parseEvent(MenuResult result) {
-        if (result == null || result.wasCancelled() || result.result == null) {
-            return new AuditHistoryEvent.Close();
-        }
-        String res = result.result.trim();
-        if ("action:close".equals(res)) return new AuditHistoryEvent.Close();
-        if ("action:back".equals(res)) return new AuditHistoryEvent.Back();
-        if ("action:back_to_list".equals(res)) return new AuditHistoryEvent.BackToList();
-        if ("action:page:next".equals(res)) return new AuditHistoryEvent.NextPage();
-        if ("action:page:prev".equals(res)) return new AuditHistoryEvent.PrevPage();
-        if ("action:refresh".equals(res)) return new AuditHistoryEvent.Refresh();
+        return ACTIONS.parse(result);
+    }
 
-        if (res.startsWith("action:mode:")) {
-            try {
-                return new AuditHistoryEvent.SelectMode(
-                        AuditViewMode.valueOf(res.substring("action:mode:".length()))
-                );
-            } catch (Exception ignored) {}
+    /** The constant {@code name} names, or {@code null} for a name that is not one. */
+    private static <T extends Enum<T>> T constant(Class<T> type, String name) {
+        try {
+            return Enum.valueOf(type, name);
+        } catch (IllegalArgumentException ignored) {
+            return null;
         }
-        if (res.startsWith("action:filter:")) {
-            try {
-                return new AuditHistoryEvent.SelectFilter(
-                        ActionFilter.valueOf(res.substring("action:filter:".length()))
-                );
-            } catch (Exception ignored) {}
-        }
-        if (res.startsWith("action:inspect:")) {
-            return new AuditHistoryEvent.InspectRecord(res.substring("action:inspect:".length()));
-        }
-        if (res.startsWith("action:copy_id:")) {
-            return new AuditHistoryEvent.CopyAuditId(res.substring("action:copy_id:".length()));
-        }
-
-        return new AuditHistoryEvent.Close();
     }
 
     // =========================================================================
@@ -421,10 +411,10 @@ public class AuditHistoryUiController implements UiController<AuditHistoryUiCont
     private VNode list(AuditHistoryModel model, Screen screen, Localization local) {
         float width = screen.width();
         return Kit.window(window -> {
-            window.slot(screen.slot(SLOT_HEADER).path(), slot -> slot.add(header(model, width, local))).row();
-            window.slot(screen.slot(SLOT_TABS).path(), slot -> tabs(slot, model, width, local)).row();
-            window.slot(screen.slot(SLOT_LIST).path(), slot -> slot.add(records(model, screen, local))).row();
-            window.slot(screen.slot(SLOT_PAGINATION).path(), slot -> slot.add(Kit.pager(width,
+            window.slot(screen.slot(SLOT_HEADER), slot -> slot.add(header(model, width, local))).row();
+            window.slot(screen.slot(SLOT_TABS), slot -> tabs(slot, model, width, local)).row();
+            window.slot(screen.slot(SLOT_LIST), slot -> slot.add(records(model, screen, local))).row();
+            window.slot(screen.slot(SLOT_PAGINATION), slot -> slot.add(Kit.pager(width,
                     t(local, "audit-menu-page", args("page", model.pageIndex())),
                     model.cursorBackStack().isEmpty() ? null : "action:page:prev",
                     model.hasNext() && model.nextCursor() != null ? "action:page:next" : null,
@@ -549,7 +539,7 @@ public class AuditHistoryUiController implements UiController<AuditHistoryUiCont
         float width = screen.width();
         AuditRecord rec = model.inspectedRecord();
         return Kit.window(window -> {
-            window.slot(screen.slot(SLOT_HEADER).path(), slot -> slot.add(header(model, width, local))).row();
+            window.slot(screen.slot(SLOT_HEADER), slot -> slot.add(header(model, width, local))).row();
             window.add(Kit.line(width, rec == null ? Accent.GRAY : accent(rec.action))).row();
 
             Kit.body(window, screen, body -> {

@@ -17,19 +17,24 @@ permissions:
 jobs:
   render:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
+      # The renderer lives in mindustry-testkit; its own CI proves it catches broken menus.
+      - uses: actions/checkout@v7
+        with:
+          repository: XCore-mindustry/mindustry-testkit
+          path: mindustry-testkit
+          persist-credentials: false
       - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: '25'
       - uses: gradle/actions/setup-gradle@v5
-      - name: Render Settings and Top in three viewport profiles
-        run: tools/ui-render/render matrix
-      - name: Verify that broken menus are rejected
-        if: ${{ !cancelled() }}
-        run: tools/ui-render/render selfcheck
+      - name: Render every menu fixture in the phone, android1080 and pc profiles
+        run: tools/ui-render/render
+        env:
+          MINDUSTRY_TESTKIT: mindustry-testkit
       - name: Upload packets, screenshots and diagnostics
         if: always()
         uses: actions/upload-artifact@v7

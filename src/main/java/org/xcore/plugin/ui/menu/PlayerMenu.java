@@ -21,6 +21,7 @@ import org.xcore.plugin.session.Session;
 import org.xcore.plugin.session.SessionService;
 import org.xcore.plugin.ui.MenuService;
 import org.xcore.plugin.ui.route.MenuRoute;
+import org.xcore.ui.runtime.Effect;
 
 @Singleton
 public class PlayerMenu extends Menu {
@@ -162,28 +163,24 @@ public class PlayerMenu extends Menu {
         );
 
         var initialModel = controller.createInitialModel(tab, preloaded);
-        menuService.openUi(session, controller, initialModel, true);
+        var dialog = menuService.openUi(session, controller, initialModel, true);
 
-        if (preloaded == null) {
-            loadDetails(session, targetData);
+        if (preloaded == null && dialog != null) {
+            dialog.run(PlayerProfileUiController.DETAILS, loadDetails(session, targetData));
         }
     }
 
     /**
      * Reads the storage-backed part of {@code target}'s profile off the game thread and hands
-     * it to the profile dialog {@code session} has open, if it is still showing that player.
+     * it to the profile dialog that asked for it, while that dialog is still open and has asked
+     * for nothing newer.
      */
-    public void loadDetails(Session session, PlayerData target) {
-        if (async == null || session == null || session.player == null || target == null) return;
-
-        async.forPlayer(session.player, () -> details(session, target), (player, details) -> {
-            var active = session.activeUiSession();
-            if (active != null && active.model() instanceof PlayerProfileUiController.ProfileModel) {
-                @SuppressWarnings("unchecked")
-                var profileSession = (org.xcore.ui.runtime.UiSession<PlayerProfileUiController.ProfileModel, PlayerProfileUiController.ProfileEvent>) active;
-                profileSession.dispatch(new PlayerProfileUiController.ProfileEvent.DetailsLoaded(target.uuid, details));
-            }
-        });
+    public Effect<PlayerProfileUiController.ProfileEvent> loadDetails(Session session, PlayerData target) {
+        return dialog -> {
+            if (async == null || session == null || session.player == null || target == null) return;
+            async.forPlayer(session.player, () -> details(session, target), (player, details) ->
+                    dialog.dispatch(new PlayerProfileUiController.ProfileEvent.DetailsLoaded(target.uuid, details)));
+        };
     }
 
     /** Blocking. */

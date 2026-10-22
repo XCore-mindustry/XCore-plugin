@@ -39,4 +39,35 @@ class XcoreImageServiceTest {
         String name = service.ensureDelivered(player, new byte[]{1, 2, 3});
         assertThat(name).startsWith("net-xcore_");
     }
+
+    @Test
+    @DisplayName("streams a texture again after a world load or a reconnect, as the client dropped it")
+    void streamsAgainAfterTheClientDroppedTextures() {
+        java.util.List<String> sent = new java.util.ArrayList<>();
+        XcoreImageService service = new XcoreImageService((connection, region, bytes) -> sent.add(connection));
+        Player player = Player.create();
+        player.con = null;
+        byte[] png = {9, 8, 7};
+
+        service.ensureDelivered(player, png);
+        service.ensureDelivered(player, png);
+        service.onWorldLoad();
+        service.ensureDelivered(player, png);
+        service.reset(player);
+        service.ensureDelivered(player, png);
+
+        assertThat(sent).hasSize(3);
+    }
+
+    @Test
+    @DisplayName("forgets an unregistered texture")
+    void forgetsUnregisteredTexture() {
+        XcoreImageService service = new XcoreImageService((connection, region, bytes) -> {
+        });
+        String region = service.register(new byte[]{1, 1});
+
+        service.unregister(region);
+
+        assertThat(service.registry().bytes(region)).isNull();
+    }
 }

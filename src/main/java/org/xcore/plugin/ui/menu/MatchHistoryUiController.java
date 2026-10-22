@@ -22,10 +22,11 @@ import org.xcore.plugin.ui.kit.TextWidth;
 import org.xcore.ui.Text;
 import org.xcore.ui.Ui;
 import org.xcore.ui.VNode;
+import org.xcore.ui.runtime.ActionRouter;
 import org.xcore.ui.runtime.ControllerContext;
+import org.xcore.ui.runtime.Dispatcher;
 import org.xcore.ui.runtime.SlotKey;
 import org.xcore.ui.runtime.UiController;
-import org.xcore.ui.runtime.UiSession;
 import org.xcore.ui.runtime.UpdateResult;
 
 import java.time.Clock;
@@ -188,8 +189,8 @@ public class MatchHistoryUiController implements UiController<MatchHistoryUiCont
     private final Async async;
     private final Session session;
     private final Clock clock;
-    /** Counts the loads this dialog started; only the latest one may change it. */
-    private long loadGeneration;
+    /** The key of every load: only the latest one may change the dialog. */
+    private static final String LOAD = "load";
 
     public MatchHistoryUiController(MatchHistoryMenu menu, Async async, Session session, Clock clock) {
         this.menu = Objects.requireNonNull(menu, "menu");
@@ -265,51 +266,31 @@ public class MatchHistoryUiController implements UiController<MatchHistoryUiCont
      */
     private UpdateResult<Model> load(Model model, Query query) {
         String owner = model.ownerUuid();
-        long generation = ++loadGeneration;
-        async.supply(() -> fetch(query, owner)).thenMain((data, error) -> {
-            if (error != null) {
-                Log.err("Failed to load the matches of " + owner + " on ladder " + query.ladderId(), error);
-            }
-            deliver(model, generation, error == null ? new Event.Loaded(data) : new Event.LoadFailed());
-        });
-        return UpdateResult.of(model);
+        return UpdateResult.of(model).effect(LOAD, (Dispatcher<Event> dialog) ->
+                async.supply(() -> fetch(query, owner)).thenMain((data, error) -> {
+                    if (error != null) {
+                        Log.err("Failed to load the matches of " + owner + " on ladder " + query.ladderId(), error);
+                    }
+                    dialog.dispatch(error == null ? new Event.Loaded(data) : new Event.LoadFailed());
+                }));
     }
 
     private UpdateResult<Model> loadMatch(Model model, MatchRecord row) {
-        long generation = ++loadGeneration;
-        async.supply(() -> {
-            Ladder ladder = menu.ladder(row.ladder());
-            return ladder == null ? null : ladder.match(row.matchId()).orElse(null);
-        }).thenMain((match, error) -> {
-            if (error != null) {
-                Log.err("Failed to load match " + row.id(), error);
-            }
-            deliver(model, generation, match != null ? new Event.MatchLoaded(match) : new Event.LoadFailed());
-        });
-        return UpdateResult.of(model);
-    }
-
-    private void deliver(Model model, long generation, Event event) {
-        if (generation != loadGeneration || session == null) {
-            return; // Superseded: applying it would make the newer request look stale.
-        }
-        var active = session.activeUiSession();
-        if (active != null && active.model() == model) {
-            @SuppressWarnings("unchecked")
-            var ui = (UiSession<Model, Event>) active;
-            ui.dispatch(event);
-        }
+        return UpdateResult.of(model).effect(LOAD, (Dispatcher<Event> dialog) ->
+                async.supply(() -> {
+                    Ladder ladder = menu.ladder(row.ladder());
+                    return ladder == null ? null : ladder.match(row.matchId()).orElse(null);
+                }).thenMain((match, error) -> {
+                    if (error != null) {
+                        Log.err("Failed to load match " + row.id(), error);
+                    }
+                    dialog.dispatch(match != null ? new Event.MatchLoaded(match) : new Event.LoadFailed());
+                }));
     }
 
     // =========================================================================
     // Events
     // =========================================================================
-
-    @Override
-    public Model initialModel(Object context) {
-        return model(fetch(query(context instanceof String ladderId ? ladderId : null),
-                session != null && session.data != null ? session.data.uuid : ""));
-    }
 
     @Override
     public UpdateResult<Model> update(Model model, Event event, ControllerContext ctx) {
@@ -390,44 +371,21 @@ public class MatchHistoryUiController implements UiController<MatchHistoryUiCont
         };
     }
 
+    private static final ActionRouter<Event> ACTIONS = ActionRouter.<Event>create()
+            .on("action:close", Event.Close::new)
+            .on("action:page:next", Event.NextPage::new)
+            .on("action:page:prev", Event.PrevPage::new)
+            .on("action:refresh", Event.Refresh::new)
+            .on("action:list", Event.BackToList::new)
+            .on("action:back", Event.Back::new)
+            .prefix("action:ladder:", Event.SelectLadder::new)
+            .prefixInt("action:match:", Event.OpenMatch::new)
+            .prefixInt("action:players:", Event.ParticipantsPage::new)
+            .prefixInt("action:player:", Event.InspectPlayer::new);
+
     @Override
     public Event parseEvent(MenuResult result) {
-        if (result == null || result.wasCancelled() || result.result == null) {
-            return new Event.Close();
-        }
-        String res = result.result.trim();
-        return switch (res) {
-            case "action:page:next" -> new Event.NextPage();
-            case "action:page:prev" -> new Event.PrevPage();
-            case "action:refresh" -> new Event.Refresh();
-            case "action:list" -> new Event.BackToList();
-            case "action:back" -> new Event.Back();
-            default -> {
-                if (res.startsWith("action:ladder:")) {
-                    yield new Event.SelectLadder(res.substring("action:ladder:".length()));
-                }
-                Integer number = null;
-                String kind = null;
-                for (String prefix : List.of("action:match:", "action:player:", "action:players:")) {
-                    if (res.startsWith(prefix)) {
-                        kind = prefix;
-                        try {
-                            number = Integer.parseInt(res.substring(prefix.length()));
-                        } catch (NumberFormatException ignored) {
-                            // Not a button of this dialog.
-                        }
-                    }
-                }
-                if (number == null) {
-                    yield new Event.Close();
-                }
-                yield switch (kind) {
-                    case "action:match:" -> new Event.OpenMatch(number);
-                    case "action:player:" -> new Event.InspectPlayer(number);
-                    default -> new Event.ParticipantsPage(number);
-                };
-            }
-        };
+        return ACTIONS.parse(result);
     }
 
     /** The participants of a match in the order they are shown: by team and place, best first. */
@@ -504,7 +462,7 @@ public class MatchHistoryUiController implements UiController<MatchHistoryUiCont
             }
 
             // The parts a turned page changes are slots, so the rest of the window stays as it is.
-            window.slot(screen.slot(SLOT_LIST).path(), slot ->
+            window.slot(screen.slot(SLOT_LIST), slot ->
                     slot.add(Kit.pane(screen, list -> rows(list, model, screen, local)))).row();
 
             if (!model.feedback().isBlank()) {
@@ -514,7 +472,7 @@ public class MatchHistoryUiController implements UiController<MatchHistoryUiCont
                 })).row();
             }
 
-            window.slot(screen.slot(SLOT_PAGER).path(), slot -> slot.add(Kit.pager(width,
+            window.slot(screen.slot(SLOT_PAGER), slot -> slot.add(Kit.pager(width,
                     model.page() + " / " + Math.max(model.page(), model.totalPages()),
                     model.backStack().isEmpty() ? null : "action:page:prev",
                     model.nextCursor() == null ? null : "action:page:next",

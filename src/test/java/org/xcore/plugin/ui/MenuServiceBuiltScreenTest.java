@@ -244,7 +244,7 @@ class MenuServiceBuiltScreenTest {
         });
         menuService.renderFlow(session, flow, "state", null);
         UiController<String, String> controller = mock(UiController.class);
-        when(controller.render(any())).thenReturn(Ui.table(table -> {
+        when(controller.render(any(), any())).thenReturn(Ui.table(table -> {
         }));
 
         menuService.openUi(session, controller, "model");

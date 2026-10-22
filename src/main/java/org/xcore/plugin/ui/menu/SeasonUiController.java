@@ -13,6 +13,7 @@ import org.xcore.plugin.ui.kit.Kit;
 import org.xcore.plugin.ui.kit.Screen;
 import org.xcore.ui.Ui;
 import org.xcore.ui.VNode;
+import org.xcore.ui.runtime.ActionRouter;
 import org.xcore.ui.runtime.ControllerContext;
 import org.xcore.ui.runtime.UiController;
 import org.xcore.ui.runtime.UpdateResult;
@@ -60,11 +61,6 @@ public class SeasonUiController implements UiController<SeasonUiController.Seaso
     }
 
     @Override
-    public SeasonModel initialModel(Object context) {
-        return context instanceof SeasonModel model ? model : new SeasonModel(List.of());
-    }
-
-    @Override
     public UpdateResult<SeasonModel> update(SeasonModel model, SeasonEvent event, ControllerContext context) {
         return switch (event) {
             case SeasonEvent.OpenTop(String categoryId) -> {
@@ -78,16 +74,13 @@ public class SeasonUiController implements UiController<SeasonUiController.Seaso
         };
     }
 
+    private static final ActionRouter<SeasonEvent> ACTIONS = ActionRouter.<SeasonEvent>create()
+            .on("action:close", SeasonEvent.Close::new)
+            .prefix("action:top:", SeasonEvent.OpenTop::new);
+
     @Override
     public SeasonEvent parseEvent(MenuResult result) {
-        if (result == null || result.wasCancelled() || result.result == null) {
-            return new SeasonEvent.Close();
-        }
-        String res = result.result.trim();
-        if (res.startsWith("action:top:")) {
-            return new SeasonEvent.OpenTop(res.substring("action:top:".length()));
-        }
-        return new SeasonEvent.Close();
+        return ACTIONS.parse(result);
     }
 
     @Override

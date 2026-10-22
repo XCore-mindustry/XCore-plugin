@@ -15,6 +15,7 @@ import org.xcore.plugin.ui.kit.Screen;
 import org.xcore.plugin.ui.kit.TextWidth;
 import org.xcore.ui.Ui;
 import org.xcore.ui.VNode;
+import org.xcore.ui.runtime.ActionRouter;
 import org.xcore.ui.runtime.ControllerContext;
 import org.xcore.ui.runtime.UiController;
 import org.xcore.ui.runtime.UpdateResult;
@@ -107,12 +108,6 @@ public class ServerSelectorUiController implements UiController<ServerSelectorUi
                 registry.totalOnlineServers(),
                 registry.totalServersCount()
         );
-    }
-
-    @Override
-    public ServerSelectorModel initialModel(Object context) {
-        Category category = context instanceof Category cat ? cat : Category.ALL;
-        return createModel(registryService, category);
     }
 
     @Override
@@ -281,15 +276,11 @@ public class ServerSelectorUiController implements UiController<ServerSelectorUi
             case ServerSelectorEvent.Connect e -> {
                 ConnectionAttempt attempt = handleConnect(e.serverId());
                 if (attempt.transferred()) {
-                    ctx.close();
                     yield UpdateResult.close(model);
                 }
                 yield UpdateResult.rerender(createModel(registryService, model.selectedCategory()).withFeedback(attempt.feedback()));
             }
-            case ServerSelectorEvent.Close e -> {
-                ctx.close();
-                yield UpdateResult.close(model);
-            }
+            case ServerSelectorEvent.Close e -> UpdateResult.close(model);
         };
     }
 
@@ -333,32 +324,23 @@ public class ServerSelectorUiController implements UiController<ServerSelectorUi
         return new ConnectionAttempt(false, "");
     }
 
+    private static final ActionRouter<ServerSelectorEvent> ACTIONS = ActionRouter.<ServerSelectorEvent>create()
+            .on("action:close", ServerSelectorEvent.Close::new)
+            .on("action:refresh", ServerSelectorEvent.Refresh::new)
+            .prefix("action:tab:", name -> new ServerSelectorEvent.SelectCategory(category(name)))
+            .prefix("action:connect:", ServerSelectorEvent.Connect::new);
+
     @Override
     public ServerSelectorEvent parseEvent(MenuResult result) {
-        if (result == null || result.wasCancelled()) {
-            return new ServerSelectorEvent.Close();
-        }
+        return ACTIONS.parse(result);
+    }
 
-        String action = result.result != null ? result.result.trim() : "";
-        if (action.isBlank() || "action:close".equals(action)) {
-            return new ServerSelectorEvent.Close();
+    /** The category a tab names; an unknown name shows them all. */
+    private static Category category(String name) {
+        try {
+            return Category.valueOf(name.toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException ignored) {
+            return Category.ALL;
         }
-        if ("action:refresh".equals(action)) {
-            return new ServerSelectorEvent.Refresh();
-        }
-        if (action.startsWith("action:tab:")) {
-            String catName = action.substring("action:tab:".length()).toUpperCase(Locale.ROOT);
-            try {
-                return new ServerSelectorEvent.SelectCategory(Category.valueOf(catName));
-            } catch (IllegalArgumentException ignored) {
-                return new ServerSelectorEvent.SelectCategory(Category.ALL);
-            }
-        }
-        if (action.startsWith("action:connect:")) {
-            String serverId = action.substring("action:connect:".length());
-            return new ServerSelectorEvent.Connect(serverId);
-        }
-
-        return new ServerSelectorEvent.Close();
     }
 }

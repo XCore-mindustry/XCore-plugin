@@ -262,7 +262,8 @@ class ReportUiControllerTest {
         for (String route : List.of("action:pick:uuid", "action:pick:999999999999", "action:page:bad", "action:reason:unknown", "action:none")) {
             assertThat(controller.parseEvent(new MenuResult(route))).isNull();
         }
-        assertThat(controller.parseEvent(null)).isEqualTo(new ReportUiController.Event.Close());
+        assertThat(controller.parseEvent(null)).isNull();
+        assertThat(controller.parseEvent(new MenuResult("action:close"))).isEqualTo(new ReportUiController.Event.Close());
         fixture.open();
         fixture.loop.client().dismiss(fixture.menus.getMenuBuilderId()); fixture.drain();
         assertThat(fixture.session.activeUiSession()).isNull();
