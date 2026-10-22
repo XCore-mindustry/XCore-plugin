@@ -31,17 +31,6 @@ import org.xcore.ui.VNode;
  */
 public interface UiController<Model, Event> {
 
-    /**
-     * Factory for the initial model of a new dialog session.
-     *
-     * @deprecated {@link UiSession#start} takes the initial model itself and never calls this;
-     *             build the model where the session is started.
-     */
-    @Deprecated(forRemoval = true)
-    default Model initialModel(Object context) {
-        throw new UnsupportedOperationException("initialModel is not used; pass the model to UiSession.start");
-    }
-
     /** Pure reducer. Must not perform I/O directly; use the returned directives instead. */
     UpdateResult<Model> update(Model model, Event event, ControllerContext ctx);
 

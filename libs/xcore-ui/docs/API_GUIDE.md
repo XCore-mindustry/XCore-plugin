@@ -330,7 +330,6 @@ public VNode render(Model model) {
 window.slot(Variants.slot(SLOT_LIST, v), ...);
 return UpdateResult.patch(next, Variants.slots(SCREENS, SLOT_LIST));
 ```
-`DialogScaffold` is deprecated for this reason.
 
 ### Measuring words
 A view that fits text by measuring it needs the words now, not a lazy `Text.t`; implement
