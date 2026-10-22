@@ -42,6 +42,7 @@ import org.xcore.plugin.ui.menu.event.EventUiModel.View;
 import org.xcore.plugin.ui.menu.event.EventUiModel.Viewer;
 import org.xcore.plugin.ui.menu.event.EventUiModel.VoteState;
 import org.xcore.ui.VNode;
+import org.xcore.ui.runtime.EffectRunner;
 import org.xcore.ui.runtime.UiSession;
 import org.xcore.ui.runtime.UpdateResult;
 
@@ -277,6 +278,8 @@ class EventUiControllerTest {
         final List<EventUiEvent> delivered = new ArrayList<>();
         private final Deque<EventUiEvent> dispatched = new ArrayDeque<>();
         final UiSession<EventUiModel, EventUiEvent> ui;
+        /** Runs effects as the dialog's session would: only while it is open and the player's active one. */
+        private final EffectRunner<EventUiEvent> effects;
         EventUiModel model;
         UpdateResult<EventUiModel> last;
         boolean closed;
@@ -285,7 +288,7 @@ class EventUiControllerTest {
         Dialog(EventUiModel model) {
             this.model = model;
             ui = mock(UiSession.class);
-            doAnswer(i -> dispatched.add(i.getArgument(0))).when(ui).dispatch(any());
+            effects = new EffectRunner<>(dispatched::add, () -> !closed && session.activeUiSession() == ui);
             session.setActiveUiSession(ui);
         }
 
@@ -294,6 +297,7 @@ class EventUiControllerTest {
             last = controller.update(model, event, null);
             model = last.model();
             closed |= last.close();
+            effects.run(last.effects());
             return last;
         }
 

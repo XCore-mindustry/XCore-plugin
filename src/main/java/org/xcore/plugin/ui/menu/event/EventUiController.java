@@ -39,9 +39,10 @@ import org.xcore.ui.Ui;
 import org.xcore.ui.VImage;
 import org.xcore.ui.VNode;
 import org.xcore.ui.runtime.ControllerContext;
+import org.xcore.ui.runtime.Dispatcher;
+import org.xcore.ui.runtime.Effect;
 import org.xcore.ui.runtime.SlotKey;
 import org.xcore.ui.runtime.UiController;
-import org.xcore.ui.runtime.UiSession;
 import org.xcore.ui.runtime.UpdateResult;
 
 import java.time.Clock;
@@ -95,8 +96,15 @@ public class EventUiController implements UiController<EventUiModel, EventUiEven
     private final Async async;
     private final Session session;
     private final Clock clock;
-    /** Counts what this dialog asked of storage; only the latest answer may change it. */
-    private long loadGeneration;
+    /**
+     * The key of everything this dialog asks of storage: only the latest answer may change it, and
+     * a screen the player moves on to supersedes what the one they left was waiting for.
+     */
+    private static final String LOAD = "load";
+    private static final String PREVIEW = "preview";
+    /** Supersedes the loads still under way, for a screen that needs none of them. */
+    private static final Effect<EventUiEvent> ABANDON = dialog -> {
+    };
     /** A save is on its way: a second press must not store the event twice. */
     private boolean saving;
 
@@ -180,55 +188,32 @@ public class EventUiController implements UiController<EventUiModel, EventUiEven
     // Loading
     // =========================================================================
 
-    @SuppressWarnings("unchecked")
-    private @Nullable UiSession<EventUiModel, EventUiEvent> dialog() {
-        return session == null ? null : (UiSession<EventUiModel, EventUiEvent>) session.activeUiSession();
-    }
-
-    /** Hands {@code event} to the dialog that asked for it, unless it has asked for something newer or is gone. */
-    private void deliver(@Nullable UiSession<EventUiModel, EventUiEvent> dialog, long generation, EventUiEvent event) {
-        if (dialog == null || generation != loadGeneration || session.activeUiSession() != dialog) {
-            return;
-        }
-        dialog.dispatch(event);
-    }
-
-    /** The player went to another screen: what is still loading was asked for by the one they left. */
-    private void abandonLoads() {
-        loadGeneration++;
-    }
-
-    private void requestList(Tab tab, int page, Viewer viewer) {
-        long generation = ++loadGeneration;
-        var dialog = dialog();
-        async.supply(() -> backend.catalog(tab, page, viewer)).thenMain((catalog, error) -> {
+    private Effect<EventUiEvent> list(Tab tab, int page, Viewer viewer) {
+        return dialog -> async.supply(() -> backend.catalog(tab, page, viewer)).thenMain((catalog, error) -> {
             if (error != null) {
                 Log.err("Failed to load the events of tab " + tab, error);
             }
-            deliver(dialog, generation, error == null && catalog != null
+            dialog.dispatch(error == null && catalog != null
                     ? new EventUiEvent.ListLoaded(catalog) : new EventUiEvent.LoadFailed());
         });
     }
 
     private UpdateResult<EventUiModel> loadList(EventUiModel model, Tab tab, int page) {
-        requestList(tab, page, model.viewer());
-        return UpdateResult.of(model);
+        return UpdateResult.of(model).effect(LOAD, list(tab, page, model.viewer()));
     }
 
     private UpdateResult<EventUiModel> loadDetails(EventUiModel model, @Nullable ObjectId id, String notice) {
         if (id == null) {
             return UpdateResult.of(model);
         }
-        long generation = ++loadGeneration;
-        var dialog = dialog();
-        async.supply(() -> backend.event(id)).thenMain((stored, error) -> {
-            if (error != null) {
-                Log.err("Failed to load event " + id, error);
-            }
-            deliver(dialog, generation, error == null && stored != null
-                    ? new EventUiEvent.DetailsLoaded(details(stored), notice) : new EventUiEvent.LoadFailed());
-        });
-        return UpdateResult.of(model);
+        return UpdateResult.of(model).effect(LOAD, (Dispatcher<EventUiEvent> dialog) ->
+                async.supply(() -> backend.event(id)).thenMain((stored, error) -> {
+                    if (error != null) {
+                        Log.err("Failed to load event " + id, error);
+                    }
+                    dialog.dispatch(error == null && stored != null
+                            ? new EventUiEvent.DetailsLoaded(details(stored), notice) : new EventUiEvent.LoadFailed());
+                }));
     }
 
     /** {@code stored} as the viewer sees it: with their own vote, and the map's picture if the client has it. */
@@ -242,19 +227,16 @@ public class EventUiController implements UiController<EventUiModel, EventUiEven
     }
 
     /** Asks for the picture of the event's map; it arrives as an event of its own. */
-    private void requestPreview(Details details) {
-        var dialog = dialog();
-        if (dialog == null || session.player == null || details.map() == null) {
-            return;
-        }
-        String id = details.id();
-        backend.requestPreview(session.player, details.map(), (region, error) -> async.main(() -> {
-            if (session.activeUiSession() != dialog) {
+    private Effect<EventUiEvent> preview(Details details) {
+        return dialog -> {
+            if (session == null || session.player == null || details.map() == null) {
                 return;
             }
-            dialog.dispatch(region != null ? new EventUiEvent.PreviewReady(id, region)
-                    : new EventUiEvent.PreviewFailed(id));
-        }));
+            String id = details.id();
+            backend.requestPreview(session.player, details.map(), (region, error) -> async.main(() ->
+                    dialog.dispatch(region != null ? new EventUiEvent.PreviewReady(id, region)
+                            : new EventUiEvent.PreviewFailed(id))));
+        };
     }
 
     // =========================================================================
@@ -322,10 +304,9 @@ public class EventUiController implements UiController<EventUiModel, EventUiEven
                 if (model.view() != View.LIST) {
                     yield UpdateResult.of(model);
                 }
-                abandonLoads();
                 boolean resumed = keptDraft() != null;
                 EventUiModel next = model.withEditing(Editing.of(newDraft(null), backend.maps())).withView(View.EDITOR);
-                yield UpdateResult.rerender(resumed ? done(next, "event-ui-draft-restored") : next);
+                yield UpdateResult.rerender(resumed ? done(next, "event-ui-draft-restored") : next).effect(LOAD, ABANDON);
             }
             case EventUiEvent.ListLoaded(Catalog catalog) -> {
                 EventUiModel next = model.withCatalog(catalog).withVote(backend.votes()).withoutFeedback();
@@ -344,10 +325,8 @@ public class EventUiController implements UiController<EventUiModel, EventUiEven
             case EventUiEvent.DetailsLoaded(Details details, String notice) -> {
                 EventUiModel next = model.withDetails(details).withEditing(null).withVote(backend.votes())
                         .withView(View.DETAILS);
-                if (details.previewLoading()) {
-                    requestPreview(details);
-                }
-                yield UpdateResult.rerender(notice == null || notice.isEmpty() ? next : done(next, notice));
+                UpdateResult<EventUiModel> shown = UpdateResult.rerender(notice == null || notice.isEmpty() ? next : done(next, notice));
+                yield details.previewLoading() ? shown.effect(PREVIEW, preview(details)) : shown;
             }
             case EventUiEvent.PreviewReady(String eventId, String region) -> preview(model, eventId, region);
             case EventUiEvent.PreviewFailed(String eventId) -> preview(model, eventId, null);
@@ -357,8 +336,7 @@ public class EventUiController implements UiController<EventUiModel, EventUiEven
                 }
                 EventUiModel next = model.withDetails(null).withView(View.LIST);
                 // The list is shown as it was and brought up to date: the event may have changed it.
-                requestList(next.catalog().tab(), next.catalog().page(), next.viewer());
-                yield UpdateResult.rerender(next);
+                yield UpdateResult.rerender(next).effect(LOAD, list(next.catalog().tab(), next.catalog().page(), next.viewer()));
             }
             case EventUiEvent.Rate(boolean like) -> {
                 Details details = model.details();
@@ -439,8 +417,8 @@ public class EventUiController implements UiController<EventUiModel, EventUiEven
                     yield UpdateResult.of(model);
                 }
                 MapData map = details.map();
-                post(ctx, () -> backend.openMap(session, map));
-                yield UpdateResult.of(model);
+                // The map's dialog takes this one's place, so it opens once this press is dealt with.
+                yield UpdateResult.of(model).effect(dialog -> backend.openMap(session, map));
             }
             case EventUiEvent.Edit() -> {
                 Details details = model.details();
@@ -450,10 +428,9 @@ public class EventUiController implements UiController<EventUiModel, EventUiEven
                 if (!EventEditorService.canEdit(details.event(), editor())) {
                     yield UpdateResult.rerender(refused(model, Problem.NOT_ALLOWED.key()));
                 }
-                abandonLoads();
                 yield UpdateResult.rerender(model
                         .withEditing(Editing.of(Draft.of(details.event(), details.map()), backend.maps()))
-                        .withView(View.EDITOR));
+                        .withView(View.EDITOR)).effect(LOAD, ABANDON);
             }
 
             // ---------------------------------------------------------- editor
@@ -572,19 +549,10 @@ public class EventUiController implements UiController<EventUiModel, EventUiEven
                 if (session == null || !session.canGoBack() || session.menuService == null) {
                     yield UpdateResult.of(model);
                 }
-                post(ctx, () -> session.menuService.goBack(session));
-                yield UpdateResult.close(model);
+                yield UpdateResult.close(model).effect(dialog -> session.menuService.goBack(session));
             }
             case EventUiEvent.Close() -> UpdateResult.close(model);
         };
-    }
-
-    private static void post(ControllerContext ctx, Runnable action) {
-        if (ctx != null) {
-            ctx.post(action);
-        } else {
-            action.run();
-        }
     }
 
     private @Nullable Player player() {
@@ -626,19 +594,16 @@ public class EventUiController implements UiController<EventUiModel, EventUiEven
     private UpdateResult<EventUiModel> returnToList(EventUiModel model, Runnable work, String notice) {
         Tab tab = model.catalog().tab();
         Viewer viewer = model.viewer();
-        long generation = ++loadGeneration;
-        var dialog = dialog();
-        async.supply(() -> {
+        return UpdateResult.of(model).effect(LOAD, (Dispatcher<EventUiEvent> dialog) -> async.supply(() -> {
             work.run();
             return backend.catalog(tab, 1, viewer);
         }).thenMain((catalog, error) -> {
             if (error != null) {
                 Log.err("Failed to return to the events of tab " + tab, error);
             }
-            deliver(dialog, generation, error == null && catalog != null
+            dialog.dispatch(error == null && catalog != null
                     ? new EventUiEvent.Returned(catalog, notice) : new EventUiEvent.LoadFailed());
-        });
-        return UpdateResult.of(model);
+        }));
     }
 
     /** {@code draft} with what the text fields held; a press that came without them changes nothing. */
@@ -688,32 +653,28 @@ public class EventUiController implements UiController<EventUiModel, EventUiEven
         saving = true;
         Editor editor = editor();
         String fallback = defaultName(locale(session));
-        long generation = ++loadGeneration;
-        var dialog = dialog();
-        async.supply(() -> backend.save(draft, editor, fallback)).thenMain((result, error) -> {
-            saving = false;
-            if (error != null) {
-                Log.err("Failed to save an event", error);
-            }
-            // Clear the saved draft even after closing, but keep a newer draft the player started.
-            if (error == null && result != null && result.saved() && draft.isNew() && keptDraft() == draft) {
-                forget();
-            }
-            deliver(dialog, generation, new EventUiEvent.Saved(error == null && result != null
-                    ? result : new SaveResult(null, Problem.FAILED)));
-        });
-        return UpdateResult.of(model);
+        return UpdateResult.of(model).effect(LOAD, (Dispatcher<EventUiEvent> dialog) ->
+                async.supply(() -> backend.save(draft, editor, fallback)).thenMain((result, error) -> {
+                    saving = false;
+                    if (error != null) {
+                        Log.err("Failed to save an event", error);
+                    }
+                    // Clear the saved draft even after closing, but keep a newer draft the player started.
+                    if (error == null && result != null && result.saved() && draft.isNew() && keptDraft() == draft) {
+                        forget();
+                    }
+                    dialog.dispatch(new EventUiEvent.Saved(error == null && result != null
+                            ? result : new SaveResult(null, Problem.FAILED)));
+                }));
     }
 
     /** Out of the editor: to the event that was being changed, or to the list. */
     private UpdateResult<EventUiModel> leaveEditor(EventUiModel model) {
-        abandonLoads();
         if (model.details() != null) {
-            return UpdateResult.rerender(model.withEditing(null).withView(View.DETAILS));
+            return UpdateResult.rerender(model.withEditing(null).withView(View.DETAILS)).effect(LOAD, ABANDON);
         }
         EventUiModel next = model.withEditing(null).withView(View.LIST);
-        requestList(next.catalog().tab(), next.catalog().page(), next.viewer());
-        return UpdateResult.rerender(next);
+        return UpdateResult.rerender(next).effect(LOAD, list(next.catalog().tab(), next.catalog().page(), next.viewer()));
     }
 
     private UpdateResult<EventUiModel> picked(EventUiModel model, Editing editing, long time) {
