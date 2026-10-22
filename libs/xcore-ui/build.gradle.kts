@@ -102,7 +102,19 @@ dependencies {
 }
 
 tasks.test {
-    useJUnitPlatform()
+    useJUnitPlatform { excludeTags("ui-render") }
+}
+
+tasks.register<Test>("exportUiFixtures") {
+    description = "Write the menus whose real-client layout backs this library's contract, for mindustry-testkit's renderer."
+    group = "verification"
+    testClassesDirs = sourceSets.test.get().output.classesDirs
+    classpath = sourceSets.test.get().runtimeClasspath
+    useJUnitPlatform { includeTags("ui-render") }
+    val output = layout.buildDirectory.dir("ui-render")
+    systemProperty("xcore.uiRenderOutput", output.get().asFile.absolutePath)
+    outputs.dir(output)
+    doFirst { delete(output) }
 }
 
 tasks.register("getProjectVersion") {

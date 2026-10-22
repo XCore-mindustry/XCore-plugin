@@ -13,8 +13,9 @@ import java.util.Optional;
 /**
  * Declarative mapping between form field IDs and model lenses.
  *
- * <p>On submit, {@link #apply(Object, MenuResult)} decodes every bound field,
- * runs its validators in declaration order and produces an atomic
+ * <p>On submit, {@link #apply(Object, MenuResult)} decodes every bound field the
+ * result carries (an absent one keeps its value in the model), runs its validators
+ * in declaration order and produces an atomic
  * {@link FormResult}: either a fully-updated model, or the original model plus
  * per-field error tokens.
  */
@@ -63,6 +64,11 @@ public final class FormSchema<Model> {
     }
 
     private <T> Model applyOne(Binding<Model, T> binding, Model model, MenuResult result, Map<String, String> errors) {
+        if (result.values == null || !result.values.containsKey(binding.fieldId)) {
+            // The client sends only the fields it built alongside the pressed button: another tab or
+            // a patched slot leaves the rest out, and an absent field is no reason to clear the model.
+            return model;
+        }
         T decoded = binding.codec.decode(result, binding.fieldId);
         for (Validator<T> validator : binding.validators) {
             Optional<String> error = validator.validate(decoded);

@@ -59,4 +59,33 @@ class TextureRegistryTest {
         registry.ensureDelivered("conn1", png);
         assertThat(events).hasSize(3);
     }
+
+    @Test
+    void resetAllDeliveriesStreamsAgainAfterAWorldLoad() {
+        java.util.List<String> sent = new java.util.ArrayList<>();
+        TextureRegistry registry = new TextureRegistry((con, name, bytes) -> sent.add(con + ":" + name));
+        byte[] png = {1, 2, 3};
+
+        String name = registry.ensureDelivered("a", png);
+        registry.ensureDelivered("a", png);
+        registry.resetAllDeliveries();
+        registry.ensureDelivered("a", png);
+
+        assertThat(sent).containsExactly("a:" + name, "a:" + name);
+    }
+
+    @Test
+    void unregisterForgetsBytesAndDeliveries() {
+        java.util.List<String> sent = new java.util.ArrayList<>();
+        TextureRegistry registry = new TextureRegistry((con, name, bytes) -> sent.add(con));
+        byte[] png = {4, 5, 6};
+
+        String name = registry.ensureDelivered("a", png);
+        assertThat(registry.unregister(name)).isTrue();
+        assertThat(registry.bytes(name)).isNull();
+        assertThat(registry.size()).isZero();
+        registry.ensureDelivered("a", png);
+
+        assertThat(sent).containsExactly("a", "a");
+    }
 }

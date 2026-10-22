@@ -74,11 +74,33 @@ public final class TextureRegistry {
         }
     }
 
-    /** Drops the delivery marker so the texture re-streams on next use (e.g. after reconnect). */
+    /**
+     * Drops the delivery markers of one connection so its textures re-stream on next use. The
+     * client drops every server texture when it disconnects: call this when the player leaves.
+     */
     public void resetDelivery(String connectionId) {
         for (Map<String, Boolean> m : delivered.values()) {
             m.remove(connectionId);
         }
+    }
+
+    /**
+     * Drops every delivery marker. The client drops its server textures whenever it loads a world,
+     * so a map change on the server leaves every player without them: call this then.
+     */
+    public void resetAllDeliveries() {
+        delivered.clear();
+    }
+
+    /**
+     * Forgets a texture: its bytes and its delivery markers. A later {@link #register} of the same
+     * bytes brings it back under the same name. Clients that already have it keep it.
+     *
+     * @return whether the texture was registered
+     */
+    public boolean unregister(String regionName) {
+        delivered.remove(regionName);
+        return textures.remove(regionName) != null;
     }
 
     /** Number of unique textures currently held. */

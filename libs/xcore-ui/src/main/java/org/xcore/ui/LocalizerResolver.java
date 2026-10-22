@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReference;
@@ -107,6 +108,14 @@ public interface LocalizerResolver {
     }
 
     /**
+     * The language this resolver speaks, for what the bundle does not hold: names of game content,
+     * number formats. Resolvers that do not know theirs answer English.
+     */
+    default Locale locale() {
+        return Locale.ENGLISH;
+    }
+
+    /**
      * Combines this resolver with a fallback resolver.
      */
     default LocalizerResolver orElse(LocalizerResolver fallback) {
@@ -148,6 +157,12 @@ public interface LocalizerResolver {
             public boolean has(String key) {
                 I18NBundle b = Core.bundle;
                 return b != null && b.has(key);
+            }
+
+            @Override
+            public Locale locale() {
+                I18NBundle b = Core.bundle;
+                return b == null ? Locale.ENGLISH : LocalizerResolver.from(b).locale();
             }
         };
     }
@@ -253,6 +268,11 @@ public interface LocalizerResolver {
         }
 
         @Override
+        public Locale locale() {
+            return bundle.getLocale() != null ? bundle.getLocale() : Locale.ENGLISH;
+        }
+
+        @Override
         public boolean has(String key) {
             return bundle.has(key);
         }
@@ -347,6 +367,12 @@ public interface LocalizerResolver {
                 if (r.has(key)) return true;
             }
             return false;
+        }
+
+        /** The language of the first resolver: the others are its fallbacks. */
+        @Override
+        public Locale locale() {
+            return resolvers.getFirst().locale();
         }
 
         @Override

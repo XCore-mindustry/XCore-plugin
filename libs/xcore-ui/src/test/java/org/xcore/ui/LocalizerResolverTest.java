@@ -107,6 +107,39 @@ class LocalizerResolverTest {
     }
 
     @Test
+    void compositeSpeaksTheLanguageOfItsFirstResolver() {
+        LocalizerResolver german = new LocalizerResolver() {
+            @Override
+            public String format(String key, Map<String, Object> args) {
+                return key;
+            }
+
+            @Override
+            public java.util.Locale locale() {
+                return java.util.Locale.GERMAN;
+            }
+        };
+
+        assertThat(german.orElse(LocalizerResolver.from(Map.of("a", "b")::get)).locale())
+                .isEqualTo(java.util.Locale.GERMAN);
+    }
+
+    @Test
+    void coreSpeaksTheLanguageOfTheCoreBundle() {
+        I18NBundle saved = arc.Core.bundle;
+        try {
+            arc.Core.bundle = null;
+            assertThat(LocalizerResolver.core().locale()).isEqualTo(java.util.Locale.ENGLISH);
+
+            I18NBundle bundle = I18NBundle.createEmptyBundle();
+            arc.Core.bundle = bundle;
+            assertThat(LocalizerResolver.core().locale()).isEqualTo(LocalizerResolver.from(bundle).locale());
+        } finally {
+            arc.Core.bundle = saved;
+        }
+    }
+
+    @Test
     void orElseChainsFallback() {
         LocalizerResolver primary = LocalizerResolver.from(Map.of("hello", "Hi")::get);
         LocalizerResolver secondary = LocalizerResolver.from(Map.of("world", "Earth")::get);

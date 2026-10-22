@@ -30,21 +30,29 @@ public final class VNodeCompiler {
         return resolver;
     }
 
-    /** Compiles a full dialog body. The result is a table-level builder. */
+    /**
+     * Compiles a full dialog body. The result is a table-level builder.
+     *
+     * <p>The client builds the root into the dialog's own table, where only table properties
+     * (background, margin) take effect: a cell layout, an id or {@code wrap} on the root would be
+     * dropped. A root that has any of them is therefore compiled as the only child of the body.
+     */
     public UiBuilder.TableBuilder compile(VNode root) {
         Objects.requireNonNull(root, "root");
-        if (root instanceof VTable t) {
-            UiBuilder.TableBuilder builder = UiBuilder.table();
-            if (t.background() != null) builder.background(t.background());
-            if (t.margin() != null) builder.margin(t.margin());
-            if (Boolean.TRUE.equals(t.wrap())) builder.wrap(true);
-            applyCommon(builder, t);
-            compileEntries(builder, t.entries());
-            return builder;
+        UiBuilder.TableBuilder body = UiBuilder.table();
+        if (root instanceof VTable t && isBody(t)) {
+            tableProps(body, t);
+            compileEntries(body, t.entries());
+        } else {
+            compileNode(body, root);
         }
-        UiBuilder.TableBuilder table = UiBuilder.table();
-        compileChildren(table, List.of(root));
-        return table;
+        return body;
+    }
+
+    /** Whether {@code table} can be the dialog body itself: it needs no cell of its own. */
+    private static boolean isBody(VTable table) {
+        return table.id() == null && !Boolean.TRUE.equals(table.wrap())
+                && (table.layout() == null || table.layout().isDefault());
     }
 
     /** Compiles a slot body for {@code Call.menuBuilderUpdate}: a table whose entries replace the slot content. */
@@ -87,18 +95,26 @@ public final class VNodeCompiler {
 
     private void compileTable(UiBuilder.ContainerBuilder<?> parent, VTable table) {
         UiBuilder.TableBuilder builder = UiBuilder.table();
-        if (table.background() != null) builder.background(table.background());
-        if (table.margin() != null) builder.margin(table.margin());
-        if (Boolean.TRUE.equals(table.wrap())) builder.wrap(true);
+        tableProps(builder, table);
         applyCommon(builder, table);
         compileEntries(builder, table.entries());
         attach(parent, builder);
+    }
+
+    private static void tableProps(UiBuilder.TableBuilder builder, VTable table) {
+        if (table.background() != null) builder.background(table.background());
+        if (table.margin() != null) builder.margin(table.margin());
+        if (Boolean.TRUE.equals(table.wrap())) builder.wrap(true);
     }
 
     private void compileEntries(UiBuilder.ContainerBuilder<?> builder, List<Object> entries) {
         for (Object entry : entries) {
             if (entry instanceof VTable.RowMarker) {
                 builder.row();
+            } else if (entry instanceof VTable.Defaults defaults) {
+                UiBuilder.DefaultsBuilder cells = UiBuilder.defaults();
+                applyLayout(cells, defaults.layout());
+                builder.add(cells);
             } else if (entry instanceof VNode node) {
                 compileNode(builder, node);
             } else if (entry != null) {
@@ -176,7 +192,7 @@ public final class VNodeCompiler {
         if (button.clicked() != null) builder.clicked(button.clicked());
         if (button.group() != null) builder.group(button.group());
         if (button.checked() != null) builder.checked(button.checked());
-        builder.disabled(button.disabled());
+        if (button.disabled()) builder.disabled(true);
         applyCommon(builder, button);
         return builder;
     }
@@ -188,7 +204,7 @@ public final class VNodeCompiler {
         if (button.clicked() != null) builder.clicked(button.clicked());
         if (button.group() != null) builder.group(button.group());
         if (button.checked() != null) builder.checked(button.checked());
-        builder.disabled(button.disabled());
+        if (button.disabled()) builder.disabled(true);
         applyCommon(builder, button);
         return builder;
     }
@@ -200,7 +216,7 @@ public final class VNodeCompiler {
         if (field.maxLength() != null) builder.maxLength(field.maxLength());
         if (field.style() != null) builder.style(field.style());
         if (field.enter() != null) builder.enter(field.enter());
-        builder.disabled(field.disabled());
+        if (field.disabled()) builder.disabled(true);
         applyCommon(builder, field);
         return builder;
     }
@@ -210,7 +226,7 @@ public final class VNodeCompiler {
         if (check.checked() != null) builder.checked(check.checked());
         if (check.style() != null) builder.style(check.style());
         if (check.group() != null) builder.group(check.group());
-        builder.disabled(check.disabled());
+        if (check.disabled()) builder.disabled(true);
         applyCommon(builder, check);
         return builder;
     }
@@ -219,7 +235,7 @@ public final class VNodeCompiler {
         UiBuilder.SliderBuilder builder = UiBuilder.slider(slider.min(), slider.max(), slider.step());
         if (slider.defaultValue() != null) builder.defaultValue(slider.defaultValue());
         if (slider.style() != null) builder.style(slider.style());
-        builder.disabled(slider.disabled());
+        if (slider.disabled()) builder.disabled(true);
         applyCommon(builder, slider);
         return builder;
     }
@@ -236,7 +252,10 @@ public final class VNodeCompiler {
 
     private void applyCommon(UiBuilder.NodeBuilder<?> builder, VNode node) {
         if (node.id() != null) builder.id(node.id());
-        UiLayout l = node.layout();
+        applyLayout(builder, node.layout());
+    }
+
+    private static void applyLayout(UiBuilder.NodeBuilder<?> builder, UiLayout l) {
         if (l == null || l.isDefault()) return;
         if (l.width() != null) builder.width(l.width());
         if (l.height() != null) builder.height(l.height());
@@ -266,8 +285,20 @@ public final class VNodeCompiler {
         if (l.align() != null) builder.align(l.align());
         if (l.color() != null) builder.color(l.color());
         if (l.condition() != null) builder.condition(l.condition());
-        if (Boolean.TRUE.equals(l.disabled()) && !(builder instanceof UiBuilder.ContainerBuilder<?>)) {
-            // container nodes cannot be disabled in v160; leaf specs handle this themselves
+        if (Boolean.TRUE.equals(l.disabled())) disable(builder);
+    }
+
+    /** Disables a node that can be disabled; the client has nothing to disable in tables, panes, labels or images. */
+    private static void disable(UiBuilder.NodeBuilder<?> builder) {
+        switch (builder) {
+            case UiBuilder.ButtonBuilder b -> b.disabled(true);
+            case UiBuilder.ImageButtonBuilder b -> b.disabled(true);
+            case UiBuilder.ButtonTableBuilder b -> b.disabled(true);
+            case UiBuilder.FieldBuilder f -> f.disabled(true);
+            case UiBuilder.CheckBuilder c -> c.disabled(true);
+            case UiBuilder.SliderBuilder s -> s.disabled(true);
+            default -> {
+            }
         }
     }
 

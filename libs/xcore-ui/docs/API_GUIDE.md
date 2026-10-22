@@ -81,12 +81,7 @@ FormSchema<SettingsModel> schema = new FormSchema<SettingsModel>()
 ```java
 public class SettingsScreen implements UiController<SettingsModel, SettingsEvent> {
 
-    public static final SlotKey<String> SLOT_TAB = SlotKey.of("_r/0/slot_tab", String.class);
-
-    @Override
-    public SettingsModel initialModel() {
-        return new SettingsModel("Player", true, 80f, "general");
-    }
+    public static final SlotKey<String> SLOT_TAB = SlotKey.of("slot_tab");
 
     @Override
     public UpdateResult<SettingsModel> update(SettingsModel model, SettingsEvent event, ControllerContext ctx) {
@@ -122,21 +117,23 @@ public class SettingsScreen implements UiController<SettingsModel, SettingsEvent
 
 ## 4. Asynchronous Texture Streaming (`TextureRegistry`)
 
-To show dynamic PNGs (e.g. Discord avatars or minimaps):
-1. Register PNG bytes into `TextureRegistry`:
+To show dynamic PNGs (e.g. Discord avatars or map previews):
+1. Register PNG bytes and stream them to the player; the name is content-addressed:
    ```java
-   String hash = textureRegistry.register(pngBytes, 128, 128);
+   String region = textureRegistry.ensureDelivered(player.uuid(), pngBytes);
    ```
 2. In your UI view:
    ```java
-   t.add(new VImage("avatar", UiLayout.DEFAULT, "net-" + hash, "avatar-placeholder", Scaling.fit))
-    .size(64f, 64f);
+   t.image(region, l -> l.scaling(VImage.SCALING_FIT).placeholder("nomap").size(64f));
    ```
-3. When opening the dialog, call:
+   The client displays the placeholder and swaps it for the real texture as soon as the bytes arrive.
+3. Keep the delivery markers true to what the client holds. The client drops every server
+   texture when it disconnects **and whenever it loads a world**:
    ```java
-   textureRegistry.ensureDelivered(player.con, hash);
+   Events.on(PlayerLeave.class, e -> textureRegistry.resetDelivery(e.player.uuid()));
+   Events.on(WorldLoadEvent.class, e -> textureRegistry.resetAllDeliveries());
    ```
-   The client automatically displays the placeholder and swaps it for the real texture as soon as bytes stream over `TextureStream`!
+   `unregister(region)` forgets a texture you no longer show (e.g. when a cache evicts it).
 
 ---
 
@@ -147,7 +144,7 @@ No Mindustry server or mocks required:
 @Test
 void testTabSelectionPatchesSlot() {
     var screen = new SettingsScreen();
-    var initial = screen.initialModel();
+    var initial = new SettingsModel("Player", true, 80f, "general");
 
     var result = screen.update(initial, new SelectTab("audio"), null);
 
@@ -281,3 +278,78 @@ every card on every menu open, which is the wrong trade for a layout nicety.
 The real fix belongs upstream: `UiTreeBuilder` should pass dimension values through `Scl.scl`, the
 same way it already does for text. That is a small change in one method and would make every
 dimension in this DSL scale-aware at once.
+
+---
+
+## 8. Session Lifecycle, Effects and Routing
+
+### Closing
+- The reducer closes its dialog by returning `UpdateResult.close(model)`; `ControllerContext.close()`
+  is for closing from outside the reducer. Doing both closes twice.
+- When the player closes the dialog, the cancelled result never reaches `parseEvent`: the session
+  ends and `UiController.closed(model)` is called. Nothing is sent back.
+- A session another dialog has replaced should be `detach()`ed (`UiSession.Registry.register` does
+  it for you): it then sends nothing, and its pending effects stop delivering.
+- `willReportClose()` tells whether the client will still report a close: Mindustry stops reporting
+  it after the first press in a dialog, and a patch keeps that dialog.
+
+### Effects
+A reducer must not do I/O itself. It returns the work as an effect, run once the new model has been
+applied and sent:
+```java
+case Refresh() -> UpdateResult.rerender(model.loading())
+        .effect("list", (Dispatcher<TopEvent> d) -> async.supply(this::fetch)
+                .thenMain((data, error) -> d.dispatch(new Loaded(data))));
+```
+The dispatcher delivers only while the session is active, and a keyed one only while no newer
+effect of the same key was started, so a late answer never lands on a dialog that moved on.
+`session.run(key, effect)` starts one from outside the reducer (e.g. the first load).
+
+### Routing actions
+```java
+private static final ActionRouter<HelpEvent> ACTIONS = ActionRouter.<HelpEvent>create()
+        .on("action:back", BackToList::new)
+        .onResult("action:search", r -> new Search(r.getString("field_search", "")))
+        .prefixInt("action:page:", OpenPage::new)
+        .prefix("action:cmd:", SelectCommand::new);
+```
+An unknown action parses to `null`, which the session ignores: a stray id never closes a dialog.
+
+### Layout per class of screens
+The client does not shrink a dialog to its screen: a wrapped label asks for the width of its whole
+line, and a scroll pane grants it. Give every piece a width and lay the dialog out once per class of
+screens; `Variants.byWidth` nests the conditions so each client builds only its own layout:
+```java
+static final List<Variant<Float>> SCREENS = List.of(
+        new Variant<>("wide", 800f, 700f), new Variant<>("narrow", 490f, 450f), new Variant<>("small", 0f, 330f));
+
+public VNode render(Model model) {
+    return Variants.byWidth(SCREENS, v -> window(model, v.value()));
+}
+// a slot per layout, and a patch that names them all:
+window.slot(Variants.slot(SLOT_LIST, v), ...);
+return UpdateResult.patch(next, Variants.slots(SCREENS, SLOT_LIST));
+```
+`DialogScaffold` is deprecated for this reason.
+
+### Measuring words
+A view that fits text by measuring it needs the words now, not a lazy `Text.t`; implement
+`render(Model, RenderContext)` and use `context.t(key, args)`, which resolves with the session's
+resolver.
+
+### Packet size
+A dialog travels as one packet and the client reads it into a 32 KB buffer. `UiSession` refuses to
+send a dialog or a slot body over `UiPackets.LIMIT` and throws `UiPackets.TooLargeException` instead;
+`UiPackets.size(compiled)` measures one in tests.
+
+### Checking on the real client
+`./gradlew exportUiFixtures` writes the menus whose real-client layout backs this guide (a root
+with a width, a slot with rows, variants per screen) to `build/ui-render/`. Render them with the
+renderer of [mindustry-testkit](https://github.com/XCore-mindustry/mindustry-testkit/tree/main/render):
+
+```sh
+../mindustry-testkit/render/render --profiles phone,android1080,pc build/ui-render
+```
+
+What each menu must show is in the javadoc of `RealClientFixtures`. A change to the compiler or
+to `Variants` should be rendered before it is released.

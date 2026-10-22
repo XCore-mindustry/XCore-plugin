@@ -29,11 +29,6 @@ class UiSessionTest {
 
     static class CounterController implements UiController<TestModel, TestEvent> {
         @Override
-        public TestModel initialModel(Object context) {
-            return new TestModel(0, "main");
-        }
-
-        @Override
         public UpdateResult<TestModel> update(TestModel model, TestEvent event, ControllerContext ctx) {
             return switch (event) {
                 case TestEvent.Increment() ->
@@ -110,7 +105,7 @@ class UiSessionTest {
         MockContext ctx = new MockContext();
 
         UiSession<TestModel, TestEvent> session = UiSession.start(
-                controller, controller.initialModel(null), ctx, gateway, LocalizerResolver.IDENTITY);
+                controller, new TestModel(0, "main"), ctx, gateway, LocalizerResolver.IDENTITY);
 
         // 1. Initial open() -> transmits full dialog
         session.open();
@@ -153,7 +148,7 @@ class UiSessionTest {
         MockContext ctx = new MockContext();
 
         UiSession<TestModel, TestEvent> session = UiSession.start(
-                controller, controller.initialModel(null), ctx, gateway, LocalizerResolver.IDENTITY);
+                controller, new TestModel(0, "main"), ctx, gateway, LocalizerResolver.IDENTITY);
         session.open();
 
         session.dispatch(new TestEvent.Increment());
@@ -173,7 +168,7 @@ class UiSessionTest {
 
         // 1. Start without explicit resolver -> uses default (IDENTITY)
         UiSession<TestModel, TestEvent> session = UiSession.start(
-                controller, controller.initialModel(null), ctx, gateway);
+                controller, new TestModel(0, "main"), ctx, gateway);
         session.open();
         assertThat(gateway.actions).hasSize(1);
         assertThat(gateway.actions.get(0).type()).isEqualTo("SHOW");
@@ -192,7 +187,7 @@ class UiSessionTest {
         MockContext ctx = new MockContext();
 
         UiSession<TestModel, TestEvent> session = UiSession.start(
-                controller, controller.initialModel(null), ctx, gateway, LocalizerResolver.IDENTITY);
+                controller, new TestModel(0, "main"), ctx, gateway, LocalizerResolver.IDENTITY);
 
         session.open();
         long token1 = session.token();

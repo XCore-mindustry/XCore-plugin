@@ -5,10 +5,10 @@ import org.xcore.ui.Ui;
 /**
  * Structural variants that the client picks, rather than the server guessing.
  *
- * <p>Sizing should never come through here — {@code growX() + maxWidth(n)} already adapts on its
- * own, and routing it through a variant would only duplicate the subtree N times over the wire.
- * What is left is layout that genuinely cannot be expressed relatively: a portrait phone stacking a
- * name above its score while a landscape desktop shows them side by side.
+ * <p>These place one piece under a condition. A whole dialog laid out once per class of screens,
+ * which is what keeps text on a phone's screen, goes through {@link Variants#byWidth} instead.
+ * What is left here is a local difference: a portrait phone stacking a name above its score while
+ * a landscape desktop shows them side by side.
  *
  * <p>Each variant is a real node carrying Mindustry's native {@code condition}, evaluated in
  * {@code UiTreeBuilder.evalCondition} on the client from {@code Core.graphics.isPortrait()} or

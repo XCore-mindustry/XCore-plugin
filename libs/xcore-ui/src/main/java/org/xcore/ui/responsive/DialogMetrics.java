@@ -5,6 +5,9 @@ import java.util.Objects;
 /**
  * Upper bounds for a server-driven dialog, resolved by the client.
  *
+ * <p>The truncation helpers hold for any layout. The caps are what {@link DialogScaffold} lays out
+ * with, and share its limits: see there, and {@link Variants} for a layout that fits a phone.
+ *
  * <p>These are caps, not sizes. Mindustry ships literal floats for {@code width}/{@code maxWidth},
  * and a cell only honours {@code maxWidth} when it also fills
  * ({@code growX() + maxWidth(n)} resolves to {@code min(available, n)}). Emitting a cap instead of

@@ -30,7 +30,13 @@ public final class Ui {
     // Responsive Scaffolds
     // ------------------------------------------------------------------
 
-    /** Builds a dialog scaffold: sticky header, bounded scrolling body, sticky footer. */
+    /**
+     * Builds a dialog scaffold: sticky header, bounded scrolling body, sticky footer.
+     *
+     * @deprecated see {@link org.xcore.ui.responsive.DialogScaffold}
+     */
+    @Deprecated
+    @SuppressWarnings("deprecation")
     public static VNode scaffold(org.xcore.ui.responsive.DialogMetrics metrics, Consumer<org.xcore.ui.responsive.DialogScaffold> consumer) {
         org.xcore.ui.responsive.DialogScaffold scaffold = org.xcore.ui.responsive.DialogScaffold.create(metrics);
         if (consumer != null) consumer.accept(scaffold);
@@ -73,24 +79,36 @@ public final class Ui {
     // Leaves
     // ------------------------------------------------------------------
 
-    public static VLabel label(Text text, Consumer<UiLayout.Builder> layout) {
-        return new VLabel(null, buildLayout(layout), text, false, null, null);
+    /** A label; the spec takes its layout and, ahead of it in a chain, {@code labelAlign} and {@code style}. */
+    public static VLabel label(Text text, Consumer<? super LabelSpec> spec) {
+        return label(text, false, spec);
     }
 
     public static VLabel label(Text text) {
         return label(text, null);
     }
 
-    public static VLabel labelWrap(Text text, Consumer<UiLayout.Builder> layout) {
-        return new VLabel(null, buildLayout(layout), text, true, null, null);
+    /** A label that wraps its text to the width of its cell. */
+    public static VLabel labelWrap(Text text, Consumer<? super LabelSpec> spec) {
+        return label(text, true, spec);
     }
 
     public static VLabel labelWrap(Text text) {
         return labelWrap(text, null);
     }
 
-    public static VImage image(String region, Consumer<UiLayout.Builder> layout) {
-        return new VImage(null, buildLayout(layout), region, null, null);
+    private static VLabel label(Text text, boolean wrap, Consumer<? super LabelSpec> spec) {
+        LabelSpec s = new LabelSpec();
+        if (wrap) s.wrap();
+        if (spec != null) spec.accept(s);
+        return s.toNode(text);
+    }
+
+    /** An image; the spec takes its layout and, ahead of it in a chain, {@code scaling} and {@code placeholder}. */
+    public static VImage image(String region, Consumer<? super ImageSpec> spec) {
+        ImageSpec s = new ImageSpec();
+        if (spec != null) spec.accept(s);
+        return s.toNode(region);
     }
 
     public static VImage image(String region) {
@@ -172,24 +190,36 @@ public final class Ui {
             return this;
         }
 
-        public TableBuilder label(Text text, Consumer<UiLayout.Builder> layout) {
-            return add(Ui.label(text, layout));
+        /** Cell defaults for every cell added after this in the table (the client's {@code defaults}). */
+        public TableBuilder defaults(Consumer<UiLayout.Builder> l) {
+            UiLayout.Builder b = new UiLayout.Builder();
+            l.accept(b);
+            entries.add(new VTable.Defaults(b.build()));
+            return this;
+        }
+
+        public TableBuilder label(Text text, Consumer<? super LabelSpec> spec) {
+            return add(Ui.label(text, spec));
         }
 
         public TableBuilder label(Text text) {
             return add(Ui.label(text));
         }
 
-        public TableBuilder labelWrap(Text text, Consumer<UiLayout.Builder> layout) {
-            return add(Ui.labelWrap(text, layout));
+        public TableBuilder labelWrap(Text text, Consumer<? super LabelSpec> spec) {
+            return add(Ui.labelWrap(text, spec));
         }
 
         public TableBuilder labelWrap(Text text) {
             return add(Ui.labelWrap(text));
         }
 
-        public TableBuilder image(String region, Consumer<UiLayout.Builder> layout) {
-            return add(Ui.image(region, layout));
+        public TableBuilder image(String region, Consumer<? super ImageSpec> spec) {
+            return add(Ui.image(region, spec));
+        }
+
+        public TableBuilder image(String region) {
+            return add(Ui.image(region));
         }
 
         public TableBuilder button(Text text, String clicked, Consumer<ButtonSpec> spec) {
@@ -225,6 +255,11 @@ public final class Ui {
             return add(UiSlot.slot(slotKey, body));
         }
 
+        /** Declares a dynamic slot in this table under {@code key}, the key a patch names. */
+        public TableBuilder slot(org.xcore.ui.runtime.SlotKey<?> key, Consumer<TableBuilder> body) {
+            return slot(key.path(), body);
+        }
+
         public TableBuilder stack(Consumer<StackBuilder> consumer) {
             return add(Ui.stack(consumer));
         }
@@ -233,8 +268,8 @@ public final class Ui {
             return add(Ui.pane(consumer));
         }
 
-        public TableBuilder component(Component<?> component) {
-            return add(new org.xcore.ui.VComponentNode(component, List.of()));
+        public <P> TableBuilder component(Component<P> component, P props) {
+            return add(component.with(props));
         }
 
         VTable build() {
@@ -255,16 +290,16 @@ public final class Ui {
 
         public PaneBuilder add(VNode node) { children.add(node); return this; }
 
-        public PaneBuilder label(Text text, Consumer<UiLayout.Builder> layout) {
-            return add(Ui.label(text, layout));
+        public PaneBuilder label(Text text, Consumer<? super LabelSpec> spec) {
+            return add(Ui.label(text, spec));
         }
 
         public PaneBuilder label(Text text) {
             return add(Ui.label(text));
         }
 
-        public PaneBuilder labelWrap(Text text, Consumer<UiLayout.Builder> layout) {
-            return add(Ui.labelWrap(text, layout));
+        public PaneBuilder labelWrap(Text text, Consumer<? super LabelSpec> spec) {
+            return add(Ui.labelWrap(text, spec));
         }
 
         public PaneBuilder labelWrap(Text text) {
@@ -291,24 +326,24 @@ public final class Ui {
 
         public StackBuilder add(VNode node) { children.add(node); return this; }
 
-        public StackBuilder label(Text text, Consumer<UiLayout.Builder> layout) {
-            return add(Ui.label(text, layout));
+        public StackBuilder label(Text text, Consumer<? super LabelSpec> spec) {
+            return add(Ui.label(text, spec));
         }
 
         public StackBuilder label(Text text) {
             return add(Ui.label(text));
         }
 
-        public StackBuilder labelWrap(Text text, Consumer<UiLayout.Builder> layout) {
-            return add(Ui.labelWrap(text, layout));
+        public StackBuilder labelWrap(Text text, Consumer<? super LabelSpec> spec) {
+            return add(Ui.labelWrap(text, spec));
         }
 
         public StackBuilder labelWrap(Text text) {
             return add(Ui.labelWrap(text));
         }
 
-        public StackBuilder image(String region, Consumer<UiLayout.Builder> layout) {
-            return add(Ui.image(region, layout));
+        public StackBuilder image(String region, Consumer<? super ImageSpec> spec) {
+            return add(Ui.image(region, spec));
         }
 
         VStack build() {
@@ -319,6 +354,44 @@ public final class Ui {
     // ------------------------------------------------------------------
     // Leaf spec objects
     // ------------------------------------------------------------------
+
+    /** Spec for labels: what only a label has, then its layout. */
+    public static final class LabelSpec extends UiLayout.Builder {
+        private boolean wrap;
+        private String labelAlign;
+        private String style;
+
+        LabelSpec() {
+        }
+
+        /** Wraps the text to the width of the cell. */
+        public LabelSpec wrap() { this.wrap = true; return this; }
+        /** Where the text sits inside the label: {@code center}, {@code left}, {@code right}, {@code top}, ... */
+        public LabelSpec labelAlign(String align) { this.labelAlign = align; return this; }
+        public LabelSpec style(String style) { this.style = style; return this; }
+
+        VLabel toNode(Text text) {
+            return new VLabel(null, build(), text, wrap, style, labelAlign);
+        }
+    }
+
+    /** Spec for images: what only an image has, then its layout. */
+    public static final class ImageSpec extends UiLayout.Builder {
+        private String scaling;
+        private String placeholder;
+
+        ImageSpec() {
+        }
+
+        /** How the drawable fills the cell: {@link VImage#SCALING_FIT}, {@link VImage#SCALING_FILL}, ... */
+        public ImageSpec scaling(String scaling) { this.scaling = scaling; return this; }
+        /** Shown until a server-streamed region has arrived. */
+        public ImageSpec placeholder(String placeholder) { this.placeholder = placeholder; return this; }
+
+        VImage toNode(String region) {
+            return new VImage(null, build(), region, placeholder, scaling);
+        }
+    }
 
     /** Fluent spec for buttons. */
     public static final class ButtonSpec {
@@ -492,16 +565,28 @@ public final class Ui {
             return this;
         }
 
-        public ButtonTableBuilder label(Text text, Consumer<UiLayout.Builder> layout) {
-            return add(Ui.label(text, layout));
+        public ButtonTableBuilder label(Text text, Consumer<? super LabelSpec> spec) {
+            return add(Ui.label(text, spec));
         }
 
         public ButtonTableBuilder label(Text text) {
             return add(Ui.label(text));
         }
 
-        public ButtonTableBuilder image(String region, Consumer<UiLayout.Builder> layout) {
-            return add(Ui.image(region, layout));
+        public ButtonTableBuilder labelWrap(Text text, Consumer<? super LabelSpec> spec) {
+            return add(Ui.labelWrap(text, spec));
+        }
+
+        /** Cell defaults for every cell added after this in the button (the client's {@code defaults}). */
+        public ButtonTableBuilder defaults(Consumer<UiLayout.Builder> l) {
+            UiLayout.Builder b = new UiLayout.Builder();
+            l.accept(b);
+            entries.add(new VTable.Defaults(b.build()));
+            return this;
+        }
+
+        public ButtonTableBuilder image(String region, Consumer<? super ImageSpec> spec) {
+            return add(Ui.image(region, spec));
         }
 
         public ButtonTableBuilder image(String region) {

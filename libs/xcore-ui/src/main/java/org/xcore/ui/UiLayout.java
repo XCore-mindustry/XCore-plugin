@@ -65,8 +65,14 @@ public record UiLayout(
         return new Builder(this);
     }
 
-    /** Fluent builder for {@link UiLayout}; obtain via {@code Ui.layout()} or {@link #mutate()}. */
-    public static final class Builder {
+    /**
+     * Fluent builder for {@link UiLayout}; obtain via {@code Ui.layout()} or {@link #mutate()}.
+     *
+     * <p>Leaf specs such as {@link Ui.LabelSpec} extend it, so a layout lambda written for a label
+     * or an image can also set what only that node has. The layout methods return this type, so
+     * such a method goes first in a chain: {@code l -> l.labelAlign("center").width(200f)}.
+     */
+    public static class Builder {
         private Float width, height, minWidth, maxWidth, minHeight, maxHeight;
         private Float size;
         private Float pad, padTop, padLeft, padBottom, padRight;

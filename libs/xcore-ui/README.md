@@ -111,11 +111,6 @@ public class CounterController implements UiController<CounterModel, CounterEven
     public static final SlotKey<Object> SLOT_COUNT = SlotKey.of("slot_count");
 
     @Override
-    public CounterModel initialModel(Object ctx) {
-        return new CounterModel(0);
-    }
-
-    @Override
     public UpdateResult<CounterModel> update(CounterModel model, CounterEvent event, ControllerContext ctx) {
         return switch (event) {
             case CounterEvent.Increment() ->
@@ -132,10 +127,12 @@ public class CounterController implements UiController<CounterModel, CounterEven
         });
     }
 
+    private static final ActionRouter<CounterEvent> ACTIONS = ActionRouter.<CounterEvent>create()
+            .on("action:inc", CounterEvent.Increment::new);
+
     @Override
     public CounterEvent parseEvent(MenuResult result) {
-        if ("action:inc".equals(result.result)) return new CounterEvent.Increment();
-        return null;
+        return ACTIONS.parse(result);
     }
 }
 ```
@@ -169,12 +166,7 @@ session.open();
 ```java
 public class PlayerSettingsScreen implements UiController<SettingsModel, SettingsEvent> {
 
-    public static final SlotKey<String> SLOT_TAB = SlotKey.of("_r/0/slot_tab", String.class);
-
-    @Override
-    public SettingsModel initialModel() {
-        return new SettingsModel("Player", true, 80f, "profile");
-    }
+    public static final SlotKey<String> SLOT_TAB = SlotKey.of("slot_tab");
 
     @Override
     public UpdateResult<SettingsModel> update(SettingsModel model, SettingsEvent event, ControllerContext ctx) {

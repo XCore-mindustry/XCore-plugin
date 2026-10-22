@@ -74,4 +74,16 @@ class FormSchemaTest {
         assertThat(ValueCodec.bool().decode("gibberish")).isFalse();
         assertThat(ValueCodec.string().decode(null)).isEmpty();
     }
+
+    @Test
+    void absentFieldKeepsItsValue() {
+        PlayerSettings initial = new PlayerSettings("OldNick", 50f, true, 5);
+        MenuResult result = new MenuResult();
+        result.values.put("f_vol", 20f); // the nickname field was not built alongside the pressed button
+
+        FormSchema.FormResult<PlayerSettings> res = schema.apply(initial, result);
+
+        assertThat(res.isValid()).isTrue();
+        assertThat(res.model()).isEqualTo(new PlayerSettings("OldNick", 20f, true, 5));
+    }
 }
