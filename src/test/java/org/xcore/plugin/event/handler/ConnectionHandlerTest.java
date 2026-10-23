@@ -1,26 +1,14 @@
 package org.xcore.plugin.event.handler;
 
-import arc.util.Time;
-import arc.Core;
-import arc.Settings;
-import mindustry.Vars;
-import mindustry.core.NetServer;
 import mindustry.game.EventType;
-import mindustry.entities.EntityGroup;
-import mindustry.gen.Call;
-import mindustry.gen.Groups;
 import mindustry.gen.Player;
 import mindustry.net.Administration;
-import mindustry.net.NetConnection;
 import org.xcore.protocol.generated.messages.identity.IdentityMessages.PlayerJoinLeaveV1;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.mockito.MockedStatic;
 import org.xcore.plugin.config.TomlSecretsConfig;
 import org.xcore.plugin.config.TomlXcoreConfig;
-import org.xcore.plugin.database.repository.AdminDataRepository;
 import org.xcore.plugin.localization.Localization;
 import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.service.NetworkService;
@@ -34,6 +22,9 @@ import org.xcore.plugin.concurrent.InlineStorageExecutor;
 import org.xcore.plugin.session.Session;
 import org.xcore.plugin.session.SessionService;
 import org.xcore.plugin.vote.VoteService;
+import org.xcore.testkit.fixtures.HeadlessWorld;
+import org.xcore.testkit.fixtures.MockPlayer;
+import org.xcore.testkit.fixtures.junit.WithHeadlessWorld;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyMap;
@@ -49,6 +40,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import java.util.concurrent.Callable;
 
+@WithHeadlessWorld
 class ConnectionHandlerTest {
 
     /**
@@ -58,34 +50,14 @@ class ConnectionHandlerTest {
      */
     private final Async async = new Async(InlineStorageExecutor.create(), Runnable::run);
 
-    private NetServer previousNetServer;
+    private HeadlessWorld world;
     private Administration admins;
-    private Settings previousSettings;
-    private EntityGroup<Player> previousPlayers;
 
     @BeforeEach
-    void setUp() {
-        previousPlayers = Groups.player;
-        // NetServer.connectConfirm calls player.add() before firing PlayerJoin, so the
-        // player is already in Groups.player by the time the handler runs. The join
-        // continuation relies on that to drop work for players who left in the meantime,
-        // so the fixture has to reproduce it.
-        Groups.player = new EntityGroup<>(Player.class, false, false);
-        previousNetServer = Vars.netServer;
-        previousSettings = Core.settings;
+    void setUp(HeadlessWorld world) {
+        this.world = world;
         admins = mock(Administration.class);
-        NetServer netServer = mock(NetServer.class);
-        netServer.admins = admins;
-        Vars.netServer = netServer;
-        Core.settings = mock(Settings.class);
-        when(Core.settings.getString("servername", "Server")).thenReturn("Server");
-    }
-
-    @AfterEach
-    void tearDown() {
-        Vars.netServer = previousNetServer;
-        Core.settings = previousSettings;
-        Groups.player = previousPlayers;
+        world.netServer().admins = admins;
     }
 
     @Test
@@ -108,11 +80,8 @@ class ConnectionHandlerTest {
                 mock(MapVoteObserverService.class),
                 new Async(org.xcore.plugin.concurrent.InlineStorageExecutor.create(), queued::add));
 
-        Player player = onlinePlayer();
-        player.name = "Joiner";
-        player.con = new DummyNetConnection("2.2.2.2");
-        player.con.uuid = "uuid-async";
-        player.con.player = player;
+        MockPlayer client = world.addPlayer(b -> b.name("Joiner").address("2.2.2.2").uuid("uuid-async"));
+        Player player = client.player();
 
         PlayerData data = new PlayerData("uuid-async", true);
         data.pid = 3;
@@ -122,28 +91,26 @@ class ConnectionHandlerTest {
         when(sessionService.loadPlayerData("uuid-async")).thenReturn(data);
         when(sessionService.registerLogin(eq(player), same(data))).thenReturn(session);
 
-        try (MockedStatic<Time> time = Mockito.mockStatic(Time.class);
-             MockedStatic<Call> call = Mockito.mockStatic(Call.class)) {
-            handler.onPlayerJoin(new EventType.PlayerJoin(player));
+        handler.onPlayerJoin(new EventType.PlayerJoin(player));
 
-            // The storage phase has run, so the data side is done...
-            verify(sessionService).loadPlayerData("uuid-async");
-            // ...but no session exists yet and no packet has been sent, because the game
-            // thread has not run. Registering now would publish a session whose Mongo
-            // write has not landed.
-            verify(sessionService, never()).registerLogin(any(), any());
-            verifyNoInteractions(observerService, playerDisplayService);
-            verify(playerDisplayService, never()).refresh(any());
-            assertThat(queued).hasSize(1);
+        // The storage phase has run, so the data side is done...
+        verify(sessionService).loadPlayerData("uuid-async");
+        // ...but no session exists yet and no packet has been sent, because the game
+        // thread has not run. Registering now would publish a session whose Mongo
+        // write has not landed.
+        verify(sessionService, never()).registerLogin(any(), any());
+        verifyNoInteractions(observerService, playerDisplayService);
+        verify(playerDisplayService, never()).refresh(any());
+        assertThat(client.sentPackets()).isEmpty();
+        assertThat(queued).hasSize(1);
 
-            queued.forEach(Runnable::run);
+        queued.forEach(Runnable::run);
 
-            verify(sessionService).registerLogin(eq(player), same(data));
-            verify(observerService).restore(player);
-            verify(playerDisplayService).refresh(session);
-            verify(sessionService).markOnline(data, "mini-pvp");
-            verify(networkService).post(any(PlayerJoinLeaveV1.class));
-        }
+        verify(sessionService).registerLogin(eq(player), same(data));
+        verify(observerService).restore(player);
+        verify(playerDisplayService).refresh(session);
+        verify(sessionService).markOnline(data, "mini-pvp");
+        verify(networkService).post(any(PlayerJoinLeaveV1.class));
     }
 
     @Test
@@ -163,24 +130,18 @@ class ConnectionHandlerTest {
                 mock(MapVoteObserverService.class),
                 new Async(org.xcore.plugin.concurrent.InlineStorageExecutor.create(), queued::add));
 
-        Player player = onlinePlayer();
-        player.name = "Quitter";
-        player.con = new DummyNetConnection("2.2.2.2");
-        player.con.uuid = "uuid-gone";
-        player.con.player = player;
+        MockPlayer client = world.addPlayer(b -> b.name("Quitter").address("2.2.2.2").uuid("uuid-gone"));
+        Player player = client.player();
 
         PlayerData data = new PlayerData("uuid-gone", true);
         data.pid = 9;
         when(sessionService.loadPlayerData("uuid-gone")).thenReturn(data);
         when(sessionService.registerLogin(eq(player), same(data))).thenReturn(mock(Session.class));
 
-        try (MockedStatic<Time> time = Mockito.mockStatic(Time.class);
-             MockedStatic<Call> call = Mockito.mockStatic(Call.class)) {
-            handler.onPlayerJoin(new EventType.PlayerJoin(player));
-        }
+        handler.onPlayerJoin(new EventType.PlayerJoin(player));
 
         // The player disconnects while the Mongo read is in flight.
-        when(player.isAdded()).thenReturn(false);
+        world.removePlayer(client);
         queued.forEach(Runnable::run);
 
         // A session registered here would never be removed: onPlayerLeave already ran and
@@ -205,11 +166,8 @@ class ConnectionHandlerTest {
                 mock(MapVoteObserverService.class),
                 new Async(org.xcore.plugin.concurrent.InlineStorageExecutor.create(), queued::add));
 
-        Player player = onlinePlayer();
-        player.name = "Quitter";
-        player.con = new DummyNetConnection("2.2.2.2");
-        player.con.uuid = "uuid-gone2";
-        player.con.player = player;
+        MockPlayer client = world.addPlayer(b -> b.name("Quitter").address("2.2.2.2").uuid("uuid-gone2"));
+        Player player = client.player();
 
         PlayerData data = new PlayerData("uuid-gone2", true);
         data.pid = 11;
@@ -217,12 +175,9 @@ class ConnectionHandlerTest {
         data.nickname = "OldName";
         when(sessionService.loadPlayerData("uuid-gone2")).thenReturn(data);
 
-        try (MockedStatic<Time> time = Mockito.mockStatic(Time.class);
-             MockedStatic<Call> call = Mockito.mockStatic(Call.class)) {
-            handler.onPlayerJoin(new EventType.PlayerJoin(player));
-        }
+        handler.onPlayerJoin(new EventType.PlayerJoin(player));
 
-        when(player.isAdded()).thenReturn(false);
+        world.removePlayer(client);
         queued.forEach(Runnable::run);
 
         // The write happened in the storage phase and is not rolled back: the address and
@@ -260,13 +215,8 @@ class ConnectionHandlerTest {
                 async
         );
 
-        Player player = onlinePlayer();
-        player.name = "[red]Renamed[]";
-        player.admin = true;
-        player.con = new DummyNetConnection("2.2.2.2");
-        player.con.uuid = "uuid-1";
-        player.con.usid = "usid-1";
-        player.con.player = player;
+        MockPlayer client = world.addPlayer(b -> b.name("[red]Renamed[]").admin(true).address("2.2.2.2").uuid("uuid-1").usid("usid-1"));
+        Player player = client.player();
 
         Administration.PlayerInfo info = new Administration.PlayerInfo();
         info.timesJoined = 5;
@@ -288,10 +238,7 @@ class ConnectionHandlerTest {
         when(sessionService.loadPlayerData("uuid-1")).thenReturn(data);
         when(sessionService.registerLogin(eq(player), same(data))).thenReturn(session);
 
-        try (MockedStatic<Time> time = org.mockito.Mockito.mockStatic(Time.class);
-             MockedStatic<Call> call = org.mockito.Mockito.mockStatic(Call.class)) {
-            handler.onPlayerJoin(new EventType.PlayerJoin(player));
-        }
+        handler.onPlayerJoin(new EventType.PlayerJoin(player));
 
         verify(discordAdminAccessService).deactivateRuntimeAdmin(player, "uuid-1");
         verify(observerService).restore(player);
@@ -332,13 +279,8 @@ class ConnectionHandlerTest {
                 async
         );
 
-        Player player = onlinePlayer();
-        player.name = "[blue]NewName[]";
-        player.admin = false;
-        player.con = new DummyNetConnection("1.1.1.1");
-        player.con.uuid = "uuid-1";
-        player.con.usid = "usid-1";
-        player.con.player = player;
+        MockPlayer client = world.addPlayer(b -> b.name("[blue]NewName[]").admin(false).address("1.1.1.1").uuid("uuid-1").usid("usid-1"));
+        Player player = client.player();
 
         Administration.PlayerInfo info = new Administration.PlayerInfo();
         info.timesJoined = 5;
@@ -359,10 +301,7 @@ class ConnectionHandlerTest {
         when(sessionService.loadPlayerData("uuid-1")).thenReturn(data);
         when(sessionService.registerLogin(eq(player), same(data))).thenReturn(session);
 
-        try (MockedStatic<Time> time = org.mockito.Mockito.mockStatic(Time.class);
-             MockedStatic<Call> call = org.mockito.Mockito.mockStatic(Call.class)) {
-            handler.onPlayerJoin(new EventType.PlayerJoin(player));
-        }
+        handler.onPlayerJoin(new EventType.PlayerJoin(player));
 
         verify(observerService).restore(player);
         verify(sessionService).updateConnectionData(data, "1.1.1.1", "[#00000000][blue]NewName[]");
@@ -379,9 +318,8 @@ class ConnectionHandlerTest {
                 mock(NetworkService.class), new TomlXcoreConfig(), new TomlSecretsConfig(), voteService,
                 mock(PrivateMessageService.class), mock(PlayerDisplayService.class),
                 mock(DiscordAdminAccessService.class), mock(ObserverService.class), mapObserver, async);
-        Player player = onlinePlayer();
-        player.con = new DummyNetConnection("1.1.1.1");
-        player.con.uuid = "uuid-left";
+        MockPlayer client = world.addPlayer(b -> b.address("1.1.1.1").uuid("uuid-left"));
+        Player player = client.player();
 
         handler.onPlayerLeave(new EventType.PlayerLeave(player));
 
@@ -400,10 +338,8 @@ class ConnectionHandlerTest {
                 mock(PlayerDisplayService.class), mock(DiscordAdminAccessService.class),
                 mock(ObserverService.class), mock(MapVoteObserverService.class), async);
 
-        Player player = onlinePlayer();
-        player.name = "Leaver";
-        player.con = new DummyNetConnection("1.1.1.1");
-        player.con.uuid = "uuid-left";
+        MockPlayer client = world.addPlayer(b -> b.name("Leaver").address("1.1.1.1").uuid("uuid-left"));
+        Player player = client.player();
 
         PlayerData data = new PlayerData("uuid-left", true);
         data.pid = 42;
@@ -430,12 +366,8 @@ class ConnectionHandlerTest {
                 mock(MapVoteObserverService.class),
                 new Async(org.xcore.plugin.concurrent.InlineStorageExecutor.create(), queued::add));
 
-        Player player = onlinePlayer();
-        player.name = "Boss";
-        player.admin = true;
-        player.con = new DummyNetConnection("2.2.2.2");
-        player.con.uuid = "uuid-admin";
-        player.con.player = player;
+        MockPlayer client = world.addPlayer(b -> b.name("Boss").admin(true).address("2.2.2.2").uuid("uuid-admin"));
+        Player player = client.player();
         when(sessionService.loadPlayerData("uuid-admin")).thenReturn(storedData("uuid-admin", "1.1.1.1"));
 
         handler.onPlayerJoin(new EventType.PlayerJoin(player));
@@ -443,7 +375,7 @@ class ConnectionHandlerTest {
         // The storage phase has already run, but the game thread has not. Every admin
         // permission check reads player.admin, so if it is still true here, the player can
         // act as admin for as long as Mongo takes.
-        verify(player).admin(false);
+        assertThat(player.admin).as("cleared while the restore is pending").isFalse();
         assertThat(queued).as("the restore is still pending").hasSize(1);
     }
 
@@ -458,12 +390,8 @@ class ConnectionHandlerTest {
                 mock(DiscordAdminAccessService.class), mock(ObserverService.class),
                 mock(MapVoteObserverService.class), async);
 
-        Player player = onlinePlayer();
-        player.name = "Boss";
-        player.admin = true;
-        player.con = new DummyNetConnection("1.1.1.1");
-        player.con.uuid = "uuid-admin";
-        player.con.player = player;
+        MockPlayer client = world.addPlayer(b -> b.name("Boss").admin(true).address("1.1.1.1").uuid("uuid-admin"));
+        Player player = client.player();
 
         PlayerData data = new PlayerData("uuid-admin", true);
         data.pid = 9;
@@ -476,13 +404,9 @@ class ConnectionHandlerTest {
         when(sessionService.loadPlayerData("uuid-admin")).thenReturn(data);
         when(sessionService.registerLogin(eq(player), same(data))).thenReturn(session);
 
-        try (MockedStatic<Time> time = org.mockito.Mockito.mockStatic(Time.class);
-             MockedStatic<Call> call = org.mockito.Mockito.mockStatic(Call.class)) {
-            handler.onPlayerJoin(new EventType.PlayerJoin(player));
-        }
+        handler.onPlayerJoin(new EventType.PlayerJoin(player));
 
-        verify(player).admin(false);
-        verify(player).admin(true);
+        assertThat(player.admin).isTrue();
     }
 
     @Test
@@ -496,12 +420,8 @@ class ConnectionHandlerTest {
                 discordAdminAccessService, mock(ObserverService.class),
                 mock(MapVoteObserverService.class), async);
 
-        Player player = onlinePlayer();
-        player.name = "Boss";
-        player.admin = true;
-        player.con = new DummyNetConnection("9.9.9.9");
-        player.con.uuid = "uuid-admin";
-        player.con.player = player;
+        MockPlayer client = world.addPlayer(b -> b.name("Boss").admin(true).address("9.9.9.9").uuid("uuid-admin"));
+        Player player = client.player();
 
         PlayerData data = new PlayerData("uuid-admin", true);
         data.pid = 9;
@@ -514,13 +434,9 @@ class ConnectionHandlerTest {
         when(sessionService.loadPlayerData("uuid-admin")).thenReturn(data);
         when(sessionService.registerLogin(eq(player), same(data))).thenReturn(session);
 
-        try (MockedStatic<Time> time = org.mockito.Mockito.mockStatic(Time.class);
-             MockedStatic<Call> call = org.mockito.Mockito.mockStatic(Call.class)) {
-            handler.onPlayerJoin(new EventType.PlayerJoin(player));
-        }
+        handler.onPlayerJoin(new EventType.PlayerJoin(player));
 
-        verify(player).admin(false);
-        verify(player, never()).admin(true);
+        assertThat(player.admin).isFalse();
         verify(discordAdminAccessService).deactivateRuntimeAdmin(player, "uuid-admin");
     }
 
@@ -534,16 +450,13 @@ class ConnectionHandlerTest {
                 mock(DiscordAdminAccessService.class), mock(ObserverService.class),
                 mock(MapVoteObserverService.class), async);
 
-        Player player = onlinePlayer();
-        player.name = "Rando";
-        player.con = new DummyNetConnection("1.1.1.1");
-        player.con.uuid = "uuid-plain";
-        player.con.player = player;
+        MockPlayer client = world.addPlayer(b -> b.name("Rando").address("1.1.1.1").uuid("uuid-plain"));
+        Player player = client.player();
         when(sessionService.loadPlayerData("uuid-plain")).thenReturn(storedData("uuid-plain", "1.1.1.1"));
 
         handler.onPlayerJoin(new EventType.PlayerJoin(player));
 
-        verify(player, never()).admin(org.mockito.ArgumentMatchers.anyBoolean());
+        assertThat(player.admin).isFalse();
     }
 
     /** A stored row with a known IP, so the join has something to compare against. */
@@ -567,11 +480,8 @@ class ConnectionHandlerTest {
                 mock(ObserverService.class), mock(MapVoteObserverService.class),
                 new Async(failingStorage(), Runnable::run));
 
-        Player player = onlinePlayer();
-        player.name = "Unlucky";
-        player.con = new DummyNetConnection("1.1.1.1");
-        player.con.uuid = "uuid-mongo-down";
-        player.con.player = player;
+        MockPlayer client = world.addPlayer(b -> b.name("Unlucky").address("1.1.1.1").uuid("uuid-mongo-down"));
+        Player player = client.player();
 
         handler.onPlayerJoin(new EventType.PlayerJoin(player));
 
@@ -579,9 +489,7 @@ class ConnectionHandlerTest {
         // session is the failure: session-backed guards read null and pass them through,
         // and onPlayerLeave finds nothing to clear.
         verify(sessionService, never()).registerLogin(any(), any());
-        // The player is a mock, so the real kick body does not run; what matters is that
-        // it was asked to leave.
-        verify(player).kick(org.mockito.ArgumentMatchers.anyString());
+        assertThat(client.isKicked()).isTrue();
     }
 
     @Test
@@ -598,10 +506,8 @@ class ConnectionHandlerTest {
                 new TomlSecretsConfig(), mock(VoteService.class), mock(PrivateMessageService.class),
                 mock(PlayerDisplayService.class), mock(DiscordAdminAccessService.class), mock(ObserverService.class),
                 mock(MapVoteObserverService.class), loop.async, null, notices, recent);
-        Player player = onlinePlayer();
-        player.name = "Case Player";
-        player.con = new DummyNetConnection("1.1.1.1");
-        player.con.uuid = "case-player";
+        MockPlayer client = world.addPlayer(b -> b.name("Case Player").address("1.1.1.1").uuid("case-player"));
+        Player player = client.player();
         var data = new PlayerData("case-player", true);
         data.pid = 5;
         var session = mock(Session.class);
@@ -610,18 +516,16 @@ class ConnectionHandlerTest {
         when(session.locale()).thenReturn(mock(Localization.class));
         when(sessions.loadPlayerData("case-player")).thenReturn(data);
         when(sessions.registerLogin(player, data)).thenReturn(session);
-        try (MockedStatic<Call> call = Mockito.mockStatic(Call.class)) {
-            handler.onPlayerJoin(new EventType.PlayerJoin(player));
-            loop.worker();
-            verify(notices).prepareJoin("case-player");
-            verify(notices, never()).completeJoin(any(), any());
-            verify(sessions, never()).registerLogin(any(), any());
-            loop.main.runTurn();
-            var order = Mockito.inOrder(sessions, recent, notices);
-            order.verify(sessions).registerLogin(player, data);
-            order.verify(recent).joined("case-player");
-            order.verify(notices).completeJoin(session, prepared);
-        }
+        handler.onPlayerJoin(new EventType.PlayerJoin(player));
+        loop.worker();
+        verify(notices).prepareJoin("case-player");
+        verify(notices, never()).completeJoin(any(), any());
+        verify(sessions, never()).registerLogin(any(), any());
+        loop.main.runTurn();
+        var order = Mockito.inOrder(sessions, recent, notices);
+        order.verify(sessions).registerLogin(player, data);
+        order.verify(recent).joined("case-player");
+        order.verify(notices).completeJoin(session, prepared);
     }
 
     @Test
@@ -632,10 +536,8 @@ class ConnectionHandlerTest {
                 new TomlSecretsConfig(), mock(VoteService.class), mock(PrivateMessageService.class),
                 mock(PlayerDisplayService.class), mock(DiscordAdminAccessService.class), mock(ObserverService.class),
                 mock(MapVoteObserverService.class), async, null, mock(org.xcore.plugin.cases.CaseNoticeService.class), recent);
-        Player player = onlinePlayer();
-        player.con = new DummyNetConnection("1.1.1.1");
-        player.con.uuid = "leaving";
-        player.admin = true;
+        MockPlayer client = world.addPlayer(b -> b.address("1.1.1.1").uuid("leaving").admin(true));
+        Player player = client.player();
         var session = mock(Session.class);
         session.player = player;
         session.data = new PlayerData("leaving", true);
@@ -657,46 +559,4 @@ class ConnectionHandlerTest {
         return executor;
     }
 
-    /**
-     * A player that reports itself as added, which is the state NetServer.connectConfirm has
-     * already put it in by the time it fires PlayerJoin. The join continuation drops its work
-     * for players that are no longer online, so the fixture has to reflect that.
-     */
-    private static Player onlinePlayer() {
-        Player player = Mockito.spy(Player.create());
-        when(player.isAdded()).thenReturn(true);
-        return player;
-    }
-
-    private static final class DummyNetConnection extends NetConnection {
-
-        boolean closed;
-        String kickReason;
-
-        private DummyNetConnection(String address) {
-            super(address);
-            this.lastReceivedClientSnapshot = 0;
-        }
-
-        @Override
-        public void send(Object object, boolean reliable) {
-        }
-
-        @Override
-        public void close() {
-            closed = true;
-        }
-
-        /** Player.kick(String, long) routes here rather than through close(). */
-        @Override
-        public void kick(String reason, long duration) {
-            kickReason = reason;
-            closed = true;
-        }
-
-        @Override
-        public boolean isConnected() {
-            return true;
-        }
-    }
 }

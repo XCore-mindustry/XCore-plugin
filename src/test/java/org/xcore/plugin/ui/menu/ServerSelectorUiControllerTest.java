@@ -16,6 +16,10 @@ import org.xcore.plugin.service.ServerRegistryService.Category;
 import org.xcore.plugin.session.Session;
 import org.xcore.plugin.ui.kit.LayoutAssert;
 import org.xcore.plugin.ui.kit.Screen;
+import org.xcore.testkit.fixtures.HeadlessWorld;
+import org.xcore.testkit.fixtures.MockNetConnection;
+import org.xcore.testkit.fixtures.MockPlayer;
+import org.xcore.testkit.fixtures.junit.WithHeadlessWorld;
 import org.xcore.ui.VNode;
 import org.xcore.ui.runtime.ControllerContext;
 import org.xcore.ui.runtime.UpdateResult;
@@ -323,20 +327,20 @@ class ServerSelectorUiControllerTest {
     }
 
     @Test
-    void successfulTransfer_closesBrowserAndSendsConnect() {
+    @WithHeadlessWorld
+    void successfulTransfer_closesBrowserAndSendsConnect(HeadlessWorld world) {
         var registry = createRegistry();
-        Player player = mock(Player.class);
-        player.con = mock(mindustry.net.NetConnection.class);
-        Session session = createTestSession("uuid-1", player);
+        MockPlayer player = world.addPlayer("Traveller", mindustry.game.Team.sharded);
+        Session session = createTestSession("uuid-1", player.player());
         var controller = new ServerSelectorUiController(registry, session);
         ControllerContext ctx = mock(ControllerContext.class);
-        try (var call = mockStatic(mindustry.gen.Call.class)) {
-            var result = controller.update(ServerSelectorUiController.createModel(registry, Category.ALL),
-                    new ServerSelectorUiController.ServerSelectorEvent.Connect("mini-surv"), ctx);
-            assertThat(result.close()).isTrue();
-            // The result closes the dialog; closing it through the context as well would close it twice.
-            verify(ctx, never()).close();
-            call.verify(() -> mindustry.gen.Call.connect(eq(player.con), anyString(), anyInt()));
-        }
+
+        var result = controller.update(ServerSelectorUiController.createModel(registry, Category.ALL),
+                new ServerSelectorUiController.ServerSelectorEvent.Connect("mini-surv"), ctx);
+
+        assertThat(result.close()).isTrue();
+        // The result closes the dialog; closing it through the context as well would close it twice.
+        verify(ctx, never()).close();
+        assertThat(player.con().redirects()).containsExactly(new MockNetConnection.Redirect("play.xcore.top", 7002));
     }
 }

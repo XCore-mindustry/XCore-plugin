@@ -1,8 +1,6 @@
 package org.xcore.plugin.ui;
 
-import arc.Core;
 import arc.files.Fi;
-import arc.mock.MockApplication;
 import arc.struct.Seq;
 import arc.struct.StringMap;
 import com.ospx.flubundle.Bundle;
@@ -13,7 +11,6 @@ import mindustry.maps.Map;
 import mindustry.net.NetConnection;
 import mindustry.ui.builder.MenuResult;
 import mindustry.ui.builder.UiBuilder.NodeBuilder;
-import mindustry.ui.builder.UiDslWriter;
 import org.bson.types.ObjectId;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -35,7 +32,6 @@ import org.xcore.plugin.ui.menu.MapMenu;
 import org.xcore.plugin.ui.menu.map.MapUiController;
 import org.xcore.plugin.ui.menu.map.MapUiModel;
 import org.xcore.testkit.ui.DeterministicUiLoop;
-import org.xcore.testkit.ui.UiSnapshot;
 import org.xcore.testkit.ui.UiWireMessage;
 
 import java.util.HashMap;
@@ -57,6 +53,7 @@ class MapUiClientIntegrationTest {
 
     private GameState originalState;
     private DeterministicUiLoop loop;
+    private DeterministicUiLoop.CoreAppScope coreApp;
     private MenuService menuService;
     private MapService mapService;
     private MapDataRepository mapDataRepository;
@@ -75,13 +72,7 @@ class MapUiClientIntegrationTest {
 
         loop = new DeterministicUiLoop();
 
-        // Direct Core.app.post into loop.serverPost() for snapshot-drain turn execution
-        Core.app = new MockApplication() {
-            @Override
-            public void post(Runnable runnable) {
-                loop.serverPost().post(runnable);
-            }
-        };
+        coreApp = loop.installAsCoreApp();
 
         mapService = mock(MapService.class);
         mapDataRepository = mock(MapDataRepository.class);
@@ -103,30 +94,7 @@ class MapUiClientIntegrationTest {
         Provider<SessionService> sessionProvider = () -> sessionService;
 
         // Custom gateway piping into DeterministicUiLoop
-        MindustryMenuGateway gateway = new MindustryMenuGateway() {
-            @Override public void menu(Player p, int id, String t, String c, String[][] b) {}
-            @Override public void followUpMenu(Player p, int id, String t, String c, String[][] b) {}
-            @Override public void hideFollowUpMenu(Player p, int id) {}
-            @Override public void textInput(Player p, int id, String t, String c, int l, String d, boolean n) {}
-            @Override public void openUri(Player p, String u) {}
-            @Override public void copyToClipboard(Player p, String t) {}
-
-            @Override
-            public void menuBuilder(Player player, int menuId, long token, String title,
-                                    boolean hideOnClick, boolean hideExisting, boolean fillScreen, NodeBuilder<?> ui) {
-                loop.sendServerToClient(new UiWireMessage.Show(menuId, token, hideExisting, UiSnapshot.capture(ui)));
-            }
-
-            @Override
-            public void menuBuilderUpdate(Player player, int menuId, String tableId, NodeBuilder<?> ui) {
-                loop.sendServerToClient(new UiWireMessage.Update(menuId, tableId, UiSnapshot.capture(ui)));
-            }
-
-            @Override
-            public void hideMenuBuilder(Player player, int menuId) {
-                loop.sendServerToClient(new UiWireMessage.Hide(menuId));
-            }
-        };
+        MindustryMenuGateway gateway = new LoopMenuGateway(loop);
 
         menuService = new MenuService(sessionProvider, gateway);
         menuService.init();
@@ -145,13 +113,7 @@ class MapUiClientIntegrationTest {
         when(sessionService.get(anyString())).thenReturn(session);
 
         // Wire client->server packet delivery into MenuService
-        loop.onClientMessage(msg -> {
-            if (msg instanceof UiWireMessage.Choose choose) {
-                var result = new MenuResult(choose.action());
-                result.token = choose.token();
-                menuService.onMenuBuilderResult(session, result);
-            }
-        });
+        loop.onChoose(choose -> menuService.onMenuBuilderResult(session, choose.toMenuResult()));
 
         TomlXcoreConfig xcoreConfig = new TomlXcoreConfig();
         xcoreConfig.normalize();
@@ -168,7 +130,7 @@ class MapUiClientIntegrationTest {
     @AfterEach
     void tearDown() {
         state = originalState;
-        Core.app = null;
+        coreApp.close();
     }
 
     @Test
@@ -277,13 +239,13 @@ class MapUiClientIntegrationTest {
         loop.stepServerToClient();
         var immediateModel = (MapUiModel) session.activeUiSession().model();
         var immediateShow = lastShowMessage(loop);
-        String immediateDsl = UiDslWriter.write(immediateShow.body().decode());
+        String immediateDsl = immediateShow.dsl();
 
         // Reset session and client for Path 2
         int menuId = menuService.getMenuBuilderId();
         loop.client().hide(menuId);
         session.clearActiveUiSession();
-        while (loop.stepServerToClient()) {}
+        loop.deliverToClient();
         while (loop.stepClientToServer()) {}
         loop.stepServerPost();
 
@@ -308,7 +270,7 @@ class MapUiClientIntegrationTest {
 
         var delayedModel = (MapUiModel) session.activeUiSession().model();
         var delayedShow = lastShowMessage(loop);
-        String delayedDsl = UiDslWriter.write(delayedShow.body().decode());
+        String delayedDsl = delayedShow.dsl();
 
         assertThat(delayedModel.selectedMapId()).isEqualTo(immediateModel.selectedMapId());
         assertThat(delayedModel.playedTimes()).isEqualTo(immediateModel.playedTimes());
@@ -645,10 +607,6 @@ class MapUiClientIntegrationTest {
     }
 
     private static UiWireMessage.Show lastShowMessage(DeterministicUiLoop loop) {
-        return loop.transcript().all().stream()
-                .filter(m -> m instanceof UiWireMessage.Show)
-                .map(m -> (UiWireMessage.Show) m)
-                .reduce((first, second) -> second)
-                .orElseThrow(() -> new AssertionError("No Show message in transcript"));
+        return loop.transcript().lastShow();
     }
 }

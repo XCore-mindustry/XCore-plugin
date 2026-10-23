@@ -6,21 +6,18 @@ import mindustry.game.Team;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.xcore.cloud.mindustry.MindustrySender;
 import org.xcore.cloud.mindustry.selector.TargetSelector.MultiplePlayerSelector;
 import org.xcore.cloud.mindustry.selector.TargetSelector.SinglePlayerSelector;
 import org.xcore.plugin.cloud.XCoreSender;
 import org.xcore.testkit.fixtures.HeadlessWorld;
 import org.xcore.testkit.fixtures.MockPlayer;
-import org.xcore.testkit.fixtures.junit.HeadlessWorldExtension;
 import org.xcore.testkit.fixtures.junit.WithHeadlessWorld;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
-@ExtendWith(HeadlessWorldExtension.class)
 @WithHeadlessWorld(width = 64, height = 64)
 class TeleportControllerTest {
 

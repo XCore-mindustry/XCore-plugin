@@ -1,12 +1,10 @@
 package org.xcore.plugin.ui;
 
-import arc.Core;
-import arc.mock.MockApplication;
 import com.ospx.flubundle.Bundle;
 import mindustry.gen.Player;
 import mindustry.net.NetConnection;
 import mindustry.ui.builder.MenuResult;
-import mindustry.ui.builder.UiBuilder.NodeBuilder;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -16,7 +14,6 @@ import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.session.Session;
 import org.xcore.plugin.session.SessionService;
 import org.xcore.testkit.ui.DeterministicUiLoop;
-import org.xcore.testkit.ui.UiSnapshot;
 import org.xcore.testkit.ui.UiWireMessage;
 import org.xcore.ui.Text;
 import org.xcore.ui.Ui;
@@ -44,6 +41,7 @@ import static org.mockito.Mockito.when;
 class UiSessionCloseTrackingTest {
 
     private DeterministicUiLoop loop;
+    private DeterministicUiLoop.CoreAppScope coreApp;
     private MenuService menuService;
     private Session session;
     private long now;
@@ -51,12 +49,7 @@ class UiSessionCloseTrackingTest {
     @BeforeEach
     void setUp() {
         loop = new DeterministicUiLoop();
-        Core.app = new MockApplication() {
-            @Override
-            public void post(Runnable runnable) {
-                loop.serverPost().post(runnable);
-            }
-        };
+        coreApp = loop.installAsCoreApp();
 
         Bundle bundle = mock(Bundle.class);
         com.ospx.flubundle.Localizer localizer = mock(com.ospx.flubundle.Localizer.class);
@@ -66,7 +59,7 @@ class UiSessionCloseTrackingTest {
         when(bundle.localizer(any(java.util.function.Supplier.class))).thenReturn(localizer);
 
         SessionService sessionService = mock(SessionService.class);
-        menuService = new MenuService(() -> sessionService, new WireGateway());
+        menuService = new MenuService(() -> sessionService, new LoopMenuGateway(loop));
         menuService.init();
 
         Player player = Player.create();
@@ -78,13 +71,12 @@ class UiSessionCloseTrackingTest {
         session.useClock(() -> now);
         when(sessionService.get(anyString())).thenReturn(session);
 
-        loop.onClientMessage(msg -> {
-            if (msg instanceof UiWireMessage.Choose choose) {
-                var result = new MenuResult(choose.action());
-                result.token = choose.token();
-                menuService.onMenuBuilderResult(session, result);
-            }
-        });
+        loop.onChoose(choose -> menuService.onMenuBuilderResult(session, choose.toMenuResult()));
+    }
+
+    @AfterEach
+    void tearDown() {
+        coreApp.close();
     }
 
     private int open() {
@@ -96,9 +88,7 @@ class UiSessionCloseTrackingTest {
     private void press(int menuId, String action) {
         loop.client().click(menuId, action);
         assertThat(loop.stepClientToServer()).isTrue();
-        while (loop.stepServerToClient()) {
-            // deliver the patch or re-render the press caused
-        }
+        loop.deliverToClient(); // the patch or re-render the press caused
     }
 
     @Test
@@ -175,7 +165,7 @@ class UiSessionCloseTrackingTest {
         int menuId = open();
         press(menuId, "tab:b");
         press(menuId, "action:reload");
-        assertThat(loop.transcript().all().stream().filter(m -> m instanceof UiWireMessage.Show)).hasSize(2);
+        assertThat(loop.transcript().shows()).hasSize(2);
 
         now += 10 * Session.UNREPORTED_MENU_TIMEOUT_MILLIS;
         assertThat(session.hasActiveMenu()).isTrue();
@@ -194,10 +184,10 @@ class UiSessionCloseTrackingTest {
         now += Session.UNREPORTED_MENU_TIMEOUT_MILLIS;
         assertThat(session.hasActiveMenu()).isFalse();
 
-        int updatesBefore = (int) loop.transcript().all().stream().filter(m -> m instanceof UiWireMessage.Update).count();
+        int updatesBefore = loop.transcript().updates().size();
         press(menuId, "tab:a");
 
-        assertThat(loop.transcript().all().stream().filter(m -> m instanceof UiWireMessage.Update))
+        assertThat(loop.transcript().updates())
                 .hasSize(updatesBefore + 1);
         assertThat(session.hasActiveMenu()).isTrue();
     }
@@ -285,28 +275,4 @@ class UiSessionCloseTrackingTest {
         }
     }
 
-    private final class WireGateway implements MindustryMenuGateway {
-        @Override public void menu(Player p, int id, String t, String c, String[][] b) {}
-        @Override public void followUpMenu(Player p, int id, String t, String c, String[][] b) {}
-        @Override public void hideFollowUpMenu(Player p, int id) {}
-        @Override public void textInput(Player p, int id, String t, String c, int l, String d, boolean n) {}
-        @Override public void openUri(Player p, String u) {}
-        @Override public void copyToClipboard(Player p, String t) {}
-
-        @Override
-        public void menuBuilder(Player player, int menuId, long token, String title,
-                                boolean hideOnClick, boolean hideExisting, boolean fillScreen, NodeBuilder<?> ui) {
-            loop.sendServerToClient(new UiWireMessage.Show(menuId, token, hideExisting, UiSnapshot.capture(ui)));
-        }
-
-        @Override
-        public void menuBuilderUpdate(Player player, int menuId, String tableId, NodeBuilder<?> ui) {
-            loop.sendServerToClient(new UiWireMessage.Update(menuId, tableId, UiSnapshot.capture(ui)));
-        }
-
-        @Override
-        public void hideMenuBuilder(Player player, int menuId) {
-            loop.sendServerToClient(new UiWireMessage.Hide(menuId));
-        }
-    }
 }

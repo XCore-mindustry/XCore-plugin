@@ -1,44 +1,34 @@
 package org.xcore.plugin.integration;
 
-import arc.func.Cons2;
-import arc.struct.Seq;
-import arc.util.CommandHandler;
 import arc.util.serialization.Jval;
 import mindustry.Vars;
-import mindustry.core.NetServer;
-import mindustry.entities.EntityGroup;
-import mindustry.gen.Call;
-import mindustry.gen.Groups;
-import mindustry.gen.Player;
-import mindustry.net.NetConnection;
+import mindustry.game.Team;
 import org.incendo.cloud.Command;
 import org.incendo.cloud.SenderMapper;
 import org.incendo.cloud.component.CommandComponent;
 import org.incendo.cloud.help.HelpHandler;
 import org.incendo.cloud.help.result.CommandEntry;
 import org.incendo.cloud.help.result.IndexCommandResult;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
-import org.mockito.MockedStatic;
 import org.xcore.cloud.mindustry.MindustryCommandManager;
 import org.xcore.plugin.cloud.CloudService;
 import org.xcore.plugin.cloud.XCoreSender;
+import org.xcore.testkit.fixtures.HeadlessWorld;
+import org.xcore.testkit.fixtures.MockPlayer;
+import org.xcore.testkit.fixtures.junit.WithHeadlessWorld;
 
 import java.util.Collections;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
+@WithHeadlessWorld
 class FooClientIntegrationTest {
 
-    private NetServer previousNetServer;
-    private EntityGroup<Player> previousPlayers;
     private CloudService cloudService;
     private MindustryCommandManager<XCoreSender> clientManager;
     private HelpHandler<XCoreSender> helpHandler;
@@ -46,14 +36,6 @@ class FooClientIntegrationTest {
     @BeforeEach
     @SuppressWarnings("unchecked")
     void setUp() {
-        previousNetServer = Vars.netServer;
-        previousPlayers = Groups.player;
-        Groups.player = new EntityGroup<>(Player.class, false, false);
-
-        NetServer netServer = mock(NetServer.class);
-        netServer.clientCommands = new CommandHandler("/");
-        Vars.netServer = netServer;
-
         cloudService = mock(CloudService.class);
         clientManager = mock(MindustryCommandManager.class);
         helpHandler = mock(HelpHandler.class);
@@ -64,12 +46,6 @@ class FooClientIntegrationTest {
                 raw -> mock(XCoreSender.class),
                 sender -> mock(org.xcore.cloud.mindustry.MindustrySender.class)
         ));
-    }
-
-    @AfterEach
-    void tearDown() {
-        Vars.netServer = previousNetServer;
-        Groups.player = previousPlayers;
     }
 
     @Test
@@ -137,104 +113,59 @@ class FooClientIntegrationTest {
     @Test
     @DisplayName("init registers fooCheck and fooTransmission packet handlers on netServer")
     void init_registersPacketHandlers() {
-        FooClientIntegration integration = new FooClientIntegration(() -> cloudService);
-        integration.init();
+        new FooClientIntegration(() -> cloudService).init();
 
-        verify(Vars.netServer).addPacketHandler(eq("fooCheck"), any());
-        verify(Vars.netServer).addPacketHandler(eq("fooTransmission"), any());
+        assertThat(Vars.netServer.getPacketHandlers("fooCheck")).isNotEmpty();
+        assertThat(Vars.netServer.getPacketHandlers("fooTransmission")).isNotEmpty();
     }
 
     @Test
     @DisplayName("fooCheck packet handler responds with version 2.0, transmission enabled, and commandList")
-    @SuppressWarnings("unchecked")
-    void fooCheck_respondsWithVersionAndCommandList() {
-        var netServer = Vars.netServer;
-        FooClientIntegration integration = new FooClientIntegration(() -> cloudService);
-        integration.init();
+    void fooCheck_respondsWithVersionAndCommandList(HeadlessWorld world) {
+        var index = emptyIndex();
+        when(helpHandler.queryRootIndex(any())).thenReturn(index);
+        new FooClientIntegration(() -> cloudService).init();
+        MockPlayer player = world.addPlayer("FooUser", Team.sharded);
 
-        ArgumentCaptor<Cons2<Player, String>> captor = ArgumentCaptor.forClass(Cons2.class);
-        verify(netServer).addPacketHandler(eq("fooCheck"), captor.capture());
+        player.sendServerPacket("fooCheck", "");
 
-        Player player = Player.create();
-        NetConnection con = mock(NetConnection.class);
-        player.con = con;
-        player.id = 12;
-        player.name = "FooUser";
-
-        try (MockedStatic<Call> call = mockStatic(Call.class)) {
-            captor.getValue().get(player, "");
-
-            call.verify(() -> Call.clientPacketReliable(con, "fooCheck", "2.0"));
-            call.verify(() -> Call.clientPacketReliable(con, "fooTransmissionEnabled", "true"));
-            call.verify(() -> Call.clientPacketReliable(eq(con), eq("commandList"), anyString()));
-        }
+        assertThat(player.clientPackets("fooCheck")).containsExactly("2.0");
+        assertThat(player.clientPackets("fooTransmissionEnabled")).containsExactly("true");
+        assertThat(player.clientPackets("commandList")).hasSize(1);
     }
 
     @Test
     @DisplayName("fooTransmission relays payload to other players with sender id prefix")
-    @SuppressWarnings("unchecked")
-    void fooTransmission_relaysToOtherPlayers() {
-        var netServer = Vars.netServer;
-        FooClientIntegration integration = new FooClientIntegration(() -> cloudService);
-        integration.init();
+    void fooTransmission_relaysToOtherPlayers(HeadlessWorld world) {
+        new FooClientIntegration(() -> cloudService).init();
+        MockPlayer sender = world.addPlayer("Sender", Team.sharded);
+        MockPlayer recipient = world.addPlayer("Recipient", Team.sharded);
 
-        ArgumentCaptor<Cons2<Player, String>> captor = ArgumentCaptor.forClass(Cons2.class);
-        verify(netServer).addPacketHandler(eq("fooTransmission"), captor.capture());
+        sender.sendServerPacket("fooTransmission", "ping_data");
 
-        Player sender = Player.create();
-        sender.id = 1;
-        sender.con = mock(NetConnection.class);
-
-        Player recipient = Player.create();
-        recipient.id = 2;
-        recipient.con = mock(NetConnection.class);
-
-        mindustry.gen.Groups.player.add(sender);
-        mindustry.gen.Groups.player.add(recipient);
-
-        try (MockedStatic<Call> call = mockStatic(Call.class)) {
-            captor.getValue().get(sender, "ping_data");
-
-            call.verify(() -> Call.clientPacketReliable(eq(recipient.con), eq("fooTransmission"), eq("1 ping_data")));
-            call.verify(() -> Call.clientPacketReliable(eq(sender.con), eq("fooTransmission"), anyString()), never());
-        } finally {
-            mindustry.gen.Groups.player.remove(sender);
-            mindustry.gen.Groups.player.remove(recipient);
-        }
+        assertThat(recipient.clientPackets("fooTransmission")).containsExactly(sender.id() + " ping_data");
+        assertThat(sender.clientPackets("fooTransmission")).isEmpty();
     }
 
     @Test
     @DisplayName("fooTransmission enforces 20 packets/sec rate limit per player")
-    @SuppressWarnings("unchecked")
-    void fooTransmission_enforcesRateLimit() {
-        var netServer = Vars.netServer;
-        FooClientIntegration integration = new FooClientIntegration(() -> cloudService);
-        integration.init();
+    void fooTransmission_enforcesRateLimit(HeadlessWorld world) {
+        new FooClientIntegration(() -> cloudService).init();
+        MockPlayer sender = world.addPlayer("Sender", Team.sharded);
+        MockPlayer recipient = world.addPlayer("Recipient", Team.sharded);
 
-        ArgumentCaptor<Cons2<Player, String>> captor = ArgumentCaptor.forClass(Cons2.class);
-        verify(netServer).addPacketHandler(eq("fooTransmission"), captor.capture());
-
-        Player sender = Player.create();
-        sender.id = 5;
-        sender.con = mock(NetConnection.class);
-
-        Player recipient = Player.create();
-        recipient.id = 6;
-        recipient.con = mock(NetConnection.class);
-
-        mindustry.gen.Groups.player.add(sender);
-        mindustry.gen.Groups.player.add(recipient);
-
-        try (MockedStatic<Call> call = mockStatic(Call.class)) {
-            for (int i = 0; i < 25; i++) {
-                captor.getValue().get(sender, "spam_" + i);
-            }
-
-            // Exactly 20 should have been forwarded, 5 dropped
-            call.verify(() -> Call.clientPacketReliable(eq(recipient.con), eq("fooTransmission"), anyString()), times(20));
-        } finally {
-            mindustry.gen.Groups.player.remove(sender);
-            mindustry.gen.Groups.player.remove(recipient);
+        for (int i = 0; i < 25; i++) {
+            sender.sendServerPacket("fooTransmission", "spam_" + i);
         }
+
+        // Exactly 20 should have been forwarded, 5 dropped
+        assertThat(recipient.clientPackets("fooTransmission")).hasSize(20);
+    }
+
+    @SuppressWarnings("unchecked")
+    private static IndexCommandResult<XCoreSender> emptyIndex() {
+        IndexCommandResult<XCoreSender> index = mock(IndexCommandResult.class);
+        when(index.entries()).thenReturn(List.of());
+        return index;
     }
 }

@@ -1,11 +1,12 @@
 package org.xcore.plugin.event;
 
 import arc.Events;
-import arc.util.Timer;
 import mindustry.game.EventType;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.xcore.testkit.fixtures.HeadlessWorld;
+import org.xcore.testkit.fixtures.junit.WithHeadlessWorld;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -13,9 +14,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyFloat;
-import static org.mockito.Mockito.*;
 
 class RoundScopeTest {
     private record Probe() { }
@@ -57,23 +55,22 @@ class RoundScopeTest {
     }
 
     @Test
-    void delayedTaskDoesNotFireIntoTheNextRound() {
-        var task = mock(Timer.Task.class);
-        var scheduled = new ArrayList<Runnable>();
+    @WithHeadlessWorld
+    void delayedTaskDoesNotFireIntoTheNextRound(HeadlessWorld world) {
+        var mainLoop = world.mainLoop();
+        var timer = world.timer();
         var calls = new AtomicInteger();
-        try (var timer = mockStatic(Timer.class)) {
-            timer.when(() -> Timer.schedule(any(Runnable.class), anyFloat())).thenAnswer(invocation -> {
-                scheduled.add(invocation.getArgument(0));
-                return task;
-            });
-            round.after(10f, calls::incrementAndGet);
+        round.after(0f, calls::incrementAndGet);
+        round.after(10f, calls::incrementAndGet);
+        timer.runDue(); // the first is now posted to the main loop, the second still waits
+        assertThat(mainLoop.size()).isEqualTo(1);
 
-            Events.fire(new EventType.ResetEvent());
-            scheduled.getFirst().run();
+        Events.fire(new EventType.ResetEvent());
+        assertThat(timer.pending()).as("the waiting task is cancelled").isZero();
+        mainLoop.runUntilIdle();
+        timer.advance(10f);
 
-            verify(task).cancel();
-            assertThat(calls).hasValue(0);
-        }
+        assertThat(calls).as("the posted run is dropped too").hasValue(0);
     }
 
     @Test
