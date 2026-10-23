@@ -2,12 +2,10 @@ package org.xcore.ui.runtime;
 
 import mindustry.ui.builder.MenuResult;
 import mindustry.ui.builder.UiBuilder;
-import mindustry.ui.builder.UiDslWriter;
 import org.junit.jupiter.api.Test;
 import org.xcore.testkit.ui.DeterministicUiLoop;
 import org.xcore.testkit.ui.HeadlessMenuClient;
 import org.xcore.testkit.ui.UiSnapshot;
-import org.xcore.testkit.ui.UiWireMessage;
 import org.xcore.ui.LocalizerResolver;
 import org.xcore.ui.Text;
 import org.xcore.ui.Ui;
@@ -77,9 +75,7 @@ class UiSessionClientIntegrationTest {
         var choose = client.outbox().poll();
         assertThat(choose).isNotNull();
         assertThat(choose.menuId()).isEqualTo(MENU);
-        var result = new MenuResult(choose.action());
-        result.token = choose.token();
-        session.handle(result);
+        session.handle(choose.toMenuResult());
     }
 
     record RModel(String text) {}
@@ -147,7 +143,7 @@ class UiSessionClientIntegrationTest {
         // The synthetic controller ignores cancel; the replacement remains visible.
         assertThat(client.isVisible(MENU)).isTrue();
         assertThat(client.outbox()).isEmpty();
-        assertThat(UiDslWriter.write(gateway.lastShow.decode())).contains("rerendered");
+        assertThat(gateway.lastShow.dsl()).contains("rerendered");
         assertThat(session.model().text()).isEqualTo("rerendered");
     }
 
@@ -157,17 +153,17 @@ class UiSessionClientIntegrationTest {
         var gateway = new UiSession.DeliveryGateway() {
             @Override
             public void show(String playerId, long token, UiBuilder.NodeBuilder<?> ui) {
-                loop.sendServerToClient(new UiWireMessage.Show(MENU, token, true, UiSnapshot.capture(ui)));
+                loop.sendShow(MENU, token, true, ui);
             }
 
             @Override
             public void update(String playerId, long token, String elementId, UiBuilder.NodeBuilder<?> ui) {
-                loop.sendServerToClient(new UiWireMessage.Update(MENU, elementId, UiSnapshot.capture(ui)));
+                loop.sendUpdate(MENU, elementId, ui);
             }
 
             @Override
             public void hide(String playerId) {
-                loop.sendServerToClient(new UiWireMessage.Hide(MENU));
+                loop.sendHide(MENU);
             }
         };
 
@@ -176,13 +172,7 @@ class UiSessionClientIntegrationTest {
         UiSession<UiSessionTest.TestModel, UiSessionTest.TestEvent> session = UiSession.start(
                 controller, new UiSessionTest.TestModel(0, "main"), ctx, gateway, LocalizerResolver.IDENTITY);
 
-        loop.onClientMessage(msg -> {
-            if (msg instanceof UiWireMessage.Choose choose) {
-                var result = new MenuResult(choose.action());
-                result.token = choose.token();
-                session.handle(result);
-            }
-        });
+        loop.onChoose(choose -> session.handle(choose.toMenuResult()));
 
         // 1. session.open() emits Show into the wire queue
         session.open();
