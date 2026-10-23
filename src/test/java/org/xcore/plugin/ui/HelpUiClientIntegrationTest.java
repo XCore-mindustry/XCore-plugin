@@ -1,7 +1,5 @@
 package org.xcore.plugin.ui;
 
-import arc.Core;
-import arc.mock.MockApplication;
 import arc.util.CommandHandler;
 import com.ospx.flubundle.Bundle;
 import jakarta.inject.Provider;
@@ -10,9 +8,6 @@ import mindustry.core.GameState;
 import mindustry.core.NetServer;
 import mindustry.gen.Player;
 import mindustry.net.NetConnection;
-import mindustry.ui.builder.MenuResult;
-import mindustry.ui.builder.UiBuilder.NodeBuilder;
-import mindustry.ui.builder.UiDslWriter;
 import org.incendo.cloud.Command;
 import org.incendo.cloud.help.HelpHandler;
 import org.incendo.cloud.help.result.IndexCommandResult;
@@ -29,10 +24,10 @@ import org.xcore.plugin.session.Session;
 import org.xcore.plugin.session.SessionService;
 import org.xcore.plugin.ui.menu.HelpMenu;
 import org.xcore.testkit.ui.DeterministicUiLoop;
-import org.xcore.testkit.ui.UiSnapshot;
 import org.xcore.testkit.ui.UiWireMessage;
 
 import java.util.Locale;
+import java.util.Map;
 
 import static mindustry.Vars.state;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -46,11 +41,11 @@ class HelpUiClientIntegrationTest {
     private GameState originalState;
     private NetServer originalNetServer;
     private DeterministicUiLoop loop;
+    private DeterministicUiLoop.CoreAppScope coreApp;
     private MenuService menuService;
     private Session session;
     private SessionService sessionService;
     private HelpMenu helpMenu;
-    private String submittedSearch;
 
     @BeforeEach
     void setUp() {
@@ -59,12 +54,7 @@ class HelpUiClientIntegrationTest {
 
         loop = new DeterministicUiLoop();
 
-        Core.app = new MockApplication() {
-            @Override
-            public void post(Runnable runnable) {
-                loop.serverPost().post(runnable);
-            }
-        };
+        coreApp = loop.installAsCoreApp();
 
         PlayerData data = new PlayerData("test-player-uuid", true);
         data.pid = 42;
@@ -80,30 +70,7 @@ class HelpUiClientIntegrationTest {
         sessionService = mock(SessionService.class);
         Provider<SessionService> sessionProvider = () -> sessionService;
 
-        MindustryMenuGateway gateway = new MindustryMenuGateway() {
-            @Override public void menu(Player p, int id, String t, String c, String[][] b) {}
-            @Override public void followUpMenu(Player p, int id, String t, String c, String[][] b) {}
-            @Override public void hideFollowUpMenu(Player p, int id) {}
-            @Override public void textInput(Player p, int id, String t, String c, int l, String d, boolean n) {}
-            @Override public void openUri(Player p, String u) {}
-            @Override public void copyToClipboard(Player p, String t) {}
-
-            @Override
-            public void menuBuilder(Player player, int menuId, long token, String title,
-                                    boolean hideOnClick, boolean hideExisting, boolean fillScreen, NodeBuilder<?> ui) {
-                loop.sendServerToClient(new UiWireMessage.Show(menuId, token, hideExisting, UiSnapshot.capture(ui)));
-            }
-
-            @Override
-            public void menuBuilderUpdate(Player player, int menuId, String tableId, NodeBuilder<?> ui) {
-                loop.sendServerToClient(new UiWireMessage.Update(menuId, tableId, UiSnapshot.capture(ui)));
-            }
-
-            @Override
-            public void hideMenuBuilder(Player player, int menuId) {
-                loop.sendServerToClient(new UiWireMessage.Hide(menuId));
-            }
-        };
+        MindustryMenuGateway gateway = new LoopMenuGateway(loop);
 
         menuService = new MenuService(sessionProvider, gateway);
         menuService.init();
@@ -128,16 +95,7 @@ class HelpUiClientIntegrationTest {
         session.sender = mock(XCoreSender.class);
         when(sessionService.get(anyString())).thenReturn(session);
 
-        loop.onClientMessage(msg -> {
-            if (msg instanceof UiWireMessage.Choose choose) {
-                var result = new MenuResult(choose.action());
-                result.token = choose.token();
-                if ("action:search".equals(choose.action()) && submittedSearch != null) {
-                    result.values = arc.struct.ObjectMap.of("field_help_search", submittedSearch);
-                }
-                menuService.onMenuBuilderResult(session, result);
-            }
-        });
+        loop.onChoose(choose -> menuService.onMenuBuilderResult(session, choose.toMenuResult()));
 
         CloudService cloudService = mock(CloudService.class);
         HelpHandler<XCoreSender> helpHandler = mock(HelpHandler.class);
@@ -163,6 +121,7 @@ class HelpUiClientIntegrationTest {
     void tearDown() {
         state = originalState;
         Vars.netServer = originalNetServer;
+        coreApp.close();
     }
 
     @Test
@@ -171,11 +130,8 @@ class HelpUiClientIntegrationTest {
         helpMenu.open(session);
         assertThat(loop.stepServerToClient()).isTrue();
 
-        var showMsg = (UiWireMessage.Show) loop.transcript().all().stream()
-                .filter(m -> m instanceof UiWireMessage.Show)
-                .reduce((first, second) -> second)
-                .orElseThrow();
-        String dsl = UiDslWriter.write((NodeBuilder<?>) showMsg.body().decode());
+        var showMsg = loop.transcript().lastShow();
+        String dsl = showMsg.dsl();
         System.out.println("=== DSL OUTPUT ===\n" + dsl + "\n=================");
 
         assertThat(dsl).contains("help-ui-title");
@@ -202,11 +158,8 @@ class HelpUiClientIntegrationTest {
         // Server processes and rerenders details view
         assertThat(loop.stepServerToClient()).isTrue();
 
-        var showMsg = (UiWireMessage.Show) loop.transcript().all().stream()
-                .filter(m -> m instanceof UiWireMessage.Show)
-                .reduce((first, second) -> second)
-                .orElseThrow();
-        String dsl = UiDslWriter.write((NodeBuilder<?>) showMsg.body().decode());
+        var showMsg = loop.transcript().lastShow();
+        String dsl = showMsg.dsl();
 
         assertThat(dsl).contains("action:back");
         assertThat(dsl).contains("action:run:hub");
@@ -219,29 +172,24 @@ class HelpUiClientIntegrationTest {
         helpMenu.open(session);
         assertThat(loop.stepServerToClient()).isTrue();
         int menuId = menuService.getMenuBuilderId();
-        // The testkit's Choose carries only the action; attach the form data collected by
-        // the real client to the MenuResult at the same transport boundary.
-        submittedSearch = "resynchronize";
-        loop.client().click(menuId, "action:search");
+        loop.client().click(menuId, "action:search", Map.of("field_help_search", "resynchronize"));
         assertThat(loop.stepClientToServer()).isTrue();
-        while (loop.stepServerToClient()) {}
+        loop.deliverToClient();
         assertThat(loop.client().isVisible(menuId)).isTrue();
-        var updates = loop.transcript().all().stream().filter(m -> m instanceof UiWireMessage.Update)
-                .map(m -> (UiWireMessage.Update) m).toList();
+        var updates = loop.transcript().updates();
         assertThat(updates).isNotEmpty();
-        String patched = updates.stream().map(m -> UiDslWriter.write((NodeBuilder<?>) m.body().decode()))
+        String patched = updates.stream().map(UiWireMessage.Update::dsl)
                 .collect(java.util.stream.Collectors.joining("\n"));
         assertThat(patched).contains("resynchronize", "action:cmd:sync").doesNotContain("action:cmd:hub");
 
         loop.client().click(menuId, "action:cmd:sync");
         assertThat(loop.stepClientToServer()).isTrue();
-        while (loop.stepServerToClient()) {}
+        loop.deliverToClient();
         loop.client().click(menuId, "action:back");
         assertThat(loop.stepClientToServer()).isTrue();
-        while (loop.stepServerToClient()) {}
-        var last = (UiWireMessage.Show) loop.transcript().all().stream().filter(m -> m instanceof UiWireMessage.Show)
-                .reduce((first, second) -> second).orElseThrow();
-        assertThat(UiDslWriter.write((NodeBuilder<?>) last.body().decode()))
+        loop.deliverToClient();
+        var last = loop.transcript().lastShow();
+        assertThat(last.dsl())
                 .contains("resynchronize", "action:cmd:sync").doesNotContain("action:cmd:hub");
     }
 

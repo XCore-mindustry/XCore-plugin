@@ -1,15 +1,11 @@
 package org.xcore.plugin.ui;
 
-import arc.Core;
-import arc.mock.MockApplication;
 import com.ospx.flubundle.Bundle;
 import jakarta.inject.Provider;
 import mindustry.core.GameState;
 import mindustry.gen.Player;
 import mindustry.net.NetConnection;
 import mindustry.ui.builder.MenuResult;
-import mindustry.ui.builder.UiBuilder.NodeBuilder;
-import mindustry.ui.builder.UiDslWriter;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -23,8 +19,6 @@ import org.xcore.plugin.session.Session;
 import org.xcore.plugin.session.SessionService;
 import org.xcore.plugin.ui.menu.PlayerMenu;
 import org.xcore.testkit.ui.DeterministicUiLoop;
-import org.xcore.testkit.ui.UiSnapshot;
-import org.xcore.testkit.ui.UiWireMessage;
 
 import java.util.Locale;
 
@@ -42,6 +36,7 @@ class PlayerSettingsUiClientIntegrationTest {
 
     private GameState originalState;
     private DeterministicUiLoop loop;
+    private DeterministicUiLoop.CoreAppScope coreApp;
     private MenuService menuService;
     private PlayerProfileSettingsService profileSettings;
     private Session session;
@@ -56,12 +51,7 @@ class PlayerSettingsUiClientIntegrationTest {
 
         loop = new DeterministicUiLoop();
 
-        Core.app = new MockApplication() {
-            @Override
-            public void post(Runnable runnable) {
-                loop.serverPost().post(runnable);
-            }
-        };
+        coreApp = loop.installAsCoreApp();
 
         profileSettings = mock(PlayerProfileSettingsService.class);
         when(profileSettings.validateCustomNickname(anyString()))
@@ -85,30 +75,7 @@ class PlayerSettingsUiClientIntegrationTest {
         sessionService = mock(SessionService.class);
         Provider<SessionService> sessionProvider = () -> sessionService;
 
-        MindustryMenuGateway gateway = new MindustryMenuGateway() {
-            @Override public void menu(Player p, int id, String t, String c, String[][] b) {}
-            @Override public void followUpMenu(Player p, int id, String t, String c, String[][] b) {}
-            @Override public void hideFollowUpMenu(Player p, int id) {}
-            @Override public void textInput(Player p, int id, String t, String c, int l, String d, boolean n) {}
-            @Override public void openUri(Player p, String u) {}
-            @Override public void copyToClipboard(Player p, String t) {}
-
-            @Override
-            public void menuBuilder(Player player, int menuId, long token, String title,
-                                    boolean hideOnClick, boolean hideExisting, boolean fillScreen, NodeBuilder<?> ui) {
-                loop.sendServerToClient(new UiWireMessage.Show(menuId, token, hideExisting, UiSnapshot.capture(ui)));
-            }
-
-            @Override
-            public void menuBuilderUpdate(Player player, int menuId, String tableId, NodeBuilder<?> ui) {
-                loop.sendServerToClient(new UiWireMessage.Update(menuId, tableId, UiSnapshot.capture(ui)));
-            }
-
-            @Override
-            public void hideMenuBuilder(Player player, int menuId) {
-                loop.sendServerToClient(new UiWireMessage.Hide(menuId));
-            }
-        };
+        MindustryMenuGateway gateway = new LoopMenuGateway(loop);
 
         menuService = new MenuService(sessionProvider, gateway);
         menuService.init();
@@ -126,13 +93,7 @@ class PlayerSettingsUiClientIntegrationTest {
         );
         when(sessionService.get(anyString())).thenReturn(session);
 
-        loop.onClientMessage(msg -> {
-            if (msg instanceof UiWireMessage.Choose choose) {
-                var result = new MenuResult(choose.action());
-                result.token = choose.token();
-                menuService.onMenuBuilderResult(session, result);
-            }
-        });
+        loop.onChoose(choose -> menuService.onMenuBuilderResult(session, choose.toMenuResult()));
 
         playerMenu = new PlayerMenu(
                 new TomlSecretsConfig(),
@@ -152,7 +113,7 @@ class PlayerSettingsUiClientIntegrationTest {
     @AfterEach
     void tearDown() {
         state = originalState;
-        Core.app = null;
+        coreApp.close();
     }
 
     @Test
@@ -169,11 +130,8 @@ class PlayerSettingsUiClientIntegrationTest {
         assertThat(session.hasActiveUiSession()).isTrue();
 
         // Inspect delivered binary wire DSL
-        var lastMsg = (UiWireMessage.Show) loop.transcript().all().stream()
-                .filter(m -> m instanceof UiWireMessage.Show)
-                .reduce((first, second) -> second)
-                .orElseThrow();
-        String dsl = UiDslWriter.write((NodeBuilder<?>) lastMsg.body().decode());
+        var lastMsg = loop.transcript().lastShow();
+        String dsl = lastMsg.dsl();
 
         // Verify mobile responsiveness: a pane of cards per screen class, picked by the client
         assertThat(dsl).contains("pane{");
@@ -198,11 +156,8 @@ class PlayerSettingsUiClientIntegrationTest {
 
         // Server processes event and emits rerender
         assertThat(loop.stepServerToClient()).isTrue();
-        var lastMsg = (UiWireMessage.Show) loop.transcript().all().stream()
-                .filter(m -> m instanceof UiWireMessage.Show)
-                .reduce((first, second) -> second)
-                .orElseThrow();
-        String dsl = UiDslWriter.write((NodeBuilder<?>) lastMsg.body().decode());
+        var lastMsg = loop.transcript().lastShow();
+        String dsl = lastMsg.dsl();
 
         assertThat(dsl).contains("action:badges_filter:my");
         assertThat(dsl).contains("action:symbol_color:player-color");
@@ -228,11 +183,8 @@ class PlayerSettingsUiClientIntegrationTest {
 
         // Step server -> client: show/rerender emitted
         assertThat(loop.stepServerToClient()).isTrue();
-        var lastMsg = (UiWireMessage.Show) loop.transcript().all().stream()
-                .filter(m -> m instanceof UiWireMessage.Show)
-                .reduce((first, second) -> second)
-                .orElseThrow();
-        String dsl = UiDslWriter.write((NodeBuilder<?>) lastMsg.body().decode());
+        var lastMsg = loop.transcript().lastShow();
+        String dsl = lastMsg.dsl();
         assertThat(dsl).contains("player-settings-saved");
 
         // Verify profile service received form updates

@@ -1,15 +1,10 @@
 package org.xcore.plugin.ui;
 
-import arc.Core;
-import arc.mock.MockApplication;
 import com.ospx.flubundle.Bundle;
 import jakarta.inject.Provider;
 import mindustry.core.GameState;
 import mindustry.gen.Player;
 import mindustry.net.NetConnection;
-import mindustry.ui.builder.MenuResult;
-import mindustry.ui.builder.UiBuilder.NodeBuilder;
-import mindustry.ui.builder.UiDslWriter;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -33,8 +28,6 @@ import org.xcore.plugin.session.SessionService;
 import org.xcore.plugin.ui.menu.AuditHistoryMenu;
 import org.xcore.plugin.ui.menu.AuditHistoryUiController;
 import org.xcore.testkit.ui.DeterministicUiLoop;
-import org.xcore.testkit.ui.UiSnapshot;
-import org.xcore.testkit.ui.UiWireMessage;
 
 import java.time.Instant;
 import java.util.List;
@@ -54,6 +47,7 @@ class AuditHistoryUiClientIntegrationTest {
 
     private GameState originalState;
     private DeterministicUiLoop loop;
+    private DeterministicUiLoop.CoreAppScope coreApp;
     private MenuService menuService;
     private Session session;
     private SessionService sessionService;
@@ -69,12 +63,7 @@ class AuditHistoryUiClientIntegrationTest {
 
         loop = new DeterministicUiLoop();
 
-        Core.app = new MockApplication() {
-            @Override
-            public void post(Runnable runnable) {
-                loop.serverPost().post(runnable);
-            }
-        };
+        coreApp = loop.installAsCoreApp();
 
         PlayerData viewerData = new PlayerData("viewer-uuid", true);
         viewerData.pid = 1;
@@ -94,31 +83,7 @@ class AuditHistoryUiClientIntegrationTest {
         sessionService = mock(SessionService.class);
         Provider<SessionService> sessionProvider = () -> sessionService;
 
-        MindustryMenuGateway gateway = new MindustryMenuGateway() {
-            @Override public void menu(Player p, int id, String t, String c, String[][] b) {}
-            @Override public void followUpMenu(Player p, int id, String t, String c, String[][] b) {}
-            @Override public void hideFollowUpMenu(Player p, int id) {}
-            @Override public void textInput(Player p, int id, String t, String c, int l, String d, boolean n) {}
-            @Override public void openUri(Player p, String u) {}
-            @Override public void copyToClipboard(Player p, String t) {}
-
-            @Override
-            public void menuBuilder(Player player, int menuId, long token, String title,
-                                    boolean hideOnClick, boolean hideExisting, boolean fillScreen,
-                                    NodeBuilder<?> ui) {
-                loop.sendServerToClient(new UiWireMessage.Show(menuId, token, hideExisting, UiSnapshot.capture(ui)));
-            }
-
-            @Override
-            public void menuBuilderUpdate(Player player, int menuId, String tableId, NodeBuilder<?> ui) {
-                loop.sendServerToClient(new UiWireMessage.Update(menuId, tableId, UiSnapshot.capture(ui)));
-            }
-
-            @Override
-            public void hideMenuBuilder(Player player, int menuId) {
-                loop.sendServerToClient(new UiWireMessage.Hide(menuId));
-            }
-        };
+        MindustryMenuGateway gateway = new LoopMenuGateway(loop);
 
         menuService = new MenuService(sessionProvider, gateway);
         menuService.init();
@@ -146,19 +111,13 @@ class AuditHistoryUiClientIntegrationTest {
 
         when(sessionService.get(anyString())).thenReturn(session);
 
-        loop.onClientMessage(msg -> {
-            if (msg instanceof UiWireMessage.Choose choose) {
-                var result = new MenuResult(choose.action());
-                result.token = choose.token();
-                menuService.onMenuBuilderResult(session, result);
-            }
-        });
+        loop.onChoose(choose -> menuService.onMenuBuilderResult(session, choose.toMenuResult()));
     }
 
     @AfterEach
     void tearDown() {
         state = originalState;
-        Core.app = null;
+        coreApp.close();
     }
 
     @Test
@@ -194,11 +153,8 @@ class AuditHistoryUiClientIntegrationTest {
         assertThat(session.hasActiveUiSession()).isTrue();
 
         // Verify wire DSL contains action buttons
-        var showMsg = (UiWireMessage.Show) loop.transcript().all().stream()
-                .filter(m -> m instanceof UiWireMessage.Show)
-                .reduce((first, second) -> second)
-                .orElseThrow();
-        String initialDsl = UiDslWriter.write((NodeBuilder<?>) showMsg.body().decode());
+        var showMsg = loop.transcript().lastShow();
+        String initialDsl = showMsg.dsl();
 
         assertThat(initialDsl).contains("action:filter:ALL");
         assertThat(initialDsl).contains("action:filter:BANS");
@@ -208,44 +164,34 @@ class AuditHistoryUiClientIntegrationTest {
         // 3. Client clicks BANS filter chip -> triggers slot update
         loop.client().click(menuId, "action:filter:BANS");
         assertThat(loop.stepClientToServer()).isTrue();
-        while (loop.stepServerToClient()) {}
+        loop.deliverToClient();
 
-        var updateMsg = loop.transcript().all().stream()
-                .filter(m -> m instanceof UiWireMessage.Update)
-                .map(m -> (UiWireMessage.Update) m)
-                .reduce((first, second) -> second)
-                .orElseThrow();
+        var updateMsg = loop.transcript().lastUpdate();
         assertThat(updateMsg.targetId()).matches("slot_audit_(tabs|list)_(wide|narrow|small)");
 
         // 4. Client clicks inspect record audit-1 -> transitions to in-dialog details
         loop.client().click(menuId, "action:inspect:audit-1");
         assertThat(loop.stepClientToServer()).isTrue();
-        while (loop.stepServerToClient()) {}
+        loop.deliverToClient();
 
-        var detailsMsg = (UiWireMessage.Show) loop.transcript().all().stream()
-                .filter(m -> m instanceof UiWireMessage.Show)
-                .reduce((first, second) -> second)
-                .orElseThrow();
-        String detailsDsl = UiDslWriter.write((NodeBuilder<?>) detailsMsg.body().decode());
+        var detailsMsg = loop.transcript().lastShow();
+        String detailsDsl = detailsMsg.dsl();
         assertThat(detailsDsl).contains("action:back_to_list");
         assertThat(detailsDsl).contains("action:copy_id:audit-1");
 
         // 5. Client clicks Back to History
         loop.client().click(menuId, "action:back_to_list");
         assertThat(loop.stepClientToServer()).isTrue();
-        while (loop.stepServerToClient()) {}
+        loop.deliverToClient();
 
-        var backMsg = (UiWireMessage.Show) loop.transcript().all().stream()
-                .filter(m -> m instanceof UiWireMessage.Show)
-                .reduce((first, second) -> second)
-                .orElseThrow();
-        String backDsl = UiDslWriter.write((NodeBuilder<?>) backMsg.body().decode());
+        var backMsg = loop.transcript().lastShow();
+        String backDsl = backMsg.dsl();
         assertThat(backDsl).contains("action:filter:ALL");
 
         // 6. Client clicks Close
         loop.client().click(menuId, "action:close");
         assertThat(loop.stepClientToServer()).isTrue();
-        while (loop.stepServerToClient()) {}
+        loop.deliverToClient();
 
         assertThat(loop.client().isVisible(menuId)).isFalse();
     }
