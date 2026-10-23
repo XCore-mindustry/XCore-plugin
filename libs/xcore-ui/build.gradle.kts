@@ -7,7 +7,7 @@ plugins {
 }
 
 group = "org.xcore"
-val baseVersion = "0.1.0"
+val baseVersion = "0.2.0"
 version = providers.gradleProperty("xcorePublishVersion").orElse("$baseVersion-SNAPSHOT").get()
 val isSnapshotVersion = version.toString().endsWith("-SNAPSHOT")
 
@@ -95,7 +95,7 @@ dependencies {
 
     testImplementation(libs.mindustry.core)
     testImplementation(libs.arc.core)
-    testImplementation("org.xcore.testkit:ui:0.1.0-SNAPSHOT")
+    testImplementation("org.xcore.testkit:ui:0.1.0")
     testImplementation(libs.junit.jupiter)
     testImplementation(libs.assertj.core)
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
