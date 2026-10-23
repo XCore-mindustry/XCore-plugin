@@ -4,12 +4,20 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [5.1.0] - 2026-10-23
+
 ### Breaking changes
 - Updated the shaded FluBundle to 2.0.0. Dependent plugins compile and run against it: `Bundle.send/announce/infoMessage/setHud/toast/label/popup/kick`, `Bundle.context(...)`, `BundleContext`, `DefaultValueFactory` and `Bundle.numArgs` are removed. Deliver messages with `Messenger` (`messenger.to(player).send(...)`, `messenger.all().announce(...)`), which XCore now provides as a DI bean; see FluBundle's `docs/migrating-to-2.0.md`.
 - `Localization.context()` and `contextOrNull()` are removed; use `Localization.send(...)` or `Messenger`.
+- Updated the shaded `xcore-ui` to 0.2.0, which removes `DialogScaffold` and `UiController.initialModel`. Dependent plugins that compile against xcore-ui move to 0.2.0 with it.
+- Configuration is read with Jackson 3 (`tools.jackson`): `PluginConfigLoader.lenientTomlMapper()` now returns its `TomlMapper`. Rewritten config files keep the section and key order of the config classes.
 
 ### Changed
-- Updated `xcore-protocol` to 0.14.0 for per-file upload confirmations and Discord handle snapshots.
+- Updated `xcore-protocol` to 0.15.0: per-file upload confirmations and Discord handle snapshots (0.14.0), cases and map inspection messages (0.15.0).
+- Menus run on xcore-ui 0.2.0: layout variants per screen, keyed effects for loads (a newer load replaces an older one, a closed dialog gets nothing) and action routers. An unknown action in `/top` no longer closes the dialog.
+- `/servers` stays open when a transfer is refused (unknown, current, offline or full server) and shows why; it closes only once the transfer is sent. The list has an Attack category.
+- Optional `server.display_name` replaces `server.name` where players see the server: the information menu title, the server list and the server tag on cross-server chat messages.
+- MiniPvP rating: players exempt from rating no longer count towards team strength or the minimum numbers of rated teams and players (`team-elo-v2`).
 - Store map submission provenance separately from statistics, scoped to server, exact filename and content hash, with an audit history and asynchronous UI cache.
 - Show declared creators in both map menus and at game over/world load; show Discord handles to players and IDs to administrators.
 - Missing bundle keys go through `MissingKeyPolicy.logOnce()`.
@@ -34,6 +42,12 @@ All notable changes to this project will be documented in this file.
 - New `[translation.delivery]`, `[translation.limits]`, `[translation.prefilter]` and `[translation.channels]` settings; `translation.cache.memory_entries` and `memory_ttl_seconds`.
 
 ### Added
+- In-game reports: `/report` with a phone-friendly menu, case notices delivered in each player's language, evidence replies (chat and block history through a provider TileLogger can register), stable ban ids with a migration, and detached `.msav` map inspection with configurable severities and per-mode size profiles. The default announcements remind players about `/report`. See `docs/architecture/cases-design-spec.md`.
+- `/event` and `/events` are one dialog: upcoming, major, past and own events on tabs, an event page with map preview, schedule, likes and the start vote, and an editor with a searchable map picker and day/hour/minute steppers.
+- `/help` searches commands by name, alias and description.
+- Italian and Portuguese (Brazil) translations.
+- A link to the website in the information menu (`external_links.site_url`); the default Weblate link (`external_links.weblate_url`) is now `https://weblate.x-core.org/`.
+- `ConfigValidationCli`: validates `xcore`, secrets and sentinel configuration offline, with the plugin's own parser, without starting a server.
 - Discord map attribution in `/map`: uploader and optional declared creator with stored Discord IDs, names and upload date, separate from the map file author. Submission metadata follows the file across game modes while statistics remain partitioned.
 - Match history: `/matches` and a "Matches" button on the player's own `/stats` profile list their rated matches per ladder (result, rating before and after, map, time) and open a match with every participant, their rating change and why it did or did not count. Players see only their own history for now.
 - `rating_matches` collection: `Ladder.settle` records a match once when the settlement carries a `MatchReport` (`MatchSettlement.withReport`), rated or not, with the ratings the standings were left at. A failure to record is logged and does not affect the settlement. Account merges move the matches along.
@@ -47,6 +61,13 @@ All notable changes to this project will be documented in this file.
 - Badge colour mode "Whole badge in player colour" (`player-color-full`): the brackets take the nickname colour along with the symbol. The setting is now called "Badge colour", and "Player colour" is renamed "Symbol in player colour". Texts in every bundle.
 
 ### Fixed
+- Map previews: textures are streamed again after the client drops them (disconnect, world load) instead of showing placeholders until a restart; a preview evicted from the cache is drawn again; preview decoding no longer touches the live content state.
+- A UI session that was replaced no longer shows or patches over the dialog that replaced it.
+- Menu layouts are checked in every language; the settings menu no longer overflows on phones in 8 of 11 languages.
+- Numbers group with a space the client's font can draw (French used U+202F).
+- System badges keep their own colour in every badge colour mode.
+- Plugin-owned timers and map-vote callbacks are cancelled with their round; shutdown closes child scopes and stops producers before storage resources.
+- Cases: message subscriptions no longer depend on the feature flag at startup, so enabling reports at runtime works and disabled servers answer evidence requests with `REJECTED`.
 - Badge symbol colour "Player colour": the closing `>` no longer takes the nickname colour while `<` keeps the badge colour. Only the symbol is coloured now, and the badge no longer leaves extra colours on the stack for the text after it.
 - Chat translation: concurrent Google translations no longer share one JSON parser, which could hand a player a translation into another language. An exception inside the translation chain is now handled like a failed translation (the original is delivered) instead of silently dropping the message for that language group, and `translation.metrics.minuteBucketsEnabled = false` is honoured.
 
@@ -354,7 +375,8 @@ No changelog entries were recorded in the Unreleased section.
 ### Security
 - Added ingress-based connection verification to harden request entry points.
 
-[Unreleased]: https://github.com/XCore-mindustry/XCore-plugin/compare/v5.0.0...HEAD
+[Unreleased]: https://github.com/XCore-mindustry/XCore-plugin/compare/v5.1.0...HEAD
+[5.1.0]: https://github.com/XCore-mindustry/XCore-plugin/compare/v5.0.0...v5.1.0
 [5.0.0]: https://github.com/XCore-mindustry/XCore-plugin/compare/v4.7.0...v5.0.0
 [4.2.0]: https://github.com/XCore-mindustry/XCore-plugin/compare/v4.1.0...v4.2.0
 [4.1.0]: https://github.com/XCore-mindustry/XCore-plugin/compare/4.0.0...4.1.0
