@@ -22,6 +22,7 @@ import mindustry.world.Block;
 import mindustry.world.Tile;
 import mindustry.world.blocks.environment.Floor;
 import mindustry.world.blocks.storage.CoreBlock;
+import org.xcore.testkit.core.DeterministicQueue;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -37,6 +38,9 @@ public final class HeadlessWorld implements AutoCloseable {
     private final int width;
     private final int height;
     private final List<MockPlayer> players = new ArrayList<>();
+    private final List<EventRecorder<?>> recorders = new ArrayList<>();
+    private ManualTimer timer;
+    private DeterministicQueue mainLoop;
     private boolean closed = false;
 
     private HeadlessWorld(Builder builder) {
@@ -202,6 +206,46 @@ public final class HeadlessWorld implements AutoCloseable {
         }
     }
 
+    /**
+     * Connects a player the way a live server confirms one: {@code NetServer.connectConfirm} adds
+     * them and fires {@code PlayerConnectionConfirmed}, then {@code PlayerJoin} — so the plugin's
+     * own join handlers run. With {@code showConnectMessages} on, every player also gets the
+     * "has connected" chat line, as on a live server.
+     */
+    public MockPlayer join(Consumer<MockPlayer.Builder> configurator) {
+        MockPlayer player = addPlayer(b -> {
+            configurator.accept(b);
+            b.autoAdd(false);
+        });
+        // A connection mid-handshake: connectConfirm returns at once for one that already connected.
+        player.con().hasConnected = false;
+        NetServer.connectConfirm(player.player());
+        return player;
+    }
+
+    public MockPlayer join(String name, Team team) {
+        return join(b -> b.name(name).team(team));
+    }
+
+    /** {@link #leave(MockPlayer, String)} with the reason a client gives when it quits. */
+    public void leave(MockPlayer player) {
+        leave(player, "disconnected");
+    }
+
+    /**
+     * Disconnects a player the way a live server does: {@code NetServer.onDisconnect} fires
+     * {@code PlayerLeave} and removes them. Unlike {@link #removePlayer}, the plugin's leave
+     * handlers run.
+     */
+    public void leave(MockPlayer player, String reason) {
+        checkNotClosed();
+        NetServer.onDisconnect(player.player(), reason);
+        players.remove(player);
+        if (Vars.net instanceof MockNet net) {
+            net.unregister(player.con());
+        }
+    }
+
     public List<MockPlayer> players() {
         return Collections.unmodifiableList(players);
     }
@@ -237,6 +281,48 @@ public final class HeadlessWorld implements AutoCloseable {
         return Vars.netServer.admins.allowAction(player.player(), type, tile, config::accept);
     }
 
+    /**
+     * A {@link ManualTimer} installed for this world's lifetime, so {@code Timer.schedule} tasks run
+     * only when the test advances time. Installed on first call; closed with the world.
+     */
+    public ManualTimer timer() {
+        checkNotClosed();
+        if (timer == null) timer = ManualTimer.install();
+        return timer;
+    }
+
+    /**
+     * The server's main loop as a {@link DeterministicQueue}: from the first call, {@code Core.app.post}
+     * queues here instead of running inline, and the test runs the posts with {@code runTurn()} or
+     * {@code runUntilIdle()}. This is how to hold work "posted to the game thread" — a timer task
+     * Arc has already posted, the continuation of an async load — so a test can act before it runs.
+     *
+     * <p>Call it before scheduling timer tasks: an Arc task posts through the {@code Core.app} that
+     * was current when it was created.
+     */
+    public DeterministicQueue mainLoop() {
+        checkNotClosed();
+        if (mainLoop == null) {
+            DeterministicQueue queue = new DeterministicQueue();
+            Core.app = new MockApplication() {
+                @Override
+                public void post(Runnable runnable) {
+                    queue.post(runnable);
+                }
+            };
+            mainLoop = queue;
+        }
+        return mainLoop;
+    }
+
+    /** An {@link EventRecorder} for {@code type} that records until the world closes. */
+    public <T> EventRecorder<T> recordEvents(Class<T> type) {
+        checkNotClosed();
+        EventRecorder<T> recorder = EventRecorder.record(type);
+        recorders.add(recorder);
+        return recorder;
+    }
+
     public World world() {
         return Vars.world;
     }
@@ -257,6 +343,16 @@ public final class HeadlessWorld implements AutoCloseable {
     public synchronized void close() {
         if (closed) return;
         closed = true;
+
+        if (timer != null) {
+            timer.close();
+            timer = null;
+        }
+        mainLoop = null;
+        for (EventRecorder<?> recorder : recorders) {
+            recorder.close();
+        }
+        recorders.clear();
 
         for (MockPlayer p : players) {
             p.remove();

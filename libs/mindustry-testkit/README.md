@@ -22,7 +22,7 @@ The toolkit is divided into three modules:
 
 Pure Java library with zero dependencies on Mindustry or Arc.
 
-- **`DeterministicQueue`**: Single-threaded, explicitly stepped task queue adhering to Arc's snapshot-drain turn model (`runTurn()`). Tasks scheduled during an active turn wait deterministically for the next turn.
+- **`DeterministicQueue`**: Single-threaded, explicitly stepped task queue adhering to Arc's snapshot-drain turn model (`runTurn()`). Tasks scheduled during an active turn wait deterministically for the next turn. It is an `Executor`, so it replaces a hand-rolled `ArrayDeque<Runnable>` main thread; `runUntilIdle()` runs turns until nothing is pending and fails on a task that re-posts itself forever; `size()`/`isEmpty()` support assertions.
 
 ### 2. `fixtures` (`org.xcore.testkit:fixtures`)
 
@@ -30,10 +30,44 @@ Headless World and Entity simulation fixtures for server-side plugin tests (comm
 
 - **`HeadlessWorld`**: Managed, `AutoCloseable` environment providing an initialized `Vars.world` grid, `GameState`, `NetServer`, and `Groups`. Supports spatial queries, floor and block mutation, team cores with multi-tile footprint linking, command routing, and action filtering. Use `builder().generating(true)` for map generation, terrain painting, and layout planning (see below).
 - **`MockPlayer`**: Simulated player entity wrapping `mindustry.gen.Player` backed by an in-memory `MockNetConnection`. Features builders, coordinate/tile positioning, chat, and command dispatch.
-- **`MockNetConnection`**: Headless `NetConnection` recording all outgoing `Call.*` RPC packets (`sendMessage`, `announce`, `infoMessage`, every `infoPopup` variant, `warningToast`), player kicks (`kick(String)` / `kick(KickReason)`), and stream chunks without socket I/O.
+- **`MockNetConnection`**: Headless `NetConnection` recording all outgoing `Call.*` RPC packets (`sendMessage`, `announce`, `infoMessage`, every `infoPopup` variant, `warningToast`), player kicks (`kick(String)` / `kick(KickReason)`), and stream chunks without socket I/O. `onSend(listener)` hands every recorded packet onward, in wire order — e.g. menu packets into `DeterministicUiLoop.sendPacket`.
 - **`MockNet`**: Headless `Net` reporting `server()`/`active()`. Holds a connection registry, so broadcast `Call.*` overloads (the ones taking no `NetConnection`) reach every registered `MockPlayer` exactly as they would on a live server.
+- **Custom packets and redirects**: `MockNetConnection` also records `Call.clientPacket*` / `clientBinaryPacket*` (`clientPackets()`, `clientPackets(type)`) and `Call.connect` (`redirects()`, `lastRedirect()`); `InfoPopup` carries the popup margins. `MockPlayer.sendServerPacket(type, contents)` / `sendServerBinaryPacket` send a packet from the player's client through the real `NetServer` dispatch, so handlers registered with `netServer.addPacketHandler` run. Together they replace `mockStatic(Call.class)`.
+- **`HeadlessWorld.join(...)` / `leave(...)`**: connect and disconnect a player the way a live server does — `NetServer.connectConfirm` (`PlayerConnectionConfirmed`, `PlayerJoin`) and `NetServer.onDisconnect` (`PlayerLeave`) — so the plugin's own join/leave handlers run. `addPlayer`/`removePlayer` stay the silent variants.
+- **`ManualTimer`** (`HeadlessWorld.timer()` or `ManualTimer.install()`): Arc's `Timer` on virtual time. While installed, every `Timer.schedule(...)` waits until the test calls `advance(seconds)`; repeating tasks run once per interval crossed, cancelled ones never. No sleeps, no `mockStatic(Timer.class)`, no reflection into `Timer.Task` fields. Code that reads `task.getExecuteTimeMillis()` against `System.nanoTime()` (Arc's clock) sees the remaining virtual time.
+- **`HeadlessWorld.mainLoop()`**: makes `Core.app.post` queue on a `DeterministicQueue` instead of running inline, so work "posted to the game thread" — a timer tick Arc has already posted, an async continuation — waits until the test runs it (`runUntilIdle()`). Call it before scheduling: an Arc task posts through the `Core.app` it was created under.
+- **`EventRecorder`** (`HeadlessWorld.recordEvents(type)` or `EventRecorder.record(type)`): records every `Events.fire` of a type — `events()`, `count()`, `last()`.
+
+```java
+@WithHeadlessWorld
+class RoundTest {
+    @Test
+    void countdownStartsTheRound(HeadlessWorld world) {
+        var timer = world.timer();
+        var gameOvers = world.recordEvents(EventType.GameOverEvent.class);
+        MockPlayer alice = world.join("Alice", Team.sharded);   // plugin's PlayerJoin handler runs
+        world.join("Bob", Team.sharded);
+
+        timer.advance(15f);                                     // the 15 s countdown task runs
+        alice.sendServerPacket("fooCheck", "");                 // client -> server custom packet
+        assertThat(alice.clientPackets("fooCheck")).containsExactly("2.0");
+        world.leave(alice);                                     // plugin's PlayerLeave handler runs
+    }
+}
+```
 - **`HeadlessContent`**: Thread-safe base content loader caching vanilla blocks, units, and items once per JVM to guarantee sub-millisecond test fixture setup.
-- **`HeadlessWorldExtension` & `@WithHeadlessWorld`**: JUnit 5 Jupiter extension for automated fixture lifecycle management and parameter resolution.
+- **`@WithHeadlessWorld` & `HeadlessWorldExtension`**: JUnit 5 Jupiter extension for automated fixture lifecycle management and parameter resolution. The annotation registers the extension itself, so it is the only annotation a test needs; it takes `width`, `height` and `generating`, a method-level one wins over the class-level one, and `@Nested` classes use their enclosing class's.
+
+```java
+@WithHeadlessWorld(width = 64, height = 64)
+class TeleportTest {
+    @Test
+    void movesUnit(HeadlessWorld world) {
+        MockPlayer self = world.addPlayer(b -> b.name("Self").position(50f, 50f));
+        Unit unit = self.spawnUnit(UnitTypes.dagger); // the unit the player now controls
+    }
+}
+```
 
 #### World generation mode
 
@@ -52,17 +86,11 @@ try (HeadlessWorld world = HeadlessWorld.builder()
 }
 ```
 
-When the world is created by `@WithHeadlessWorld` (annotation-driven lifecycle) there is no builder to configure, so flip the flag in `@BeforeEach`:
+When the world is created by `@WithHeadlessWorld`, set it on the annotation:
 
 ```java
-@ExtendWith(HeadlessWorldExtension.class)
-@WithHeadlessWorld
-class GeneratorTest {
-    @BeforeEach
-    void enterGeneratingMode(HeadlessWorld world) {
-        world.world().setGenerating(true);
-    }
-}
+@WithHeadlessWorld(generating = true)
+class GeneratorTest { ... }
 ```
 
 #### Popup transcripts
@@ -91,7 +119,30 @@ Client simulation, transport wire snapshots, and actual-client oracle tests.
   - Token-bound window lifecycle.
 - **`DeterministicUiLoop`**: Orchestrates two isolated FIFO transport queues (`serverToClient` and `clientToServer`) alongside a snapshot-drain `serverPost` queue. Enables exact step-by-step control over network propagation delays and interleaved async completions.
 - **`UiSnapshot`**: Immutable wire copy of `NodeBuilder<?>` trees captured at send time using Mindustry's native binary codec (`builder.write(Writes)` / `NodeBuilder.read(Reads)`). Completely eliminates mutable object reference leaks between server and client.
-- **`UiWireMessage` & `UiTranscript`**: Sealed wire message records (`Show`, `Update`, `Hide`, `Choose`) and an append-only transcript logging every transport step for deterministic test assertions.
+- **`UiWireMessage` & `UiTranscript`**: Sealed wire message records (`Show`, `Update`, `Hide`, `Choose`) and an append-only transcript logging every transport step for deterministic test assertions. `Show`/`Update` expose `dsl()`; `Choose` carries the form `values` the client sent and turns into the server's `MenuResult` with `toMenuResult()`; `UiWireMessage.fromPacket` maps the `Call.menuBuilder*` packets. The transcript answers `lastShow()`, `lastUpdate()`, `shows()`, `updates()`, `chooses()`, `all(Type.class)` and `last(Type.class)`.
+
+#### Driving a menu end to end
+
+```java
+var loop = new DeterministicUiLoop();
+try (var app = loop.installAsCoreApp()) {             // Core.app.post -> loop.serverPost()
+    // Either a test gateway: loop.sendShow(menuId, token, hidePrevious, ui) / sendUpdate / sendHide,
+    // or the plugin's real Call.menuBuilder* path through a MockPlayer:
+    player.con().onSend(loop::sendPacket);
+    loop.dispatchChoicesTo(player.player());           // answers -> Menus.menuBuilderChoose -> plugin listener
+    // or: loop.onChoose(choose -> menuService.onMenuBuilderResult(session, choose.toMenuResult()));
+
+    menu.open(session);
+    loop.runUntilIdle();                               // deliver, answer, run server posts, until quiet
+    assertThat(loop.transcript().lastShow().dsl()).contains("action:search");
+
+    loop.client().click(menuId, "action:search", Map.of("field_help_search", "sync"));
+    loop.runUntilIdle();
+    assertThat(loop.transcript().lastUpdate().dsl()).contains("action:cmd:sync");
+}
+```
+
+Step-by-step control (`stepServerToClient`, `stepClientToServer`, `stepServerPost`) stays available for interleaving tests; `deliverToClient()` drains only the server-to-client queue.
 - **`MenuFixtures`**: Writes a `MenuBuilderCallPacket` to disk as the server sends it (`.packet`, plus a readable `.msui`), after checking that it fits a packet and survives the wire unchanged. Input for the real-client renderer below.
 - **Actual-Client Oracle (`ActualMenusOracleTest`, `ActualDialogHideTest`)**: Executes the **real** `mindustry.ui.Menus` and `arc.scene.ui.Dialog` under Arc's official `MockGL20`, `MockGraphics`, `MockAudio`, and `MockApplication` in a plain JVM without rendering. Proves exact behavioral parity between `HeadlessMenuClient` and real client bytecode.
 

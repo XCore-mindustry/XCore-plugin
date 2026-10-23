@@ -5,7 +5,10 @@ import org.junit.jupiter.api.extension.BeforeEachCallback;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.api.extension.ParameterContext;
 import org.junit.jupiter.api.extension.ParameterResolver;
+import org.junit.platform.commons.support.AnnotationSupport;
 import org.xcore.testkit.fixtures.HeadlessWorld;
+
+import java.util.Optional;
 
 /**
  * JUnit 5 Extension providing automated {@link HeadlessWorld} lifecycle management
@@ -17,16 +20,11 @@ public class HeadlessWorldExtension implements BeforeEachCallback, AfterEachCall
 
     @Override
     public void beforeEach(ExtensionContext context) {
-        WithHeadlessWorld annotation = context.getRequiredTestMethod().getAnnotation(WithHeadlessWorld.class);
-        if (annotation == null) {
-            annotation = context.getRequiredTestClass().getAnnotation(WithHeadlessWorld.class);
-        }
-
-        int width = annotation != null ? annotation.width() : 32;
-        int height = annotation != null ? annotation.height() : 32;
-
-        HeadlessWorld world = HeadlessWorld.create(width, height);
-        context.getStore(NAMESPACE).put(WORLD_KEY, world);
+        HeadlessWorld.Builder builder = HeadlessWorld.builder();
+        config(context).ifPresent(annotation -> builder
+                .dimensions(annotation.width(), annotation.height())
+                .generating(annotation.generating()));
+        context.getStore(NAMESPACE).put(WORLD_KEY, builder.build());
     }
 
     @Override
@@ -45,5 +43,14 @@ public class HeadlessWorldExtension implements BeforeEachCallback, AfterEachCall
     @Override
     public Object resolveParameter(ParameterContext parameterContext, ExtensionContext extensionContext) {
         return extensionContext.getStore(NAMESPACE).get(WORLD_KEY, HeadlessWorld.class);
+    }
+
+    /** The method's annotation, else the test class's (superclasses included), else an enclosing class's. */
+    private static Optional<WithHeadlessWorld> config(ExtensionContext context) {
+        Optional<WithHeadlessWorld> found = AnnotationSupport.findAnnotation(context.getTestMethod(), WithHeadlessWorld.class);
+        for (Class<?> type = context.getRequiredTestClass(); found.isEmpty() && type != null; type = type.getEnclosingClass()) {
+            found = AnnotationSupport.findAnnotation(type, WithHeadlessWorld.class);
+        }
+        return found;
     }
 }

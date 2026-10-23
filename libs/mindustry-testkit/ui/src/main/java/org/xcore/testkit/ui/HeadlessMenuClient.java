@@ -1,8 +1,10 @@
 package org.xcore.testkit.ui;
 
 import java.util.ArrayDeque;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Queue;
+import mindustry.ui.builder.MenuResult;
 import mindustry.ui.builder.UiDslWriter;
 
 /**
@@ -21,9 +23,22 @@ public final class HeadlessMenuClient {
         Window(int menuId, long token) { this.menuId = menuId; this.token = token; }
     }
 
-    /** One client→server menuBuilderChoose message. */
-    public record MenuChoose(int menuId, long token, String action) {
+    /** One client→server menuBuilderChoose message, with the form values sent along with it. */
+    public record MenuChoose(int menuId, long token, String action, Map<String, Object> values) {
+        public MenuChoose {
+            values = Map.copyOf(values);
+        }
+
+        public MenuChoose(int menuId, long token, String action) {
+            this(menuId, token, action, Map.of());
+        }
+
         public boolean isCancel() { return action == null; }
+
+        /** The {@link MenuResult} a server receives for this answer: action, token and values. */
+        public MenuResult toMenuResult() {
+            return new UiWireMessage.Choose(menuId, token, action, values).toMenuResult();
+        }
     }
 
     public void show(int menuId, long token, UiSnapshot body) { show(menuId, token, false, body); }
@@ -46,9 +61,17 @@ public final class HeadlessMenuClient {
 
     /** Simulates pressing a button; the window stays visible (hideOnClick handled by explicit hide()). */
     public void click(int menuId, String action) {
+        click(menuId, action, Map.of());
+    }
+
+    /**
+     * Simulates pressing a button of a form: {@code values} are what the player entered, keyed by
+     * element id, and arrive in {@code MenuResult.values}.
+     */
+    public void click(int menuId, String action, Map<String, ?> values) {
         if (current == null || current.menuId != menuId) return;
         current.wasHidden = true;
-        outbox.add(new MenuChoose(menuId, current.token, action));
+        outbox.add(new MenuChoose(menuId, current.token, action, Map.copyOf(values)));
     }
 
     /** Simulates Escape/back without a prior click; sends cancel like the real client. */

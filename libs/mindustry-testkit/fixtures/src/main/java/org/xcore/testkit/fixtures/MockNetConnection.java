@@ -1,6 +1,11 @@
 package org.xcore.testkit.fixtures;
 
 import mindustry.gen.AnnounceCallPacket;
+import mindustry.gen.ClientBinaryPacketReliableCallPacket;
+import mindustry.gen.ClientBinaryPacketUnreliableCallPacket;
+import mindustry.gen.ClientPacketReliableCallPacket;
+import mindustry.gen.ClientPacketUnreliableCallPacket;
+import mindustry.gen.ConnectCallPacket;
 import mindustry.gen.InfoMessageCallPacket;
 import mindustry.gen.InfoPopupCallPacket;
 import mindustry.gen.InfoPopupCallPacket2;
@@ -19,18 +24,39 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.function.Consumer;
 
 /**
  * Headless in-memory {@link NetConnection} recording sent packets, chat messages,
- * toasts, announcements, positioned HUD popups, kicks, and byte streams without socket I/O.
+ * toasts, announcements, positioned HUD popups, custom client packets, server redirects, kicks,
+ * and byte streams without socket I/O.
  */
 public class MockNetConnection extends NetConnection {
     /** Which {@code Call} overload produced a popup, so assertions can target one variant. */
     public enum PopupVariant { MESSAGE, POPUP, RELIABLE, KEYED, KEYED_RELIABLE }
 
-    /** Common shape of every {@code Call.infoMessage}/{@code Call.infoPopup*} variant. */
-    public record InfoPopup(String message, float duration, int align, String id, PopupVariant variant) {}
+    /**
+     * Common shape of every {@code Call.infoMessage}/{@code Call.infoPopup*} variant. The margins
+     * ({@code top}, {@code left}, {@code bottom}, {@code right}) are 0 for {@code infoMessage}.
+     */
+    public record InfoPopup(String message, float duration, int align, String id, PopupVariant variant,
+                            int top, int left, int bottom, int right) {
+        public InfoPopup(String message, float duration, int align, String id, PopupVariant variant) {
+            this(message, duration, align, id, variant, 0, 0, 0, 0);
+        }
+    }
+
+    /** A {@code Call.clientPacketReliable}/{@code clientPacketUnreliable}: a plugin-defined text packet. */
+    public record ClientPacket(String type, String contents, boolean reliable) {}
+
+    /** A {@code Call.clientBinaryPacketReliable}/{@code clientBinaryPacketUnreliable}. */
+    public record ClientBinaryPacket(String type, byte[] contents, boolean reliable) {}
+
+    /** A {@code Call.connect}: the server sending the player to another server. */
+    public record Redirect(String ip, int port) {}
 
     private final List<Object> sentPackets = new ArrayList<>();
     private final List<String> messages = new ArrayList<>();
@@ -38,9 +64,14 @@ public class MockNetConnection extends NetConnection {
     private final List<String> infoMessages = new ArrayList<>();
     private final List<InfoPopup> infoPopups = new ArrayList<>();
     private final List<String> warningToasts = new ArrayList<>();
+    private final List<ClientPacket> clientPackets = new ArrayList<>();
+    private final List<ClientBinaryPacket> clientBinaryPackets = new ArrayList<>();
+    private final List<Redirect> redirects = new ArrayList<>();
     private final Map<Integer, Integer> streamTotals = new ConcurrentHashMap<>();
     private final Map<Integer, ByteArrayOutputStream> activeStreams = new ConcurrentHashMap<>();
     private final Map<Integer, byte[]> completedStreams = new ConcurrentHashMap<>();
+
+    private final List<Consumer<Object>> sendListeners = new CopyOnWriteArrayList<>();
 
     private boolean closed = false;
     private String kickReason;
@@ -69,15 +100,29 @@ public class MockNetConnection extends NetConnection {
             infoMessages.add(info.message);
             infoPopups.add(new InfoPopup(info.message, 0f, -1, null, PopupVariant.MESSAGE));
         } else if (object instanceof InfoPopupCallPacket popup) {
-            infoPopups.add(new InfoPopup(popup.message, popup.duration, popup.align, null, PopupVariant.POPUP));
+            infoPopups.add(new InfoPopup(popup.message, popup.duration, popup.align, null, PopupVariant.POPUP,
+                    popup.top, popup.left, popup.bottom, popup.right));
         } else if (object instanceof InfoPopupReliableCallPacket popup) {
-            infoPopups.add(new InfoPopup(popup.message, popup.duration, popup.align, null, PopupVariant.RELIABLE));
+            infoPopups.add(new InfoPopup(popup.message, popup.duration, popup.align, null, PopupVariant.RELIABLE,
+                    popup.top, popup.left, popup.bottom, popup.right));
         } else if (object instanceof InfoPopupCallPacket2 popup) {
-            infoPopups.add(new InfoPopup(popup.message, popup.duration, popup.align, popup.id, PopupVariant.KEYED));
+            infoPopups.add(new InfoPopup(popup.message, popup.duration, popup.align, popup.id, PopupVariant.KEYED,
+                    popup.top, popup.left, popup.bottom, popup.right));
         } else if (object instanceof InfoPopupReliableCallPacket2 popup) {
-            infoPopups.add(new InfoPopup(popup.message, popup.duration, popup.align, popup.id, PopupVariant.KEYED_RELIABLE));
+            infoPopups.add(new InfoPopup(popup.message, popup.duration, popup.align, popup.id, PopupVariant.KEYED_RELIABLE,
+                    popup.top, popup.left, popup.bottom, popup.right));
         } else if (object instanceof WarningToastCallPacket toast) {
             warningToasts.add(toast.text);
+        } else if (object instanceof ClientPacketReliableCallPacket packet) {
+            clientPackets.add(new ClientPacket(packet.type, packet.contents, true));
+        } else if (object instanceof ClientPacketUnreliableCallPacket packet) {
+            clientPackets.add(new ClientPacket(packet.type, packet.contents, false));
+        } else if (object instanceof ClientBinaryPacketReliableCallPacket packet) {
+            clientBinaryPackets.add(new ClientBinaryPacket(packet.type, packet.contents, true));
+        } else if (object instanceof ClientBinaryPacketUnreliableCallPacket packet) {
+            clientBinaryPackets.add(new ClientBinaryPacket(packet.type, packet.contents, false));
+        } else if (object instanceof ConnectCallPacket connect) {
+            redirects.add(new Redirect(connect.ip, connect.port));
         } else if (object instanceof KickCallPacket kp) {
             this.kickReason = kp.reason;
         } else if (object instanceof KickCallPacket2 kp2) {
@@ -97,6 +142,23 @@ public class MockNetConnection extends NetConnection {
                 }
             }
         }
+
+        // Last, so a listener reading the typed transcript sees this packet in it.
+        for (Consumer<Object> listener : sendListeners) {
+            listener.accept(object);
+        }
+    }
+
+    /**
+     * Hands every packet sent to this connection to {@code listener}, after it is recorded and in
+     * wire order, until the connection is closed.
+     *
+     * <p>This is the hook for forwarding packets elsewhere, such as menu packets into the
+     * {@code ui} module's {@code DeterministicUiLoop.sendPacket}, so a test can drive the plugin's
+     * real {@code Call.*} path instead of a hand-written gateway.
+     */
+    public void onSend(Consumer<Object> listener) {
+        sendListeners.add(Objects.requireNonNull(listener, "listener"));
     }
 
     @Override
@@ -157,6 +219,33 @@ public class MockNetConnection extends NetConnection {
         return warningToasts.isEmpty() ? null : warningToasts.get(warningToasts.size() - 1);
     }
 
+    /** Custom text packets in wire order, reliable and unreliable. */
+    public synchronized List<ClientPacket> clientPackets() {
+        return List.copyOf(clientPackets);
+    }
+
+    /** Contents of the custom text packets of one {@code type}, in wire order. */
+    public synchronized List<String> clientPackets(String type) {
+        List<String> contents = new ArrayList<>();
+        for (ClientPacket packet : clientPackets) {
+            if (packet.type().equals(type)) contents.add(packet.contents());
+        }
+        return Collections.unmodifiableList(contents);
+    }
+
+    /** Custom binary packets in wire order, reliable and unreliable. */
+    public synchronized List<ClientBinaryPacket> clientBinaryPackets() {
+        return List.copyOf(clientBinaryPackets);
+    }
+
+    public synchronized List<Redirect> redirects() {
+        return List.copyOf(redirects);
+    }
+
+    public synchronized Redirect lastRedirect() {
+        return redirects.isEmpty() ? null : redirects.get(redirects.size() - 1);
+    }
+
     public synchronized boolean isClosed() {
         return closed;
     }
@@ -176,6 +265,9 @@ public class MockNetConnection extends NetConnection {
         infoMessages.clear();
         infoPopups.clear();
         warningToasts.clear();
+        clientPackets.clear();
+        clientBinaryPackets.clear();
+        redirects.clear();
         streamTotals.clear();
         activeStreams.clear();
         completedStreams.clear();
