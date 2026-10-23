@@ -164,7 +164,7 @@ JVM, so this stays a separate, opt-in tool. See [`render/README.md`](render/READ
 
 ### Gradle (Kotlin DSL)
 
-Add the XCore snapshot repository and include testkit in your test scope:
+Add the XCore repositories and include testkit in your test scope (releases are `vX.Y.Z` tags; `main` publishes the next version as `-SNAPSHOT`):
 
 ```kotlin
 repositories {
@@ -174,9 +174,9 @@ repositories {
 }
 
 dependencies {
-    testImplementation("org.xcore.testkit:fixtures:0.1.0-SNAPSHOT")
-    testImplementation("org.xcore.testkit:ui:0.1.0-SNAPSHOT")
-    // or testImplementation("org.xcore.testkit:core:0.1.0-SNAPSHOT") for core queue utilities
+    testImplementation("org.xcore.testkit:fixtures:0.1.0")
+    testImplementation("org.xcore.testkit:ui:0.1.0")
+    // or testImplementation("org.xcore.testkit:core:0.1.0") for core queue utilities
 }
 ```
 
