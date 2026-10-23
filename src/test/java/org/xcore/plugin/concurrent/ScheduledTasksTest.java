@@ -1,13 +1,12 @@
 package org.xcore.plugin.concurrent;
 
 import arc.util.Timer;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.MockedStatic;
+import org.xcore.testkit.fixtures.HeadlessWorld;
+import org.xcore.testkit.fixtures.ManualTimer;
+import org.xcore.testkit.fixtures.junit.WithHeadlessWorld;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -15,30 +14,17 @@ import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyFloat;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.mockStatic;
 
+@WithHeadlessWorld
 class ScheduledTasksTest {
-    private MockedStatic<Timer> timer;
-    private final List<Runnable> scheduled = new ArrayList<>();
-    private final List<Timer.Task> arcTasks = new ArrayList<>();
+    private HeadlessWorld world;
+    private ManualTimer timer;
 
     @BeforeEach
-    void setUp() {
-        timer = mockStatic(Timer.class);
-        timer.when(() -> Timer.schedule(any(Runnable.class), anyFloat())).thenAnswer(invocation -> capture(invocation.getArgument(0)));
-        timer.when(() -> Timer.schedule(any(Runnable.class), anyFloat(), anyFloat())).thenAnswer(invocation -> capture(invocation.getArgument(0)));
-    }
-
-    @AfterEach
-    void tearDown() {
-        timer.close();
-    }
-
-    private Timer.Task capture(Runnable runnable) {
-        var task = mock(Timer.Task.class);
-        scheduled.add(runnable);
-        arcTasks.add(task);
-        return task;
+    void setUp(HeadlessWorld world) {
+        this.world = world;
+        timer = world.timer();
     }
 
     @Test
@@ -49,26 +35,32 @@ class ScheduledTasksTest {
             if (runs.incrementAndGet() == 1) throw new IllegalStateException("boom");
         });
 
-        assertThatCode(() -> scheduled.getFirst().run()).doesNotThrowAnyException();
-        scheduled.getFirst().run();
+        assertThatCode(timer::runDue).doesNotThrowAnyException();
+        timer.advance(1f);
 
         assertThat(runs).hasValue(2);
         assertThat(handle.isActive()).isTrue();
-        verify(arcTasks.getFirst(), never()).cancel();
+        assertThat(timer.pending()).isEqualTo(1);
     }
 
     @Test
     void closingCancelsEveryTaskAndDisablesAnAlreadyQueuedRun() {
+        // Arc posts a due task to the main loop; hold the posts so one is in flight at close.
+        var mainLoop = world.mainLoop();
         var runs = new AtomicInteger();
         var tasks = new ScheduledTasks("test");
         tasks.every(0f, 1f, runs::incrementAndGet);
         tasks.after(5f, runs::incrementAndGet);
+        timer.runDue();
+        assertThat(mainLoop.size()).isEqualTo(1);
 
         tasks.close();
-        scheduled.forEach(Runnable::run);
+        mainLoop.runUntilIdle();
+        timer.advance(10f);
+        mainLoop.runUntilIdle();
 
         assertThat(runs).hasValue(0);
-        arcTasks.forEach(task -> verify(task).cancel());
+        assertThat(timer.pending()).isZero();
         assertThat(tasks.pending()).isZero();
     }
 
@@ -78,7 +70,7 @@ class ScheduledTasksTest {
         var tasks = new ScheduledTasks("test");
         var handle = tasks.after(5f, runs::incrementAndGet);
 
-        scheduled.getFirst().run();
+        timer.advance(5f);
 
         assertThat(runs).hasValue(1);
         assertThat(handle.isActive()).isFalse();
@@ -94,12 +86,11 @@ class ScheduledTasksTest {
         tasks.after(5f, second::incrementAndGet);
 
         cancelled.cancel();
-        scheduled.forEach(Runnable::run);
+        assertThat(timer.pending()).isEqualTo(1);
+        timer.advance(5f);
 
         assertThat(first).hasValue(0);
         assertThat(second).hasValue(1);
-        verify(arcTasks.get(0)).cancel();
-        verify(arcTasks.get(1), never()).cancel();
     }
 
     @Test
@@ -110,16 +101,17 @@ class ScheduledTasksTest {
         var handle = tasks.after(1f, () -> { });
 
         assertThat(handle.isActive()).isFalse();
-        assertThat(scheduled).isEmpty();
+        assertThat(timer.pending()).isZero();
     }
 
     @Test
     void remainingTimeIsMeasuredOnArcsMonotonicClock() {
         var tasks = new ScheduledTasks("test");
         var handle = tasks.after(5f, () -> { });
-        when(arcTasks.getFirst().getExecuteTimeMillis()).thenReturn(System.nanoTime() / 1_000_000L + 5_000L);
 
         assertThat(handle.remainingMillis()).isBetween(4_000L, 5_000L);
+        timer.advance(2f);
+        assertThat(handle.remainingMillis()).isBetween(2_000L, 3_000L);
 
         handle.cancel();
         assertThat(handle.remainingMillis()).isZero();
@@ -127,13 +119,15 @@ class ScheduledTasksTest {
 
     @Test
     void schedulingFailureDoesNotLeaveAPendingHandle() {
-        timer.when(() -> Timer.schedule(any(Runnable.class), anyFloat()))
-                .thenThrow(new IllegalStateException("timer unavailable"));
-        var tasks = new ScheduledTasks("test");
+        try (var failing = mockStatic(Timer.class)) {
+            failing.when(() -> Timer.schedule(any(Runnable.class), anyFloat()))
+                    .thenThrow(new IllegalStateException("timer unavailable"));
+            var tasks = new ScheduledTasks("test");
 
-        assertThatThrownBy(() -> tasks.after(1f, () -> { }))
-                .isInstanceOf(IllegalStateException.class);
+            assertThatThrownBy(() -> tasks.after(1f, () -> { }))
+                    .isInstanceOf(IllegalStateException.class);
 
-        assertThat(tasks.pending()).isZero();
+            assertThat(tasks.pending()).isZero();
+        }
     }
 }
