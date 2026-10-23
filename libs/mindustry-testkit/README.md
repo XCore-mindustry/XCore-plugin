@@ -32,6 +32,28 @@ Headless World and Entity simulation fixtures for server-side plugin tests (comm
 - **`MockPlayer`**: Simulated player entity wrapping `mindustry.gen.Player` backed by an in-memory `MockNetConnection`. Features builders, coordinate/tile positioning, chat, and command dispatch.
 - **`MockNetConnection`**: Headless `NetConnection` recording all outgoing `Call.*` RPC packets (`sendMessage`, `announce`, `infoMessage`, every `infoPopup` variant, `warningToast`), player kicks (`kick(String)` / `kick(KickReason)`), and stream chunks without socket I/O. `onSend(listener)` hands every recorded packet onward, in wire order — e.g. menu packets into `DeterministicUiLoop.sendPacket`.
 - **`MockNet`**: Headless `Net` reporting `server()`/`active()`. Holds a connection registry, so broadcast `Call.*` overloads (the ones taking no `NetConnection`) reach every registered `MockPlayer` exactly as they would on a live server.
+- **Custom packets and redirects**: `MockNetConnection` also records `Call.clientPacket*` / `clientBinaryPacket*` (`clientPackets()`, `clientPackets(type)`) and `Call.connect` (`redirects()`, `lastRedirect()`); `InfoPopup` carries the popup margins. `MockPlayer.sendServerPacket(type, contents)` / `sendServerBinaryPacket` send a packet from the player's client through the real `NetServer` dispatch, so handlers registered with `netServer.addPacketHandler` run. Together they replace `mockStatic(Call.class)`.
+- **`HeadlessWorld.join(...)` / `leave(...)`**: connect and disconnect a player the way a live server does — `NetServer.connectConfirm` (`PlayerConnectionConfirmed`, `PlayerJoin`) and `NetServer.onDisconnect` (`PlayerLeave`) — so the plugin's own join/leave handlers run. `addPlayer`/`removePlayer` stay the silent variants.
+- **`ManualTimer`** (`HeadlessWorld.timer()` or `ManualTimer.install()`): Arc's `Timer` on virtual time. While installed, every `Timer.schedule(...)` waits until the test calls `advance(seconds)`; repeating tasks run once per interval crossed, cancelled ones never. No sleeps, no `mockStatic(Timer.class)`, no reflection into `Timer.Task` fields.
+- **`EventRecorder`** (`HeadlessWorld.recordEvents(type)` or `EventRecorder.record(type)`): records every `Events.fire` of a type — `events()`, `count()`, `last()`.
+
+```java
+@WithHeadlessWorld
+class RoundTest {
+    @Test
+    void countdownStartsTheRound(HeadlessWorld world) {
+        var timer = world.timer();
+        var gameOvers = world.recordEvents(EventType.GameOverEvent.class);
+        MockPlayer alice = world.join("Alice", Team.sharded);   // plugin's PlayerJoin handler runs
+        world.join("Bob", Team.sharded);
+
+        timer.advance(15f);                                     // the 15 s countdown task runs
+        alice.sendServerPacket("fooCheck", "");                 // client -> server custom packet
+        assertThat(alice.clientPackets("fooCheck")).containsExactly("2.0");
+        world.leave(alice);                                     // plugin's PlayerLeave handler runs
+    }
+}
+```
 - **`HeadlessContent`**: Thread-safe base content loader caching vanilla blocks, units, and items once per JVM to guarantee sub-millisecond test fixture setup.
 - **`@WithHeadlessWorld` & `HeadlessWorldExtension`**: JUnit 5 Jupiter extension for automated fixture lifecycle management and parameter resolution. The annotation registers the extension itself, so it is the only annotation a test needs; it takes `width`, `height` and `generating`, a method-level one wins over the class-level one, and `@Nested` classes use their enclosing class's.
 

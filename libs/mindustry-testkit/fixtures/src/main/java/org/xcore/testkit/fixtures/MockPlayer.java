@@ -1,6 +1,7 @@
 package org.xcore.testkit.fixtures;
 
 import mindustry.core.NetClient;
+import mindustry.core.NetServer;
 import mindustry.game.Team;
 import mindustry.gen.Building;
 import mindustry.gen.Player;
@@ -152,6 +153,29 @@ public final class MockPlayer {
 
     public String lastWarningToast() {
         return connection.lastWarningToast();
+    }
+
+    /** Contents of the custom text packets of one {@code type} this player received, in wire order. */
+    public List<String> clientPackets(String type) {
+        return connection.clientPackets(type);
+    }
+
+    /** Where the server last sent this player with {@code Call.connect}, or null. */
+    public MockNetConnection.Redirect lastRedirect() {
+        return connection.lastRedirect();
+    }
+
+    /**
+     * Sends a custom text packet from this player's client, as {@code Call.serverPacketReliable}
+     * does: it reaches every handler registered with {@code netServer.addPacketHandler(type, ...)}.
+     */
+    public void sendServerPacket(String type, String contents) {
+        NetServer.serverPacketReliable(player, type, contents);
+    }
+
+    /** Like {@link #sendServerPacket}, for handlers registered with {@code addBinaryPacketHandler}. */
+    public void sendServerBinaryPacket(String type, byte[] contents) {
+        NetServer.serverBinaryPacketReliable(player, type, contents);
     }
 
     public boolean isKicked() {
