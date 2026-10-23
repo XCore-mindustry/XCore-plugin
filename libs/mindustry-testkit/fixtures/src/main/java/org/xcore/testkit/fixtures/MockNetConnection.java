@@ -89,9 +89,6 @@ public class MockNetConnection extends NetConnection {
         if (closed) return;
 
         sentPackets.add(object);
-        for (Consumer<Object> listener : sendListeners) {
-            listener.accept(object);
-        }
 
         if (object instanceof SendMessageCallPacket2 msg) {
             messages.add(msg.message);
@@ -144,6 +141,11 @@ public class MockNetConnection extends NetConnection {
                     streamTotals.remove(chunk.id);
                 }
             }
+        }
+
+        // Last, so a listener reading the typed transcript sees this packet in it.
+        for (Consumer<Object> listener : sendListeners) {
+            listener.accept(object);
         }
     }
 

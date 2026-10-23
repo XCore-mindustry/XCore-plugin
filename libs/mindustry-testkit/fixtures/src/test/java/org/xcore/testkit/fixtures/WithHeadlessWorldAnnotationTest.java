@@ -54,6 +54,18 @@ class WithHeadlessWorldAnnotationTest {
         assertThat(seen).hasSize(2).containsExactlyElementsOf(player.sentPackets());
     }
 
+    @Test
+    void sendListenersSeeThePacketAlreadyInTheTypedTranscript(HeadlessWorld world) {
+        MockPlayer player = world.addPlayer("Listener", Team.sharded);
+        List<String> lastSeen = new ArrayList<>();
+        player.con().onSend(packet -> lastSeen.add(player.lastReceivedMessage() + "|" + player.clientPackets("ping")));
+
+        player.player().sendMessage("hello");
+        mindustry.gen.Call.clientPacketReliable(player.con(), "ping", "1");
+
+        assertThat(lastSeen).containsExactly("hello|[]", "hello|[1]");
+    }
+
     @Nested
     class Inner {
         @Test
