@@ -7,7 +7,9 @@ import arc.struct.Seq;
 
 import java.lang.reflect.Field;
 import java.util.ArrayList;
+import java.util.IdentityHashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Arc's {@link Timer} on virtual time: while installed, {@code Timer.schedule(...)} queues tasks
@@ -28,6 +30,12 @@ import java.util.List;
  * the order Arc's unordered task list gives, as on a live server: not necessarily the order they
  * were scheduled in.
  *
+ * <p>Code that measures a task's remaining time itself, as {@code task.getExecuteTimeMillis()}
+ * minus {@code System.nanoTime() / 1_000_000} (the clock Arc stamps tasks with), keeps working:
+ * after every schedule and every {@link #advance} each task's execute time is set to the real
+ * clock plus its remaining virtual time, so the difference is right to within the real time the
+ * test spent since. {@code Timer.delay} is not supported.
+ *
  * <p>{@link HeadlessWorld#timer()} installs one for the world's lifetime.
  */
 public final class ManualTimer extends Timer implements AutoCloseable {
@@ -45,6 +53,8 @@ public final class ManualTimer extends Timer implements AutoCloseable {
     private static final Field TASK_APP = field(Task.class, "app");
 
     private final Timer previous;
+    /** Virtual due time of each scheduled task; Arc's own field holds the real-clock projection. */
+    private final Map<Task, Long> due = new IdentityHashMap<>();
     private long nowMillis;
     private boolean closed;
 
@@ -78,8 +88,8 @@ public final class ManualTimer extends Timer implements AutoCloseable {
         checkNotClosed();
         synchronized (this) {
             super.scheduleTask(task, delaySeconds, intervalSeconds, repeatCount);
-            // Arc stamps the task with System.nanoTime(); restamp it on the virtual clock.
-            setExecuteTime(task, nowMillis + (long) (delaySeconds * 1000));
+            due.put(task, nowMillis + (long) (delaySeconds * 1000));
+            project(task);
         }
         return task;
     }
@@ -105,6 +115,7 @@ public final class ManualTimer extends Timer implements AutoCloseable {
             fireDue();
         }
         nowMillis = target;
+        projectAll();
     }
 
     /**
@@ -113,27 +124,29 @@ public final class ManualTimer extends Timer implements AutoCloseable {
      * here a post may run inline and cancel or schedule tasks, so the walk finishes first.
      */
     private void fireDue() {
-        List<Task> due = new ArrayList<>();
+        List<Task> fired = new ArrayList<>();
         try {
             synchronized (this) {
                 Seq<Task> tasks = tasks();
                 for (int i = 0; i < tasks.size; i++) {
                     Task task = tasks.get(i);
                     synchronized (task) {
-                        if (EXECUTE_TIME.getLong(task) > nowMillis) continue;
+                        if (dueMillis(task) > nowMillis) continue;
                         int repeat = REPEAT_COUNT.getInt(task);
                         if (repeat == 0) {
                             TASK_TIMER.set(task, null);
                             tasks.remove(i--);
+                            due.remove(task);
                         } else {
-                            EXECUTE_TIME.setLong(task, nowMillis + INTERVAL.getLong(task));
+                            due.put(task, nowMillis + INTERVAL.getLong(task));
+                            project(task);
                             if (repeat > 0) REPEAT_COUNT.setInt(task, repeat - 1);
                         }
                     }
-                    due.add(task);
+                    fired.add(task);
                 }
             }
-            for (Task task : due) ((Application) TASK_APP.get(task)).post(task);
+            for (Task task : fired) ((Application) TASK_APP.get(task)).post(task);
         } catch (IllegalAccessException e) {
             throw new IllegalStateException(e);
         }
@@ -166,6 +179,9 @@ public final class ManualTimer extends Timer implements AutoCloseable {
         if (closed) return;
         closed = true;
         clear();
+        synchronized (this) {
+            due.clear();
+        }
         try {
             synchronized (THREAD_LOCK.get(null)) {
                 Object thread = THREAD.get(null);
@@ -180,10 +196,32 @@ public final class ManualTimer extends Timer implements AutoCloseable {
         Seq<Task> tasks = tasks();
         long next = -1;
         for (int i = 0; i < tasks.size; i++) {
-            long at = executeTime(tasks.get(i));
+            long at = dueMillis(tasks.get(i));
             if (next < 0 || at < next) next = at;
         }
         return next;
+    }
+
+    /** A task's virtual due time; one scheduled before install (none should be) counts as due now. */
+    private long dueMillis(Task task) {
+        return due.getOrDefault(task, nowMillis);
+    }
+
+    /** Sets Arc's execute time to the real clock plus the remaining virtual time. */
+    private void project(Task task) {
+        setExecuteTime(task, System.nanoTime() / 1_000_000L + Math.max(0, dueMillis(task) - nowMillis));
+    }
+
+    /** Re-projects every pending task and forgets the ones cancelled since. */
+    private synchronized void projectAll() {
+        Seq<Task> tasks = tasks();
+        Map<Task, Long> live = new IdentityHashMap<>();
+        for (int i = 0; i < tasks.size; i++) {
+            Task task = tasks.get(i);
+            live.put(task, dueMillis(task));
+        }
+        due.keySet().retainAll(live.keySet());
+        for (Task task : live.keySet()) project(task);
     }
 
     @SuppressWarnings("unchecked")
@@ -195,13 +233,6 @@ public final class ManualTimer extends Timer implements AutoCloseable {
         }
     }
 
-    private static long executeTime(Task task) {
-        try {
-            return EXECUTE_TIME.getLong(task);
-        } catch (IllegalAccessException e) {
-            throw new IllegalStateException(e);
-        }
-    }
 
     private static void setExecuteTime(Task task, long millis) {
         try {

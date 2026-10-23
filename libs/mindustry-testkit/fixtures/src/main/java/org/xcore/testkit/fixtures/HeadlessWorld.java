@@ -22,6 +22,7 @@ import mindustry.world.Block;
 import mindustry.world.Tile;
 import mindustry.world.blocks.environment.Floor;
 import mindustry.world.blocks.storage.CoreBlock;
+import org.xcore.testkit.core.DeterministicQueue;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -39,6 +40,7 @@ public final class HeadlessWorld implements AutoCloseable {
     private final List<MockPlayer> players = new ArrayList<>();
     private final List<EventRecorder<?>> recorders = new ArrayList<>();
     private ManualTimer timer;
+    private DeterministicQueue mainLoop;
     private boolean closed = false;
 
     private HeadlessWorld(Builder builder) {
@@ -289,6 +291,30 @@ public final class HeadlessWorld implements AutoCloseable {
         return timer;
     }
 
+    /**
+     * The server's main loop as a {@link DeterministicQueue}: from the first call, {@code Core.app.post}
+     * queues here instead of running inline, and the test runs the posts with {@code runTurn()} or
+     * {@code runUntilIdle()}. This is how to hold work "posted to the game thread" — a timer task
+     * Arc has already posted, the continuation of an async load — so a test can act before it runs.
+     *
+     * <p>Call it before scheduling timer tasks: an Arc task posts through the {@code Core.app} that
+     * was current when it was created.
+     */
+    public DeterministicQueue mainLoop() {
+        checkNotClosed();
+        if (mainLoop == null) {
+            DeterministicQueue queue = new DeterministicQueue();
+            Core.app = new MockApplication() {
+                @Override
+                public void post(Runnable runnable) {
+                    queue.post(runnable);
+                }
+            };
+            mainLoop = queue;
+        }
+        return mainLoop;
+    }
+
     /** An {@link EventRecorder} for {@code type} that records until the world closes. */
     public <T> EventRecorder<T> recordEvents(Class<T> type) {
         checkNotClosed();
@@ -322,6 +348,7 @@ public final class HeadlessWorld implements AutoCloseable {
             timer.close();
             timer = null;
         }
+        mainLoop = null;
         for (EventRecorder<?> recorder : recorders) {
             recorder.close();
         }

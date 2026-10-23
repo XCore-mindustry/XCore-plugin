@@ -109,4 +109,39 @@ class ManualTimerTest {
         assertThat(Timer.instance()).isSameAs(before);
         assertThat(task.isScheduled()).isFalse();
     }
+
+    @Test
+    void remainingTimeReadOffArcsClockFollowsVirtualTime(HeadlessWorld world) {
+        ManualTimer timer = world.timer();
+        Timer.Task once = Timer.schedule(() -> {}, 5f);
+        Timer.Task repeating = Timer.schedule(() -> {}, 1f, 4f);
+
+        assertThat(remainingMillis(once)).isBetween(4_900L, 5_000L);
+        timer.advance(2f);
+        assertThat(remainingMillis(once)).isBetween(2_900L, 3_000L);
+        // ran at 1 s, next at 5 s
+        assertThat(remainingMillis(repeating)).isBetween(2_900L, 3_000L);
+    }
+
+    /** What plugin code computes: Arc stamps execute times from System.nanoTime. */
+    private static long remainingMillis(Timer.Task task) {
+        return task.getExecuteTimeMillis() - System.nanoTime() / 1_000_000L;
+    }
+
+    @Test
+    void mainLoopHoldsWhatTheTimerPostsUntilTheTestRunsIt(HeadlessWorld world) {
+        var mainLoop = world.mainLoop();
+        ManualTimer timer = world.timer();
+        List<String> ran = new ArrayList<>();
+        Timer.Task task = Timer.schedule(() -> ran.add("tick"), 1f);
+        arc.Core.app.post(() -> ran.add("posted"));
+
+        timer.advance(1f);
+        assertThat(ran).isEmpty();
+        assertThat(task.isScheduled()).isFalse();
+        assertThat(mainLoop.size()).isEqualTo(2);
+
+        mainLoop.runUntilIdle();
+        assertThat(ran).containsExactly("posted", "tick");
+    }
 }
