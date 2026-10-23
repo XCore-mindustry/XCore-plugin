@@ -187,9 +187,11 @@ public final class MockPlayer {
         sendChat(full);
     }
 
-    public void spawnUnit(UnitType type) {
+    /** Spawns a unit of {@code type} at the player's position, puts the player in it, and returns it. */
+    public Unit spawnUnit(UnitType type) {
         Unit u = type.spawn(player.team(), player.x, player.y);
         player.unit(u);
+        return u;
     }
 
     public void remove() {

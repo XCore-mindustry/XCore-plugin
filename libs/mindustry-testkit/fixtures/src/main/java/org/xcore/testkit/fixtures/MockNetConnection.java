@@ -19,7 +19,10 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.function.Consumer;
 
 /**
  * Headless in-memory {@link NetConnection} recording sent packets, chat messages,
@@ -42,6 +45,8 @@ public class MockNetConnection extends NetConnection {
     private final Map<Integer, ByteArrayOutputStream> activeStreams = new ConcurrentHashMap<>();
     private final Map<Integer, byte[]> completedStreams = new ConcurrentHashMap<>();
 
+    private final List<Consumer<Object>> sendListeners = new CopyOnWriteArrayList<>();
+
     private boolean closed = false;
     private String kickReason;
 
@@ -58,6 +63,9 @@ public class MockNetConnection extends NetConnection {
         if (closed) return;
 
         sentPackets.add(object);
+        for (Consumer<Object> listener : sendListeners) {
+            listener.accept(object);
+        }
 
         if (object instanceof SendMessageCallPacket2 msg) {
             messages.add(msg.message);
@@ -97,6 +105,18 @@ public class MockNetConnection extends NetConnection {
                 }
             }
         }
+    }
+
+    /**
+     * Hands every packet sent to this connection to {@code listener}, after it is recorded and in
+     * wire order, until the connection is closed.
+     *
+     * <p>This is the hook for forwarding packets elsewhere, such as menu packets into the
+     * {@code ui} module's {@code DeterministicUiLoop.sendPacket}, so a test can drive the plugin's
+     * real {@code Call.*} path instead of a hand-written gateway.
+     */
+    public void onSend(Consumer<Object> listener) {
+        sendListeners.add(Objects.requireNonNull(listener, "listener"));
     }
 
     @Override

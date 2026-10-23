@@ -36,4 +36,32 @@ class DeterministicQueueTest {
         assertEquals(List.of("first", "second"), delivered);
         assertFalse(queue.runNext());
     }
+
+    @Test
+    void runUntilIdleRunsChainedTurnsAndCountsThem() {
+        var queue = new DeterministicQueue();
+        var delivered = new ArrayList<String>();
+        java.util.concurrent.Executor executor = queue;
+        executor.execute(() -> {
+            delivered.add("A");
+            queue.post(() -> delivered.add("B"));
+        });
+
+        assertEquals(1, queue.size());
+        assertEquals(2, queue.runUntilIdle());
+        assertEquals(List.of("A", "B"), delivered);
+        assertTrue(queue.isEmpty());
+        assertEquals(0, queue.runUntilIdle());
+    }
+
+    @Test
+    void runUntilIdleFailsOnTaskThatRepostsItself() {
+        var queue = new DeterministicQueue();
+        Runnable[] forever = new Runnable[1];
+        forever[0] = () -> queue.post(forever[0]);
+        queue.post(forever[0]);
+
+        var error = assertThrows(IllegalStateException.class, () -> queue.runUntilIdle(5));
+        assertTrue(error.getMessage().contains("after 5 turns"), error.getMessage());
+    }
 }
