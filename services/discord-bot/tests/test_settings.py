@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import traceback
+
 import pytest
 from pydantic import ValidationError
 
@@ -24,6 +26,8 @@ ENV_KEYS = [
     "MONGO_URI",
     "MONGO_DB_NAME",
     "RPC_TIMEOUT_MS",
+    "CASES_PANEL_CHANNEL_ID",
+    "MAPS_TAG_PROFILES",
 ]
 
 
@@ -87,7 +91,9 @@ def test_settings_from_env_rpc_timeout_must_be_integer(
     _set_required_env(monkeypatch)
     monkeypatch.setenv("RPC_TIMEOUT_MS", "abc")
 
-    with pytest.raises(RuntimeError, match="RPC_TIMEOUT_MS must be an integer"):
+    with pytest.raises(
+        RuntimeError, match="RPC_TIMEOUT_MS: Input should be a valid integer"
+    ):
         Settings.from_env()
 
 
@@ -97,19 +103,57 @@ def test_settings_from_env_rpc_timeout_positive(
     _set_required_env(monkeypatch)
     monkeypatch.setenv("RPC_TIMEOUT_MS", "0")
 
-    with pytest.raises(RuntimeError, match="RPC_TIMEOUT_MS must be > 0"):
+    with pytest.raises(
+        RuntimeError, match="RPC_TIMEOUT_MS: Input should be greater than 0"
+    ):
         Settings.from_env()
+
+
+def test_settings_from_env_hides_values_of_other_variables(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("DISCORD_BOT_TOKEN", "secret-token")
+    monkeypatch.setenv("DISCORD_PRIVATE_CHANNEL_ID", "20")
+
+    with pytest.raises(RuntimeError) as raised:
+        Settings.from_env()
+
+    assert str(raised.value) == (
+        "Missing required environment variable: DISCORD_ADMIN_ROLE_ID"
+    )
+    # An uncaught error prints the whole chain; pydantic would echo the input there.
+    printed = "".join(traceback.format_exception(raised.value))
+    assert "input_value" not in printed
+    assert "secret" not in printed
+
+
+def test_settings_blank_ids_use_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
+    _set_required_env(monkeypatch)
+    monkeypatch.setenv("CASES_PANEL_CHANNEL_ID", " ")
+    monkeypatch.setenv("DISCORD_GENERAL_ADMIN_ROLE_ID", "")
+
+    settings = Settings.from_env()
+
+    assert settings.cases_panel_channel_id == 0
+    assert settings.discord_general_admin_role_id == 10
+
+
+def test_settings_blank_list_means_none(monkeypatch: pytest.MonkeyPatch) -> None:
+    _set_required_env(monkeypatch)
+    monkeypatch.setenv("MAPS_TAG_PROFILES", "")
+
+    assert Settings.from_env().maps_tag_profiles == ""
 
 
 def test_settings_is_frozen_model() -> None:
     settings = Settings(
-        discord_token="token",
+        discord_bot_token="token",
         discord_admin_role_id=10,
         discord_private_channel_id=20,
     )
 
     with pytest.raises(ValidationError):
-        settings.discord_token = "new-token"
+        settings.discord_bot_token = "new-token"
 
 
 def test_settings_error_log_channel_optional(monkeypatch: pytest.MonkeyPatch) -> None:

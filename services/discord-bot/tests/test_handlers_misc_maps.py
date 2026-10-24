@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 import pytest
+from bot_fakes import make_bot, make_settings
 
 from xcore_discord_bot.handlers_misc import cmd_maps, perform_remove_map
 from xcore_discord_bot.server_views import MapsListView
@@ -35,7 +36,7 @@ class _Interaction:
     followup: _Followup = field(default_factory=_Followup)
 
 
-class _MapsBot:
+class _MapsBackend:
     def __init__(
         self, maps: list[dict[str, str]] | None = None, *, fail: bool = False
     ) -> None:
@@ -52,8 +53,21 @@ class _MapsBot:
             raise TimeoutError
         return self.maps
 
+    async def find_player_by_uuid(self, uuid):
+        return None
 
-class _RemoveMapBot:
+
+def _Mapsbot(*args, **kwargs):
+    backend = _MapsBackend(*args, **kwargs)
+    bot = make_bot(
+        store=backend,
+        bus=backend,
+        settings=make_settings(rpc_timeout_ms=backend.rpc_timeout_ms),
+    )
+    return bot
+
+
+class _RemoveMapBackend:
     def __init__(self, *, claim: bool = True, fail: bool = False) -> None:
         self.claim = claim
         self.fail = fail
@@ -73,9 +87,22 @@ class _RemoveMapBot:
             raise TimeoutError
         return "removed"
 
+    async def find_player_by_uuid(self, uuid):
+        return None
+
+
+def _RemoveMapbot(*args, **kwargs):
+    backend = _RemoveMapBackend(*args, **kwargs)
+    bot = make_bot(
+        store=backend,
+        bus=backend,
+        settings=make_settings(rpc_timeout_ms=backend.rpc_timeout_ms),
+    )
+    return bot
+
 
 async def test_cmd_maps_reports_timeout() -> None:
-    bot = _MapsBot(fail=True)
+    bot = _Mapsbot(fail=True)
     interaction = _Interaction()
 
     await cmd_maps(bot, interaction, "mini-pvp")
@@ -91,7 +118,7 @@ async def test_cmd_maps_reports_timeout() -> None:
 
 
 async def test_cmd_maps_reports_empty_server_map_list() -> None:
-    bot = _MapsBot(maps=[])
+    bot = _Mapsbot(maps=[])
     interaction = _Interaction()
 
     await cmd_maps(bot, interaction, "mini-pvp")
@@ -103,7 +130,7 @@ async def test_cmd_maps_reports_empty_server_map_list() -> None:
 
 
 async def test_cmd_maps_renders_rating_metadata() -> None:
-    bot = _MapsBot(
+    bot = _Mapsbot(
         maps=[
             {
                 "name": "Arena",
@@ -140,7 +167,7 @@ async def test_cmd_maps_renders_rating_metadata() -> None:
 
 
 async def test_cmd_maps_defaults_to_reputation_sort() -> None:
-    bot = _MapsBot(
+    bot = _Mapsbot(
         maps=[
             {
                 "name": "LowRep",
@@ -169,7 +196,7 @@ async def test_cmd_maps_defaults_to_reputation_sort() -> None:
 
 
 async def test_perform_remove_map_returns_duplicate_message() -> None:
-    bot = _RemoveMapBot(claim=False)
+    bot = _RemoveMapbot(claim=False)
 
     result = await perform_remove_map(
         bot,
@@ -179,12 +206,12 @@ async def test_perform_remove_map_returns_duplicate_message() -> None:
     )
 
     assert result == "This map removal was already processed."
-    assert bot.claim_keys == [("remove-map:mini-pvp:arena.msav:nonce-1", 600)]
-    assert bot.remove_calls == []
+    assert bot.store.claim_keys == [("remove-map:mini-pvp:arena.msav:nonce-1", 600)]
+    assert bot.store.remove_calls == []
 
 
 async def test_perform_remove_map_returns_timeout_message() -> None:
-    bot = _RemoveMapBot(claim=True, fail=True)
+    bot = _RemoveMapbot(claim=True, fail=True)
 
     result = await perform_remove_map(
         bot,
@@ -194,11 +221,11 @@ async def test_perform_remove_map_returns_timeout_message() -> None:
     )
 
     assert result == "No response from target server (timeout)."
-    assert bot.remove_calls == [("mini-pvp", "arena.msav", 9876)]
+    assert bot.store.remove_calls == [("mini-pvp", "arena.msav", 9876)]
 
 
 async def test_maps_show_distinct_file_author_creator_and_submitter() -> None:
-    bot = _MapsBot(
+    bot = _Mapsbot(
         maps=[
             {
                 "name": "Arena",
@@ -275,7 +302,7 @@ def test_contributor_name_cannot_escape_profile_link(name: str) -> None:
 async def test_creator_filter_only_keeps_maps_declared_by_selected_user() -> None:
     from types import SimpleNamespace
 
-    bot = _MapsBot(
+    bot = _Mapsbot(
         maps=[
             {
                 "name": "Matching",

@@ -1,15 +1,14 @@
 from __future__ import annotations
 
 from collections.abc import Awaitable, Callable
-from typing import TYPE_CHECKING, Literal
+from typing import Literal
 
 import discord
 from discord import Interaction
 
+from .presentation import build_servers_embed, sort_live_servers
+from .registry import server_registry
 from .ui_helpers import disable_view_buttons, safe_edit_view_message
-
-if TYPE_CHECKING:
-    from .bot import XCoreDiscordBot
 
 MapSortMode = Literal["reputation", "popularity", "name"]
 
@@ -58,11 +57,9 @@ class ServersView(discord.ui.View):
     def __init__(
         self,
         *,
-        bot: XCoreDiscordBot,
         sort_mode: Literal["players", "name"] = "players",
     ) -> None:
         super().__init__(timeout=180)
-        self._bot = bot
         self._sort_mode: Literal["players", "name"] = sort_mode
         self.bot_message: discord.Message | None = None
         self._sync_sort_button_label()
@@ -71,11 +68,15 @@ class ServersView(discord.ui.View):
     def sort_mode(self) -> Literal["players", "name"]:
         return self._sort_mode
 
+    def build_embed(self) -> discord.Embed:
+        servers = sort_live_servers(server_registry.get_all_servers(), self._sort_mode)
+        return build_servers_embed(servers, sort_mode=self._sort_mode)
+
     @discord.ui.button(label="Refresh", style=discord.ButtonStyle.primary, emoji="🔄")
     async def _refresh_btn(
         self, interaction: Interaction, button: discord.ui.Button
     ) -> None:
-        embed = self._bot._build_servers_embed_for_mode(self._sort_mode)
+        embed = self.build_embed()
         await interaction.response.edit_message(embed=embed, view=self)
 
     @discord.ui.button(label="Sort: players", style=discord.ButtonStyle.secondary)
@@ -84,7 +85,7 @@ class ServersView(discord.ui.View):
     ) -> None:
         self._sort_mode = "name" if self._sort_mode == "players" else "players"
         self._sync_sort_button_label()
-        embed = self._bot._build_servers_embed_for_mode(self._sort_mode)
+        embed = self.build_embed()
         await interaction.response.edit_message(embed=embed, view=self)
 
     async def on_timeout(self) -> None:

@@ -5,10 +5,11 @@ from datetime import UTC
 from typing import Any
 
 import pytest
+from bot_fakes import make_bot
 
-from xcore_discord_bot.bot import XCoreDiscordBot, _MuteUndoView
 from xcore_discord_bot.dto import PlayerRecord
 from xcore_discord_bot.handlers_moderation import cmd_mute
+from xcore_discord_bot.moderation_views import MuteUndoView
 
 
 @dataclass
@@ -109,6 +110,9 @@ class _Store:
         self.audit_rows.append(dict(kwargs))
         return f"audit-{len(self.audit_rows)}"
 
+    async def find_player_by_uuid(self, uuid):
+        return None
+
 
 class _Bus:
     async def claim_idempotency(self, key: str, ttl_seconds: int = 600) -> bool:
@@ -119,7 +123,7 @@ class _Bus:
 async def test_mute_undo_view_blocks_other_users() -> None:
     store = _Store()
 
-    view = _MuteUndoView(
+    view = MuteUndoView(
         requester_id=10,
         uuid="uuid-123",
         player_name="Vortex",
@@ -139,7 +143,7 @@ async def test_mute_undo_view_blocks_other_users() -> None:
 async def test_mute_undo_view_removes_mute_and_edits_message() -> None:
     store = _Store()
 
-    view = _MuteUndoView(
+    view = MuteUndoView(
         requester_id=10,
         uuid="uuid-123",
         player_name="Vortex",
@@ -161,7 +165,7 @@ async def test_mute_undo_view_removes_mute_and_edits_message() -> None:
 @pytest.mark.asyncio
 async def test_mute_undo_view_timeout_hides_button() -> None:
     store = _Store()
-    view = _MuteUndoView(
+    view = MuteUndoView(
         requester_id=10,
         uuid="uuid-123",
         player_name="Vortex",
@@ -177,10 +181,8 @@ async def test_mute_undo_view_timeout_hides_button() -> None:
 
 @pytest.mark.asyncio
 async def test_cmd_mute_attaches_undo_view() -> None:
-    bot = object.__new__(XCoreDiscordBot)
     store = _Store()
-    bot.__dict__["_store"] = store
-    bot.__dict__["_bus"] = _Bus()
+    bot = make_bot(store=store, bus=_Bus())
 
     interaction = _Interaction(id=99, user=_User(id=10, display_name="moderator"))
     await cmd_mute(bot, interaction, 123, "10m", "spam")
@@ -188,5 +190,5 @@ async def test_cmd_mute_attaches_undo_view() -> None:
     assert len(interaction.response.command_messages) == 1
     sent = interaction.response.command_messages[0]
     assert sent["content"].startswith("Muted `Vortex` until")
-    assert isinstance(sent["view"], _MuteUndoView)
+    assert isinstance(sent["view"], MuteUndoView)
     assert sent["view"].message is interaction._original_message

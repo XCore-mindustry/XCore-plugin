@@ -11,7 +11,7 @@ from xcore_discord_bot.settings import Settings
 @pytest.fixture
 def settings() -> Settings:
     return Settings(
-        discord_token="fake",
+        discord_bot_token="fake",
         discord_admin_role_id=1,
         discord_general_admin_role_id=1,
         discord_map_reviewer_role_id=1,

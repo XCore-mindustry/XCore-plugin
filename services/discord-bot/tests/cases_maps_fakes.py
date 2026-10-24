@@ -28,8 +28,8 @@ async def map_core(**kwargs):
     service.registry.disable(CaseKind.BADGE)
     service.registry.register(MAP_FLOW)
     service.registry.enable(CaseKind.MAP)
-    bot._map_cache = {}
-    bot.rpc_upload_maps = bus.rpc_upload_maps
+    bot.map_cache = {}
+    bot.bus.rpc_upload_maps = bus.rpc_upload_maps
     author.bot = False
     author.name = "mapper"
     forum = bot.channels[400]

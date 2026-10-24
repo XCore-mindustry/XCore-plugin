@@ -8,7 +8,7 @@ from cases_badges_fakes import badge_core, player_row
 
 from xcore_discord_bot.cases.flows import badges
 from xcore_discord_bot.cases.flows.badges import grant_map_maker
-from xcore_discord_bot.staff_actions import Actor
+from xcore_discord_bot.dto import Actor
 
 ACTOR = Actor("101", "Map reviewer")
 
@@ -113,13 +113,13 @@ async def test_mapmaker_unconfirmed_badge_is_pending_without_role_then_retry_com
     service, _, bot, mutations, _, _, author = await badge_core(
         discord_map_maker_role_id=70
     )
-    real_grant = bot.grant_badge
-    bot.grant_badge = AsyncMock(return_value=False)
+    real_grant = bot.store.grant_badge
+    bot.store.grant_badge = AsyncMock(return_value=False)
     result = await grant_map_maker(service, 42, actor=ACTOR)
     assert result == "pending_accounts"
     author.add_roles.assert_not_awaited()
     assert mutations["players"].docs[0]["unlocked_badges"] == []
-    bot.grant_badge = real_grant
+    bot.store.grant_badge = real_grant
     assert await grant_map_maker(service, 42, actor=ACTOR) == "complete"
 
 
@@ -127,8 +127,8 @@ async def test_mapmaker_inventory_failure_propagates_and_owned_retry_repairs_cur
     service, _, bot, mutations, bus, _, author = await badge_core(
         discord_map_maker_role_id=70
     )
-    publish = bot.publish_player_badge_inventory_changed
-    bot.publish_player_badge_inventory_changed = AsyncMock(
+    publish = bot.bus.publish_player_badge_inventory_changed
+    bot.bus.publish_player_badge_inventory_changed = AsyncMock(
         side_effect=RuntimeError("inventory unavailable")
     )
     with pytest.raises(RuntimeError, match="inventory unavailable"):
@@ -137,7 +137,7 @@ async def test_mapmaker_inventory_failure_propagates_and_owned_retry_repairs_cur
     assert mutations["players"].docs[0]["unlocked_badges"] == ["map-maker"]
     # Retry sends the current record, including subsequent grants; no stale snapshot.
     mutations["players"].docs[0]["unlocked_badges"].append("translator")
-    bot.publish_player_badge_inventory_changed = publish
+    bot.bus.publish_player_badge_inventory_changed = publish
     result = await grant_map_maker(service, 42, actor=ACTOR)
     assert result == "complete"
     assert bus.inventory_events[0]["unlocked_badges"] == ("map-maker", "translator")
@@ -160,10 +160,12 @@ async def test_mapmaker_fresh_membership_refuses_changed_accounts(failure):
         service.players.find_player_by_uuid = AsyncMock(
             return_value=replace(snapshot, uuid="other")
         )
-    bot.grant_badge = AsyncMock(side_effect=AssertionError("Wrong account mutation"))
+    bot.store.grant_badge = AsyncMock(
+        side_effect=AssertionError("Wrong account mutation")
+    )
     result = await grant_map_maker(service, 42, actor=ACTOR)
     assert result == "pending_accounts"
-    bot.grant_badge.assert_not_awaited()
+    bot.store.grant_badge.assert_not_awaited()
     author.add_roles.assert_not_awaited()
 
 
@@ -171,7 +173,7 @@ async def test_mapmaker_partial_success_retries_all_accounts_without_regranting(
     service, _, bot, mutations, _, _, author = await badge_core(
         rows=[player_row(), player_row(2)], discord_map_maker_role_id=70
     )
-    real_grant = bot.grant_badge
+    real_grant = bot.store.grant_badge
 
     async def partial(**kwargs):
         return (
@@ -180,7 +182,7 @@ async def test_mapmaker_partial_success_retries_all_accounts_without_regranting(
             else await real_grant(**kwargs)
         )
 
-    bot.grant_badge = partial
+    bot.store.grant_badge = partial
     result = await grant_map_maker(service, 42, actor=ACTOR)
     assert result == "pending_accounts"
     assert [row["unlocked_badges"] for row in mutations["players"].docs] == [
@@ -188,7 +190,7 @@ async def test_mapmaker_partial_success_retries_all_accounts_without_regranting(
         [],
     ]
     author.add_roles.assert_not_awaited()
-    bot.grant_badge = real_grant
+    bot.store.grant_badge = real_grant
     result = await grant_map_maker(service, 42, actor=ACTOR)
     assert result == "complete"
     assert all(
@@ -200,28 +202,28 @@ async def test_mapmaker_link_changes_after_grant_keep_pending_without_role():
     service, _, bot, mutations, _, _, author = await badge_core(
         discord_map_maker_role_id=70
     )
-    real_grant = bot.grant_badge
+    real_grant = bot.store.grant_badge
 
     async def link_after_grant(**kwargs):
         result = await real_grant(**kwargs)
         mutations["players"].docs.append(player_row(2))
         return result
 
-    bot.grant_badge = link_after_grant
+    bot.store.grant_badge = link_after_grant
     result = await grant_map_maker(service, 42, actor=ACTOR)
     assert result == "pending_accounts"
     author.add_roles.assert_not_awaited()
-    bot.grant_badge = real_grant
+    bot.store.grant_badge = real_grant
     assert await grant_map_maker(service, 42, actor=ACTOR) == "complete"
 
 
 @pytest.mark.parametrize("id", ["", "wrong", 0, -1])
 async def test_mapmaker_invalid_discord_id_refused_without_side_effects(id):
     service, _, bot, _, _, _, author = await badge_core()
-    bot.grant_badge = AsyncMock()
+    bot.store.grant_badge = AsyncMock()
     with pytest.raises(ValueError):
         await grant_map_maker(service, id, actor=ACTOR)
-    bot.grant_badge.assert_not_awaited()
+    bot.store.grant_badge.assert_not_awaited()
     author.add_roles.assert_not_awaited()
 
 
@@ -234,7 +236,7 @@ async def test_mapmaker_never_grants_system_or_ungrantable_catalog_replacement(
         "get_badge",
         lambda _: SimpleNamespace(id="admin", system=True, grantable=False),
     )
-    bot.grant_badge = AsyncMock()
+    bot.store.grant_badge = AsyncMock()
     with pytest.raises(ValueError):
         await grant_map_maker(service, 42, actor=ACTOR)
-    bot.grant_badge.assert_not_awaited()
+    bot.store.grant_badge.assert_not_awaited()

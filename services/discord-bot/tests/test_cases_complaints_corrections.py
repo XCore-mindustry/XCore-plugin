@@ -140,9 +140,9 @@ async def test_projection_redacts_available_audit_actor_uuid_in_all_rows_and_fol
 
 
 def install_global_handler(bot, settings):
-    bot._settings = settings
-    bot._handle_app_command_error = MethodType(
-        XCoreDiscordBot._handle_app_command_error, bot
+    bot.settings = settings
+    bot.handle_app_command_error = MethodType(
+        XCoreDiscordBot.handle_app_command_error, bot
     )
     bot._format_interaction_command = XCoreDiscordBot._format_interaction_command
 
@@ -150,7 +150,7 @@ def install_global_handler(bot, settings):
         assert context == "error logs"
         return bot.channels[channel_id]
 
-    bot._resolve_messageable_channel = resolve
+    bot.resolve_channel = resolve
 
 
 def slash_interaction(bot, command, number):
@@ -280,7 +280,7 @@ async def test_global_private_boundary_without_cog_marker_and_safe_delivery_fail
     interaction = slash_interaction(bot, CasesCog.subject, str(case.number))
     bot.channels[100].send = AsyncMock(side_effect=RuntimeError(RAW))
     caplog.set_level(logging.ERROR)
-    await bot._handle_app_command_error(
+    await bot.handle_app_command_error(
         interaction,
         app_commands.CommandInvokeError(CasesCog.subject, RuntimeError(RAW)),
     )

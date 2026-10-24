@@ -569,7 +569,7 @@ async def _current(context, claimed):
     return ban
 
 
-class _ActionBot:
+class _ActionStore:
     """The real helper's DB calls retain the case's authorization/subject boundary.
 
     Helpers may read the ban again. Validate that fresh read too, and check immediately
@@ -581,7 +581,7 @@ class _ActionBot:
         self.context, self.claimed = context, claimed
 
     def __getattr__(self, name):
-        return getattr(self.context.service.bot, name)
+        return getattr(self.context.service.bot.store, name)
 
     async def find_ban_by_id(self, ban_id):
         if ban_id != self.claimed.payload["ban_id"]:
@@ -592,7 +592,7 @@ class _ActionBot:
         ban = await _current(self.context, self.claimed)
         if (uuid, ip, ban_id) != (ban.uuid or "", ban.ip, ban.ban_id):
             raise ActionFailed(t(self.context.locale, "appeals-stale"))
-        return await self.context.service.bot.delete_ban(
+        return await self.context.service.bot.store.delete_ban(
             uuid=uuid, ip=ip, ban_id=ban_id
         )
 
@@ -602,9 +602,18 @@ class _ActionBot:
             ban.expire_date is not None and utc(new_expiry) >= utc(ban.expire_date)
         ):
             raise ActionFailed(t(self.context.locale, "appeals-duration-invalid"))
-        return await self.context.service.bot.update_ban_expiry(
+        return await self.context.service.bot.store.update_ban_expiry(
             ban_id=ban_id, new_expiry=new_expiry
         )
+
+
+class _ActionBot:
+    def __init__(self, context, claimed):
+        self._bot = context.service.bot
+        self.store = _ActionStore(context, claimed)
+
+    def __getattr__(self, name):
+        return getattr(self._bot, name)
 
 
 async def unban(context):

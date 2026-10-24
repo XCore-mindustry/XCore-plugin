@@ -13,7 +13,7 @@ from ..i18n import (
     pick_interaction_locale,
 )
 from ..mongo_store import MongoStore
-from .model import Case, CaseRace, check_transition
+from .model import ACTIVE_STATUSES, Case, CaseRace, CaseStatus, check_transition, utc
 
 # Old Ticketeer tickets stay below this number, so the two sequences never collide (O13).
 CASE_NUMBER_SEED = 2000
@@ -159,8 +159,6 @@ class CaseStore:
         )
 
     async def latest_submission_at(self, discord_id: str, kind) -> datetime | None:
-        from .model import utc
-
         cursor = (
             self.database["cases"]
             .find(
@@ -208,8 +206,6 @@ class CaseStore:
         if any(key.split(".")[0] in immutable for key in fields):
             raise ValueError("Immutable or append-only case fields")
         if "status" in fields:
-            from .model import ACTIVE_STATUSES, CaseStatus
-
             status = CaseStatus(fields["status"])
             check_transition(case.status, status)
             fields["status"] = status.value

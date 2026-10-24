@@ -12,7 +12,7 @@ from uuid import uuid4
 from pymongo.errors import DuplicateKeyError
 
 from ..badges import get_badge
-from ..staff_actions import Actor
+from ..dto import Actor
 from ._privacy import log_failure
 from .access import check_access, check_opening
 from .model import (
@@ -34,9 +34,10 @@ from .model import (
     party_of,
     utc,
 )
-from .registry import REJECT_OTHER, ActionContext, FlowRegistry, FormField, clean_values
+from .registry import REJECT_OTHER, FlowRegistry, FormField, clean_values
 from .store import CaseStore
 from .transport import CaseTransport, NoCaseTransport
+from .views import ActionContext
 
 logger = logging.getLogger(__name__)
 # Lifetime of the Redis claim and of an action guard nobody finished (process death mid-action).

@@ -6,6 +6,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import discord
 import pytest
+from bot_fakes import make_bot, make_settings
 
 from xcore_discord_bot.dto import (
     MERGE_KEEP_PID_SOURCE,
@@ -67,22 +68,10 @@ class _Interaction:
         return MagicMock()
 
 
-class _MockBot:
+class _MockBackend:
     def __init__(self, players: dict[int, PlayerRecord]) -> None:
         self._players = players
         self.merge_calls: list[dict[str, Any]] = []
-
-    async def _get_player_or_reply(
-        self, interaction: _Interaction, player_id: int
-    ) -> PlayerRecord | None:
-        p = self._players.get(player_id)
-        if p is None:
-            await interaction.response.send_message("Player not found", ephemeral=True)
-            return None
-        return p
-
-    def _player_name(self, player: PlayerRecord) -> str:
-        return player.nickname
 
     async def merge_player_accounts(self, **kwargs: Any) -> AccountMergeResult:
         self.merge_calls.append(kwargs)
@@ -97,9 +86,23 @@ class _MockBot:
             audit_id="audit-test-123",
         )
 
+    async def find_player_by_pid(self, player_id):
+        p = self._players.get(player_id)
+        return p
+
+    async def find_player_by_uuid(self, uuid):
+        return None
+
+
+def _Mockbot(*args, **kwargs):
+    backend = _MockBackend(*args, **kwargs)
+    bot = make_bot(store=backend, bus=backend, settings=make_settings())
+    bot.container.players.merge_player_accounts = backend.merge_player_accounts
+    return bot
+
 
 async def _run_merge(
-    bot: _MockBot,
+    bot: _Mockbot,
     interaction: _Interaction,
     source_pid: int,
     target_pid: int,
@@ -144,7 +147,7 @@ def _target_player(**overrides: Any) -> PlayerRecord:
 
 @pytest.mark.asyncio
 async def test_cmd_merge_player_self_merge_rejected() -> None:
-    bot = _MockBot({})
+    bot = _Mockbot({})
     interaction = _Interaction()
     await _run_merge(bot, interaction, 10, 10, "Test")
 
@@ -154,7 +157,7 @@ async def test_cmd_merge_player_self_merge_rejected() -> None:
 
 @pytest.mark.asyncio
 async def test_cmd_merge_player_shows_confirm_view() -> None:
-    bot = _MockBot({10: _source_player(), 20: _target_player()})
+    bot = _Mockbot({10: _source_player(), 20: _target_player()})
     interaction = _Interaction()
 
     await _run_merge(bot, interaction, 10, 20, "Reinstalled phone")
@@ -170,7 +173,7 @@ async def test_cmd_merge_player_shows_confirm_view() -> None:
 
 @pytest.mark.asyncio
 async def test_cmd_merge_player_keeps_source_pid_in_preview() -> None:
-    bot = _MockBot({10: _source_player(), 20: _target_player()})
+    bot = _Mockbot({10: _source_player(), 20: _target_player()})
     interaction = _Interaction()
 
     await _run_merge(
@@ -186,7 +189,7 @@ async def test_cmd_merge_player_keeps_source_pid_in_preview() -> None:
 
 @pytest.mark.asyncio
 async def test_cmd_merge_player_blocks_online_account() -> None:
-    bot = _MockBot(
+    bot = _Mockbot(
         {
             10: _source_player(),
             20: _target_player(online=True, online_since=1, online_server="mini-pvp"),
@@ -204,7 +207,7 @@ async def test_cmd_merge_player_blocks_online_account() -> None:
 
 @pytest.mark.asyncio
 async def test_cmd_merge_player_rejects_closed_target() -> None:
-    bot = _MockBot({10: _source_player(), 20: _target_player(uuid="merged:uuid-other")})
+    bot = _Mockbot({10: _source_player(), 20: _target_player(uuid="merged:uuid-other")})
     interaction = _Interaction()
 
     await _run_merge(bot, interaction, 10, 20, "Reinstalled phone")

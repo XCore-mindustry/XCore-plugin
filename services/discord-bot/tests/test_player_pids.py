@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import Any
 
 import pytest
+from bot_fakes import make_bot
 from discord import AppCommandOptionType
 
 from xcore_discord_bot.cogs.autocomplete import (
@@ -12,7 +13,7 @@ from xcore_discord_bot.cogs.autocomplete import (
 )
 from xcore_discord_bot.cogs.info import InfoCog
 from xcore_discord_bot.dto import PlayerRecord
-from xcore_discord_bot.handlers_moderation import _format_vote_kick_party_value
+from xcore_discord_bot.moderation_logs import format_vote_kick_party_value
 from xcore_discord_bot.player_pids import NO_PID, is_assigned, or_none
 
 
@@ -28,14 +29,17 @@ def test_only_the_reserved_value_means_no_pid() -> None:
 
 
 def test_vote_kick_party_shows_a_negative_pid() -> None:
-    assert _format_vote_kick_party_value(name="Ann", pid=-12) == "Ann (pid=-12)"
-    assert _format_vote_kick_party_value(name="Ann", pid=0) == "Ann (pid=0)"
-    assert _format_vote_kick_party_value(name="Ann", pid=None) == "Ann"
+    assert format_vote_kick_party_value(name="Ann", pid=-12) == "Ann (pid=-12)"
+    assert format_vote_kick_party_value(name="Ann", pid=0) == "Ann (pid=0)"
+    assert format_vote_kick_party_value(name="Ann", pid=None) == "Ann"
 
 
 @dataclass
 class _Store:
     rows: list[PlayerRecord]
+
+    async def find_player_by_uuid(self, uuid):
+        return None
 
     async def autocomplete_players(
         self, query: str, limit: int = 25
@@ -50,17 +54,16 @@ class _Interaction:
 
 
 @pytest.mark.asyncio
-async def test_autocomplete_offers_zero_and_negative_pids(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    monkeypatch.setattr("xcore_discord_bot.cogs.autocomplete.StoreService", _Store)
+async def test_autocomplete_offers_zero_and_negative_pids() -> None:
     interaction: Any = _Interaction(
-        client=_Store(
-            [
-                PlayerRecord(pid=-12, nickname="Event"),
-                PlayerRecord(pid=0, nickname="Zero", username="zero"),
-                PlayerRecord(pid=NO_PID, nickname="Nobody"),
-            ]
+        client=make_bot(
+            store=_Store(
+                [
+                    PlayerRecord(pid=-12, nickname="Event"),
+                    PlayerRecord(pid=0, nickname="Zero", username="zero"),
+                    PlayerRecord(pid=NO_PID, nickname="Nobody"),
+                ]
+            )
         )
     )
 
@@ -80,12 +83,11 @@ def test_stats_player_option_accepts_text_with_autocomplete() -> None:
 
 
 @pytest.mark.asyncio
-async def test_stats_suggestions_use_string_pids(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    monkeypatch.setattr("xcore_discord_bot.cogs.autocomplete.StoreService", _Store)
+async def test_stats_suggestions_use_string_pids() -> None:
     interaction: Any = _Interaction(
-        client=_Store([PlayerRecord(pid=-12, nickname="Event", username="br")])
+        client=make_bot(
+            store=_Store([PlayerRecord(pid=-12, nickname="Event", username="br")])
+        )
     )
 
     choices = await _autocomplete_stats_player(interaction, "@br")

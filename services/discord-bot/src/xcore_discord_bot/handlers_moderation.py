@@ -1,21 +1,38 @@
 from __future__ import annotations
 
 from dataclasses import replace
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, cast
 
 import discord
 from discord import Interaction
-from xcore_protocol.generated.shared import ActorRefV1ActorType, VoteKickParticipantV1
+from xcore_protocol.generated.shared import ActorRefV1ActorType
 
-from .dto import MERGE_KEEP_PID_TARGET, BanRecord, PlayerRecord
+from .command_helpers import (
+    claim_mutation,
+    get_player_or_reply,
+    parse_duration_or_reply,
+    require_player_uuid,
+    require_player_uuid_or_ip,
+    send_paginated,
+)
+from .dto import (
+    MERGE_KEEP_PID_TARGET,
+    Actor,
+    BanRecord,
+    PlayerRecord,
+    record_identifiers,
+)
+from .moderation_logs import add_embed_section, format_admin_value
 from .moderation_views import AccountMergeConfirmView, BanConfirmView, MuteUndoView
-from .player_pids import is_assigned, or_none
-from .presentation import build_merge_preview_embed, format_ban_expire_date
+from .presentation import (
+    build_merge_preview_embed,
+    build_moderation_reversal_embed,
+    format_ban_expire_date,
+)
 from .redis_bus import RpcFailed
 from .retry import TRANSIENT_EXCEPTIONS
 from .staff_actions import (
-    Actor,
     BanNotFound,
     StaffActionError,
     perform_mute,
@@ -31,7 +48,6 @@ if TYPE_CHECKING:
 
 MSG_NO_ACTIVE_BAN = "No active ban found"
 MSG_NO_ACTIVE_MUTE = "No active mute found"
-_EMBED_FIELD_VALUE_LIMIT = 1024
 
 
 def _staff_error_message(error: Exception) -> str:
@@ -86,7 +102,7 @@ async def _set_role_and_sync(
             should_have_role=should_have_role,
             reason=f"/admin by {interaction.user.display_name}",
         )
-        daemon = bot._ensure_container().staff_sync_daemon
+        daemon = bot.container.staff_sync_daemon
         assert daemon is not None
         result = await daemon.sync_member(discord_id)
     except (RpcFailed, discord.HTTPException, *TRANSIENT_EXCEPTIONS) as error:
@@ -95,67 +111,6 @@ async def _set_role_and_sync(
         )
         return
     await interaction.followup.send(_staff_sync_message(result))
-
-
-def _split_embed_field_chunks(
-    items: list[str], *, limit: int = _EMBED_FIELD_VALUE_LIMIT, separator: str = ", "
-) -> list[str]:
-    chunks: list[str] = []
-    current = ""
-
-    for item in items:
-        joiner = separator if current else ""
-        candidate = f"{current}{joiner}{item}"
-        if len(candidate) <= limit:
-            current = candidate
-            continue
-
-        if current:
-            chunks.append(current)
-            current = item
-            continue
-
-        chunks.append(item[:limit])
-
-    if current:
-        chunks.append(current)
-
-    return chunks
-
-
-def _add_embed_section(
-    embed: discord.Embed, *, name: str, items: list[str], separator: str = ", "
-) -> None:
-    for index, chunk in enumerate(
-        _split_embed_field_chunks(items, separator=separator), start=1
-    ):
-        field_name = name if index == 1 else f"{name} (cont. {index})"
-        embed.add_field(name=field_name, value=chunk, inline=False)
-
-
-def _format_vote_kick_party_value(*, name: str, pid: int | None) -> str:
-    safe_name = str(name).strip() or "Unknown"
-    return f"{safe_name} (pid={pid})" if is_assigned(pid) else safe_name
-
-
-def _format_vote_kick_participant(item: VoteKickParticipantV1) -> str:
-    from .bot import strip_mindustry_colors
-
-    name = (
-        strip_mindustry_colors(str(item.playerName).replace("`", "")).strip()
-        or "Unknown"
-    )
-    segments = [f"`{name}`"]
-    if item.playerPid is not None and item.playerPid > 0:
-        segments.append(f"pid={item.playerPid}")
-    discord_id = str(item.discordId or "").strip()
-    if discord_id:
-        segments.append(f"<@{discord_id}>")
-    return (
-        f"{segments[0]} ({', '.join(segments[1:])})"
-        if len(segments) > 1
-        else segments[0]
-    )
 
 
 def _format_reconcile_player_item(item: dict[str, object]) -> str:
@@ -192,19 +147,19 @@ async def _append_discord_moderation_audit(
     supersedes_audit_id: str | None = None,
 ) -> str:
     request_id = str(getattr(interaction, "id", "") or "").strip() or None
-    occurred_at = await bot.now_utc()
+    occurred_at = bot.store.now_utc()
     try:
         duration_ms = (
             int(duration.total_seconds() * 1000) if duration is not None else None
         )
     except (ValueError, TypeError, OverflowError):
         duration_ms = None
-    uuid_value, ip_value = bot._player_identifiers(player)
-    return await bot.append_moderation_audit(
+    uuid_value, ip_value = record_identifiers(player)
+    return await bot.store.append_moderation_audit(
         action=action,
         target_uuid=uuid_value or "",
         target_pid=player.pid,
-        target_name=bot._player_name(player),
+        target_name=player.nickname,
         target_ip=ip_value,
         actor_discord_id=actor_discord_id,
         actor_name=actor_name,
@@ -225,15 +180,15 @@ async def cmd_ban(
     period: str,
     reason: str,
 ) -> None:
-    duration = await bot._parse_duration_or_reply(interaction, period)
+    duration = await parse_duration_or_reply(interaction, period)
     if duration is None:
         return
 
-    player = await bot._get_player_or_reply(interaction, player_id)
+    player = await get_player_or_reply(bot, interaction, player_id)
     if player is None:
         return
 
-    identifiers = await bot._require_player_uuid_or_ip(
+    identifiers = await require_player_uuid_or_ip(
         interaction,
         player,
         action="ban player",
@@ -251,7 +206,7 @@ async def cmd_ban(
         perform_ban=lambda **kwargs: perform_ban(bot, **kwargs),
     )
     await interaction.response.send_message(
-        f"Are you sure you want to ban `{bot._player_name(player)}`?",
+        f"Are you sure you want to ban `{player.nickname}`?",
         view=view,
     )
     view.message = await interaction.original_response()
@@ -289,11 +244,11 @@ async def cmd_unban(
     interaction: Interaction,
     player_id: int,
 ) -> None:
-    player = await bot._get_player_or_reply(interaction, player_id)
+    player = await get_player_or_reply(bot, interaction, player_id)
     if player is None:
         return
 
-    identifiers = await bot._require_player_uuid_or_ip(
+    identifiers = await require_player_uuid_or_ip(
         interaction,
         player,
         action="unban player",
@@ -302,14 +257,15 @@ async def cmd_unban(
         return
     uuid_value, ip_value = identifiers
 
-    if not await bot._claim_mutation(
+    if not await claim_mutation(
+        bot,
         interaction,
         operation="unban",
         scope=str(player_id),
     ):
         return
 
-    ban_doc = await bot.find_ban(uuid=uuid_value or "", ip=ip_value)
+    ban_doc = await bot.store.find_ban(uuid=uuid_value or "", ip=ip_value)
     # Keep the command's player snapshot for its audit and reply.
     action_ban = (
         replace(ban_doc, uuid=uuid_value, ip=ip_value)
@@ -318,7 +274,7 @@ async def cmd_unban(
             uuid=uuid_value,
             ip=ip_value,
             pid=player_id,
-            name=bot._player_name(player),
+            name=player.nickname,
             admin_name="Unknown",
             reason="Not Specified",
             expire_date=None,
@@ -336,13 +292,13 @@ async def cmd_unban(
         await interaction.response.send_message(MSG_NO_ACTIVE_BAN, ephemeral=True)
         return
 
-    embed = bot._build_moderation_reversal_embed(
+    embed = build_moderation_reversal_embed(
         action_label="Unbanned",
-        subject_name=bot._player_name(player),
+        subject_name=player.nickname,
         player_id=player_id,
         previous_actor_label="Admin who banned",
         previous_actor_value=(
-            _format_admin_value(
+            format_admin_value(
                 admin_name=ban_doc.admin_name,
                 admin_discord_id=ban_doc.admin_discord_id,
             )
@@ -363,18 +319,19 @@ async def cmd_pardon(
     interaction: Interaction,
     player_id: int,
 ) -> None:
-    player = await bot._get_player_or_reply(interaction, player_id)
+    player = await get_player_or_reply(bot, interaction, player_id)
     if player is None:
         return
 
-    if not await bot._claim_mutation(
+    if not await claim_mutation(
+        bot,
         interaction,
         operation="pardon",
         scope=str(player_id),
     ):
         return
 
-    uuid_value = await bot._require_player_uuid(
+    uuid_value = await require_player_uuid(
         interaction,
         player,
         action="pardon player",
@@ -382,8 +339,8 @@ async def cmd_pardon(
     if uuid_value is None:
         return
 
-    await bot.publish_pardon_player(uuid_value=uuid_value)
-    await interaction.response.send_message(f"Pardoned `{bot._player_name(player)}`")
+    await bot.bus.publish_pardon_player(uuid_value=uuid_value)
+    await interaction.response.send_message(f"Pardoned `{player.nickname}`")
 
 
 async def cmd_mute(
@@ -393,15 +350,15 @@ async def cmd_mute(
     period: str,
     reason: str,
 ) -> None:
-    duration = await bot._parse_duration_or_reply(interaction, period)
+    duration = await parse_duration_or_reply(interaction, period)
     if duration is None:
         return
 
-    player = await bot._get_player_or_reply(interaction, player_id)
+    player = await get_player_or_reply(bot, interaction, player_id)
     if player is None:
         return
 
-    uuid_value = await bot._require_player_uuid(
+    uuid_value = await require_player_uuid(
         interaction,
         player,
         action="mute player",
@@ -409,7 +366,8 @@ async def cmd_mute(
     if uuid_value is None:
         return
 
-    if not await bot._claim_mutation(
+    if not await claim_mutation(
+        bot,
         interaction,
         operation="mute",
         scope=f"{player_id}:{period}:{reason}",
@@ -424,12 +382,12 @@ async def cmd_mute(
         Actor(str(interaction.user.id), interaction.user.display_name),
         request_id=str(interaction.id),
     )
-    player_name = bot._player_name(player)
+    player_name = player.nickname
     view = MuteUndoView(
         requester_id=interaction.user.id,
         uuid=uuid_value,
         player_name=player_name,
-        delete_mute=bot.delete_mute,
+        delete_mute=bot.store.delete_mute,
     )
     await interaction.response.send_message(
         result.message,
@@ -443,11 +401,11 @@ async def cmd_unmute(
     interaction: Interaction,
     player_id: int,
 ) -> None:
-    player = await bot._get_player_or_reply(interaction, player_id)
+    player = await get_player_or_reply(bot, interaction, player_id)
     if player is None:
         return
 
-    uuid_value = await bot._require_player_uuid(
+    uuid_value = await require_player_uuid(
         interaction,
         player,
         action="unmute player",
@@ -455,15 +413,16 @@ async def cmd_unmute(
     if uuid_value is None:
         return
 
-    if not await bot._claim_mutation(
+    if not await claim_mutation(
+        bot,
         interaction,
         operation="unmute",
         scope=str(player_id),
     ):
         return
 
-    mute_doc = await bot.find_mute(uuid=uuid_value)
-    deleted = await bot.delete_mute(uuid=uuid_value)
+    mute_doc = await bot.store.find_mute(uuid=uuid_value)
+    deleted = await bot.store.delete_mute(uuid=uuid_value)
     if deleted == 0:
         await interaction.response.send_message(MSG_NO_ACTIVE_MUTE, ephemeral=True)
         return
@@ -477,13 +436,13 @@ async def cmd_unmute(
         actor_discord_id=str(interaction.user.id),
     )
 
-    embed = bot._build_moderation_reversal_embed(
+    embed = build_moderation_reversal_embed(
         action_label="Unmuted",
-        subject_name=bot._player_name(player),
+        subject_name=player.nickname,
         player_id=player_id,
         previous_actor_label="Admin who muted",
         previous_actor_value=(
-            _format_admin_value(
+            format_admin_value(
                 admin_name=mute_doc.admin_name,
                 admin_discord_id=mute_doc.admin_discord_id,
             )
@@ -504,11 +463,12 @@ async def cmd_remove_admin(
     interaction: Interaction,
     player_id: int,
 ) -> None:
-    player = await bot._get_player_or_reply(interaction, player_id)
+    player = await get_player_or_reply(bot, interaction, player_id)
     if player is None:
         return
 
-    if not await bot._claim_mutation(
+    if not await claim_mutation(
+        bot,
         interaction,
         operation="remove-admin",
         scope=str(player_id),
@@ -517,7 +477,7 @@ async def cmd_remove_admin(
 
     linked_players = [player]
     if player.discord_id:
-        linked_players = await bot.find_players_by_discord_id(player.discord_id)
+        linked_players = await bot.store.find_players_by_discord_id(player.discord_id)
 
     target_players = [
         linked_player
@@ -531,7 +491,7 @@ async def cmd_remove_admin(
         )
         return
 
-    if getattr(bot, "roles_mode", False):
+    if bot.settings.roles_mode:
         if not player.discord_id:
             await interaction.response.send_message(
                 "Discord account is not linked.", ephemeral=True
@@ -553,14 +513,14 @@ async def cmd_remove_admin(
     any_changed = False
     for target_player in target_players:
         target_uuid = str(target_player.uuid or "").strip()
-        matched, changed = await bot.set_admin_access(
+        matched, changed = await bot.store.set_admin_access(
             uuid=target_uuid,
             is_admin=False,
             admin_source="NONE",
         )
         if not matched:
             continue
-        await bot.publish_discord_admin_access_changed(
+        await bot.bus.publish_discord_admin_access_changed(
             player_uuid=target_uuid,
             player_pid=target_player.pid,
             player_name=target_player.nickname,
@@ -576,7 +536,7 @@ async def cmd_remove_admin(
         )
         any_changed = any_changed or changed
 
-    target_names = ", ".join(f"`{bot._player_name(item)}`" for item in target_players)
+    target_names = ", ".join(f"`{item.nickname}`" for item in target_players)
     await interaction.response.send_message(
         f"Removed admin for {target_names}"
         if any_changed or role_changed
@@ -589,11 +549,12 @@ async def cmd_add_admin(
     interaction: Interaction,
     player_id: int,
 ) -> None:
-    player = await bot._get_player_or_reply(interaction, player_id)
+    player = await get_player_or_reply(bot, interaction, player_id)
     if player is None:
         return
 
-    if not await bot._claim_mutation(
+    if not await claim_mutation(
+        bot,
         interaction,
         operation="add-admin",
         scope=str(player_id),
@@ -607,7 +568,7 @@ async def cmd_add_admin(
         )
         return
 
-    linked_players = await bot.find_players_by_discord_id(player.discord_id)
+    linked_players = await bot.store.find_players_by_discord_id(player.discord_id)
     target_players = [
         linked_player
         for linked_player in linked_players
@@ -620,7 +581,7 @@ async def cmd_add_admin(
         )
         return
 
-    if getattr(bot, "roles_mode", False):
+    if bot.settings.roles_mode:
         if not player.discord_id:
             await interaction.response.send_message(
                 "Discord account is not linked.", ephemeral=True
@@ -640,14 +601,14 @@ async def cmd_add_admin(
     any_changed = False
     for target_player in target_players:
         target_uuid = str(target_player.uuid or "").strip()
-        matched, changed = await bot.set_admin_access(
+        matched, changed = await bot.store.set_admin_access(
             uuid=target_uuid,
             is_admin=True,
             admin_source="DISCORD_ROLE",
         )
         if not matched:
             continue
-        await bot.publish_discord_admin_access_changed(
+        await bot.bus.publish_discord_admin_access_changed(
             player_uuid=target_uuid,
             player_pid=target_player.pid,
             player_name=target_player.nickname,
@@ -663,7 +624,7 @@ async def cmd_add_admin(
         )
         any_changed = any_changed or changed
 
-    target_names = ", ".join(f"`{bot._player_name(item)}`" for item in target_players)
+    target_names = ", ".join(f"`{item.nickname}`" for item in target_players)
     await interaction.response.send_message(
         f"Granted admin for {target_names}"
         if any_changed or role_changed
@@ -672,7 +633,7 @@ async def cmd_add_admin(
 
 
 async def cmd_list_admins(bot: XCoreDiscordBot, interaction: Interaction) -> None:
-    players = await bot.find_discord_admin_players()
+    players = await bot.store.find_discord_admin_players()
     if not players:
         await interaction.response.send_message(
             "No Discord admins found.", ephemeral=True
@@ -709,7 +670,7 @@ async def cmd_list_admins(bot: XCoreDiscordBot, interaction: Interaction) -> Non
                 value_lines.append(f"Discord username: `{discord_username}`")
 
             embed.add_field(
-                name=bot._player_name(player),
+                name=player.nickname,
                 value="\n".join(value_lines),
                 inline=False,
             )
@@ -722,7 +683,7 @@ async def cmd_list_admins(bot: XCoreDiscordBot, interaction: Interaction) -> Non
         )
         return embed, end < total_entries
 
-    await bot._send_paginated(
+    await send_paginated(
         interaction,
         fetch_page,
         ephemeral=False,
@@ -730,9 +691,9 @@ async def cmd_list_admins(bot: XCoreDiscordBot, interaction: Interaction) -> Non
 
 
 async def cmd_sync_admins(bot: XCoreDiscordBot, interaction: Interaction) -> None:
-    if getattr(bot, "roles_mode", False):
+    if bot.settings.roles_mode:
         await interaction.response.defer(thinking=True)
-        daemon = bot._ensure_container().staff_sync_daemon
+        daemon = bot.container.staff_sync_daemon
         assert daemon is not None
         try:
             result = await daemon.reconcile()
@@ -743,7 +704,7 @@ async def cmd_sync_admins(bot: XCoreDiscordBot, interaction: Interaction) -> Non
             return
         await interaction.followup.send(_staff_sync_message(result))
         return
-    result = await bot.reconcile_discord_admin_access()
+    result = await bot.container.admin_sync_daemon.reconcile()
     try:
         applied_count = int(cast(int, result["applied"]))
         revoked_count = int(cast(int, result["revoked"]))
@@ -767,19 +728,19 @@ async def cmd_sync_admins(bot: XCoreDiscordBot, interaction: Interaction) -> Non
         applied_items = [
             _format_reconcile_player_item(item) for item in applied_players
         ]
-        _add_embed_section(embed, name="Added", items=applied_items)
+        add_embed_section(embed, name="Added", items=applied_items)
 
     revoked_players = cast(list[dict[str, object]], result.get("revoked_players", []))
     if revoked_players:
         revoked_items = [
             _format_reconcile_player_item(item) for item in revoked_players
         ]
-        _add_embed_section(embed, name="Revoked", items=revoked_items)
+        add_embed_section(embed, name="Revoked", items=revoked_items)
 
     skipped = cast(list[dict[str, str]], result.get("skipped", []))
     if skipped:
         skipped_items = [_format_reconcile_skipped_item(item) for item in skipped]
-        _add_embed_section(embed, name="Skipped", items=skipped_items)
+        add_embed_section(embed, name="Skipped", items=skipped_items)
 
     await interaction.response.send_message(
         embed=embed,
@@ -791,18 +752,19 @@ async def cmd_reset_password(
     interaction: Interaction,
     player_id: int,
 ) -> None:
-    player = await bot._get_player_or_reply(interaction, player_id)
+    player = await get_player_or_reply(bot, interaction, player_id)
     if player is None:
         return
 
-    if not await bot._claim_mutation(
+    if not await claim_mutation(
+        bot,
         interaction,
         operation="reset-password",
         scope=str(player_id),
     ):
         return
 
-    uuid_value = await bot._require_player_uuid(
+    uuid_value = await require_player_uuid(
         interaction,
         player,
         action="reset password",
@@ -811,291 +773,21 @@ async def cmd_reset_password(
         return
 
     send_message = interaction.response.send_message
-    if getattr(bot, "roles_mode", False):
+    if bot.settings.roles_mode:
         await interaction.response.defer(thinking=True)
         send_message = interaction.followup.send
     try:
-        changed = await bot.reset_password(uuid=uuid_value)
+        changed = await bot.container.players.reset_password(uuid=uuid_value)
     except (RpcFailed, *TRANSIENT_EXCEPTIONS) as error:
-        if not getattr(bot, "roles_mode", False):
+        if not bot.settings.roles_mode:
             raise
         await send_message("Password reset failed: " + _staff_error_message(error))
         return
-    if changed:
-        await bot.publish_player_password_reset(uuid_value=uuid_value)
     await send_message(
-        f"Password reset for `{bot._player_name(player)}`"
+        f"Password reset for `{player.nickname}`"
         if changed
         else "Password reset did not update any row"
     )
-
-
-async def _case_log_secrets(
-    bot, number: int, supplied: tuple[str, ...], actor_id: str | None
-) -> tuple[str, ...]:
-    from .cases.cards import case_secrets
-
-    service = getattr(getattr(bot, "container", None), "cases", None)
-    if service is None:
-        return supplied
-    case = await service.get(number)
-    secrets = [*supplied, *case_secrets(case)]
-    if service.players is not None:
-        for uuid in case_secrets(case):
-            player = await service.players.find_player_by_uuid(uuid)
-            if player is not None and player.ip:
-                secrets.append(player.ip)
-        if actor_id:
-            for player in await service.players.find_players_by_discord_id(actor_id):
-                secrets.extend((player.uuid or "", player.ip or ""))
-    return tuple(secrets)
-
-
-async def post_ban_log(
-    bot: XCoreDiscordBot,
-    *,
-    pid: int | None,
-    name: str,
-    admin_name: str,
-    admin_discord_id: str | None,
-    reason: str,
-    expire: datetime,
-    ban_id: int | None = None,
-    case_number: int | None = None,
-    title: str = "Ban Issued",
-    privacy_secrets: tuple[str, ...] = (),
-) -> bool:
-    """Return whether a log was sent; legacy command callers may ignore the receipt."""
-    from .bot import strip_mindustry_colors
-
-    bans_channel_id = bot.bans_channel_id
-    if not bans_channel_id:
-        return False
-
-    channel = await bot._resolve_messageable_channel(
-        bans_channel_id, context="ban logs"
-    )
-    if channel is None:
-        return False
-
-    # Old protocol events provide only a pid. New consumers can pass ban_id directly.
-    lookup_player = getattr(bot, "find_player_by_pid", None)
-    if ban_id is None and is_assigned(pid) and callable(lookup_player):
-        player = await lookup_player(pid)
-        if player is not None:
-            uuid_value, ip_value = bot._player_identifiers(player)
-            if uuid_value is not None or ip_value is not None:
-                ban = await bot.ensure_ban_id(uuid=uuid_value or "", ip=ip_value)
-                if ban is not None:
-                    ban_id = ban.ban_id
-                    if case_number is None:
-                        case_number = ban.case_number
-
-    safe_name = strip_mindustry_colors(str(name).replace("`", "")).strip() or "Unknown"
-    safe_admin_name = (
-        strip_mindustry_colors(str(admin_name).replace("`", "")).strip() or "Unknown"
-    )
-    admin_value = _format_admin_value(
-        admin_name=safe_admin_name,
-        admin_discord_id=admin_discord_id,
-    )
-    safe_reason = strip_mindustry_colors(str(reason).replace("`", "")).strip()
-    if not safe_reason:
-        safe_reason = "No reason provided"
-
-    if case_number is not None:
-        from .cases.cards import safe_text
-
-        secrets = await _case_log_secrets(
-            bot, case_number, privacy_secrets, admin_discord_id
-        )
-        safe_name = safe_text(name.replace("`", ""), secrets=secrets) or "Unknown"
-        safe_admin_name = (
-            safe_text(admin_name.replace("`", ""), secrets=secrets) or "Unknown"
-        )
-        admin_value = _format_admin_value(
-            admin_name=safe_admin_name, admin_discord_id=admin_discord_id
-        )
-        safe_reason = (
-            safe_text(reason.replace("`", ""), secrets=secrets) or "No reason provided"
-        )
-
-    safe_pid = or_none(pid)
-    violator_value = (
-        f"{safe_name} (pid={safe_pid})" if safe_pid is not None else safe_name
-    )
-    expire_utc = expire.replace(tzinfo=UTC) if expire.tzinfo is None else expire
-    unban_value = (
-        f"{discord.utils.format_dt(expire_utc, style='f')} "
-        f"({discord.utils.format_dt(expire_utc, style='R')})"
-    )
-
-    embed = discord.Embed(title=title, color=discord.Color.red())
-    if ban_id is not None:
-        embed.add_field(name="Ban", value=f"B-{ban_id}", inline=False)
-    if case_number is not None:
-        embed.add_field(name="Case", value=f"#{case_number}", inline=False)
-    embed.add_field(name="Violator", value=violator_value, inline=False)
-    embed.add_field(name="Admin", value=admin_value, inline=False)
-    embed.add_field(name="Reason", value=safe_reason, inline=False)
-    embed.add_field(name="Expires", value=unban_value, inline=False)
-    await channel.send(embed=embed)
-    return True
-
-
-async def post_mute_log(
-    bot: XCoreDiscordBot,
-    *,
-    pid: int,
-    name: str,
-    admin_name: str,
-    admin_discord_id: str | None,
-    reason: str,
-    expire: datetime,
-    case_number: int | None = None,
-    privacy_secrets: tuple[str, ...] = (),
-) -> None:
-    from .bot import strip_mindustry_colors
-
-    mutes_channel_id = bot.mutes_channel_id
-    if not mutes_channel_id:
-        return
-
-    channel = await bot._resolve_messageable_channel(
-        mutes_channel_id, context="mute logs"
-    )
-    if channel is None:
-        return
-
-    safe_name = strip_mindustry_colors(str(name).replace("`", "")).strip() or "Unknown"
-    safe_admin_name = (
-        strip_mindustry_colors(str(admin_name).replace("`", "")).strip() or "Unknown"
-    )
-    admin_value = _format_admin_value(
-        admin_name=safe_admin_name,
-        admin_discord_id=admin_discord_id,
-    )
-    safe_reason = strip_mindustry_colors(str(reason).replace("`", "")).strip()
-    if not safe_reason:
-        safe_reason = "No reason provided"
-
-    if case_number is not None:
-        from .cases.cards import safe_text
-
-        secrets = await _case_log_secrets(
-            bot, case_number, privacy_secrets, admin_discord_id
-        )
-        safe_name = safe_text(name.replace("`", ""), secrets=secrets) or "Unknown"
-        safe_admin_name = (
-            safe_text(admin_name.replace("`", ""), secrets=secrets) or "Unknown"
-        )
-        admin_value = _format_admin_value(
-            admin_name=safe_admin_name, admin_discord_id=admin_discord_id
-        )
-        safe_reason = (
-            safe_text(reason.replace("`", ""), secrets=secrets) or "No reason provided"
-        )
-
-    safe_pid = or_none(pid)
-    violator_value = (
-        f"{safe_name} (pid={safe_pid})" if safe_pid is not None else safe_name
-    )
-    expire_utc = expire.replace(tzinfo=UTC) if expire.tzinfo is None else expire
-    unmute_value = (
-        f"{discord.utils.format_dt(expire_utc, style='f')} "
-        f"({discord.utils.format_dt(expire_utc, style='R')})"
-    )
-
-    embed = discord.Embed(title="Mute Issued", color=discord.Color.orange())
-    if case_number is not None:
-        embed.add_field(name="Case", value=f"#{case_number}", inline=False)
-    embed.add_field(name="Violator", value=violator_value, inline=False)
-    embed.add_field(name="Admin", value=admin_value, inline=False)
-    embed.add_field(name="Reason", value=safe_reason, inline=False)
-    embed.add_field(name="Expires", value=unmute_value, inline=False)
-    await channel.send(embed=embed)
-
-
-async def post_vote_kick_log(
-    bot: XCoreDiscordBot,
-    *,
-    target_name: str,
-    target_pid: int | None,
-    starter_name: str,
-    starter_pid: int | None,
-    starter_discord_id: str | None,
-    reason: str,
-    votes_for: list[VoteKickParticipantV1],
-    votes_against: list[VoteKickParticipantV1],
-) -> None:
-    from .bot import strip_mindustry_colors
-
-    votekicks_channel_id = bot.votekicks_channel_id
-    if not votekicks_channel_id:
-        return
-
-    channel = await bot._resolve_messageable_channel(
-        votekicks_channel_id, context="vote-kick logs"
-    )
-    if channel is None:
-        return
-
-    safe_target_name = (
-        strip_mindustry_colors(str(target_name).replace("`", "")).strip() or "Unknown"
-    )
-    safe_starter_name = (
-        strip_mindustry_colors(str(starter_name).replace("`", "")).strip() or "Unknown"
-    )
-    safe_reason = strip_mindustry_colors(str(reason).replace("`", "")).strip()
-    if not safe_reason:
-        safe_reason = "No reason provided"
-
-    target_value = _format_vote_kick_party_value(
-        name=safe_target_name,
-        pid=target_pid,
-    )
-    starter_value = _format_vote_kick_party_value(
-        name=safe_starter_name,
-        pid=starter_pid,
-    )
-    starter_mention = str(starter_discord_id or "").strip()
-    if starter_mention:
-        starter_value = f"{starter_value} (<@{starter_mention}>)"
-
-    embed = discord.Embed(title="Vote-kick Passed", color=discord.Color.blurple())
-    embed.add_field(name="Target", value=target_value, inline=False)
-    embed.add_field(name="Initiator", value=starter_value, inline=False)
-    embed.add_field(name="Reason", value=safe_reason, inline=False)
-
-    yes_items = [_format_vote_kick_participant(item) for item in votes_for]
-    no_items = [_format_vote_kick_participant(item) for item in votes_against]
-
-    if yes_items:
-        _add_embed_section(
-            embed,
-            name=f"For ({len(yes_items)})",
-            items=yes_items,
-            separator="\n",
-        )
-    else:
-        embed.add_field(name="For (0)", value="None", inline=False)
-
-    if no_items:
-        _add_embed_section(
-            embed,
-            name=f"Against ({len(no_items)})",
-            items=no_items,
-            separator="\n",
-        )
-    else:
-        embed.add_field(name="Against (0)", value="None", inline=False)
-
-    await channel.send(embed=embed)
-
-
-def _format_admin_value(*, admin_name: str, admin_discord_id: str | None) -> str:
-    discord_id = str(admin_discord_id or "").strip()
-    return f"{admin_name} (<@{discord_id}>)" if discord_id else admin_name
 
 
 async def cmd_merge_player(
@@ -1113,11 +805,11 @@ async def cmd_merge_player(
         )
         return
 
-    source = await bot._get_player_or_reply(interaction, source_pid)
+    source = await get_player_or_reply(bot, interaction, source_pid)
     if source is None:
         return
 
-    target = await bot._get_player_or_reply(interaction, target_pid)
+    target = await get_player_or_reply(bot, interaction, target_pid)
     if target is None:
         return
 
@@ -1162,7 +854,9 @@ async def cmd_merge_player(
         source_player=source,
         target_player=target,
         reason=reason,
-        perform_merge=lambda **kwargs: bot.merge_player_accounts(**kwargs),
+        perform_merge=lambda **kwargs: bot.container.players.merge_player_accounts(
+            **kwargs
+        ),
         keep_pid=keep_pid,
     )
 

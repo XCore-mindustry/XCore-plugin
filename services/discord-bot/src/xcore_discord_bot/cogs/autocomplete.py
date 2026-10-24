@@ -1,27 +1,28 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING, cast
+
 from discord import Interaction, app_commands
 
 from ..badges import badge_choice_label, grantable_badges
+from ..handlers_misc import get_cached_maps
 from ..player_pids import is_assigned
-from ..service_protocols import BusService, StoreService
+from ..utils.mindustry_colors import strip_mindustry_colors
+
+if TYPE_CHECKING:
+    from ..bot import XCoreDiscordBot
 
 
 async def _autocomplete_player_id(
     interaction: Interaction,
     current: str,
 ) -> list[app_commands.Choice[int]]:
-    from ..bot import strip_mindustry_colors
-
     current_norm = current.strip()
     if not current_norm:
         return []
 
-    store = interaction.client
-    if not isinstance(store, StoreService):
-        return []
-
-    rows = await store.autocomplete_players(current_norm, limit=25)
+    bot = cast("XCoreDiscordBot", interaction.client)
+    rows = await bot.store.autocomplete_players(current_norm, limit=25)
     choices: list[app_commands.Choice[int]] = []
     for row in rows:
         if not is_assigned(row.pid):
@@ -55,14 +56,12 @@ async def _autocomplete_map_file(
     interaction: Interaction,
     current: str,
 ) -> list[app_commands.Choice[str]]:
-    bus = interaction.client
+    bot = cast("XCoreDiscordBot", interaction.client)
     server = str(getattr(interaction.namespace, "server", "")).strip()
     if not server:
         return []
 
-    if not isinstance(bus, BusService):
-        return []
-    maps = await bus.get_cached_maps(server)
+    maps = await get_cached_maps(bot, server)
     current_norm = current.strip().lower()
 
     choices: list[app_commands.Choice[str]] = []

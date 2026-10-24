@@ -5,7 +5,9 @@ from typing import TYPE_CHECKING
 from discord import Interaction
 
 from .badges import get_badge
-from .staff_actions import Actor, StaffActionError, perform_badge_grant
+from .command_helpers import claim_mutation, get_player_or_reply, require_player_uuid
+from .dto import Actor
+from .staff_actions import StaffActionError, perform_badge_grant
 
 if TYPE_CHECKING:
     from .bot import XCoreDiscordBot
@@ -49,19 +51,20 @@ async def _cmd_badge_change(
     badge_id: str,
     grant: bool,
 ) -> None:
-    player = await bot._get_player_or_reply(interaction, player_id)
+    player = await get_player_or_reply(bot, interaction, player_id)
     if player is None:
         return
 
     operation = "badge-grant" if grant else "badge-revoke"
-    if not await bot._claim_mutation(
+    if not await claim_mutation(
+        bot,
         interaction,
         operation=operation,
         scope=f"{player_id}:{badge_id.strip().lower()}",
     ):
         return
 
-    uuid_value = await bot._require_player_uuid(
+    uuid_value = await require_player_uuid(
         interaction,
         player,
         action="change badge",
@@ -101,18 +104,18 @@ async def _cmd_badge_change(
         )
         return
 
-    changed = await bot.revoke_badge(uuid=uuid_value, badge_id=badge.id)
+    changed = await bot.store.revoke_badge(uuid=uuid_value, badge_id=badge.id)
 
     if changed:
-        updated_player = await bot.find_player_by_uuid(uuid_value)
+        updated_player = await bot.store.find_player_by_uuid(uuid_value)
         if updated_player is not None:
-            await bot.publish_player_badge_inventory_changed(
+            await bot.bus.publish_player_badge_inventory_changed(
                 uuid_value=uuid_value,
                 active_badge=updated_player.active_badge,
                 unlocked_badges=updated_player.unlocked_badges,
             )
 
-    player_name = bot._player_name(player)
+    player_name = player.nickname
     message = (
         f"Revoked badge `{badge.id}` from `{player_name}`"
         if changed

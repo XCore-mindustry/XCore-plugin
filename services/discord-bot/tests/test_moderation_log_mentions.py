@@ -5,9 +5,10 @@ from datetime import UTC, datetime
 from typing import Any
 
 import pytest
+from bot_fakes import make_bot, make_settings
 from xcore_protocol.generated.shared import VoteKickParticipantV1
 
-from xcore_discord_bot.handlers_moderation import (
+from xcore_discord_bot.moderation_logs import (
     post_ban_log,
     post_mute_log,
     post_vote_kick_log,
@@ -22,7 +23,7 @@ class _Channel:
         self.sent.append({"embed": embed})
 
 
-class _Bot:
+class _Backend:
     def __init__(
         self,
         *,
@@ -35,7 +36,7 @@ class _Bot:
         self.votekicks_channel_id = votekicks_channel_id
         self.channel = _Channel()
 
-    async def _resolve_messageable_channel(
+    async def resolve_channel(
         self, channel_id: int, *, context: str
     ) -> _Channel | None:
         if context == "ban logs":
@@ -46,10 +47,31 @@ class _Bot:
             assert channel_id == self.votekicks_channel_id
         return self.channel
 
+    async def find_player_by_pid(self, pid):
+        return None
+
+    async def find_player_by_uuid(self, uuid):
+        return None
+
+
+def _bot(*args, **kwargs):
+    backend = _Backend(*args, **kwargs)
+    bot = make_bot(
+        store=backend,
+        bus=backend,
+        settings=make_settings(
+            discord_bans_channel_id=backend.bans_channel_id,
+            discord_mutes_channel_id=backend.mutes_channel_id,
+            discord_votekicks_channel_id=backend.votekicks_channel_id,
+        ),
+    )
+    bot.resolve_channel = backend.resolve_channel
+    return bot
+
 
 @pytest.mark.asyncio
 async def test_post_ban_log_shows_admin_mention_when_discord_id_present() -> None:
-    bot = _Bot(bans_channel_id=10)
+    bot = _bot(bans_channel_id=10)
 
     await post_ban_log(
         bot,
@@ -61,14 +83,14 @@ async def test_post_ban_log_shows_admin_mention_when_discord_id_present() -> Non
         expire=datetime(2026, 1, 1, tzinfo=UTC),
     )
 
-    embed = bot.channel.sent[0]["embed"]
+    embed = bot.store.channel.sent[0]["embed"]
     fields = {field.name: field.value for field in embed.fields}
     assert fields["Admin"] == "AdminNick (<@123456>)"
 
 
 @pytest.mark.asyncio
 async def test_post_mute_log_uses_admin_name_without_mention_when_missing() -> None:
-    bot = _Bot(mutes_channel_id=11)
+    bot = _bot(mutes_channel_id=11)
 
     await post_mute_log(
         bot,
@@ -80,14 +102,14 @@ async def test_post_mute_log_uses_admin_name_without_mention_when_missing() -> N
         expire=datetime(2026, 1, 1, tzinfo=UTC),
     )
 
-    embed = bot.channel.sent[0]["embed"]
+    embed = bot.store.channel.sent[0]["embed"]
     fields = {field.name: field.value for field in embed.fields}
     assert fields["Admin"] == "AdminNick"
 
 
 @pytest.mark.asyncio
 async def test_post_vote_kick_log_shows_initiator_reason_and_vote_lists() -> None:
-    bot = _Bot(votekicks_channel_id=12)
+    bot = _bot(votekicks_channel_id=12)
 
     await post_vote_kick_log(
         bot,
@@ -118,7 +140,7 @@ async def test_post_vote_kick_log_shows_initiator_reason_and_vote_lists() -> Non
         ],
     )
 
-    embed = bot.channel.sent[0]["embed"]
+    embed = bot.store.channel.sent[0]["embed"]
     assert embed.title == "Vote-kick Passed"
     fields = {field.name: field.value for field in embed.fields}
     assert fields["Target"] == "Target (pid=42)"
@@ -130,7 +152,7 @@ async def test_post_vote_kick_log_shows_initiator_reason_and_vote_lists() -> Non
 
 @pytest.mark.asyncio
 async def test_post_vote_kick_log_shows_none_when_against_list_is_empty() -> None:
-    bot = _Bot(votekicks_channel_id=12)
+    bot = _bot(votekicks_channel_id=12)
 
     await post_vote_kick_log(
         bot,
@@ -150,6 +172,6 @@ async def test_post_vote_kick_log_shows_none_when_against_list_is_empty() -> Non
         votes_against=[],
     )
 
-    embed = bot.channel.sent[0]["embed"]
+    embed = bot.store.channel.sent[0]["embed"]
     fields = {field.name: field.value for field in embed.fields}
     assert fields["Against (0)"] == "None"

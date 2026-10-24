@@ -17,6 +17,7 @@ from .cards import (
     thread_title,
 )
 from .model import AccessDenied, Case, CaseKind, CaseStatus
+from .views import case_view
 
 logger = logging.getLogger(__name__)
 FORUM_TAGS = (
@@ -123,8 +124,6 @@ class CaseThreads:
         self, service, case: Case, *, adopt: bool = True
     ) -> dict[str, str]:
         """The case post and its card. ``adopt`` looks for a post an earlier attempt created."""
-        from .views import case_view
-
         forum = await self.channel(
             case.discord.get("forum_id") or self.forum_id(case.kind)
         )
@@ -473,8 +472,6 @@ class CaseThreads:
 
     async def render(self, service, case: Case) -> None:
         """Project the stored case onto Discord: card, buttons, tags, archive and lock."""
-        from .views import case_view
-
         await self.reconcile_memberships(service, case)
         if not case.discord.get("thread_id") or not case.discord.get("card_message_id"):
             await self._render_user_thread(case)

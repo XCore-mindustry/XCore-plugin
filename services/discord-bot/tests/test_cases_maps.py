@@ -438,14 +438,14 @@ async def test_concurrent_accept_installs_once():
     env, case = await opened()
     service, _, bot, _, bus, _, _, _, _, _ = env
     entered, release = asyncio.Event(), asyncio.Event()
-    original = bot.rpc_upload_maps
+    original = bot.bus.rpc_upload_maps
 
     async def delayed(**kw):
         entered.set()
         await release.wait()
         return await original(**kw)
 
-    bot.rpc_upload_maps = delayed
+    bot.bus.rpc_upload_maps = delayed
     first = asyncio.create_task(do_accept(service, case, user=reviewer(101)))
     await entered.wait()
     with pytest.raises(CaseRace):
@@ -508,13 +508,13 @@ async def test_crash_after_upload_before_case_close_recovers_from_audit_without_
 async def test_audit_write_response_failure_after_persisted_completion_recovers_without_second_upload():
     env, case = await opened()
     service, _, bot, _, bus, _, _, _, _, _ = env
-    original = bot.append_moderation_audit
+    original = bot.store.append_moderation_audit
 
     async def failing(**kw):
         await original(**kw)
         raise RuntimeError("audit reply lost")
 
-    bot.append_moderation_audit = failing
+    bot.store.append_moderation_audit = failing
     final = await do_accept(service, case)
     assert final.resolution.code == "accepted" and len(bus.upload_calls) == 1
 
@@ -528,7 +528,7 @@ async def test_crash_without_completion_then_abandoned_guard_still_blocks_upload
     class ProcessDeath(BaseException):
         pass
 
-    bot.rpc_upload_maps = AsyncMock(side_effect=ProcessDeath())
+    bot.bus.rpc_upload_maps = AsyncMock(side_effect=ProcessDeath())
     with pytest.raises(ProcessDeath):
         await do_accept(service, case)
     service.now = lambda: NOW + timedelta(minutes=11)
@@ -918,7 +918,7 @@ async def test_new_author_file_during_failed_upload_refreshes_after_guard_releas
     env, case = await opened()
     service, _, bot, _, bus, _, author, thread, _, _ = env
     entered, release = asyncio.Event(), asyncio.Event()
-    original = bot.rpc_upload_maps
+    original = bot.bus.rpc_upload_maps
     bus.statuses = ["invalid_map"]
 
     async def upload(**kwargs):
@@ -926,7 +926,7 @@ async def test_new_author_file_during_failed_upload_refreshes_after_guard_releas
         await release.wait()
         return await original(**kwargs)
 
-    bot.rpc_upload_maps = upload
+    bot.bus.rpc_upload_maps = upload
     accepting = asyncio.create_task(do_accept(service, case))
     await entered.wait()
     replacement = Attachment(3000, msav(meta={"name": "New during upload"}))

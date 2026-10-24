@@ -62,7 +62,7 @@ async def setup_action(kind, *, payload=None):
         discord=discord_fields,
     )
     bot, mutation_db, bus, channel = _action_bot()
-    bot._store.now_utc = lambda: NOW
+    bot.store.now_utc = lambda: NOW
     mirror_audits(bot, bot, db, mutation_db)
     return service, db, case, bot, mutation_db, bus, channel, closed
 
@@ -107,11 +107,11 @@ async def test_real_helpers_recover_durable_completion_without_replaying(
     if action in {"ban", "mute", "shorten"}:
         channel.send = AsyncMock(side_effect=RuntimeError("log unavailable"))
     if action == "unban":
-        bot.publish_pardon_player = AsyncMock(
+        bot.bus.publish_pardon_player = AsyncMock(
             side_effect=RuntimeError("pardon unavailable")
         )
     if action == "grant":
-        bot.publish_player_badge_inventory_changed = AsyncMock(
+        bot.bus.publish_player_badge_inventory_changed = AsyncMock(
             side_effect=RuntimeError("inventory unavailable")
         )
 
@@ -137,7 +137,9 @@ async def test_real_helpers_recover_durable_completion_without_replaying(
                 bot, PLAYER, timedelta(minutes=10), "spam", actor, **kwargs
             )
         elif action == "unban":
-            await perform_unban(bot, await bot.find_ban_by_id(71), actor, **kwargs)
+            await perform_unban(
+                bot, await bot.store.find_ban_by_id(71), actor, **kwargs
+            )
         elif action == "shorten":
             await perform_shorten_ban(bot, 71, NOW + timedelta(days=1), actor, **kwargs)
         elif action == "grant":
@@ -190,7 +192,7 @@ async def test_real_completion_survives_failed_case_cas_or_post_grant_lookup(mod
     if mode == "badge_owned":
         mutation_db["players"].docs[0]["unlocked_badges"] = ["map-maker"]
     if mode == "badge_lookup":
-        bot.find_player_by_uuid = AsyncMock(
+        bot.store.find_player_by_uuid = AsyncMock(
             side_effect=RuntimeError("fresh lookup failed")
         )
     finish = service._finish_action
@@ -266,7 +268,7 @@ async def test_real_map_unconfirmed_results_stay_open_and_never_retry(status):
     if status == "timeout":
         bus.upload_error = TimeoutError("installed remotely but no receipt")
     elif status == "audit_failed":
-        bot.append_moderation_audit = AsyncMock(
+        bot.store.append_moderation_audit = AsyncMock(
             side_effect=ValueError("audit unavailable")
         )
     else:
@@ -322,7 +324,7 @@ async def test_real_mutation_without_completion_audit_remains_uncertain(kind):
         kind, payload={"ban_id": 71} if kind == "appeal" else {"badge": "map-maker"}
     )
     mutation_db["bans"].docs = [_ban(ban_id=71, expire_date=NOW + timedelta(days=7))]
-    bot.append_moderation_audit = AsyncMock(
+    bot.store.append_moderation_audit = AsyncMock(
         side_effect=RuntimeError("audit unavailable")
     )
     calls = []
@@ -332,7 +334,7 @@ async def test_real_mutation_without_completion_audit_remains_uncertain(kind):
         if kind == "appeal":
             await perform_unban(
                 bot,
-                await bot.find_ban_by_id(71),
+                await bot.store.find_ban_by_id(71),
                 service.actor(member()),
                 **context(claimed),
             )

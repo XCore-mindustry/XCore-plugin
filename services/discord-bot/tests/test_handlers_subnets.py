@@ -5,6 +5,7 @@ from types import SimpleNamespace
 from typing import Any, cast
 
 import pytest
+from bot_fakes import make_bot, make_settings
 
 from xcore_discord_bot.handlers_subnets import (
     cmd_subnet_import,
@@ -50,7 +51,7 @@ class _Interaction:
         return self._Followup(self)
 
 
-class _Bot:
+class _Backend:
     settings = SimpleNamespace(rpc_timeout_ms=1234)
 
     def __init__(self, response: Any = None) -> None:
@@ -65,6 +66,17 @@ class _Bot:
         self.calls.append({"server": server, "timeout": timeout})
         return SimpleNamespace(rules=("10.0.0.0/8", "::/0"))
 
+    async def find_player_by_uuid(self, uuid):
+        return None
+
+
+def _bot(*args, **kwargs):
+    backend = _Backend(*args, **kwargs)
+    bot = make_bot(
+        store=backend, bus=backend, settings=make_settings(rpc_timeout_ms=1234)
+    )
+    return bot
+
 
 def test_parse_import_normalizes_and_deduplicates() -> None:
     assert parse_import("10.0.0.1/8, 10.0.0.0/8\n2001:db8::/32") == [
@@ -75,7 +87,7 @@ def test_parse_import_normalizes_and_deduplicates() -> None:
 
 @pytest.mark.asyncio
 async def test_import_uses_one_rpc_and_ephemeral_followup() -> None:
-    bot = _Bot()
+    bot = _bot()
     interaction = _Interaction()
     from xcore_discord_bot.registry import server_registry
 
@@ -83,15 +95,15 @@ async def test_import_uses_one_rpc_and_ephemeral_followup() -> None:
     await cmd_subnet_import(
         cast(Any, bot), cast(Any, interaction), "10.0.0.1/8,10.0.0.0/8"
     )
-    assert len(bot.calls) == 1
-    assert bot.calls[0]["operation"] == "IMPORT"
-    assert bot.calls[0]["rules"] == ["10.0.0.0/8"]
+    assert len(bot.store.calls) == 1
+    assert bot.store.calls[0]["operation"] == "IMPORT"
+    assert bot.store.calls[0]["rules"] == ["10.0.0.0/8"]
     assert interaction.followups[0][1] is True
 
 
 @pytest.mark.asyncio
 async def test_list_is_compact_and_ephemeral() -> None:
-    bot = _Bot()
+    bot = _bot()
     interaction = _Interaction()
     from xcore_discord_bot.registry import server_registry
 

@@ -104,44 +104,6 @@ class FormModal(discord.ui.Modal):
         }
 
 
-class CaseActionModal(FormModal):
-    """The form behind a card button. Submitting dispatches the action from the start."""
-
-    def __init__(
-        self,
-        *,
-        service,
-        number: int,
-        verb: str,
-        requester_id: int,
-        locale: str,
-        fields: Sequence[FormField],
-        title_key: str | None = None,
-    ) -> None:
-        super().__init__(
-            title=t(locale, title_key or "cases-button-" + verb),
-            locale=locale,
-            fields=fields,
-            files=False,
-        )
-        self.service, self.number, self.verb = service, number, verb
-        self.requester_id = requester_id
-
-    async def on_submit(self, interaction: discord.Interaction) -> None:
-        await interaction.response.defer(ephemeral=True, thinking=True)
-        locale = await self.service.store.remember_interaction(interaction)
-        if interaction.user.id != self.requester_id:
-            await interaction.followup.send(
-                t(locale, "error-not-allowed"), ephemeral=True
-            )
-            return
-        from .views import run_case_action
-
-        await run_case_action(
-            self.service, interaction, self.number, self.verb, locale, self.values()
-        )
-
-
 class OpenCaseModal(FormModal):
     """The form behind a panel button.
 

@@ -23,7 +23,7 @@ async def run() -> None:
     bus = RedisBus(settings)
     store = MongoStore(settings)
     bot = XCoreDiscordBot(settings=settings, bus=bus, store=store)
-    await bot.start(settings.discord_token)
+    await bot.start(settings.discord_bot_token)
 
 
 def main() -> None:

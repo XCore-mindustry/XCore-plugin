@@ -150,7 +150,7 @@ async def test_take_adds_only_senior_then_required_resolve_note_closes_neutrally
     )
     assert db["case_notices"].docs[0]["kind"] == "complaint_closed"
     assert db["case_notices"].docs[0]["params"] == {"number": str(case.number)}
-    bot.append_moderation_audit.assert_not_awaited()
+    bot.store.append_moderation_audit.assert_not_awaited()
     assert set(bot.users) == {42}
 
 

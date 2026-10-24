@@ -32,7 +32,9 @@ class RatingMergeDaemon:
 
     def start(self) -> None:
         if self._task is None or self._task.done():
-            self._task = asyncio.create_task(self._run_loop(), name="rating_merge_daemon")
+            self._task = asyncio.create_task(
+                self._run_loop(), name="rating_merge_daemon"
+            )
 
     def stop(self) -> None:
         if self._task and not self._task.done():
@@ -58,11 +60,11 @@ class RatingMergeDaemon:
 
     async def _report_refusal(self, refused: RefusedMerge) -> None:
         """Tells the administrators: they were promised a retry that will not happen."""
-        channel_id = self._bot.private_channel_id
+        channel_id = self._bot.settings.discord_private_channel_id
         if not channel_id:
             return
         try:
-            channel = await self._bot._resolve_messageable_channel(
+            channel = await self._bot.resolve_channel(
                 channel_id, context="rating merge refusal"
             )
             if channel is None:

@@ -34,17 +34,12 @@ async def badge_core(*, rows=None, enabled=True, **settings):
         service.registry.disable(CaseKind.BADGE)
     action_bot, mutations, bus, _ = _action_bot()
     mutations["players"].docs = [player_row()] if rows is None else rows
-    action_bot._store.now_utc = lambda: NOW
+    action_bot.store.now_utc = lambda: NOW
     service.players = Players(action_bot, mutations)
     service.notifier.find_player = service.players.find_player_by_uuid
-    for name in (
-        "grant_badge",
-        "find_player_by_uuid",
-        "now_utc",
-        "_player_name",
-        "publish_player_badge_inventory_changed",
-    ):
-        setattr(bot, name, getattr(action_bot, name))
+    bot.store = action_bot.store
+    bot.bus = action_bot.bus
+    bot.resolve_channel = action_bot.resolve_channel
 
     mirror_audits(bot, action_bot, database, mutations)
     role = SimpleNamespace(id=70)

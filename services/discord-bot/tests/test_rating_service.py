@@ -120,7 +120,9 @@ async def test_a_merge_the_server_could_not_carry_out_is_queued_and_retried() ->
 
 
 @pytest.mark.asyncio
-async def test_a_queued_merge_that_is_refused_is_kept_reported_and_not_retried() -> None:
+async def test_a_queued_merge_that_is_refused_is_kept_reported_and_not_retried() -> (
+    None
+):
     service, store, rpc = _service(RpcRejected("x", "REJECTED", "nope"))
     store.pending.add(("s", "t"))
 
@@ -145,9 +147,9 @@ async def test_the_daemon_tells_the_administrators_about_a_refused_merge() -> No
             sent.append(content)
 
     class _Bot:
-        private_channel_id = 42
+        settings = SimpleNamespace(discord_private_channel_id=42)
 
-        async def _resolve_messageable_channel(self, channel_id, *, context):
+        async def resolve_channel(self, channel_id, *, context):
             assert channel_id == 42
             return _Channel()
 
@@ -164,7 +166,7 @@ async def test_the_daemon_tells_the_administrators_about_a_refused_merge() -> No
 @pytest.mark.asyncio
 async def test_the_daemon_survives_a_refusal_it_cannot_report() -> None:
     class _Bot:
-        private_channel_id = 0
+        settings = SimpleNamespace(discord_private_channel_id=0)
 
     class _Ratings:
         async def retry_pending_merges(self):
@@ -249,7 +251,11 @@ async def test_a_kick_that_cannot_be_sent_does_not_skip_the_rating_merge() -> No
 
     with pytest.raises(ConnectionError):
         await players.merge_player_accounts(
-            source_pid=1, target_pid=2, actor_name="a", actor_discord_id=None, reason="r"
+            source_pid=1,
+            target_pid=2,
+            actor_name="a",
+            actor_discord_id=None,
+            reason="r",
         )
 
     # The accounts are merged already, so the ratings were attempted and queued regardless.
@@ -333,7 +339,9 @@ async def test_rpc_client_does_not_ask_another_server_after_a_refusal() -> None:
 
 
 @pytest.mark.asyncio
-async def test_rpc_client_tries_the_next_server_when_one_could_not_carry_it_out() -> None:
+async def test_rpc_client_tries_the_next_server_when_one_could_not_carry_it_out() -> (
+    None
+):
     _live("a", "b")
     tried: list[str] = []
 
@@ -348,7 +356,9 @@ async def test_rpc_client_tries_the_next_server_when_one_could_not_carry_it_out(
 
 
 @pytest.mark.asyncio
-async def test_rpc_client_names_a_season_change_once_for_every_server_it_tries() -> None:
+async def test_rpc_client_names_a_season_change_once_for_every_server_it_tries() -> (
+    None
+):
     _live("a", "b")
     seen: list[tuple[str, str, str]] = []
 
@@ -377,7 +387,9 @@ async def test_rpc_client_names_a_season_change_once_for_every_server_it_tries()
         **actor,
     )
     await client.add_season_prize(ladder="minipvp", prize=None, **actor)
-    await client.remove_season_prizes(ladder="minipvp", place_from=1, place_to=3, **actor)
+    await client.remove_season_prizes(
+        ladder="minipvp", place_from=1, place_to=3, **actor
+    )
 
     assert [(kind, server) for kind, server, _ in seen] == [
         ("reschedule", "a"),
@@ -408,7 +420,11 @@ class _ReplyingRedis:
         self.correlation_id = fields["correlation_id"]
 
     async def xread(self, streams, count, block):
-        body = {"correlation_id": self.correlation_id, "status": "error", "error_message": "why"}
+        body = {
+            "correlation_id": self.correlation_id,
+            "status": "error",
+            "error_message": "why",
+        }
         if self.error_code is not None:
             body["error_code"] = self.error_code
         return [("reply", [("1-0", body)])]
@@ -475,16 +491,23 @@ async def test_bus_sends_the_canonical_season_and_merge_requests() -> None:
     async def fake_rpc_request(self, server, rpc_type, payload, timeout_ms):
         seen.append(_Captured(server, rpc_type, payload))
         if rpc_type == "rating.accounts.merge.request":
-            body = {"messageType": "rating.accounts.merge.response", "messageVersion": 1,
-                    "server": server, "standingsMerged": 2}
+            body = {
+                "messageType": "rating.accounts.merge.response",
+                "messageVersion": 1,
+                "server": server,
+                "standingsMerged": 2,
+            }
         else:
             body = {
                 "messageType": "rating.season.reschedule.response",
                 "messageVersion": 1,
                 "server": server,
                 "season": {
-                    "ladder": "minipvp", "season": 1, "name": "S",
-                    "startsAt": "2026-01-01T00:00:00Z", "endsAt": "2026-04-01T00:00:00Z",
+                    "ladder": "minipvp",
+                    "season": 1,
+                    "name": "S",
+                    "startsAt": "2026-01-01T00:00:00Z",
+                    "endsAt": "2026-04-01T00:00:00Z",
                 },
                 "previousEndsAt": "2026-03-01T00:00:00Z",
                 "ended": False,

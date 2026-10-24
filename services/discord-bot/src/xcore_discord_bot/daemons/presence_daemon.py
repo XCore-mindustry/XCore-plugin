@@ -2,11 +2,10 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING
 
 import discord
 
-from ..presentation import build_servers_embed
 from ..registry import server_registry
 
 if TYPE_CHECKING:
@@ -34,24 +33,8 @@ class PresenceDaemon:
         if self._task and not self._task.done():
             self._task.cancel()
 
-    def get_live_servers(self):
-        return server_registry.get_all_servers()
-
-    @staticmethod
-    def sort_live_servers(servers, mode: Literal["players", "name"]):
-        if mode == "name":
-            return sorted(servers, key=lambda s: s.name.lower())
-        return sorted(servers, key=lambda s: (-s.players, s.name.lower()))
-
-    def build_servers_embed_for_mode(
-        self,
-        mode: Literal["players", "name"],
-    ) -> discord.Embed:
-        servers = self.sort_live_servers(self.get_live_servers(), mode)
-        return build_servers_embed(servers, sort_mode=mode)
-
     def build_presence_activity(self) -> discord.Activity:
-        servers = self.get_live_servers()
+        servers = server_registry.get_all_servers()
         if not servers:
             return discord.Activity(
                 type=discord.ActivityType.watching,

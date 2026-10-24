@@ -83,7 +83,7 @@ class Players(SharedPlayers):
                 for key in ("nickname", "custom_nickname", "username")
             }
         ][:2]
-        return [await self.bot.find_player_by_uuid(row["uuid"]) for row in found]
+        return [await self.bot.store.find_player_by_uuid(row["uuid"]) for row in found]
 
 
 class Guild:
@@ -115,30 +115,19 @@ async def reports_core(*, enabled=True, guild=None, **settings):
         service.registry.disable(CaseKind.REPORT)
     action_bot, mutations, bus, log = _action_bot()
     mutations["players"].docs = player_rows()
-    action_bot._store.now_utc = lambda: service.now()
+    action_bot.store.now_utc = lambda: service.now()
     database_bans = mutations["bans"]
     db.collections["bans"] = database_bans
     db.collections["mutes"] = mutations["mutes"]
     service.players = Players(action_bot, mutations)
     service.notifier.find_player = service.players.find_player_by_uuid
     service.claims = Claims()
-    for name in (
-        "claim_idempotency",
-        "find_ban",
-        "find_mute",
-        "find_player_by_uuid",
-        "find_player_by_pid",
-        "ensure_ban_id",
-        "next_ban_id",
-        "upsert_ban",
-        "upsert_mute",
-        "now_utc",
-        "publish_kick_banned",
-        "_player_name",
-        "_resolve_messageable_channel",
-    ):
-        setattr(bot, name, getattr(action_bot, name))
-    bot.bans_channel_id, bot.mutes_channel_id = 10, 20
+    bot.settings = service.settings.model_copy(
+        update={"discord_bans_channel_id": 10, "discord_mutes_channel_id": 20}
+    )
+    bot.store = action_bot.store
+    bot.bus = action_bot.bus
+    bot.resolve_channel = action_bot.resolve_channel
 
     mirror_audits(bot, action_bot, db, mutations)
     bot.guild = guild or Guild()

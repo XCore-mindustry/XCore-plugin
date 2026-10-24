@@ -9,9 +9,9 @@ from typing import Literal
 import discord
 
 from ...badges import BadgeDef, get_badge, normalize_badge_id
-from ...dto import PlayerRecord
+from ...dto import Actor, PlayerRecord
 from ...i18n import t
-from ...staff_actions import Actor, BadgeGrantUnconfirmed, perform_badge_grant
+from ...staff_actions import BadgeGrantUnconfirmed, perform_badge_grant
 from ..cards import base_card, safe_text
 from ..modals import OpenCaseModal, error_text
 from ..model import AccessDenied, ActionFailed, Case, CaseKind, Party, Resolution
@@ -356,7 +356,7 @@ async def grant_map_maker(
         else:
             if not result.changed:
                 # Re-publish fresh inventory on retry after a prior delivery failure.
-                await service.bot.publish_player_badge_inventory_changed(
+                await service.bot.bus.publish_player_badge_inventory_changed(
                     uuid_value=fresh.uuid,
                     active_badge=fresh.active_badge,
                     unlocked_badges=fresh.unlocked_badges,

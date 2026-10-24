@@ -3,17 +3,17 @@ from __future__ import annotations
 import asyncio
 import json
 from datetime import UTC, datetime
-from types import MethodType, SimpleNamespace
+from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
 import pytest
+from bot_fakes import make_bot, make_settings
 from fakeredis.aioredis import FakeRedis
 
 from xcore_discord_bot import redis_bus as bus_module
 from xcore_discord_bot import runtime_consumers
-from xcore_discord_bot.bot import XCoreDiscordBot
 from xcore_discord_bot.contracts import ModerationBanCreatedV1, parse_ban_payload
-from xcore_discord_bot.handlers_moderation import post_ban_log
+from xcore_discord_bot.moderation_logs import post_ban_log
 from xcore_discord_bot.player_pids import NO_PID
 from xcore_discord_bot.redis_bus import RedisBus
 
@@ -58,18 +58,13 @@ def ban_bot(bus, *, hook=None, channel_id=777, resolver=None):
             dispatch_event=hook if hook is not None else AsyncMock()
         ),
     )
-    bot = SimpleNamespace(
-        _bus=bus,
-        container=SimpleNamespace(cases=cases),
-        bans_channel_id=channel_id,
-        _resolve_messageable_channel=(
-            resolver if resolver is not None else AsyncMock(return_value=channel)
-        ),
-        find_player_by_uuid=AsyncMock(return_value=SimpleNamespace(pid=-7)),
-        _parse_iso_datetime=lambda value: None,
-        now_utc=AsyncMock(return_value=NOW),
+    bot = make_bot(bus=bus, settings=make_settings(discord_bans_channel_id=channel_id))
+    bot.container.cases = cases
+    bot.resolve_channel = (
+        resolver if resolver is not None else AsyncMock(return_value=channel)
     )
-    bot.consume_bans_stream = MethodType(XCoreDiscordBot.consume_bans_stream, bot)
+    bot.store.find_player_by_uuid = AsyncMock(return_value=SimpleNamespace(pid=-7))
+    bot.store.now_utc = lambda: NOW
     return bot, cases, channel
 
 
@@ -81,7 +76,7 @@ async def add_ban(bus, *, event_id=None, payload=None, stream=STREAM, message_id
 
 
 async def live_batch(monkeypatch, bot):
-    read = bot._bus._redis.xreadgroup
+    read = bot.bus._redis.xreadgroup
     reads = 0
 
     async def bounded_read(**kwargs):
@@ -95,7 +90,7 @@ async def live_batch(monkeypatch, bot):
         await consume(callback)
 
     with monkeypatch.context() as patch:
-        patch.setattr(bot._bus._redis, "xreadgroup", bounded_read)
+        patch.setattr(bot.bus._redis, "xreadgroup", bounded_read)
         patch.setattr(runtime_consumers, "run_consumer_forever", once)
         with pytest.raises(asyncio.CancelledError):
             await runtime_consumers.consume_bans(bot)
@@ -103,7 +98,7 @@ async def live_batch(monkeypatch, bot):
 
 async def reclaim_bans(monkeypatch, bot):
     async def once(_bot, _label, _consume, callback):
-        await bot._bus._reclaim_pending(
+        await bot.bus._reclaim_pending(
             stream=STREAM,
             group=GROUP,
             consumer="restarted-bot",
@@ -154,7 +149,7 @@ async def test_distinct_legacy_bans_log_and_reclaim_retries_hooks_after_restart(
     # The marker belongs to the envelope delivery, and survives a new bus instance.
     restarted = RedisBus(bus._settings)
     restarted._redis = bus._redis
-    bot._bus = restarted
+    bot.bus = restarted
     await reclaim_bans(monkeypatch, bot)
     assert channel.send.await_count == 2
     assert hook.await_count == 4
@@ -237,7 +232,7 @@ async def test_unresolved_channel_retries_send_then_retries_case_hook(bus, monke
 
     restarted = RedisBus(bus._settings)
     restarted._redis = bus._redis
-    bot._bus = restarted
+    bot.bus = restarted
     await reclaim_bans(monkeypatch, bot)
     channel.send.assert_awaited_once()
     assert resolver.await_count == 2
@@ -276,7 +271,7 @@ async def test_zero_channel_skips_log_and_retries_case_hook(bus, monkeypatch):
     hook.assert_awaited_with(
         runtime_consumers.CASE_BAN_EVENT, cases, parse_ban_payload(legacy_payload())
     )
-    bot._resolve_messageable_channel.assert_not_awaited()
+    bot.resolve_channel.assert_not_awaited()
     channel.send.assert_not_awaited()
     assert await bus._redis.keys(MARKERS) == []
     assert (await bus._redis.xpending(STREAM, GROUP))["pending"] == 0
@@ -299,7 +294,7 @@ async def test_stream_logs_preserve_legacy_signed_pid_and_optional_ban_id(
     assert fields["Violator"] == (
         "Target" if expected_pid == NO_PID else f"Target (pid={expected_pid})"
     )
-    assert bot.find_player_by_uuid.await_count == int(pid is None)
+    assert bot.store.find_player_by_uuid.await_count == int(pid is None)
     if ban_id is None:
         assert "Ban" not in fields
     else:
@@ -348,10 +343,10 @@ async def test_post_ban_log_receipt_preserves_legacy_missing_channel_behavior(bu
         "expire": NOW,
     }
     assert await post_ban_log(bot, **kwargs) is False
-    bot.bans_channel_id = 0
+    bot.settings = bot.settings.model_copy(update={"discord_bans_channel_id": 0})
     assert await post_ban_log(bot, **kwargs) is False
-    assert bot._resolve_messageable_channel.await_count == 1
-    bot.bans_channel_id = 777
-    bot._resolve_messageable_channel.return_value = channel
+    assert bot.resolve_channel.await_count == 1
+    bot.settings = bot.settings.model_copy(update={"discord_bans_channel_id": 777})
+    bot.resolve_channel.return_value = channel
     assert await post_ban_log(bot, **kwargs) is True
     channel.send.assert_awaited_once()

@@ -53,7 +53,6 @@ from ..model import (
 from ..notify import Outcome
 from ..registry import (
     Action,
-    ActionContext,
     Choice,
     Flow,
     FormField,
@@ -61,6 +60,7 @@ from ..registry import (
     PanelEntry,
     flow_registry,
 )
+from ..views import ActionContext
 from ._history import audit_at as _audit_at
 from ._history import audit_entry, audit_line, history_rows
 

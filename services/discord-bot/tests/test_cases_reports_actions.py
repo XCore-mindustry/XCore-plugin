@@ -24,8 +24,8 @@ from cases_reports_fakes import (
 from xcore_discord_bot.cases.flows import reports
 from xcore_discord_bot.cases.model import AccessDenied, ActionFailed, CaseStatus
 from xcore_discord_bot.cases.reconcile import reconcile_cases
-from xcore_discord_bot.handlers_moderation import post_mute_log
 from xcore_discord_bot.i18n import t
+from xcore_discord_bot.moderation_logs import post_mute_log
 
 
 def notices(db, kind):

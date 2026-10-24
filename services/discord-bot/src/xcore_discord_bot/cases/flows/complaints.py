@@ -18,7 +18,6 @@ from ..model import Case, CaseKind, CaseRace, InvalidForm, Party, Resolution
 from ..notify import Outcome
 from ..registry import (
     Action,
-    ActionContext,
     Flow,
     FormField,
     PanelContext,
@@ -26,6 +25,7 @@ from ..registry import (
     clean_values,
     flow_registry,
 )
+from ..views import ActionContext
 from ._history import audit_entry, audit_line, history_rows
 
 OPEN_FIELDS = (

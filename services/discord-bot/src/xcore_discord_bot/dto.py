@@ -9,6 +9,13 @@ MERGE_KEEP_PID_CHOICES: tuple[str, ...] = (MERGE_KEEP_PID_TARGET, MERGE_KEEP_PID
 
 
 @dataclass(frozen=True)
+class Actor:
+    discord_id: str | None
+    name: str
+    handle: str | None = None
+
+
+@dataclass(frozen=True)
 class PlayerRecord:
     pid: int
     nickname: str
@@ -57,6 +64,15 @@ class BanRecord:
 
     def get(self, key: str, default: object = None) -> object:
         return getattr(self, key, default)
+
+
+def record_identifiers(
+    record: PlayerRecord | BanRecord,
+) -> tuple[str | None, str | None]:
+    """The record's UUID and IP, ``None`` when blank. A player falls back to the last IP."""
+    last_ip = record.last_ip if isinstance(record, PlayerRecord) else None
+    uuid_value = str(record.uuid or "").strip() or None
+    return uuid_value, str(record.ip or last_ip or "").strip() or None
 
 
 @dataclass(frozen=True, kw_only=True)

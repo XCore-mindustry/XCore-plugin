@@ -3,8 +3,10 @@ from __future__ import annotations
 import asyncio
 import logging
 from collections.abc import Awaitable, Callable
+from datetime import datetime
 from typing import TYPE_CHECKING
 
+from discord.abc import Messageable
 from redis.exceptions import RedisError
 
 from .cases.model import CaseKind
@@ -17,16 +19,16 @@ from .contracts import (
     RatingSeasonStartedV1,
     ServerHeartbeatV1,
 )
-from .handlers_moderation import post_ban_log, post_mute_log, post_vote_kick_log
 from .handlers_seasons import (
     on_season_ended,
     on_season_ending_soon,
     on_season_rescheduled,
     on_season_started,
 )
+from .moderation_logs import post_ban_log, post_mute_log, post_vote_kick_log
 from .player_pids import NO_PID
+from .registry import server_registry
 from .retry import retry_reconnect_bus
-from .service_protocols import ConsumerRecoveryService, PlayerLookupService
 from .utils.mindustry_colors import strip_mindustry_colors
 
 if TYPE_CHECKING:
@@ -38,16 +40,19 @@ if TYPE_CHECKING:
         PlayerJoinLeaveV1,
         ServerActionV1,
     )
+    from .mongo_store import MongoStore
+    from .redis_bus import RedisBus
 
 
 logger = logging.getLogger(__name__)
 
 
-def _expiration_value(expiration) -> str | None:
-    if expiration is None:
+def _expires_at(expiration) -> datetime | None:
+    raw = str(expiration.expiresAt or "").strip() if expiration is not None else ""
+    try:
+        return datetime.fromisoformat(raw) if raw else None
+    except ValueError:
         return None
-    expires_at = str(expiration.expiresAt or "").strip()
-    return expires_at or None
 
 
 def _resolve_vote_kick_starter_pid(event: ModerationVoteKickCreatedV1) -> int | None:
@@ -65,7 +70,7 @@ def _resolve_vote_kick_starter_pid(event: ModerationVoteKickCreatedV1) -> int | 
     return None
 
 
-async def _player_pid_for_uuid(store: PlayerLookupService, uuid: str | None) -> int:
+async def _player_pid_for_uuid(store: MongoStore, uuid: str | None) -> int:
     if not uuid:
         return NO_PID
     if uuid.startswith("legacy:"):
@@ -78,15 +83,19 @@ async def _player_pid_for_uuid(store: PlayerLookupService, uuid: str | None) -> 
     return player.pid
 
 
+async def _server_channel(
+    bot: XCoreDiscordBot, server: str, *, context: str
+) -> Messageable | None:
+    channel_id = server_registry.get_channel_for_server(server)
+    if channel_id is None:
+        logger.debug("No channel registered for server=%s (%s)", server, context)
+        return None
+    return await bot.resolve_channel(channel_id, context=context)
+
+
 async def consume_game_chat(bot: XCoreDiscordBot) -> None:
     async def dispatch(event: ChatMessageV1) -> None:
-        channel_id = bot._channel_id_for_server(event.server, context="game chat")
-        if channel_id is None:
-            return
-
-        channel = await bot._resolve_messageable_channel(
-            channel_id, context="game chat"
-        )
+        channel = await _server_channel(bot, event.server, context="game chat")
         if channel is None:
             return
 
@@ -94,18 +103,14 @@ async def consume_game_chat(bot: XCoreDiscordBot) -> None:
         safe_message = strip_mindustry_colors(str(event.message).replace("`", ""))
         await channel.send(f"`{safe_author}: {safe_message}`")
 
-    await run_consumer_forever(bot, "Game chat", bot.consume_game_chat_events, dispatch)
+    await run_consumer_forever(
+        bot.bus, "Game chat", bot.bus.consume_game_chat, dispatch
+    )
 
 
 async def consume_global_chat(bot: XCoreDiscordBot) -> None:
     async def dispatch(event: ChatGlobalV1) -> None:
-        channel_id = bot._channel_id_for_server(event.server, context="global chat")
-        if channel_id is None:
-            return
-
-        channel = await bot._resolve_messageable_channel(
-            channel_id, context="global chat"
-        )
+        channel = await _server_channel(bot, event.server, context="global chat")
         if channel is None:
             return
 
@@ -115,7 +120,7 @@ async def consume_global_chat(bot: XCoreDiscordBot) -> None:
         await channel.send(f"`[GLOBAL:{safe_server}] {safe_author}: {safe_message}`")
 
     await run_consumer_forever(
-        bot, "Global chat", bot.consume_global_chat_events, dispatch
+        bot.bus, "Global chat", bot.bus.consume_global_chat, dispatch
     )
 
 
@@ -124,22 +129,16 @@ async def consume_server_heartbeats(bot: XCoreDiscordBot) -> None:
         return None
 
     await run_consumer_forever(
-        bot,
+        bot.bus,
         "Server heartbeat",
-        bot.consume_server_heartbeats_stream,
+        bot.bus.consume_server_heartbeats,
         dispatch,
     )
 
 
 async def consume_join_leave(bot: XCoreDiscordBot) -> None:
     async def dispatch(event: PlayerJoinLeaveV1) -> None:
-        channel_id = bot._channel_id_for_server(event.server, context="join/leave")
-        if channel_id is None:
-            return
-
-        channel = await bot._resolve_messageable_channel(
-            channel_id, context="join/leave"
-        )
+        channel = await _server_channel(bot, event.server, context="join/leave")
         if channel is None:
             return
 
@@ -148,22 +147,16 @@ async def consume_join_leave(bot: XCoreDiscordBot) -> None:
         await channel.send(f"`{safe_player}` {action}")
 
     await run_consumer_forever(
-        bot,
+        bot.bus,
         "Join/leave",
-        bot.consume_player_join_leave_events,
+        bot.bus.consume_player_join_leave,
         dispatch,
     )
 
 
 async def consume_server_actions(bot: XCoreDiscordBot) -> None:
     async def dispatch(event: ServerActionV1) -> None:
-        channel_id = bot._channel_id_for_server(event.server, context="server action")
-        if channel_id is None:
-            return
-
-        channel = await bot._resolve_messageable_channel(
-            channel_id, context="server action"
-        )
+        channel = await _server_channel(bot, event.server, context="server action")
         if channel is None:
             return
 
@@ -171,9 +164,9 @@ async def consume_server_actions(bot: XCoreDiscordBot) -> None:
         await channel.send(safe_message)
 
     await run_consumer_forever(
-        bot,
+        bot.bus,
         "Server action",
-        bot.consume_server_actions_events,
+        bot.bus.consume_server_actions,
         dispatch,
     )
 
@@ -184,8 +177,8 @@ CASE_MUTE_EVENT = "moderation.mute.created"
 
 
 def case_reports_configured(bot: XCoreDiscordBot) -> bool:
-    service = getattr(getattr(bot, "container", None), "cases", None)
-    if service is None or not service.settings.cases_reports_enabled:
+    service = bot.container.cases
+    if not service.settings.cases_reports_enabled:
         return False
     return any(
         flow.kind == CaseKind.REPORT
@@ -204,35 +197,32 @@ def case_reports_active(bot: XCoreDiscordBot) -> bool:
 async def consume_case_reports(bot: XCoreDiscordBot) -> None:
     if not case_reports_configured(bot):
         return
-    daemon = getattr(bot.container, "cases_reconcile_daemon", None)
-    if daemon is not None:
-        # Startup validation needs Discord readiness and may disable the flow.
-        await daemon.ready.wait()
+    # Startup validation needs Discord readiness and may disable the flow.
+    await bot.container.cases_reconcile_daemon.ready.wait()
     service = bot.container.cases
 
     async def dispatch(payload) -> None:
         await service.registry.dispatch_event(CASE_REPORT_EVENT, service, payload)
 
     async def consume(callback) -> None:
-        await bot.consume_case_reports_stream(
+        await bot.bus.consume_case_reports(
             callback, is_active=lambda: case_reports_active(bot)
         )
 
-    await run_consumer_forever(bot, "Case report", consume, dispatch)
+    await run_consumer_forever(bot.bus, "Case report", consume, dispatch)
 
 
 async def consume_bans(bot: XCoreDiscordBot) -> None:
     async def dispatch(event: ModerationBanCreatedV1) -> None:
-        if bot.bans_channel_id:
+        if bot.settings.discord_bans_channel_id:
 
             async def log() -> None:
                 player_id = event.target.playerPid
                 if player_id is None:
-                    player_id = await _player_pid_for_uuid(bot, event.target.playerUuid)
-                expire_dt = (
-                    bot._parse_iso_datetime(_expiration_value(event.expiration))
-                    or await bot.now_utc()
-                )
+                    player_id = await _player_pid_for_uuid(
+                        bot.store, event.target.playerUuid
+                    )
+                expire_dt = _expires_at(event.expiration) or bot.store.now_utc()
                 # Old events keep the existing lookup/log fallback.
                 extra = {"ban_id": event.banId} if event.banId is not None else {}
                 sent = await post_ban_log(
@@ -247,36 +237,25 @@ async def consume_bans(bot: XCoreDiscordBot) -> None:
                 )
                 if sent is False:
                     raise RuntimeError(
-                        f"Configured ban log channel {bot.bans_channel_id} is unresolved"
+                        "Configured ban log channel "
+                        f"{bot.settings.discord_bans_channel_id} is unresolved"
                     )
 
-            bus = getattr(bot, "_bus", None)
-            if bus is not None:
-                await bus.run_ban_log_once(event, log)
-            else:
-                await log()
-        service = getattr(getattr(bot, "container", None), "cases", None)
-        if (
-            service is not None
-            and service.settings.cases_enabled
-            and service.storage_available
-        ):
+            await bot.bus.run_ban_log_once(event, log)
+        service = bot.container.cases
+        if service.settings.cases_enabled and service.storage_available:
             # A hook failure reaches Redis retry/DLQ. The completed log marker
             # survives that retry, so auto-resolution can finish without another log.
             await service.registry.dispatch_event(CASE_BAN_EVENT, service, event)
 
-    await run_consumer_forever(bot, "Ban", bot.consume_bans_stream, dispatch)
+    await run_consumer_forever(bot.bus, "Ban", bot.bus.consume_bans, dispatch)
 
 
 async def consume_mutes(bot: XCoreDiscordBot) -> None:
     async def dispatch(event: ModerationMuteCreatedV1) -> None:
-        if bot.mutes_channel_id:
-            player_id = await _player_pid_for_uuid(bot, event.target.playerUuid)
-
-            expire_dt = (
-                bot._parse_iso_datetime(_expiration_value(event.expiration))
-                or await bot.now_utc()
-            )
+        if bot.settings.discord_mutes_channel_id:
+            player_id = await _player_pid_for_uuid(bot.store, event.target.playerUuid)
+            expire_dt = _expires_at(event.expiration) or bot.store.now_utc()
             await post_mute_log(
                 bot,
                 pid=event.target.playerPid
@@ -288,12 +267,8 @@ async def consume_mutes(bot: XCoreDiscordBot) -> None:
                 reason=event.reason,
                 expire=expire_dt,
             )
-        service = getattr(getattr(bot, "container", None), "cases", None)
-        if (
-            service is not None
-            and service.settings.cases_enabled
-            and service.storage_available
-        ):
+        service = bot.container.cases
+        if service.settings.cases_enabled and service.storage_available:
             try:
                 await service.registry.dispatch_event(CASE_MUTE_EVENT, service, event)
             except Exception:
@@ -301,12 +276,12 @@ async def consume_mutes(bot: XCoreDiscordBot) -> None:
                 # again. The mute is in the audit trail, where the repair task finds it.
                 logger.exception("Case hooks failed for a mute event")
 
-    await run_consumer_forever(bot, "Mute", bot.consume_mutes_stream, dispatch)
+    await run_consumer_forever(bot.bus, "Mute", bot.bus.consume_mutes, dispatch)
 
 
 async def consume_vote_kicks(bot: XCoreDiscordBot) -> None:
     async def dispatch(event: ModerationVoteKickCreatedV1) -> None:
-        if not bot.votekicks_channel_id:
+        if not bot.settings.discord_votekicks_channel_id:
             return
 
         await post_vote_kick_log(
@@ -322,7 +297,7 @@ async def consume_vote_kicks(bot: XCoreDiscordBot) -> None:
         )
 
     await run_consumer_forever(
-        bot, "Vote-kick", bot.consume_vote_kicks_stream, dispatch
+        bot.bus, "Vote-kick", bot.bus.consume_vote_kicks, dispatch
     )
 
 
@@ -331,7 +306,7 @@ async def consume_season_started(bot: XCoreDiscordBot) -> None:
         await on_season_started(bot, event)
 
     await run_consumer_forever(
-        bot, "Season started", bot.consume_season_started_stream, dispatch
+        bot.bus, "Season started", bot.bus.consume_season_started, dispatch
     )
 
 
@@ -340,7 +315,7 @@ async def consume_season_ending_soon(bot: XCoreDiscordBot) -> None:
         await on_season_ending_soon(bot, event)
 
     await run_consumer_forever(
-        bot, "Season ending soon", bot.consume_season_ending_soon_stream, dispatch
+        bot.bus, "Season ending soon", bot.bus.consume_season_ending_soon, dispatch
     )
 
 
@@ -349,7 +324,7 @@ async def consume_season_ended(bot: XCoreDiscordBot) -> None:
         await on_season_ended(bot, event)
 
     await run_consumer_forever(
-        bot, "Season ended", bot.consume_season_ended_stream, dispatch
+        bot.bus, "Season ended", bot.bus.consume_season_ended, dispatch
     )
 
 
@@ -358,12 +333,12 @@ async def consume_season_rescheduled(bot: XCoreDiscordBot) -> None:
         await on_season_rescheduled(bot, event)
 
     await run_consumer_forever(
-        bot, "Season rescheduled", bot.consume_season_rescheduled_stream, dispatch
+        bot.bus, "Season rescheduled", bot.bus.consume_season_rescheduled, dispatch
     )
 
 
 async def run_consumer_forever(
-    bot: ConsumerRecoveryService,
+    bus: RedisBus,
     label: str,
     consume: Callable[[Callable[..., Awaitable[None]]], Awaitable[None]],
     callback: Callable[..., Awaitable[None]],
@@ -377,7 +352,7 @@ async def run_consumer_forever(
             logger.exception("%s consumer crashed; reconnecting in 2s", label)
             await asyncio.sleep(2)
             try:
-                await retry_reconnect_bus(bot.reconnect_bus)
+                await retry_reconnect_bus(bus.reconnect)
             except (RedisError, OSError) as connect_error:
                 logger.warning("%s consumer reconnect failed: %s", label, connect_error)
                 await asyncio.sleep(2)

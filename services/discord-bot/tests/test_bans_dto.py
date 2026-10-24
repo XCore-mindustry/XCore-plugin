@@ -5,6 +5,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 import pytest
+from bot_fakes import make_bot, make_settings
 
 from xcore_discord_bot.dto import BanRecord
 from xcore_discord_bot.handlers_misc import cmd_bans
@@ -36,8 +37,11 @@ class _Response:
 class _Interaction:
     response: _Response = field(default_factory=_Response)
 
+    async def original_response(self):
+        return None
 
-class _Bot:
+
+class _Backend:
     async def count_bans(self, *, name_filter: str | None) -> int:
         assert name_filter == "tar"
         return 1
@@ -63,16 +67,21 @@ class _Bot:
             )
         ]
 
-    async def _send_paginated(self, interaction: _Interaction, fetch_page) -> None:
-        embed, _has_next = await fetch_page(0)
-        await interaction.response.send_message(embed=embed)
+    async def find_player_by_uuid(self, uuid):
+        return None
+
+
+def _bot(*args, **kwargs):
+    backend = _Backend(*args, **kwargs)
+    bot = make_bot(store=backend, bus=backend, settings=make_settings())
+    return bot
 
 
 @pytest.mark.asyncio
 async def test_cmd_bans_renders_ban_record_rows() -> None:
     interaction = _Interaction()
 
-    await cmd_bans(_Bot(), interaction, "tar")
+    await cmd_bans(_bot(), interaction, "tar")
 
     assert len(interaction.response.sent) == 1
     embed = interaction.response.sent[0]["embed"]

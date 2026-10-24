@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 import pytest
+from bot_fakes import make_bot, make_settings
 
 from xcore_discord_bot.dto import PlayerRecord
 from xcore_discord_bot.handlers_misc import cmd_search
@@ -39,7 +40,7 @@ class _Interaction:
         return None
 
 
-class _Bot:
+class _Backend:
     async def count_players_by_name(self, query: str) -> int:
         assert query == "vor"
         return 1
@@ -56,16 +57,21 @@ class _Bot:
         assert page == 0
         return [PlayerRecord(pid=123, nickname="Vortex", total_play_time=10)]
 
-    async def _send_paginated(self, interaction: _Interaction, fetch_page) -> None:
-        embed, _has_next = await fetch_page(0)
-        await interaction.response.send_message(embed=embed)
+    async def find_player_by_uuid(self, uuid):
+        return None
+
+
+def _bot(*args, **kwargs):
+    backend = _Backend(*args, **kwargs)
+    bot = make_bot(store=backend, bus=backend, settings=make_settings())
+    return bot
 
 
 @pytest.mark.asyncio
 async def test_cmd_search_renders_player_record_rows() -> None:
     interaction = _Interaction()
 
-    await cmd_search(_Bot(), interaction, "vor")
+    await cmd_search(_bot(), interaction, "vor")
 
     assert len(interaction.response.sent) == 1
     embed = interaction.response.sent[0]["embed"]

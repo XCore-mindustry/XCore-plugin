@@ -13,15 +13,15 @@ from xcore_discord_bot import runtime_consumers
 from xcore_discord_bot.cases.model import CaseKind, CaseStatus
 
 
-def stream_bot(cases, verb, event, **attributes):
+def stream_bot(cases, verb, event, *, mutes_channel_id=0):
     async def consume(callback):
         await callback(event)
 
     bot = bot_for(cases)
-    setattr(bot, f"consume_{verb}s_stream", consume)
-    bot.bans_channel_id = bot.mutes_channel_id = 0
-    for name, value in attributes.items():
-        setattr(bot, name, value)
+    setattr(bot.bus, f"consume_{verb}s", consume)
+    bot.settings = bot.settings.model_copy(
+        update={"discord_mutes_channel_id": mutes_channel_id}
+    )
     return bot
 
 
@@ -54,8 +54,6 @@ async def test_a_failing_mute_hook_is_logged_and_the_log_is_not_posted_twice(
         "mute",
         event,
         mutes_channel_id=20,
-        _parse_iso_datetime=lambda value: None,
-        now_utc=AsyncMock(),
     )
     monkeypatch.setattr(
         runtime_consumers, "_player_pid_for_uuid", AsyncMock(return_value=-5)

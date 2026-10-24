@@ -12,7 +12,6 @@ from .dto import (
     AccountMergeResult,
     PlayerRecord,
 )
-from .moderation_modals import StatsBanModal, StatsMuteModal
 from .permissions import admin_role_ids, ensure_any_role
 from .presentation import build_merge_preview_embed, build_merge_result_embed
 from .settings import Settings
@@ -385,10 +384,3 @@ class StatsActionsView(discord.ui.View):
     async def on_timeout(self) -> None:
         disable_view_buttons(self)
         await safe_edit_view_message(self.message, view=self)
-
-
-StatsBanModal.__name__ = "_StatsBanModal"
-StatsMuteModal.__name__ = "_StatsMuteModal"
-
-_StatsBanModal = StatsBanModal
-_StatsMuteModal = StatsMuteModal

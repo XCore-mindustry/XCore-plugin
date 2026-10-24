@@ -206,14 +206,14 @@ class AdminSyncDaemon:
         applied_players.sort(
             key=lambda item: (
                 str(item["discord_id"]),
-                str(item["pid"]),
+                int(item["pid"]),
                 str(item["nickname"]),
             )
         )
         revoked_players.sort(
             key=lambda item: (
                 str(item["discord_id"]),
-                str(item["pid"]),
+                int(item["pid"]),
                 str(item["nickname"]),
             )
         )

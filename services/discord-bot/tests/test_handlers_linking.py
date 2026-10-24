@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 from typing import Any, cast
 
 import pytest
+from bot_fakes import make_bot, make_settings
 
 from xcore_discord_bot.dto import PlayerRecord
 from xcore_discord_bot.handlers_linking import cmd_link, cmd_link_status
@@ -36,17 +37,11 @@ class _Interaction:
     response: _Response = field(default_factory=_Response)
 
 
-class _Bot:
+class _Backend:
     def __init__(self) -> None:
         self.published: list[dict[str, object]] = []
 
-    async def _claim_mutation(
-        self, interaction: _Interaction, *, operation: str, scope: str
-    ) -> bool:
-        del interaction, operation, scope
-        return True
-
-    async def find_discord_link_code(self, code: str) -> dict[str, object] | None:
+    async def get_discord_link_code(self, code: str) -> dict[str, object] | None:
         assert code == "ABC123"
         return {
             "code": code,
@@ -56,7 +51,7 @@ class _Bot:
             "expires_at": 9999999999999,
         }
 
-    async def now_utc(self):
+    def now_utc(self):
         class _Now:
             def timestamp(self) -> float:
                 return 1.0
@@ -66,12 +61,6 @@ class _Bot:
     async def find_player_by_uuid(self, uuid: str) -> PlayerRecord | None:
         assert uuid == "uuid-7"
         return PlayerRecord(pid=7, uuid="uuid-7", nickname="Target")
-
-    async def _get_player_or_reply(
-        self, interaction: _Interaction, player_id: int
-    ) -> PlayerRecord | None:
-        assert player_id == 7
-        return PlayerRecord(pid=7, uuid="uuid-7", nickname="Target", discord_id="555")
 
     async def publish_discord_link_confirm(self, **kwargs) -> None:
         self.published.append(kwargs)
@@ -86,15 +75,28 @@ class _Bot:
             PlayerRecord(pid=9, uuid="uuid-9", nickname="Alt"),
         ]
 
+    async def find_player_by_pid(self, player_id):
+        assert player_id == 7
+        return PlayerRecord(pid=7, uuid="uuid-7", nickname="Target", discord_id="555")
+
+    async def claim_idempotency(self, key, *, ttl_seconds=600):
+        return True
+
+
+def _bot(*args, **kwargs):
+    backend = _Backend(*args, **kwargs)
+    bot = make_bot(store=backend, bus=backend, settings=make_settings())
+    return bot
+
 
 @pytest.mark.asyncio
 async def test_cmd_link_publishes_confirm_event() -> None:
-    bot = _Bot()
+    bot = _bot()
     interaction = _Interaction()
 
     await cmd_link(cast(Any, bot), cast(Any, interaction), "abc123")
 
-    assert bot.published == [
+    assert bot.store.published == [
         {
             "code": "ABC123",
             "player_uuid": "uuid-7",
@@ -111,7 +113,7 @@ async def test_cmd_link_publishes_confirm_event() -> None:
 
 @pytest.mark.asyncio
 async def test_cmd_link_instantly_grants_admin_if_user_has_role() -> None:
-    bot = _Bot()
+    bot = _bot()
     bot.admin_calls = []
     bot.access_changed_calls = []
 
@@ -125,9 +127,9 @@ async def test_cmd_link_instantly_grants_admin_if_user_has_role() -> None:
     async def _publish_admin_access(**kwargs):
         bot.access_changed_calls.append(kwargs)
 
-    bot.get_discord_admin_member_ids = _get_admin_ids
-    bot.set_admin_access = _set_admin_access
-    bot.publish_discord_admin_access_changed = _publish_admin_access
+    bot.container.admin_sync_daemon.get_discord_admin_member_ids = _get_admin_ids
+    bot.store.set_admin_access = _set_admin_access
+    bot.bus.publish_discord_admin_access_changed = _publish_admin_access
 
     interaction = _Interaction()
     await cmd_link(cast(Any, bot), cast(Any, interaction), "abc123")
@@ -148,22 +150,22 @@ async def test_cmd_link_instantly_grants_admin_if_user_has_role() -> None:
 
 @pytest.mark.asyncio
 async def test_cmd_unlink_publishes_with_display_name() -> None:
-    bot = _Bot()
+    bot = _bot()
     interaction = _Interaction()
 
     from xcore_discord_bot.handlers_linking import cmd_unlink
 
     await cmd_unlink(cast(Any, bot), cast(Any, interaction), 7)
 
-    assert len(bot.published) == 1
-    unlink_call = bot.published[0]
+    assert len(bot.store.published) == 1
+    unlink_call = bot.store.published[0]
     assert unlink_call["actor_name"] == "discord-user"
     assert unlink_call["actor_name"] != "discord"
 
 
 @pytest.mark.asyncio
 async def test_cmd_link_status_renders_same_linked_account_output() -> None:
-    bot = _Bot()
+    bot = _bot()
     interaction = _Interaction()
 
     await cmd_link_status(cast(Any, bot), cast(Any, interaction))

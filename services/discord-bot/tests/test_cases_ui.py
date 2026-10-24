@@ -20,7 +20,7 @@ from xcore_discord_bot.cases.cards import (
     thread_title,
 )
 from xcore_discord_bot.cases.ids import CASE_PATTERN, PANEL_PATTERN
-from xcore_discord_bot.cases.modals import CaseActionModal, OpenCaseModal
+from xcore_discord_bot.cases.modals import OpenCaseModal
 from xcore_discord_bot.cases.model import (
     ActionFailed,
     CaseKind,
@@ -31,7 +31,7 @@ from xcore_discord_bot.cases.model import (
     Party,
     Resolution,
 )
-from xcore_discord_bot.cases.panel import CasePanel, LanguageView
+from xcore_discord_bot.cases.panel import CasePanel
 from xcore_discord_bot.cases.registry import (
     Action,
     Choice,
@@ -42,8 +42,10 @@ from xcore_discord_bot.cases.registry import (
 )
 from xcore_discord_bot.cases.views import (
     CaseActionButton,
+    CaseActionModal,
     ChoiceView,
     ConfirmView,
+    LanguageView,
     PanelButton,
     UserChoiceView,
     case_view,

@@ -26,7 +26,7 @@ from xcore_discord_bot.cases.model import (
     check_transition,
     event,
 )
-from xcore_discord_bot.staff_actions import Actor
+from xcore_discord_bot.dto import Actor
 
 EXPECTED = {
     ("creating", "open"),

@@ -21,8 +21,6 @@ from .mongo_store import MongoStore
 from .rating_store import RatingStore
 from .redis_bus import RedisBus
 from .rpc.mindustry_rpc import MindustryRpcClient
-from .services.map_service import MapService
-from .services.moderation_service import ModerationService
 from .services.player_service import PlayerService
 from .services.rating_service import RatingService
 from .settings import Settings
@@ -38,8 +36,6 @@ class ServiceContainer:
     bus: RedisBus
     rpc: MindustryRpcClient
     players: PlayerService
-    moderation: ModerationService
-    maps: MapService
     ratings: RatingStore
     game_stats: GameStatsStore
     rating_service: RatingService
@@ -72,8 +68,6 @@ class ServiceContainer:
         players = PlayerService(
             store=store, bus=bus, ratings=rating_service, settings=settings, rpc=rpc
         )
-        moderation = ModerationService(store=store, bus=bus)
-        maps = MapService(rpc=rpc)
 
         presence_daemon = PresenceDaemon(bot=bot)
         admin_sync_daemon = AdminSyncDaemon(
@@ -100,8 +94,6 @@ class ServiceContainer:
             bus=bus,
             rpc=rpc,
             players=players,
-            moderation=moderation,
-            maps=maps,
             ratings=ratings,
             game_stats=GameStatsStore(store),
             rating_service=rating_service,

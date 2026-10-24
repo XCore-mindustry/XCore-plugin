@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING, TypeVar
 import discord
 from discord import Interaction
 
+from .command_helpers import claim_mutation, get_player_or_reply, send_paginated
 from .dto import PlayerRecord
 from .game_stats import GameStats
 from .modal_factories import create_stats_ban_modal, create_stats_mute_modal
@@ -17,7 +18,6 @@ from .moderation_views import MapRemoveConfirmView, StatsActionsView
 from .permissions import admin_role_ids, has_any_role, settings_from_interaction
 from .player_pids import is_assigned
 from .presentation import (
-    build_servers_embed,
     format_ban_expire_date,
     format_epoch_millis,
     format_minutes,
@@ -179,8 +179,8 @@ async def _staff_notes(bot: XCoreDiscordBot, player: PlayerRecord) -> StaffNotes
         return StaffNotes()
     try:
         return StaffNotes(
-            ban=await bot.find_ban(uuid=player.uuid, ip=player.ip),
-            mute=await bot.find_mute(uuid=player.uuid),
+            ban=await bot.store.find_ban(uuid=player.uuid, ip=player.ip),
+            mute=await bot.store.find_mute(uuid=player.uuid),
         )
     except Exception:
         logger.exception("Cannot load punishments for player #%s", player.pid)
@@ -205,7 +205,7 @@ async def _linked_accounts(
     bot: XCoreDiscordBot, interaction: Interaction, member: object
 ) -> list[PlayerRecord] | None:
     """The game accounts of a Discord user, most played first; replies when there are none."""
-    players = await bot.find_players_by_discord_id(str(getattr(member, "id", "")))
+    players = await bot.store.find_players_by_discord_id(str(getattr(member, "id", "")))
     if players:
         return sorted(players, key=lambda row: row.total_play_time, reverse=True)
     own = getattr(member, "id", None) == interaction.user.id
@@ -227,10 +227,10 @@ async def _stats_player(
     text = str(reference).strip()
     pid = text.removeprefix("#")
     if re.fullmatch(r"-?\d+", pid):
-        return await bot._get_player_or_reply(interaction, int(pid))
+        return await get_player_or_reply(bot, interaction, int(pid))
     username = text.removeprefix("@").strip()
     if username:
-        player = await bot.find_player_by_username(username)
+        player = await bot.store.find_player_by_username(username)
         if player is not None:
             return player
     await interaction.response.send_message(
@@ -347,7 +347,7 @@ async def cmd_stats_audit(
     if mode == "actor":
         actor_discord_id = str(player.get("discord_id") or "").strip() or None
         actor_id = nickname
-        total_entries = await bot.count_audit_for_actor(
+        total_entries = await bot.store.count_audit_for_actor(
             actor_id=actor_id,
             actor_discord_id=actor_discord_id,
         )
@@ -359,19 +359,19 @@ async def cmd_stats_audit(
                 ephemeral=True,
             )
             return
-        total_entries = await bot.count_audit_for_player(uuid=uuid_value)
+        total_entries = await bot.store.count_audit_for_player(uuid=uuid_value)
     total_pages = max(1, (total_entries + page_size - 1) // page_size)
 
     async def fetch_page(page: int) -> tuple[discord.Embed, bool]:
         if mode == "actor":
-            rows = await bot.list_audit_for_actor(
+            rows = await bot.store.list_audit_for_actor(
                 actor_id=actor_id,
                 actor_discord_id=actor_discord_id,
                 limit=page_size,
                 page=page,
             )
         else:
-            rows = await bot.list_audit_for_player(
+            rows = await bot.store.list_audit_for_player(
                 uuid=uuid_value, limit=page_size, page=page
             )
         embed = discord.Embed(
@@ -410,14 +410,12 @@ async def cmd_stats_audit(
         )
         return embed, has_next
 
-    await bot._send_paginated(interaction, fetch_page, ephemeral=True)
+    await send_paginated(interaction, fetch_page, ephemeral=True)
 
 
 async def cmd_servers(bot: XCoreDiscordBot, interaction: Interaction) -> None:
-    view = ServersView(bot=bot, sort_mode="players")
-    servers = bot._sort_live_servers(bot._get_live_servers(), view.sort_mode)
-    embed = build_servers_embed(servers, sort_mode=view.sort_mode)
-    await interaction.response.send_message(embed=embed, view=view)
+    view = ServersView(sort_mode="players")
+    await interaction.response.send_message(embed=view.build_embed(), view=view)
     view.bot_message = await interaction.original_response()
 
 
@@ -427,11 +425,11 @@ async def cmd_search(
     name: str,
 ) -> None:
     page_size = 6
-    total_matches = await bot.count_players_by_name(name)
+    total_matches = await bot.store.count_players_by_name(name)
     total_pages = max(1, (total_matches + page_size - 1) // page_size)
 
     async def fetch_page(page: int) -> tuple[discord.Embed, bool]:
-        rows = await bot.search_players(name, limit=page_size, page=page)
+        rows = await bot.store.search_players(name, limit=page_size, page=page)
         embed = discord.Embed(
             title=f"Search: '{name}'",
             color=discord.Color.green() if rows else discord.Color.red(),
@@ -460,7 +458,7 @@ async def cmd_search(
         )
         return embed, has_next
 
-    await bot._send_paginated(interaction, fetch_page)
+    await send_paginated(interaction, fetch_page)
 
 
 def _player_record_as_mapping(player: PlayerRecord) -> dict[str, object]:
@@ -495,11 +493,13 @@ async def cmd_bans(
     name_filter: str | None,
 ) -> None:
     page_size = 6
-    total_bans = await bot.count_bans(name_filter=name_filter)
+    total_bans = await bot.store.count_bans(name_filter=name_filter)
     total_pages = max(1, (total_bans + page_size - 1) // page_size)
 
     async def fetch_page(page: int) -> tuple[discord.Embed, bool]:
-        bans = await bot.list_bans(name_filter=name_filter, limit=page_size, page=page)
+        bans = await bot.store.list_bans(
+            name_filter=name_filter, limit=page_size, page=page
+        )
         embed = discord.Embed(
             title="Bans",
             color=discord.Color.green() if bans else discord.Color.red(),
@@ -530,7 +530,7 @@ async def cmd_bans(
         )
         return embed, has_next
 
-    await bot._send_paginated(interaction, fetch_page)
+    await send_paginated(interaction, fetch_page)
 
 
 async def cmd_maps(
@@ -541,7 +541,9 @@ async def cmd_maps(
 ) -> None:
     await interaction.response.defer()
     try:
-        maps = await bot.rpc_maps_list(server=server, timeout_ms=bot.rpc_timeout_ms)
+        maps = await bot.bus.rpc_maps_list(
+            server=server, timeout_ms=bot.settings.rpc_timeout_ms
+        )
     except TimeoutError:
         await interaction.followup.send("No response from target server (timeout).")
         return
@@ -594,7 +596,7 @@ async def cmd_maps(
 
 async def get_cached_maps(bot: XCoreDiscordBot, server: str) -> list[dict[str, str]]:
     now = time.monotonic()
-    cached = bot._map_cache.get(server)
+    cached = bot.map_cache.get(server)
     if cached is not None:
         ts, maps = cached
         if now - ts < 60:
@@ -602,12 +604,12 @@ async def get_cached_maps(bot: XCoreDiscordBot, server: str) -> list[dict[str, s
 
     try:
         maps = await retry_read_rpc(
-            lambda: bot.rpc_maps_list(server=server, timeout_ms=3000)
+            lambda: bot.bus.rpc_maps_list(server=server, timeout_ms=3000)
         )
-        bot._map_cache[server] = (now, maps)
+        bot.map_cache[server] = (now, maps)
         return maps
     except TimeoutError:
-        return bot._map_cache.get(server, (0.0, []))[1]
+        return bot.map_cache.get(server, (0.0, []))[1]
 
 
 async def cmd_remove_map(
@@ -646,14 +648,14 @@ async def perform_remove_map(
     request_nonce: str,
 ) -> str:
     claim_key = f"remove-map:{server}:{file_name}:{request_nonce}"
-    if not await bot.claim_idempotency(claim_key, ttl_seconds=600):
+    if not await bot.bus.claim_idempotency(claim_key, ttl_seconds=600):
         return "This map removal was already processed."
 
     try:
-        result = await bot.rpc_remove_map(
+        result = await bot.bus.rpc_remove_map(
             server=server,
             file_name=file_name,
-            timeout_ms=bot.rpc_timeout_ms,
+            timeout_ms=bot.settings.rpc_timeout_ms,
         )
     except TimeoutError:
         return "No response from target server (timeout)."
@@ -694,8 +696,8 @@ async def cmd_upload_map(
     except InvalidMapUpload as error:
         await interaction.response.send_message(str(error), ephemeral=True)
         return
-    if not await bot._claim_mutation(
-        interaction, operation="upload-map", scope=f"{server}:{len(files)}"
+    if not await claim_mutation(
+        bot, interaction, operation="upload-map", scope=f"{server}:{len(files)}"
     ):
         return
 

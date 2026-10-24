@@ -10,7 +10,7 @@ from ..cases.access import staff_roles
 from ..cases.ids import parse_case_number
 from ..cases.modals import error_text
 from ..cases.model import CaseKind, Party
-from ..cases.panel import LanguageView
+from ..cases.views import LanguageView
 from ..i18n import t
 from ..permissions import has_any_role, head_admin_role_ids
 
@@ -26,7 +26,7 @@ def case_command_boundary(callback):
         try:
             return await callback(self, interaction, number, *args, **kwargs)
         except Exception as error:
-            await self.bot._handle_app_command_error(
+            await self.bot.handle_app_command_error(
                 interaction, app_commands.CommandInvokeError(interaction.command, error)
             )
 

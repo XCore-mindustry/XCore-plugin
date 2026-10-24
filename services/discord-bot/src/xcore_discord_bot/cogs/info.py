@@ -7,6 +7,7 @@ from discord import Interaction, app_commands
 from discord.ext import commands
 
 from .. import handlers_misc
+from ..command_helpers import get_player_or_reply
 from .autocomplete import _autocomplete_player_id, _autocomplete_stats_player
 from .checks import admin_check
 
@@ -49,7 +50,7 @@ class InfoCog(commands.Cog):
     @app_commands.autocomplete(player_id=_autocomplete_player_id)
     @admin_check()
     async def cmd_audit_target(self, interaction: Interaction, player_id: int) -> None:
-        player = await self.bot._get_player_or_reply(interaction, player_id)
+        player = await get_player_or_reply(self.bot, interaction, player_id)
         if player is None:
             return
         await handlers_misc.cmd_stats_audit(
@@ -65,7 +66,7 @@ class InfoCog(commands.Cog):
     @app_commands.autocomplete(player_id=_autocomplete_player_id)
     @admin_check()
     async def cmd_audit_actor(self, interaction: Interaction, player_id: int) -> None:
-        player = await self.bot._get_player_or_reply(interaction, player_id)
+        player = await get_player_or_reply(self.bot, interaction, player_id)
         if player is None:
             return
         await handlers_misc.cmd_stats_audit(

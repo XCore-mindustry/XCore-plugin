@@ -57,7 +57,9 @@ def podium_from_event(event: RatingSeasonEndedV1) -> tuple[PodiumEntry, ...]:
     entries: list[PodiumEntry] = []
     for entry in event.podium:
         discord_id = str(entry.discord.discordId or "").strip() if entry.discord else ""
-        username = str(entry.discord.discordUsername or "").strip() if entry.discord else ""
+        username = (
+            str(entry.discord.discordUsername or "").strip() if entry.discord else ""
+        )
         entries.append(
             PodiumEntry(
                 place=entry.place,
@@ -85,7 +87,7 @@ async def _post_once(
     allowed_mentions: discord.AllowedMentions | None = None,
 ) -> bool:
     """Posts the announcement unless it is already out. True when this call posted it."""
-    channel_id = bot.seasons_channel_id
+    channel_id = bot.settings.discord_seasons_channel_id
     if not channel_id:
         return False
     store = bot.container.ratings
@@ -93,13 +95,12 @@ async def _post_once(
         logger.debug("Season announcement %s:%s was already posted", season_id, kind)
         return False
     try:
-        channel = await bot._resolve_messageable_channel(
-            channel_id, context="season announcement"
-        )
+        channel = await bot.resolve_channel(channel_id, context="season announcement")
         if channel is None:
             raise RuntimeError(f"Season channel {channel_id} is not reachable")
         message = await channel.send(
-            embed=embed, allowed_mentions=allowed_mentions or discord.AllowedMentions.none()
+            embed=embed,
+            allowed_mentions=allowed_mentions or discord.AllowedMentions.none(),
         )
     except (Exception, asyncio.CancelledError):
         # Hand the claim back so a replay of the event can try again. A cancelled consumer

@@ -5,8 +5,8 @@ from datetime import UTC, datetime
 from typing import Any
 
 import pytest
+from bot_fakes import make_bot
 
-from xcore_discord_bot.bot import XCoreDiscordBot
 from xcore_discord_bot.dto import BanRecord, MuteRecord, PlayerRecord
 from xcore_discord_bot.handlers_moderation import (
     MSG_NO_ACTIVE_BAN,
@@ -102,6 +102,9 @@ class _Store:
         self.audit_rows.append(dict(kwargs))
         return f"audit-{len(self.audit_rows)}"
 
+    async def find_player_by_uuid(self, uuid):
+        return None
+
 
 class _NoActiveStore(_Store):
     async def delete_ban(
@@ -112,14 +115,15 @@ class _NoActiveStore(_Store):
     async def delete_mute(self, *, uuid: str) -> int:
         return 0
 
+    async def find_player_by_uuid(self, uuid):
+        return None
+
 
 @pytest.mark.asyncio
 async def test_cmd_unban_sends_rich_embed() -> None:
-    bot = object.__new__(XCoreDiscordBot)
     bus = _Bus()
     store = _Store()
-    bot.__dict__["_bus"] = bus
-    bot.__dict__["_store"] = store
+    bot = make_bot(bus=bus, store=store)
 
     interaction = _Interaction(id=1, user=_User(id=7, display_name="admin-x"))
     await cmd_unban(bot, interaction, 123)
@@ -148,10 +152,8 @@ async def test_cmd_unban_sends_rich_embed() -> None:
 
 @pytest.mark.asyncio
 async def test_cmd_unmute_sends_rich_embed() -> None:
-    bot = object.__new__(XCoreDiscordBot)
     store = _Store()
-    bot.__dict__["_bus"] = _Bus()
-    bot.__dict__["_store"] = store
+    bot = make_bot(bus=_Bus(), store=store)
 
     interaction = _Interaction(id=2, user=_User(id=7, display_name="admin-y"))
     await cmd_unmute(bot, interaction, 123)
@@ -176,9 +178,7 @@ async def test_cmd_unmute_sends_rich_embed() -> None:
 
 @pytest.mark.asyncio
 async def test_cmd_unban_no_active_ban_message() -> None:
-    bot = object.__new__(XCoreDiscordBot)
-    bot.__dict__["_bus"] = _Bus()
-    bot.__dict__["_store"] = _NoActiveStore()
+    bot = make_bot(bus=_Bus(), store=_NoActiveStore())
 
     interaction = _Interaction(id=3, user=_User(id=7, display_name="admin"))
     await cmd_unban(bot, interaction, 123)
@@ -190,9 +190,7 @@ async def test_cmd_unban_no_active_ban_message() -> None:
 
 @pytest.mark.asyncio
 async def test_cmd_unmute_no_active_mute_message() -> None:
-    bot = object.__new__(XCoreDiscordBot)
-    bot.__dict__["_bus"] = _Bus()
-    bot.__dict__["_store"] = _NoActiveStore()
+    bot = make_bot(bus=_Bus(), store=_NoActiveStore())
 
     interaction = _Interaction(id=4, user=_User(id=7, display_name="admin"))
     await cmd_unmute(bot, interaction, 123)

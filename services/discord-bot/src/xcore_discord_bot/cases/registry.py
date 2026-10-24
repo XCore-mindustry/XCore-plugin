@@ -7,14 +7,14 @@ from typing import TYPE_CHECKING, Any
 
 import discord
 
-from ..staff_actions import Actor
 from ._privacy import log_failure
 from .ids import case_custom_id
-from .model import AccessDenied, Case, CaseKind, FlowDisabled, InvalidForm, Resolution
+from .model import AccessDenied, Case, CaseKind, FlowDisabled, InvalidForm, Origin
 
 if TYPE_CHECKING:
     from .notify import Outcome
     from .service import CaseService
+    from .views import ActionContext
 
 logger = logging.getLogger(__name__)
 FLAG_FIELDS = {
@@ -61,72 +61,6 @@ REJECT_TEXT = FormField(
 
 
 @dataclass(slots=True)
-class ActionContext:
-    """What an action handler works with. The interaction is already deferred."""
-
-    service: CaseService
-    case: Case
-    member: Any
-    locale: str
-    verb: str
-    values: dict[str, str] = field(default_factory=dict)
-    interaction: Any = None
-    replied: bool = False
-
-    @property
-    def actor(self) -> Actor:
-        return Actor(str(self.member.id), self.member.display_name)
-
-    async def run(self, action: Callable[[Case], Awaitable[Resolution]]) -> Case:
-        """Run a staff action through the pipeline of 8.3 and close the case with its result."""
-        return await self.service.execute_action(
-            self.case.number, self.verb, self.member, action
-        )
-
-    async def reply(self, text: str, *, view: discord.ui.View | None = None) -> None:
-        """Answer the staff member yourself; the handler then returns ``None``."""
-        self.replied = True
-        kwargs = {"view": view} if view is not None else {}
-        await self.interaction.followup.send(text, ephemeral=True, **kwargs)
-
-    async def confirm(self, text: str, *, name: str = "confirmed") -> None:
-        """Ask for a confirmation. The handler runs again with ``values[name] == "yes"``."""
-        from .views import ConfirmView
-
-        await self.reply(text, view=ConfirmView(self._step(name), self.locale))
-
-    async def choose(
-        self,
-        text: str,
-        name: str,
-        options: Sequence[discord.SelectOption],
-    ) -> None:
-        """Ask for one of ``options``. The handler runs again with ``values[name]`` set."""
-        from .views import ChoiceView
-
-        await self.reply(text, view=ChoiceView(self._step(name), self.locale, options))
-
-    async def choose_user(self, text: str, name: str) -> None:
-        """Ask for a member. The handler runs again with ``values[name]`` (the id) and
-        ``values[name + "_name"]`` (the display name) set."""
-        from .views import UserChoiceView
-
-        await self.reply(text, view=UserChoiceView(self._step(name), self.locale))
-
-    def _step(self, name: str):
-        from .views import ActionStep
-
-        return ActionStep(
-            service=self.service,
-            number=self.case.number,
-            verb=self.verb,
-            requester_id=int(self.member.id),
-            values=dict(self.values),
-            name=name,
-        )
-
-
-@dataclass(slots=True)
 class PanelContext:
     service: CaseService
     interaction: Any
@@ -143,8 +77,6 @@ class PanelContext:
         dedup_key=None,
         flags=(),
     ) -> Case:
-        from .model import Origin
-
         return await self.service.open(
             kind=self.kind,
             origin=Origin("discord", f"discord:{self.interaction.id}", self.locale),

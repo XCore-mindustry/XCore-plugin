@@ -186,7 +186,8 @@ def test_release_allows_senior_role_without_plain_admin_role():
 
 def as_real_bot(bot, service):
     """Give the fake what the real listeners of ``XCoreDiscordBot`` use from ``self``."""
-    bot._settings = service.settings
+    bot.container = SimpleNamespace(cases=service)
+    bot.settings = service.settings
     bot._dispatch_case_hook = lambda hook, value: XCoreDiscordBot._dispatch_case_hook(
         bot, hook, value
     )
@@ -224,10 +225,6 @@ async def test_all_flags_off_the_bot_listeners_do_nothing():
     await reconcile_cases(service)
     assert seen == [] and db["discord_user_prefs"].docs == []
     assert panel_view(service.registry).children == []
-    # Before the container exists (events can arrive during start-up) nothing breaks.
-    del bot.container
-    await XCoreDiscordBot.on_interaction(bot, Interaction(bot))
-    await XCoreDiscordBot.on_thread_create(bot, "thread")
 
 
 async def test_enabled_flow_gets_events_and_the_auto_language_row():

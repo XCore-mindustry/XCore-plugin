@@ -35,11 +35,13 @@ from ..model import (
     Origin,
     Party,
     Resolution,
+    event,
     utc,
 )
 from ..msav import InvalidMsav, data_patches, validate_msav
 from ..notify import Outcome
-from ..registry import Action, ActionContext, Flow, flow_registry
+from ..registry import Action, Flow, flow_registry
+from ..views import ActionContext
 from .badges import _linked, grant_map_maker
 
 logger = logging.getLogger(__name__)
@@ -389,8 +391,6 @@ async def _refresh(service, case, *, message=None):
     flags = [f for f in case.flags if f != "deep_checks_pending"]
     if pending:
         flags.append("deep_checks_pending")
-    from ..model import event
-
     return await service.store.cas(
         case,
         set_fields={"payload": payload, "flags": flags},

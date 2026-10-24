@@ -8,11 +8,11 @@ class Players:
         self.bot, self.database = bot, db
 
     def __getattr__(self, name):
-        return getattr(self.bot, name)
+        return getattr(self.bot.store, name)
 
     async def find_players_by_discord_id(self, discord_id):
         return [
-            await self.bot.find_player_by_uuid(row["uuid"])
+            await self.bot.store.find_player_by_uuid(row["uuid"])
             for row in self.database["players"].docs
             if row.get("discord_id") == discord_id
         ]
@@ -27,7 +27,7 @@ class Claims:
 
 
 def mirror_audits(bot, action_bot, database, mutations):
-    append = action_bot.append_moderation_audit
+    append = action_bot.store.append_moderation_audit
 
     async def audit(**kwargs):
         audit_id = await append(**kwargs)
@@ -36,4 +36,4 @@ def mirror_audits(bot, action_bot, database, mutations):
         )
         return audit_id
 
-    bot.append_moderation_audit = audit
+    bot.store.append_moderation_audit = audit

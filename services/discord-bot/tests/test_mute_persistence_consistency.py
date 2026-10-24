@@ -5,8 +5,9 @@ from datetime import UTC, datetime
 from typing import Any
 
 import pytest
+from bot_fakes import make_bot
 
-from xcore_discord_bot.bot import XCoreDiscordBot
+from xcore_discord_bot import staff_actions
 from xcore_discord_bot.dto import PlayerRecord
 from xcore_discord_bot.handlers_moderation import cmd_mute
 from xcore_discord_bot.mongo_store import MuteDoc
@@ -51,6 +52,12 @@ class _Store:
     async def append_moderation_audit(self, **kwargs: Any) -> str:
         self.audit_rows.append(dict(kwargs))
         return f"audit-{len(self.audit_rows)}"
+
+    async def delete_mute(self, *, uuid):
+        return 1
+
+    async def find_player_by_uuid(self, uuid):
+        return None
 
 
 class _Bus:
@@ -101,25 +108,21 @@ class _Interaction:
 
 @pytest.mark.asyncio
 async def test_cmd_mute_persists_pid() -> None:
-    bot = object.__new__(XCoreDiscordBot)
     store = _Store()
-    bot.__dict__["_store"] = store
-    bot.__dict__["_bus"] = _Bus()
+    bot = make_bot(store=store, bus=_Bus())
 
     interaction = _Interaction(id=101, user=_User(id=999, display_name="Moderator"))
 
-    from xcore_discord_bot import handlers_moderation
-
-    original_post_mute_log = handlers_moderation.post_mute_log
+    original_post_mute_log = staff_actions.post_mute_log
 
     async def fake_post_mute_log(*args, **kwargs):
         return None
 
-    handlers_moderation.post_mute_log = fake_post_mute_log
+    staff_actions.post_mute_log = fake_post_mute_log
     try:
         await cmd_mute(bot, interaction, 55, "1d", "spam")
     finally:
-        handlers_moderation.post_mute_log = original_post_mute_log
+        staff_actions.post_mute_log = original_post_mute_log
 
     assert len(store.upserts) == 1
     assert store.upserts[0]["pid"] == 55

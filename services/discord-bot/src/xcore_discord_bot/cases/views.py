@@ -4,11 +4,12 @@ import logging
 import re
 from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import dataclass, field
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import discord
 
-from ..i18n import t
+from ..dto import Actor
+from ..i18n import SUPPORTED, t
 from ._privacy import log_failure
 from .access import check_opening
 from .cards import case_secrets, safe_text
@@ -19,9 +20,20 @@ from .ids import (
     decode_custom_id,
     panel_custom_id,
 )
-from .modals import CaseActionModal, error_text
-from .model import Case, CaseError, CaseKind, CaseRace, CaseStatus, InvalidTransition
-from .registry import FlowRegistry, PanelContext
+from .modals import FormModal, error_text
+from .model import (
+    Case,
+    CaseError,
+    CaseKind,
+    CaseRace,
+    CaseStatus,
+    InvalidTransition,
+    Resolution,
+)
+from .registry import FlowRegistry, FormField, PanelContext
+
+if TYPE_CHECKING:
+    from .service import CaseService
 
 logger = logging.getLogger(__name__)
 FOLLOW_UP_SECONDS = 60
@@ -98,6 +110,42 @@ async def run_case_action(
         else t(locale, "cases-updated", number=number),
         ephemeral=True,
     )
+
+
+class CaseActionModal(FormModal):
+    """The form behind a card button. Submitting dispatches the action from the start."""
+
+    def __init__(
+        self,
+        *,
+        service,
+        number: int,
+        verb: str,
+        requester_id: int,
+        locale: str,
+        fields: Sequence[FormField],
+        title_key: str | None = None,
+    ) -> None:
+        super().__init__(
+            title=t(locale, title_key or "cases-button-" + verb),
+            locale=locale,
+            fields=fields,
+            files=False,
+        )
+        self.service, self.number, self.verb = service, number, verb
+        self.requester_id = requester_id
+
+    async def on_submit(self, interaction: discord.Interaction) -> None:
+        await interaction.response.defer(ephemeral=True, thinking=True)
+        locale = await self.service.store.remember_interaction(interaction)
+        if interaction.user.id != self.requester_id:
+            await interaction.followup.send(
+                t(locale, "error-not-allowed"), ephemeral=True
+            )
+            return
+        await run_case_action(
+            self.service, interaction, self.number, self.verb, locale, self.values()
+        )
 
 
 class CaseActionButton(
@@ -225,8 +273,6 @@ class PanelButton(discord.ui.DynamicItem[discord.ui.Button], template=PANEL_PATT
         service = interaction_service(interaction)
         locale = service.store.interaction_locale_now(interaction)
         if self.kind is None:
-            from .panel import LanguageView
-
             await interaction.response.send_message(
                 t(locale, "language-select-prompt"),
                 view=LanguageView(service.store, interaction.user.id, locale),
@@ -259,6 +305,46 @@ class PanelButton(discord.ui.DynamicItem[discord.ui.Button], template=PANEL_PATT
                 await interaction.followup.send(
                     error_text(context.locale, error), ephemeral=True
                 )
+
+
+class LanguageSelect(discord.ui.Select):
+    def __init__(self, store, requester_id: int, locale: str) -> None:
+        super().__init__(
+            placeholder=t(locale, "language-select-placeholder"),
+            options=[
+                discord.SelectOption(
+                    label=t(locale, "language-name-" + code), value=code
+                )
+                for code in SUPPORTED
+            ],
+        )
+        self.store, self.requester_id = store, requester_id
+
+    async def callback(self, interaction: discord.Interaction) -> None:
+        locale = self.store.interaction_locale_now(interaction)
+        if interaction.user.id != self.requester_id:
+            await interaction.response.send_message(
+                t(locale, "error-not-allowed"), ephemeral=True
+            )
+            return
+        await interaction.response.defer()
+        selected = self.values[0]
+        await self.store.set_locale_pref(interaction.user.id, selected, source="manual")
+        await interaction.edit_original_response(
+            content=t(
+                selected,
+                "language-changed",
+                language=t(selected, "language-name-" + selected),
+            ),
+            view=None,
+        )
+        self.view.stop()
+
+
+class LanguageView(discord.ui.View):
+    def __init__(self, store, requester_id: int, locale: str) -> None:
+        super().__init__(timeout=60)
+        self.add_item(LanguageSelect(store, requester_id, locale))
 
 
 def case_view(registry: FlowRegistry, case: Case, locale: str) -> discord.ui.View:
@@ -453,6 +539,64 @@ class ActionStep:
             self.verb,
             locale,
             {**self.values, self.name: value, **extra},
+        )
+
+
+@dataclass(slots=True)
+class ActionContext:
+    """What an action handler works with. The interaction is already deferred."""
+
+    service: CaseService
+    case: Case
+    member: Any
+    locale: str
+    verb: str
+    values: dict[str, str] = field(default_factory=dict)
+    interaction: Any = None
+    replied: bool = False
+
+    @property
+    def actor(self) -> Actor:
+        return Actor(str(self.member.id), self.member.display_name)
+
+    async def run(self, action: Callable[[Case], Awaitable[Resolution]]) -> Case:
+        """Run a staff action through the pipeline of 8.3 and close the case with its result."""
+        return await self.service.execute_action(
+            self.case.number, self.verb, self.member, action
+        )
+
+    async def reply(self, text: str, *, view: discord.ui.View | None = None) -> None:
+        """Answer the staff member yourself; the handler then returns ``None``."""
+        self.replied = True
+        kwargs = {"view": view} if view is not None else {}
+        await self.interaction.followup.send(text, ephemeral=True, **kwargs)
+
+    async def confirm(self, text: str, *, name: str = "confirmed") -> None:
+        """Ask for a confirmation. The handler runs again with ``values[name] == "yes"``."""
+        await self.reply(text, view=ConfirmView(self._step(name), self.locale))
+
+    async def choose(
+        self,
+        text: str,
+        name: str,
+        options: Sequence[discord.SelectOption],
+    ) -> None:
+        """Ask for one of ``options``. The handler runs again with ``values[name]`` set."""
+        await self.reply(text, view=ChoiceView(self._step(name), self.locale, options))
+
+    async def choose_user(self, text: str, name: str) -> None:
+        """Ask for a member. The handler runs again with ``values[name]`` (the id) and
+        ``values[name + "_name"]`` (the display name) set."""
+        await self.reply(text, view=UserChoiceView(self._step(name), self.locale))
+
+    def _step(self, name: str):
+        return ActionStep(
+            service=self.service,
+            number=self.case.number,
+            verb=self.verb,
+            requester_id=int(self.member.id),
+            values=dict(self.values),
+            name=name,
         )
 
 

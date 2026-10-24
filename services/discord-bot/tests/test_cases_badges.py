@@ -349,7 +349,7 @@ async def test_persistent_grant_real_helper_confirmed_audit_and_inventory_recove
     if already_owned:
         row["unlocked_badges"] = ["map-maker"]
     if inventory_failure:
-        bot.publish_player_badge_inventory_changed = AsyncMock(
+        bot.bus.publish_player_badge_inventory_changed = AsyncMock(
             side_effect=RuntimeError("inventory delivery failed")
         )
     await service.take(case.number, member(101, (20,)))
@@ -394,9 +394,9 @@ async def test_grant_failure_never_false_closes(failure):
             case, set_fields={"subject.player_uuid": "other-player"}
         )
     elif failure == "unconfirmed":
-        bot.grant_badge = AsyncMock(return_value=False)
+        bot.store.grant_badge = AsyncMock(return_value=False)
     elif failure == "audit":
-        bot.append_moderation_audit = AsyncMock(
+        bot.store.append_moderation_audit = AsyncMock(
             side_effect=RuntimeError("audit failed")
         )
     else:

@@ -346,3 +346,42 @@ def build_servers_embed(
         )
     )
     return embed
+
+
+def build_moderation_reversal_embed(
+    *,
+    action_label: str,
+    subject_name: str,
+    player_id: int,
+    previous_actor_label: str,
+    previous_actor_value: str,
+    reason: str,
+    expire_value: object,
+    actor_label: str,
+    actor_name: str,
+    format_expire_date,
+) -> discord.Embed:
+    embed = discord.Embed(
+        title=f"{action_label} {subject_name}",
+        color=discord.Color.green(),
+    )
+    embed.add_field(name="PID", value=str(player_id), inline=False)
+    embed.add_field(
+        name=previous_actor_label,
+        value=previous_actor_value,
+        inline=False,
+    )
+    embed.add_field(name="Reason", value=reason, inline=False)
+    embed.add_field(
+        name="Was set to expire",
+        value=format_expire_date(expire_value),
+        inline=False,
+    )
+    embed.add_field(name=actor_label, value=actor_name, inline=False)
+    return embed
+
+
+def sort_live_servers(servers, mode: Literal["players", "name"]):
+    if mode == "name":
+        return sorted(servers, key=lambda s: s.name.lower())
+    return sorted(servers, key=lambda s: (-s.players, s.name.lower()))

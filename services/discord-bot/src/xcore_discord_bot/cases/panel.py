@@ -12,46 +12,6 @@ from .views import panel_flows, panel_view
 PANEL_COLOR = discord.Color.blurple()
 
 
-class LanguageSelect(discord.ui.Select):
-    def __init__(self, store, requester_id: int, locale: str) -> None:
-        super().__init__(
-            placeholder=t(locale, "language-select-placeholder"),
-            options=[
-                discord.SelectOption(
-                    label=t(locale, "language-name-" + code), value=code
-                )
-                for code in SUPPORTED
-            ],
-        )
-        self.store, self.requester_id = store, requester_id
-
-    async def callback(self, interaction: discord.Interaction) -> None:
-        locale = self.store.interaction_locale_now(interaction)
-        if interaction.user.id != self.requester_id:
-            await interaction.response.send_message(
-                t(locale, "error-not-allowed"), ephemeral=True
-            )
-            return
-        await interaction.response.defer()
-        selected = self.values[0]
-        await self.store.set_locale_pref(interaction.user.id, selected, source="manual")
-        await interaction.edit_original_response(
-            content=t(
-                selected,
-                "language-changed",
-                language=t(selected, "language-name-" + selected),
-            ),
-            view=None,
-        )
-        self.view.stop()
-
-
-class LanguageView(discord.ui.View):
-    def __init__(self, store, requester_id: int, locale: str) -> None:
-        super().__init__(timeout=60)
-        self.add_item(LanguageSelect(store, requester_id, locale))
-
-
 class CasePanel:
     """The one public message: the short text in every language and a button per flow."""
 

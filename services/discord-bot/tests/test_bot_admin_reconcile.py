@@ -1,10 +1,8 @@
 from __future__ import annotations
 
-from types import SimpleNamespace
-
 import pytest
+from bot_fakes import make_bot, make_settings
 
-from xcore_discord_bot.bot import XCoreDiscordBot
 from xcore_discord_bot.dto import PlayerRecord
 
 
@@ -12,8 +10,7 @@ from xcore_discord_bot.dto import PlayerRecord
 async def test_reconcile_discord_admin_access_revokes_missing_role_and_applies_present_role() -> (
     None
 ):
-    bot = object.__new__(XCoreDiscordBot)
-    bot.__dict__["_settings"] = SimpleNamespace(admin_reconcile_interval_seconds=300)
+    bot = make_bot(settings=make_settings(admin_reconcile_interval_seconds=300))
 
     linked_admin = PlayerRecord(
         pid=7,
@@ -57,15 +54,15 @@ async def test_reconcile_discord_admin_access_revokes_missing_role_and_applies_p
     async def publish_discord_admin_access_changed(**payload):
         published.append(payload)
 
-    bot.__dict__["get_discord_admin_member_ids"] = get_discord_admin_member_ids
-    bot.__dict__["find_discord_admin_players"] = find_discord_admin_players
-    bot.__dict__["find_players_by_discord_id"] = find_players_by_discord_id
-    bot.__dict__["set_admin_access"] = set_admin_access
-    bot.__dict__["publish_discord_admin_access_changed"] = (
-        publish_discord_admin_access_changed
+    bot.container.admin_sync_daemon.get_discord_admin_member_ids = (
+        get_discord_admin_member_ids
     )
+    bot.store.find_discord_admin_players = find_discord_admin_players
+    bot.store.find_players_by_discord_id = find_players_by_discord_id
+    bot.store.set_admin_access = set_admin_access
+    bot.bus.publish_discord_admin_access_changed = publish_discord_admin_access_changed
 
-    result = await XCoreDiscordBot.reconcile_discord_admin_access(bot)
+    result = await bot.container.admin_sync_daemon.reconcile()
 
     assert result == {
         "applied": 1,
@@ -88,8 +85,7 @@ async def test_reconcile_discord_admin_access_revokes_missing_role_and_applies_p
 async def test_reconcile_discord_admin_access_skips_revoke_on_empty_snapshot_with_existing_admins() -> (
     None
 ):
-    bot = object.__new__(XCoreDiscordBot)
-    bot.__dict__["_settings"] = SimpleNamespace(admin_reconcile_interval_seconds=300)
+    bot = make_bot(settings=make_settings(admin_reconcile_interval_seconds=300))
 
     linked_admin = PlayerRecord(
         pid=7,
@@ -119,14 +115,14 @@ async def test_reconcile_discord_admin_access_skips_revoke_on_empty_snapshot_wit
     async def publish_discord_admin_access_changed(**payload):
         published.append(payload)
 
-    bot.__dict__["get_discord_admin_member_ids"] = get_discord_admin_member_ids
-    bot.__dict__["find_discord_admin_players"] = find_discord_admin_players
-    bot.__dict__["set_admin_access"] = set_admin_access
-    bot.__dict__["publish_discord_admin_access_changed"] = (
-        publish_discord_admin_access_changed
+    bot.container.admin_sync_daemon.get_discord_admin_member_ids = (
+        get_discord_admin_member_ids
     )
+    bot.store.find_discord_admin_players = find_discord_admin_players
+    bot.store.set_admin_access = set_admin_access
+    bot.bus.publish_discord_admin_access_changed = publish_discord_admin_access_changed
 
-    result = await XCoreDiscordBot.reconcile_discord_admin_access(bot)
+    result = await bot.container.admin_sync_daemon.reconcile()
 
     assert result == {
         "applied": 0,
@@ -143,8 +139,7 @@ async def test_reconcile_discord_admin_access_skips_revoke_on_empty_snapshot_wit
 
 @pytest.mark.asyncio
 async def test_reconcile_discord_admin_access_applies_to_all_linked_accounts() -> None:
-    bot = object.__new__(XCoreDiscordBot)
-    bot.__dict__["_settings"] = SimpleNamespace(admin_reconcile_interval_seconds=300)
+    bot = make_bot(settings=make_settings(admin_reconcile_interval_seconds=300))
 
     first = PlayerRecord(
         pid=8, uuid="uuid-8", nickname="TargetB", discord_id="222", discord_username="b"
@@ -175,15 +170,15 @@ async def test_reconcile_discord_admin_access_applies_to_all_linked_accounts() -
     async def publish_discord_admin_access_changed(**payload):
         published.append(payload)
 
-    bot.__dict__["get_discord_admin_member_ids"] = get_discord_admin_member_ids
-    bot.__dict__["find_discord_admin_players"] = find_discord_admin_players
-    bot.__dict__["find_players_by_discord_id"] = find_players_by_discord_id
-    bot.__dict__["set_admin_access"] = set_admin_access
-    bot.__dict__["publish_discord_admin_access_changed"] = (
-        publish_discord_admin_access_changed
+    bot.container.admin_sync_daemon.get_discord_admin_member_ids = (
+        get_discord_admin_member_ids
     )
+    bot.store.find_discord_admin_players = find_discord_admin_players
+    bot.store.find_players_by_discord_id = find_players_by_discord_id
+    bot.store.set_admin_access = set_admin_access
+    bot.bus.publish_discord_admin_access_changed = publish_discord_admin_access_changed
 
-    result = await XCoreDiscordBot.reconcile_discord_admin_access(bot)
+    result = await bot.container.admin_sync_daemon.reconcile()
 
     assert result == {
         "applied": 2,
@@ -208,8 +203,7 @@ async def test_reconcile_discord_admin_access_applies_to_all_linked_accounts() -
 async def test_reconcile_discord_admin_access_reports_skipped_unlinked_and_missing_uuid() -> (
     None
 ):
-    bot = object.__new__(XCoreDiscordBot)
-    bot.__dict__["_settings"] = SimpleNamespace(admin_reconcile_interval_seconds=300)
+    bot = make_bot(settings=make_settings(admin_reconcile_interval_seconds=300))
 
     missing_uuid = PlayerRecord(
         pid=8,
@@ -244,15 +238,15 @@ async def test_reconcile_discord_admin_access_reports_skipped_unlinked_and_missi
     async def publish_discord_admin_access_changed(**payload):
         published.append(payload)
 
-    bot.__dict__["get_discord_admin_member_ids"] = get_discord_admin_member_ids
-    bot.__dict__["find_discord_admin_players"] = find_discord_admin_players
-    bot.__dict__["find_players_by_discord_id"] = find_players_by_discord_id
-    bot.__dict__["set_admin_access"] = set_admin_access
-    bot.__dict__["publish_discord_admin_access_changed"] = (
-        publish_discord_admin_access_changed
+    bot.container.admin_sync_daemon.get_discord_admin_member_ids = (
+        get_discord_admin_member_ids
     )
+    bot.store.find_discord_admin_players = find_discord_admin_players
+    bot.store.find_players_by_discord_id = find_players_by_discord_id
+    bot.store.set_admin_access = set_admin_access
+    bot.bus.publish_discord_admin_access_changed = publish_discord_admin_access_changed
 
-    result = await XCoreDiscordBot.reconcile_discord_admin_access(bot)
+    result = await bot.container.admin_sync_daemon.reconcile()
 
     assert result == {
         "applied": 0,

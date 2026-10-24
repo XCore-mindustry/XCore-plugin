@@ -4,8 +4,10 @@ import asyncio
 from dataclasses import dataclass, field, replace
 from types import SimpleNamespace
 from typing import Any
+from unittest.mock import AsyncMock
 
 import pytest
+from bot_fakes import make_bot, make_settings
 from xcore_protocol.generated.rating import (
     RatingSeasonEndedV1,
     RatingSeasonEndingSoonV1,
@@ -69,15 +71,11 @@ class _Channel:
         return SimpleNamespace(id=1000 + len(self.sent))
 
 
-class _Bot:
-    def __init__(self, channel: _Channel | None, channel_id: int = 777) -> None:
-        self.seasons_channel_id = channel_id
-        self.container = SimpleNamespace(ratings=_Ratings())
-        self._channel = channel
-
-    async def _resolve_messageable_channel(self, channel_id: int, *, context: str):
-        assert channel_id == 777
-        return self._channel
+def _Bot(channel: _Channel | None, channel_id: int = 777):
+    bot = make_bot(settings=make_settings(discord_seasons_channel_id=channel_id))
+    bot.container.ratings = _Ratings()
+    bot.resolve_channel = AsyncMock(return_value=channel)
+    return bot
 
 
 def _ended(podium: tuple[SeasonPodiumEntryV1, ...]) -> RatingSeasonEndedV1:
@@ -259,7 +257,9 @@ async def test_moving_the_end_back_to_where_it_was_is_announced_too() -> None:
     channel = _Channel()
     bot = _Bot(channel)
 
-    def moved(previous: str, ends_at: str, occurred_at: str) -> RatingSeasonRescheduledV1:
+    def moved(
+        previous: str, ends_at: str, occurred_at: str
+    ) -> RatingSeasonRescheduledV1:
         return RatingSeasonRescheduledV1(
             season=replace(SEASON, endsAt=ends_at),
             previousEndsAt=previous,
@@ -304,15 +304,17 @@ async def test_rescheduling_announces_each_move_once() -> None:
 async def test_ended_consumer_dispatches_to_the_handler() -> None:
     channel = _Channel()
 
-    class _ConsumerBot(_Bot):
-        async def consume_season_ended_stream(self, callback) -> None:
-            await callback(_ended((_entry(1, "Ann", None),)))
-            raise asyncio.CancelledError()
+    bot = _Bot(channel)
 
-        async def reconnect_bus(self) -> None:
-            raise AssertionError("reconnect should not be called")
+    async def consume(callback):
+        await callback(_ended((_entry(1, "Ann", None),)))
+        raise asyncio.CancelledError()
 
+    bot.bus.consume_season_ended = consume
+    bot.bus.reconnect = AsyncMock(
+        side_effect=AssertionError("reconnect should not be called")
+    )
     with pytest.raises(asyncio.CancelledError):
-        await consume_season_ended(_ConsumerBot(channel))
+        await consume_season_ended(bot)
 
     assert len(channel.sent) == 1

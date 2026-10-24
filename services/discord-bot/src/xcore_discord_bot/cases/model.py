@@ -5,7 +5,7 @@ from datetime import UTC, datetime
 from enum import StrEnum
 from typing import Any
 
-from ..staff_actions import Actor
+from ..dto import Actor
 
 
 class CaseKind(StrEnum):

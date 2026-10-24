@@ -5,15 +5,12 @@ from types import SimpleNamespace
 from typing import Any, cast
 
 import pytest
+from bot_fakes import make_bot, make_settings
 
-from xcore_discord_bot.bot import (
-    XCoreDiscordBot,
-    _StatsActionsView,
-    _StatsBanModal,
-    _StatsMuteModal,
-)
 from xcore_discord_bot.dto import PlayerRecord
-from xcore_discord_bot.handlers_misc import cmd_stats
+from xcore_discord_bot.handlers_misc import cmd_stats, cmd_stats_audit
+from xcore_discord_bot.moderation_modals import StatsBanModal, StatsMuteModal
+from xcore_discord_bot.moderation_views import StatsActionsView
 
 
 @dataclass
@@ -170,33 +167,13 @@ class _Store:
             )
         ]
 
+    async def find_player_by_uuid(self, uuid):
+        return None
+
 
 @pytest.mark.asyncio
 async def test_cmd_stats_attaches_actions_view() -> None:
-    bot = object.__new__(XCoreDiscordBot)
-    bot.__dict__["_store"] = _Store()
-    bot.__dict__["_settings"] = SimpleNamespace(discord_admin_role_id=5)
-
-    async def _no_op_ban(
-        _interaction: Any, _player_id: int, _period: str, _reason: str
-    ) -> None:
-        return None
-
-    async def _no_op_mute(
-        _interaction: Any, _player_id: int, _period: str, _reason: str
-    ) -> None:
-        return None
-
-    bot.__dict__["_create_stats_ban_modal"] = lambda **kwargs: _StatsBanModal(
-        player_id=kwargs["player_id"],
-        player=kwargs["player"],
-        on_submit_ban=cast(Any, _no_op_ban),
-    )
-    bot.__dict__["_create_stats_mute_modal"] = lambda **kwargs: _StatsMuteModal(
-        player_id=kwargs["player_id"],
-        player=kwargs["player"],
-        on_submit_mute=cast(Any, _no_op_mute),
-    )
+    bot = make_bot(store=_Store(), settings=make_settings(discord_admin_role_id=5))
 
     interaction = _Interaction(
         id=1,
@@ -208,7 +185,7 @@ async def test_cmd_stats_attaches_actions_view() -> None:
     assert len(interaction.response.sent) == 1
     sent = interaction.response.sent[0]
     assert sent["embed"] is not None
-    assert isinstance(sent["view"], _StatsActionsView)
+    assert isinstance(sent["view"], StatsActionsView)
     assert sent["view"].message is interaction._message
     assert len(sent["view"].children) == 4
     embed = sent["embed"]
@@ -230,30 +207,7 @@ async def test_cmd_stats_attaches_actions_view() -> None:
 
 @pytest.mark.asyncio
 async def test_cmd_stats_hides_actions_for_non_admin() -> None:
-    bot = object.__new__(XCoreDiscordBot)
-    bot.__dict__["_store"] = _Store()
-    bot.__dict__["_settings"] = SimpleNamespace(discord_admin_role_id=5)
-
-    async def _no_op_ban(
-        _interaction: Any, _player_id: int, _period: str, _reason: str
-    ) -> None:
-        return None
-
-    async def _no_op_mute(
-        _interaction: Any, _player_id: int, _period: str, _reason: str
-    ) -> None:
-        return None
-
-    bot.__dict__["_create_stats_ban_modal"] = lambda **kwargs: _StatsBanModal(
-        player_id=kwargs["player_id"],
-        player=kwargs["player"],
-        on_submit_ban=cast(Any, _no_op_ban),
-    )
-    bot.__dict__["_create_stats_mute_modal"] = lambda **kwargs: _StatsMuteModal(
-        player_id=kwargs["player_id"],
-        player=kwargs["player"],
-        on_submit_mute=cast(Any, _no_op_mute),
-    )
+    bot = make_bot(store=_Store(), settings=make_settings(discord_admin_role_id=5))
 
     interaction = _Interaction(
         id=5,
@@ -271,9 +225,7 @@ async def test_cmd_stats_hides_actions_for_non_admin() -> None:
 
 @pytest.mark.asyncio
 async def test_cmd_stats_without_a_player_opens_the_linked_account() -> None:
-    bot = object.__new__(XCoreDiscordBot)
-    bot.__dict__["_store"] = _Store()
-    bot.__dict__["_settings"] = SimpleNamespace(discord_admin_role_id=5)
+    bot = make_bot(store=_Store(), settings=make_settings(discord_admin_role_id=5))
 
     interaction = _Interaction(
         id=6,
@@ -290,9 +242,7 @@ async def test_cmd_stats_without_a_player_opens_the_linked_account() -> None:
 
 @pytest.mark.asyncio
 async def test_cmd_stats_without_a_linked_account_says_how_to_link() -> None:
-    bot = object.__new__(XCoreDiscordBot)
-    bot.__dict__["_store"] = _Store()
-    bot.__dict__["_settings"] = SimpleNamespace(discord_admin_role_id=5)
+    bot = make_bot(store=_Store(), settings=make_settings(discord_admin_role_id=5))
 
     interaction = _Interaction(
         id=7,
@@ -309,9 +259,7 @@ async def test_cmd_stats_without_a_linked_account_says_how_to_link() -> None:
 
 @pytest.mark.asyncio
 async def test_cmd_stats_by_discord_user_is_for_admins() -> None:
-    bot = object.__new__(XCoreDiscordBot)
-    bot.__dict__["_store"] = _Store()
-    bot.__dict__["_settings"] = SimpleNamespace(discord_admin_role_id=5)
+    bot = make_bot(store=_Store(), settings=make_settings(discord_admin_role_id=5))
     linked = _User(id=77, display_name="linked", roles=[])
 
     guest = _Interaction(
@@ -334,9 +282,7 @@ async def test_cmd_stats_by_discord_user_is_for_admins() -> None:
 @pytest.mark.asyncio
 @pytest.mark.parametrize("reference", ["123", "#123", "@br", "@BR", "br"])
 async def test_stats_accepts_text_without_a_separate_search(reference: str) -> None:
-    bot = object.__new__(XCoreDiscordBot)
-    bot.__dict__["_store"] = _Store()
-    bot.__dict__["_settings"] = SimpleNamespace(discord_admin_role_id=5)
+    bot = make_bot(store=_Store(), settings=make_settings(discord_admin_role_id=5))
     interaction = _Interaction(
         id=10, user=_User(id=10, display_name="guest", roles=[]), client=bot
     )
@@ -349,9 +295,7 @@ async def test_stats_accepts_text_without_a_separate_search(reference: str) -> N
 
 @pytest.mark.asyncio
 async def test_stats_unknown_username_replies_without_an_embed() -> None:
-    bot = object.__new__(XCoreDiscordBot)
-    bot.__dict__["_store"] = _Store()
-    bot.__dict__["_settings"] = SimpleNamespace(discord_admin_role_id=5)
+    bot = make_bot(store=_Store(), settings=make_settings(discord_admin_role_id=5))
     interaction = _Interaction(
         id=11, user=_User(id=10, display_name="guest", roles=[]), client=bot
     )
@@ -366,8 +310,7 @@ async def test_stats_unknown_username_replies_without_an_embed() -> None:
 
 @pytest.mark.asyncio
 async def test_stats_actions_view_blocks_non_admin() -> None:
-    bot = object.__new__(XCoreDiscordBot)
-    bot.__dict__["_settings"] = SimpleNamespace(discord_admin_role_id=5)
+    bot = make_bot(settings=make_settings(discord_admin_role_id=5))
 
     async def _no_op_ban(
         _interaction: Any, _player_id: int, _period: str, _reason: str
@@ -379,16 +322,16 @@ async def test_stats_actions_view_blocks_non_admin() -> None:
     ) -> None:
         return None
 
-    view = _StatsActionsView(
-        settings=bot._settings,
+    view = StatsActionsView(
+        settings=bot.settings,
         player_id=123,
         player={"nickname": "Vortex"},
-        create_ban_modal=lambda **kwargs: _StatsBanModal(
+        create_ban_modal=lambda **kwargs: StatsBanModal(
             player_id=kwargs["player_id"],
             player=kwargs["player"],
             on_submit_ban=cast(Any, _no_op_ban),
         ),
-        create_mute_modal=lambda **kwargs: _StatsMuteModal(
+        create_mute_modal=lambda **kwargs: StatsMuteModal(
             player_id=kwargs["player_id"],
             player=kwargs["player"],
             on_submit_mute=cast(Any, _no_op_mute),
@@ -416,8 +359,7 @@ async def test_stats_actions_view_blocks_non_admin() -> None:
 
 @pytest.mark.asyncio
 async def test_stats_actions_view_ban_button_opens_modal() -> None:
-    bot = object.__new__(XCoreDiscordBot)
-    bot.__dict__["_settings"] = SimpleNamespace(discord_admin_role_id=5)
+    bot = make_bot(settings=make_settings(discord_admin_role_id=5))
 
     async def _no_op_ban(
         _interaction: Any, _player_id: int, _period: str, _reason: str
@@ -429,16 +371,16 @@ async def test_stats_actions_view_ban_button_opens_modal() -> None:
     ) -> None:
         return None
 
-    view = _StatsActionsView(
-        settings=bot._settings,
+    view = StatsActionsView(
+        settings=bot.settings,
         player_id=123,
         player={"nickname": "Vortex"},
-        create_ban_modal=lambda **kwargs: _StatsBanModal(
+        create_ban_modal=lambda **kwargs: StatsBanModal(
             player_id=kwargs["player_id"],
             player=kwargs["player"],
             on_submit_ban=cast(Any, _no_op_ban),
         ),
-        create_mute_modal=lambda **kwargs: _StatsMuteModal(
+        create_mute_modal=lambda **kwargs: StatsMuteModal(
             player_id=kwargs["player_id"],
             player=kwargs["player"],
             on_submit_mute=cast(Any, _no_op_mute),
@@ -458,14 +400,12 @@ async def test_stats_actions_view_ban_button_opens_modal() -> None:
     await callback(cast(Any, interaction))
 
     assert len(interaction.response.modals) == 1
-    assert isinstance(interaction.response.modals[0], _StatsBanModal)
+    assert isinstance(interaction.response.modals[0], StatsBanModal)
 
 
 @pytest.mark.asyncio
 async def test_stats_actions_view_history_button_opens_paginated_audit() -> None:
-    bot = object.__new__(XCoreDiscordBot)
-    bot.__dict__["_store"] = _Store()
-    bot.__dict__["_settings"] = SimpleNamespace(discord_admin_role_id=5)
+    bot = make_bot(store=_Store(), settings=make_settings(discord_admin_role_id=5))
 
     async def _no_op_ban(
         _interaction: Any, _player_id: int, _period: str, _reason: str
@@ -477,45 +417,27 @@ async def test_stats_actions_view_history_button_opens_paginated_audit() -> None
     ) -> None:
         return None
 
-    bot.__dict__["_create_stats_ban_modal"] = lambda **kwargs: _StatsBanModal(
-        player_id=kwargs["player_id"],
-        player=kwargs["player"],
-        on_submit_ban=cast(Any, _no_op_ban),
-    )
-    bot.__dict__["_create_stats_mute_modal"] = lambda **kwargs: _StatsMuteModal(
-        player_id=kwargs["player_id"],
-        player=kwargs["player"],
-        on_submit_mute=cast(Any, _no_op_mute),
-    )
-
-    async def _send_paginated(
-        interaction: Any, fetch_page, *, ephemeral: bool = False, allowed_mentions=None
-    ) -> None:
-        del allowed_mentions
-        embed, _has_next = await fetch_page(0)
-        await interaction.response.send_message(embed=embed, ephemeral=ephemeral)
-
-    bot.__dict__["_send_paginated"] = _send_paginated
-
     interaction = _Interaction(
         id=6,
         user=_User(id=9, display_name="admin", roles=[_Role(5)]),
     )
-    view = _StatsActionsView(
-        settings=bot._settings,
+    view = StatsActionsView(
+        settings=bot.settings,
         player_id=123,
         player={"nickname": "Vortex", "uuid": "uuid-123", "discord_id": "discord-123"},
-        create_ban_modal=lambda **kwargs: _StatsBanModal(
+        create_ban_modal=lambda **kwargs: StatsBanModal(
             player_id=kwargs["player_id"],
             player=kwargs["player"],
             on_submit_ban=cast(Any, _no_op_ban),
         ),
-        create_mute_modal=lambda **kwargs: _StatsMuteModal(
+        create_mute_modal=lambda **kwargs: StatsMuteModal(
             player_id=kwargs["player_id"],
             player=kwargs["player"],
             on_submit_mute=cast(Any, _no_op_mute),
         ),
-        open_target_audit=lambda inter, pid, player: cmd_stats(bot, inter, pid),
+        open_target_audit=lambda inter, pid, player: cmd_stats_audit(
+            bot, inter, pid, player, mode="target"
+        ),
         open_actor_audit=lambda inter, pid, player: cmd_stats(bot, inter, pid),
     )
 
@@ -525,13 +447,12 @@ async def test_stats_actions_view_history_button_opens_paginated_audit() -> None
     await callback(cast(Any, interaction))
 
     assert len(interaction.response.sent) == 1
+    assert interaction.response.sent[0]["embed"].title == "History • Vortex"
 
 
 @pytest.mark.asyncio
 async def test_stats_actions_view_actions_button_opens_actor_audit() -> None:
-    bot = object.__new__(XCoreDiscordBot)
-    bot.__dict__["_store"] = _Store()
-    bot.__dict__["_settings"] = SimpleNamespace(discord_admin_role_id=5)
+    bot = make_bot(store=_Store(), settings=make_settings(discord_admin_role_id=5))
 
     async def _no_op_ban(
         _interaction: Any, _player_id: int, _period: str, _reason: str
@@ -543,31 +464,22 @@ async def test_stats_actions_view_actions_button_opens_actor_audit() -> None:
     ) -> None:
         return None
 
-    async def _send_paginated(
-        interaction: Any, fetch_page, *, ephemeral: bool = False, allowed_mentions=None
-    ) -> None:
-        del allowed_mentions
-        embed, _has_next = await fetch_page(0)
-        await interaction.response.send_message(embed=embed, ephemeral=ephemeral)
-
-    bot.__dict__["_send_paginated"] = _send_paginated
-
     from xcore_discord_bot.handlers_misc import cmd_stats_audit
 
     interaction = _Interaction(
         id=7,
         user=_User(id=9, display_name="admin", roles=[_Role(5)]),
     )
-    view = _StatsActionsView(
-        settings=bot._settings,
+    view = StatsActionsView(
+        settings=bot.settings,
         player_id=123,
         player={"nickname": "Vortex", "uuid": "uuid-123", "discord_id": "discord-123"},
-        create_ban_modal=lambda **kwargs: _StatsBanModal(
+        create_ban_modal=lambda **kwargs: StatsBanModal(
             player_id=kwargs["player_id"],
             player=kwargs["player"],
             on_submit_ban=cast(Any, _no_op_ban),
         ),
-        create_mute_modal=lambda **kwargs: _StatsMuteModal(
+        create_mute_modal=lambda **kwargs: StatsMuteModal(
             player_id=kwargs["player_id"],
             player=kwargs["player"],
             on_submit_mute=cast(Any, _no_op_mute),
@@ -602,7 +514,7 @@ async def test_stats_mute_modal_calls_cmd_mute() -> None:
         del interaction
         calls.append((player_id, period, reason))
 
-    modal = _StatsMuteModal(
+    modal = StatsMuteModal(
         player_id=123,
         player={"nickname": "Vortex"},
         on_submit_mute=cast(Any, _fake_cmd_mute),

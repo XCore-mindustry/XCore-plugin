@@ -1,12 +1,15 @@
 from __future__ import annotations
 
+import asyncio
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
 import discord
 import pytest
 from aiohttp import ClientConnectionError
+from bot_fakes import make_bot
 from pydantic import ValidationError
+from redis.exceptions import RedisError
 from xcore_protocol.generated.discord import (
     DiscordLinkStatusChangedV1,
     DiscordLinkStatusChangedV1Action,
@@ -17,7 +20,6 @@ from xcore_protocol.generated.security import (
 )
 from xcore_protocol.generated.shared import DiscordIdentityRefV1, PlayerRefV1
 
-from xcore_discord_bot.bot import XCoreDiscordBot
 from xcore_discord_bot.container import ServiceContainer
 from xcore_discord_bot.daemons.staff_sync_daemon import StaffSyncDaemon
 from xcore_discord_bot.dto import PlayerRecord
@@ -42,7 +44,7 @@ roleId = "20"
 role = "admin"
 """)
     return Settings(
-        discord_token="token",
+        discord_bot_token="token",
         discord_admin_role_id=99,
         discord_private_channel_id=1,
         discord_guild_id=123,
@@ -180,8 +182,7 @@ async def test_confirmed_link_and_unlink_sync_old_uuid(setup, action):
 
 async def test_member_events_fetch_and_leave_revokes(setup, settings):
     daemon, guild, _, rpc = setup
-    bot = object.__new__(XCoreDiscordBot)
-    bot._settings = settings
+    bot = make_bot(settings=settings)
     bot.container = SimpleNamespace(staff_sync_daemon=daemon)
     before = SimpleNamespace(roles=[], guild=SimpleNamespace(id=123), id=456)
     after = SimpleNamespace(roles=[SimpleNamespace(id=10)], guild=before.guild, id=456)
@@ -331,30 +332,49 @@ async def test_schedule_loop_starts_after_ready_and_continues(setup, monkeypatch
     assert daemon.reconcile.await_count == 2
 
 
+async def test_link_status_consumer_reconnects_the_bus(setup, monkeypatch):
+    daemon, _, _, _ = setup
+    bus = daemon._bot.bus
+    bus.consume_discord_link_status_changed = AsyncMock(
+        side_effect=[RedisError("connection lost"), asyncio.CancelledError()]
+    )
+    bus.reconnect = AsyncMock()
+    daemon._bot.wait_until_ready = AsyncMock(side_effect=asyncio.CancelledError())
+    monkeypatch.setattr(
+        "xcore_discord_bot.runtime_consumers.asyncio.sleep", AsyncMock()
+    )
+    daemon.start()
+    await asyncio.gather(*daemon._tasks, return_exceptions=True)
+    bus.reconnect.assert_awaited_once()
+
+
 async def test_roles_command_link_does_not_write_admin(settings):
     from datetime import UTC, datetime
 
     from xcore_discord_bot.handlers_linking import cmd_link
 
     bot = MagicMock()
-    bot.roles_mode = True
-    bot._claim_mutation = AsyncMock(return_value=True)
-    bot.find_discord_link_code = AsyncMock(return_value={"playerUuid": "uuid-1"})
-    bot.now_utc = AsyncMock(return_value=datetime.now(UTC))
-    bot.find_player_by_uuid = AsyncMock(
+    bot.settings.roles_mode = True
+    bot.bus.claim_idempotency = AsyncMock(return_value=True)
+    bot.bus.get_discord_link_code = AsyncMock(return_value={"playerUuid": "uuid-1"})
+    bot.store.now_utc = lambda: datetime.now(UTC)
+    bot.store.find_player_by_uuid = AsyncMock(
         return_value=PlayerRecord(pid=1, uuid="uuid-1", nickname="p")
     )
-    bot.publish_discord_link_confirm = AsyncMock()
-    bot.set_admin_access = AsyncMock()
-    bot.get_discord_admin_member_ids = AsyncMock(return_value={"456"})
+    bot.bus.publish_discord_link_confirm = AsyncMock()
+    bot.store.set_admin_access = AsyncMock()
+    bot.container.admin_sync_daemon.get_discord_admin_member_ids = AsyncMock(
+        return_value={"456"}
+    )
     interaction = SimpleNamespace(
+        id=99,
         user=SimpleNamespace(id=456, display_name="user"),
         response=SimpleNamespace(send_message=AsyncMock()),
     )
     await cmd_link(bot, interaction, "CODE")
-    bot.publish_discord_link_confirm.assert_awaited_once()
-    bot.get_discord_admin_member_ids.assert_not_awaited()
-    bot.set_admin_access.assert_not_awaited()
+    bot.bus.publish_discord_link_confirm.assert_awaited_once()
+    bot.container.admin_sync_daemon.get_discord_admin_member_ids.assert_not_awaited()
+    bot.store.set_admin_access.assert_not_awaited()
 
 
 async def test_roles_password_command_uses_rpc_without_legacy_event(settings):
@@ -366,19 +386,16 @@ async def test_roles_password_command_uses_rpc_without_legacy_event(settings):
     store.reset_password = AsyncMock()
     rpc = MagicMock()
     rpc.reset_staff_password = AsyncMock(return_value=SimpleNamespace(changed=True))
-    bot = object.__new__(XCoreDiscordBot)
-    bot._settings = settings
-    bot._bus = bus
-    bot._store = store
+    bot = make_bot(settings=settings, bus=bus, store=store)
     bot.container = SimpleNamespace(
         players=PlayerService(store, bus, settings=settings, rpc=rpc)
     )
-    bot._get_player_or_reply = AsyncMock(
+    bot.store.find_player_by_pid = AsyncMock(
         return_value=PlayerRecord(pid=1, uuid="uuid-1", nickname="p")
     )
-    bot._claim_mutation = AsyncMock(return_value=True)
-    bot._require_player_uuid = AsyncMock(return_value="uuid-1")
+    bot.bus.claim_idempotency = AsyncMock(return_value=True)
     interaction = SimpleNamespace(
+        id=99,
         response=SimpleNamespace(send_message=AsyncMock(), defer=AsyncMock()),
         followup=SimpleNamespace(send=AsyncMock()),
     )
@@ -614,20 +631,20 @@ async def test_roles_deferred_command_reports_rpc_failure(command, error, expect
 
     player = PlayerRecord(pid=1, uuid="uuid-1", nickname="p", discord_id="456")
     bot = MagicMock()
-    bot.roles_mode = True
-    bot._get_player_or_reply = AsyncMock(return_value=player)
-    bot._claim_mutation = AsyncMock(return_value=True)
-    bot._require_player_uuid = AsyncMock(return_value="uuid-1")
-    bot.find_players_by_discord_id = AsyncMock(return_value=[player])
+    bot.settings.roles_mode = True
+    bot.store.find_player_by_pid = AsyncMock(return_value=player)
+    bot.bus.claim_idempotency = AsyncMock(return_value=True)
+    bot.store.find_players_by_discord_id = AsyncMock(return_value=[player])
     bot.set_discord_admin_role = AsyncMock(return_value=True)
-    bot.reset_password = AsyncMock(side_effect=error)
-    bot.publish_player_password_reset = AsyncMock()
+    bot.container.players.reset_password = AsyncMock(side_effect=error)
+    bot.bus.publish_player_password_reset = AsyncMock()
     daemon = SimpleNamespace(
         sync_member=AsyncMock(side_effect=error), reconcile=AsyncMock(side_effect=error)
     )
-    bot._ensure_container.return_value = SimpleNamespace(staff_sync_daemon=daemon)
+    bot.container.staff_sync_daemon = daemon
     interaction = SimpleNamespace(
-        user=SimpleNamespace(display_name="admin"),
+        id=99,
+        user=SimpleNamespace(id=1, display_name="admin"),
         response=SimpleNamespace(defer=AsyncMock(), send_message=AsyncMock()),
         followup=SimpleNamespace(send=AsyncMock()),
     )
@@ -642,7 +659,7 @@ async def test_roles_deferred_command_reports_rpc_failure(command, error, expect
     interaction.response.defer.assert_awaited_once()
     interaction.followup.send.assert_awaited_once()
     assert expected in interaction.followup.send.await_args.args[0]
-    bot.publish_player_password_reset.assert_not_awaited()
+    bot.bus.publish_player_password_reset.assert_not_awaited()
 
 
 @pytest.mark.parametrize("command", ["add", "remove", "sync"])
@@ -658,19 +675,20 @@ async def test_roles_commands_report_sync_outcome(command, synced, skipped, erro
 
     player = PlayerRecord(pid=1, uuid="uuid-1", nickname="p", discord_id="456")
     bot = MagicMock()
-    bot.roles_mode = True
-    bot._get_player_or_reply = AsyncMock(return_value=player)
-    bot._claim_mutation = AsyncMock(return_value=True)
-    bot.find_players_by_discord_id = AsyncMock(return_value=[player])
+    bot.settings.roles_mode = True
+    bot.store.find_player_by_pid = AsyncMock(return_value=player)
+    bot.bus.claim_idempotency = AsyncMock(return_value=True)
+    bot.store.find_players_by_discord_id = AsyncMock(return_value=[player])
     bot.set_discord_admin_role = AsyncMock(return_value=True)
     result = {"synced": synced, "skipped_count": skipped, "errors": errors}
     daemon = SimpleNamespace(
         sync_member=AsyncMock(return_value=result),
         reconcile=AsyncMock(return_value=result),
     )
-    bot._ensure_container.return_value = SimpleNamespace(staff_sync_daemon=daemon)
+    bot.container.staff_sync_daemon = daemon
     interaction = SimpleNamespace(
-        user=SimpleNamespace(display_name="admin"),
+        id=99,
+        user=SimpleNamespace(id=1, display_name="admin"),
         response=SimpleNamespace(defer=AsyncMock(), send_message=AsyncMock()),
         followup=SimpleNamespace(send=AsyncMock()),
     )

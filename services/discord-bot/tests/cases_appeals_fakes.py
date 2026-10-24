@@ -54,27 +54,18 @@ async def appeal_core(*, players=None, bans=None, enabled=True, **settings):
     action_bot, mutations, bus, log = _action_bot()
     mutations["players"].docs = [player_row()] if players is None else players
     mutations["bans"].docs = [ban_row()] if bans is None else bans
-    action_bot._store.now_utc = lambda: NOW
+    action_bot.store.now_utc = lambda: NOW
     # Same raw bans as the real Mongo helper. Core cases/audits retain their richer fakes.
     database.collections["bans"] = mutations["bans"]
     service.players = Players(action_bot, mutations)
     service.notifier.find_player = service.players.find_player_by_uuid
     service.claims = Claims()
-    for name in (
-        "find_ban",
-        "find_ban_by_id",
-        "ensure_ban_id",
-        "find_player_by_uuid",
-        "find_player_by_pid",
-        "now_utc",
-        "delete_ban",
-        "update_ban_expiry",
-        "publish_pardon_player",
-        "_player_name",
-        "_resolve_messageable_channel",
-    ):
-        setattr(bot, name, getattr(action_bot, name))
-    bot.bans_channel_id = 10
+    bot.settings = service.settings.model_copy(
+        update={"discord_bans_channel_id": 10, "discord_mutes_channel_id": 20}
+    )
+    bot.store = action_bot.store
+    bot.bus = action_bot.bus
+    bot.resolve_channel = action_bot.resolve_channel
 
     mirror_audits(bot, action_bot, database, mutations)
     return service, database, bot, mutations, bus, log

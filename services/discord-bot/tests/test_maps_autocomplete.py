@@ -5,9 +5,9 @@ from types import SimpleNamespace
 from typing import Any, cast
 
 import pytest
+from bot_fakes import make_bot, make_settings
 
 from xcore_discord_bot.cogs.autocomplete import _autocomplete_map_file
-from xcore_discord_bot.dto import PlayerRecord
 from xcore_discord_bot.handlers_misc import get_cached_maps
 
 
@@ -32,15 +32,10 @@ class _MapsBus:
         return self.maps
 
 
-@dataclass
-class _CachedMapsBot:
-    _bus: _MapsBus
-    _map_cache: dict[str, tuple[float, list[dict[str, str]]]]
-
-    async def rpc_maps_list(
-        self, *, server: str, timeout_ms: int
-    ) -> list[dict[str, str]]:
-        return await self._bus.rpc_maps_list(server, timeout_ms)
+def _CachedMapsBot(*, _bus, _map_cache):
+    bot = make_bot(bus=_bus, settings=make_settings(rpc_timeout_ms=3000))
+    bot.map_cache = _map_cache
+    return bot
 
 
 async def test_get_cached_maps_uses_ttl(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -118,22 +113,10 @@ async def test_get_cached_maps_retries_transient_timeout(
     assert bus.calls == 2
 
 
-@dataclass
-class _AutocompleteBot:
-    maps: list[dict[str, str]]
-
-    async def autocomplete_players(
-        self,
-        query: str,
-        *,
-        limit: int,
-    ) -> list[PlayerRecord]:
-        del query, limit
-        return []
-
-    async def get_cached_maps(self, server: str) -> list[dict[str, str]]:
-        assert server == "survival"
-        return self.maps
+def _autocomplete_bot(*, maps):
+    bus = _MapsBus()
+    bus.maps = maps
+    return make_bot(bus=bus)
 
 
 @dataclass
@@ -144,7 +127,7 @@ class _Interaction:
 
 async def test_autocomplete_map_file_filters_and_formats() -> None:
     interaction: Any = _Interaction(
-        client=_AutocompleteBot(
+        client=_autocomplete_bot(
             maps=[
                 {"name": "Glacier", "file_name": "glacier.msav"},
                 {"name": "Ruins", "file_name": "ruins.msav"},
@@ -162,7 +145,7 @@ async def test_autocomplete_map_file_filters_and_formats() -> None:
 
 async def test_autocomplete_map_file_returns_empty_without_server() -> None:
     interaction: Any = _Interaction(
-        client=_AutocompleteBot(maps=[]),
+        client=_autocomplete_bot(maps=[]),
         namespace=SimpleNamespace(),
     )
 

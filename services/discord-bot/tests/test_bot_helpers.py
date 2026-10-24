@@ -7,15 +7,13 @@ from types import SimpleNamespace
 from typing import Any
 
 import pytest
+from bot_fakes import make_bot, make_settings
 from bson.datetime_ms import DatetimeMS
 from discord import app_commands
 
-from xcore_discord_bot import handlers_moderation
-from xcore_discord_bot.bot import (
-    XCoreDiscordBot,
-    parse_duration,
-    strip_mindustry_colors,
-)
+from xcore_discord_bot import staff_actions
+from xcore_discord_bot.bot import XCoreDiscordBot
+from xcore_discord_bot.command_helpers import claim_mutation
 from xcore_discord_bot.dto import PlayerRecord
 from xcore_discord_bot.handlers_moderation import (
     cmd_pardon,
@@ -25,9 +23,12 @@ from xcore_discord_bot.handlers_moderation import (
 from xcore_discord_bot.presentation import (
     build_servers_embed,
     format_ban_expire_date,
+    sort_live_servers,
 )
 from xcore_discord_bot.registry import ServerInfo, server_registry
 from xcore_discord_bot.runtime_consumers import run_consumer_forever
+from xcore_discord_bot.utils.duration import parse_duration
+from xcore_discord_bot.utils.mindustry_colors import strip_mindustry_colors
 
 
 def test_parse_duration() -> None:
@@ -84,7 +85,7 @@ def test_sort_live_servers_by_players_then_name() -> None:
         ServerInfo("c", 3, 2, 30, "1", None, None, 0.0),
     ]
 
-    sorted_servers = XCoreDiscordBot._sort_live_servers(servers, "players")
+    sorted_servers = sort_live_servers(servers, "players")
 
     assert [srv.name for srv in sorted_servers] == ["a", "b", "c"]
 
@@ -95,7 +96,7 @@ def test_sort_live_servers_by_name() -> None:
         ServerInfo("Alpha", 2, 20, 30, "1", None, None, 0.0),
     ]
 
-    sorted_servers = XCoreDiscordBot._sort_live_servers(servers, "name")
+    sorted_servers = sort_live_servers(servers, "name")
 
     assert [srv.name for srv in sorted_servers] == ["Alpha", "beta"]
 
@@ -136,18 +137,27 @@ class _FakeTree:
         return []
 
 
+def _record_command_sync(bot):
+    tree = _FakeTree()
+    bot.tree.clear_commands = tree.clear_commands
+    bot.tree.copy_global_to = tree.copy_global_to
+    bot.tree.sync = tree.sync
+    return tree
+
+
 @pytest.mark.asyncio
 async def test_sync_application_commands_clears_global_and_guild_when_enabled() -> None:
-    bot = object.__new__(XCoreDiscordBot)
-    bot.__dict__["_settings"] = SimpleNamespace(
-        discord_guild_id=123,
-        discord_clear_stale_commands=True,
+    bot = make_bot(
+        settings=make_settings(
+            discord_guild_id=123,
+            discord_clear_stale_commands=True,
+        )
     )
-    bot.__dict__["_BotBase__tree"] = _FakeTree()
+    tree = _record_command_sync(bot)
 
     await XCoreDiscordBot._sync_application_commands(bot)
 
-    assert bot.tree.calls == [
+    assert tree.calls == [
         ("clear", None),
         ("sync", None),
         ("clear", 123),
@@ -158,16 +168,17 @@ async def test_sync_application_commands_clears_global_and_guild_when_enabled() 
 
 @pytest.mark.asyncio
 async def test_sync_application_commands_only_syncs_guild_by_default() -> None:
-    bot = object.__new__(XCoreDiscordBot)
-    bot.__dict__["_settings"] = SimpleNamespace(
-        discord_guild_id=123,
-        discord_clear_stale_commands=False,
+    bot = make_bot(
+        settings=make_settings(
+            discord_guild_id=123,
+            discord_clear_stale_commands=False,
+        )
     )
-    bot.__dict__["_BotBase__tree"] = _FakeTree()
+    tree = _record_command_sync(bot)
 
     await XCoreDiscordBot._sync_application_commands(bot)
 
-    assert bot.tree.calls == [
+    assert tree.calls == [
         ("copy", 123),
         ("sync", 123),
     ]
@@ -175,16 +186,17 @@ async def test_sync_application_commands_only_syncs_guild_by_default() -> None:
 
 @pytest.mark.asyncio
 async def test_sync_application_commands_clears_global_only_without_guild() -> None:
-    bot = object.__new__(XCoreDiscordBot)
-    bot.__dict__["_settings"] = SimpleNamespace(
-        discord_guild_id=0,
-        discord_clear_stale_commands=True,
+    bot = make_bot(
+        settings=make_settings(
+            discord_guild_id=0,
+            discord_clear_stale_commands=True,
+        )
     )
-    bot.__dict__["_BotBase__tree"] = _FakeTree()
+    tree = _record_command_sync(bot)
 
     await XCoreDiscordBot._sync_application_commands(bot)
 
-    assert bot.tree.calls == [
+    assert tree.calls == [
         ("clear", None),
         ("sync", None),
     ]
@@ -225,11 +237,10 @@ class _SettingsClient:
 
 @pytest.mark.asyncio
 async def test_claim_mutation_success() -> None:
-    bot = object.__new__(XCoreDiscordBot)
-    bot._bus = _FakeBus(should_claim=True)
+    bot = make_bot(bus=_FakeBus(should_claim=True))
     interaction = _FakeInteraction()
 
-    claimed = await XCoreDiscordBot._claim_mutation(
+    claimed = await claim_mutation(
         bot,
         interaction,
         operation="ban",
@@ -243,11 +254,10 @@ async def test_claim_mutation_success() -> None:
 
 @pytest.mark.asyncio
 async def test_claim_mutation_duplicate() -> None:
-    bot = object.__new__(XCoreDiscordBot)
-    bot._bus = _FakeBus(should_claim=False)
+    bot = make_bot(bus=_FakeBus(should_claim=False))
     interaction = _FakeInteraction()
 
-    claimed = await XCoreDiscordBot._claim_mutation(
+    claimed = await claim_mutation(
         bot,
         interaction,
         operation="ban",
@@ -301,6 +311,9 @@ class _BanStore:
         self.audit_rows.append(dict(kwargs))
         return "audit-1"
 
+    async def find_player_by_uuid(self, uuid):
+        return None
+
 
 class _BanBus:
     def __init__(self) -> None:
@@ -319,11 +332,9 @@ class _BanBus:
 
 @pytest.mark.asyncio
 async def test_perform_ban_idempotent_by_entity_key() -> None:
-    bot = object.__new__(XCoreDiscordBot)
     store = _BanStore()
     bus = _BanBus()
-    bot.__dict__["_store"] = store
-    bot.__dict__["_bus"] = bus
+    bot = make_bot(store=store, bus=bus)
 
     calls: list[dict[str, object]] = []
 
@@ -347,8 +358,7 @@ async def test_perform_ban_idempotent_by_entity_key() -> None:
             }
         )
 
-    bot.__dict__["_post_ban_log"] = fake_post_ban_log
-    original_post_ban_log = handlers_moderation.post_ban_log
+    original_post_ban_log = staff_actions.post_ban_log
 
     async def patched_post_ban_log(
         _bot: XCoreDiscordBot,
@@ -371,7 +381,7 @@ async def test_perform_ban_idempotent_by_entity_key() -> None:
             expire=expire,
         )
 
-    handlers_moderation.post_ban_log = patched_post_ban_log
+    staff_actions.post_ban_log = patched_post_ban_log
 
     player = PlayerRecord(pid=10, uuid="u-1", ip="1.2.3.4", nickname="Nick")
 
@@ -411,7 +421,7 @@ async def test_perform_ban_idempotent_by_entity_key() -> None:
     assert bus.kicks == [("u-1", "1.2.3.4")]
     assert len(calls) == 1
     assert calls[0]["admin_discord_id"] == "123"
-    handlers_moderation.post_ban_log = original_post_ban_log
+    staff_actions.post_ban_log = original_post_ban_log
 
 
 @dataclass
@@ -449,6 +459,9 @@ class _ResetPasswordStore:
 
     async def reset_password(self, uuid: str) -> bool:
         return uuid == "u-7"
+
+    async def find_player_by_uuid(self, uuid):
+        return None
 
 
 class _ResetPasswordBus:
@@ -496,12 +509,11 @@ class _ErrorInteraction:
 
 
 @pytest.mark.asyncio
-async def test_handle_app_command_error_sends_check_failure_message() -> None:
-    bot = object.__new__(XCoreDiscordBot)
-    bot.__dict__["_settings"] = SimpleNamespace(discord_error_log_channel_id=None)
+async def testhandle_app_command_error_sends_check_failure_message() -> None:
+    bot = make_bot(settings=make_settings(discord_error_log_channel_id=None))
     interaction = _ErrorInteraction()
 
-    await XCoreDiscordBot._handle_app_command_error(
+    await XCoreDiscordBot.handle_app_command_error(
         bot,
         interaction,
         app_commands.CheckFailure("Missing role"),
@@ -512,17 +524,16 @@ async def test_handle_app_command_error_sends_check_failure_message() -> None:
 
 
 @pytest.mark.asyncio
-async def test_handle_app_command_error_sends_generic_message_on_unexpected_error() -> (
+async def testhandle_app_command_error_sends_generic_message_on_unexpected_error() -> (
     None
 ):
-    bot = object.__new__(XCoreDiscordBot)
-    bot.__dict__["_settings"] = SimpleNamespace(discord_error_log_channel_id=None)
+    bot = make_bot(settings=make_settings(discord_error_log_channel_id=None))
     interaction = _ErrorInteraction(response=_ErrorResponse(done=True))
 
     class _UnexpectedError(app_commands.AppCommandError):
         pass
 
-    await XCoreDiscordBot._handle_app_command_error(
+    await XCoreDiscordBot.handle_app_command_error(
         bot,
         interaction,
         _UnexpectedError("boom"),
@@ -537,7 +548,7 @@ async def test_handle_app_command_error_sends_generic_message_on_unexpected_erro
 
 
 @pytest.mark.asyncio
-async def test_handle_app_command_error_posts_embed_to_error_channel() -> None:
+async def testhandle_app_command_error_posts_embed_to_error_channel() -> None:
     class _Channel:
         def __init__(self) -> None:
             self.embeds: list[Any] = []
@@ -548,8 +559,7 @@ async def test_handle_app_command_error_posts_embed_to_error_channel() -> None:
     class _UnexpectedError(app_commands.AppCommandError):
         pass
 
-    bot = object.__new__(XCoreDiscordBot)
-    bot.__dict__["_settings"] = SimpleNamespace(discord_error_log_channel_id=999)
+    bot = make_bot(settings=make_settings(discord_error_log_channel_id=999))
     channel = _Channel()
 
     async def _resolve(channel_id: int, *, context: str):
@@ -557,14 +567,14 @@ async def test_handle_app_command_error_posts_embed_to_error_channel() -> None:
         assert context == "error logs"
         return channel
 
-    bot.__dict__["_resolve_messageable_channel"] = _resolve
+    bot.resolve_channel = _resolve
 
     interaction = _ErrorInteraction(
         command=SimpleNamespace(name="mute"),
         namespace=SimpleNamespace(player_id=123, reason="spam"),
     )
 
-    await XCoreDiscordBot._handle_app_command_error(
+    await XCoreDiscordBot.handle_app_command_error(
         bot,
         interaction,
         _UnexpectedError("boom"),
@@ -583,13 +593,14 @@ async def test_handle_app_command_error_posts_embed_to_error_channel() -> None:
 
 @pytest.mark.asyncio
 async def test_reset_password_publishes_password_reset_event() -> None:
-    bot = object.__new__(XCoreDiscordBot)
     bus = _ResetPasswordBus()
-    bot.__dict__["_bus"] = bus
-    bot.__dict__["_store"] = _ResetPasswordStore()
-    bot.__dict__["_settings"] = SimpleNamespace(
-        discord_general_admin_role_id=10,
-        discord_admin_role_id=20,
+    bot = make_bot(
+        bus=bus,
+        store=_ResetPasswordStore(),
+        settings=make_settings(
+            discord_general_admin_role_id=10,
+            discord_admin_role_id=20,
+        ),
     )
 
     interaction = _CmdInteraction(
@@ -606,13 +617,14 @@ async def test_reset_password_publishes_password_reset_event() -> None:
 
 @pytest.mark.asyncio
 async def test_pardon_publishes_pardon_event() -> None:
-    bot = object.__new__(XCoreDiscordBot)
     bus = _ResetPasswordBus()
-    bot.__dict__["_bus"] = bus
-    bot.__dict__["_store"] = _ResetPasswordStore()
-    bot.__dict__["_settings"] = SimpleNamespace(
-        discord_general_admin_role_id=10,
-        discord_admin_role_id=20,
+    bot = make_bot(
+        bus=bus,
+        store=_ResetPasswordStore(),
+        settings=make_settings(
+            discord_general_admin_role_id=10,
+            discord_admin_role_id=20,
+        ),
     )
 
     interaction = _CmdInteraction(
@@ -639,9 +651,8 @@ class _ReconnectBus:
 async def test_run_consumer_forever_restarts_after_failure(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    bot = object.__new__(XCoreDiscordBot)
     bus = _ReconnectBus()
-    bot.__dict__["_bus"] = bus
+    bot = make_bot(bus=bus)
 
     async def fast_sleep(_seconds: float) -> None:
         return None
@@ -660,7 +671,7 @@ async def test_run_consumer_forever_restarts_after_failure(
         return None
 
     with pytest.raises(asyncio.CancelledError):
-        await run_consumer_forever(bot, "Test", consume, callback)
+        await run_consumer_forever(bot.bus, "Test", consume, callback)
 
     assert calls["n"] == 2
     assert bus.reconnected == 1
@@ -670,9 +681,8 @@ async def test_run_consumer_forever_restarts_after_failure(
 async def test_run_consumer_forever_retries_when_reconnect_fails(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    bot = object.__new__(XCoreDiscordBot)
     bus = _ReconnectBus()
-    bot.__dict__["_bus"] = bus
+    bot = make_bot(bus=bus)
 
     sleep_calls: list[float] = []
 
@@ -686,7 +696,7 @@ async def test_run_consumer_forever_retries_when_reconnect_fails(
         bus.reconnected += 1
         raise ConnectionError("still down")
 
-    bot.reconnect_bus = failing_reconnect
+    bot.bus.reconnect = failing_reconnect
 
     calls = {"n": 0}
 
@@ -700,7 +710,7 @@ async def test_run_consumer_forever_retries_when_reconnect_fails(
         return None
 
     with pytest.raises(asyncio.CancelledError):
-        await run_consumer_forever(bot, "Test", consume, callback)
+        await run_consumer_forever(bot.bus, "Test", consume, callback)
 
     assert calls["n"] == 2
     assert bus.reconnected == 2
@@ -753,9 +763,8 @@ async def test_on_message_routes_to_server_registry_mapping() -> None:
         server_registry._servers.clear()
     server_registry.update_server("mini-pvp", 333, 1, 10, "v1")
 
-    bot = object.__new__(XCoreDiscordBot)
     bus = _MessageBus()
-    bot.__dict__["_bus"] = bus
+    bot = make_bot(bus=bus)
 
     message = _DiscordMessage(
         id=44,

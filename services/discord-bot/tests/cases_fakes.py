@@ -592,7 +592,7 @@ class Interaction:
 
 def settings(**kwargs):
     defaults = {
-        "discord_token": "fake-token",
+        "discord_bot_token": "fake-token",
         "discord_admin_role_id": 10,
         "discord_general_admin_role_id": 20,
         "discord_map_reviewer_role_id": 30,
@@ -633,5 +633,6 @@ async def core(*, flow=None, tags=True, **kwargs):
         players=players,
         now=lambda: NOW,
     )
+    bot.settings = cfg
     bot.container = SimpleNamespace(cases=service)
     return service, db, bot

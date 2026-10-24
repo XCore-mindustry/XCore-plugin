@@ -440,7 +440,6 @@ from ..model import ActionFailed, Case, CaseKind, Party, Resolution
 from ..notify import Outcome
 from ..registry import (
     Action,
-    ActionContext,
     Choice,
     Flow,
     FormField,
@@ -448,6 +447,7 @@ from ..registry import (
     PanelEntry,
     flow_registry,
 )
+from ..views import ActionContext
 
 REASONS = (
     Choice("no_violation", "reports-reason-no-violation"),

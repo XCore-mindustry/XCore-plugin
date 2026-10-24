@@ -1,94 +1,27 @@
 from __future__ import annotations
 
-import asyncio
 import logging
 import secrets
 import traceback
-from collections.abc import Awaitable, Callable, Mapping
-from datetime import datetime, timedelta
-from typing import Literal
 
 import discord
 from discord import Interaction, app_commands
 from discord.abc import Messageable
 from discord.ext import commands
-from xcore_protocol.generated.maps import MapsUploadResponseV1
-from xcore_protocol.generated.shared import ActorRefV1ActorType
 
 from .cases._privacy import private_case_command
+from .cases.redis_transport import RedisCaseTransport
 from .cases.views import CaseActionButton, PanelButton
 from .cogs import AdminCog, InfoCog, LinkingCog, MapsCog, SeasonsCog, SubnetCog
 from .cogs.cases import CasesCog
-from .dto import (
-    MERGE_KEEP_PID_TARGET,
-    AccountMergeResult,
-    AuditRecordSummary,
-    BanRecord,
-    MuteRecord,
-    PlayerRecord,
-)
+from .container import ServiceContainer
 from .i18n import XCoreTranslator
-from .moderation_modals import StatsBanModal, StatsMuteModal
-from .moderation_views import (
-    BanConfirmView,
-    MapRemoveConfirmView,
-    MuteUndoView,
-    StatsActionsView,
-)
 from .mongo_store import MongoStore
-from .presentation import build_servers_embed
 from .redis_bus import RedisBus
 from .registry import server_registry
-from .server_views import PaginatorView, ServersView
 from .settings import Settings
 
 logger = logging.getLogger(__name__)
-
-MSG_PLAYER_NOT_FOUND = "Player not found"
-MSG_DUPLICATE_MUTATION = (
-    "Duplicate command ignored: this operation was already processed recently."
-)
-MSG_NO_ACTIVE_BAN = "No active ban found"
-MSG_NO_ACTIVE_MUTE = "No active mute found"
-MSG_PLAYER_UUID_MISSING = "Player UUID is missing"
-PRESENCE_UPDATE_INTERVAL_SECONDS = 30
-DISCORD_MODAL_TITLE_MAX = 45
-
-from .container import ServiceContainer
-from .daemons.presence_daemon import PresenceDaemon
-from .utils.duration import parse_duration
-from .utils.mindustry_colors import (
-    MINDUSTRY_COLOR_NAMES,
-    _parse_color_markup,
-    strip_mindustry_colors,
-)
-
-__all__ = [
-    "MINDUSTRY_COLOR_NAMES",
-    "XCoreDiscordBot",
-    "_parse_color_markup",
-    "parse_duration",
-    "strip_mindustry_colors",
-]
-
-
-StatsActionsView.__name__ = "_StatsActionsView"
-BanConfirmView.__name__ = "_BanConfirmView"
-MapRemoveConfirmView.__name__ = "_MapRemoveConfirmView"
-MuteUndoView.__name__ = "_MuteUndoView"
-StatsBanModal.__name__ = "_StatsBanModal"
-StatsMuteModal.__name__ = "_StatsMuteModal"
-PaginatorView.__name__ = "_PaginatorView"
-ServersView.__name__ = "_ServersView"
-
-_StatsActionsView = StatsActionsView
-_BanConfirmView = BanConfirmView
-_MapRemoveConfirmView = MapRemoveConfirmView
-_MuteUndoView = MuteUndoView
-_StatsBanModal = StatsBanModal
-_StatsMuteModal = StatsMuteModal
-_PaginatorView = PaginatorView
-_ServersView = ServersView
 
 
 class XCoreDiscordBot(commands.Bot):
@@ -104,479 +37,39 @@ class XCoreDiscordBot(commands.Bot):
             allowed_mentions=discord.AllowedMentions.none(),
         )
 
-        self._settings = settings
-        self._bus = bus
-        self._store = store
+        self.settings = settings
+        self.bus = bus
+        self.store = store
         self.container = ServiceContainer.create(
-            settings, self, store=self._store, bus=self._bus
+            settings, self, store=self.store, bus=self.bus
         )
         if settings.cases_enabled:
-            from .cases.redis_transport import RedisCaseTransport
-
             self.container.cases.set_transport(
-                RedisCaseTransport(self._bus, self.container.rpc)
+                RedisCaseTransport(self.bus, self.container.rpc)
             )
-        self._chat_consumer_task: asyncio.Task[None] | None = None
-        self._global_chat_consumer_task: asyncio.Task[None] | None = None
-        self._join_leave_consumer_task: asyncio.Task[None] | None = None
-        self._server_action_consumer_task: asyncio.Task[None] | None = None
-        self._ban_consumer_task: asyncio.Task[None] | None = None
-        self._mute_consumer_task: asyncio.Task[None] | None = None
-        self._votekick_consumer_task: asyncio.Task[None] | None = None
-        self._heartbeat_consumer_task: asyncio.Task[None] | None = None
-        self._presence_task: asyncio.Task[None] | None = None
-        self._admin_reconcile_task: asyncio.Task[None] | None = None
-        self._presence_rotation_index = 0
-        self._map_cache: dict[str, tuple[float, list[dict[str, str]]]] = {}
-
-    def _ensure_container(self) -> ServiceContainer:
-        if not hasattr(self, "container"):
-            settings = getattr(self, "_settings", None)
-            if settings is not None:
-                self.container = ServiceContainer.create(
-                    settings, self, store=self._store, bus=self._bus
-                )
-                if settings.cases_enabled:
-                    from .cases.redis_transport import RedisCaseTransport
-
-                    self.container.cases.set_transport(
-                        RedisCaseTransport(self._bus, self.container.rpc)
-                    )
-        return self.container
-
-    @property
-    def roles_mode(self) -> bool:
-        settings = getattr(self, "_settings", None)
-        return (
-            settings is not None
-            and getattr(settings, "permissions_mode", "legacy") == "roles"
-        )
+        self.map_cache: dict[str, tuple[float, list[dict[str, str]]]] = {}
 
     async def on_member_update(
         self, before: discord.Member, after: discord.Member
     ) -> None:
         if (
-            self.roles_mode
-            and after.guild.id == self._settings.discord_guild_id
+            self.settings.roles_mode
+            and after.guild.id == self.settings.discord_guild_id
             and {role.id for role in before.roles} != {role.id for role in after.roles}
         ):
-            daemon = self._ensure_container().staff_sync_daemon
+            daemon = self.container.staff_sync_daemon
             assert daemon is not None
             await daemon.sync_member(str(after.id))
 
     async def on_raw_member_remove(self, payload: discord.RawMemberRemoveEvent) -> None:
         # Raw events include removals for members absent from the member cache.
-        if self.roles_mode and payload.guild_id == self._settings.discord_guild_id:
-            daemon = self._ensure_container().staff_sync_daemon
+        if (
+            self.settings.roles_mode
+            and payload.guild_id == self.settings.discord_guild_id
+        ):
+            daemon = self.container.staff_sync_daemon
             assert daemon is not None
             await daemon.sync_member(str(payload.user.id), removed=True)
-
-    @property
-    def settings(self) -> Settings:
-        return self._settings
-
-    @property
-    def rpc_timeout_ms(self) -> int:
-        return self._settings.rpc_timeout_ms
-
-    @property
-    def private_channel_id(self) -> int:
-        return self._settings.discord_private_channel_id
-
-    @property
-    def bans_channel_id(self) -> int:
-        return self._settings.discord_bans_channel_id
-
-    @property
-    def mutes_channel_id(self) -> int:
-        settings = getattr(self, "_settings", None)
-        if settings is None:
-            return 0
-        return settings.discord_mutes_channel_id
-
-    @property
-    def votekicks_channel_id(self) -> int:
-        settings = getattr(self, "_settings", None)
-        if settings is None:
-            return 0
-        return settings.discord_votekicks_channel_id
-
-    @property
-    def seasons_channel_id(self) -> int:
-        settings = getattr(self, "_settings", None)
-        if settings is None:
-            return 0
-        return settings.discord_seasons_channel_id
-
-    async def autocomplete_players(
-        self,
-        query: str,
-        *,
-        limit: int,
-    ) -> list[PlayerRecord]:
-        return await self._store.autocomplete_players(query, limit=limit)
-
-    async def get_cached_maps(self, server: str) -> list[dict[str, str]]:
-        from .handlers_misc import get_cached_maps
-
-        return await get_cached_maps(self, server)
-
-    async def count_players_by_name(self, name: str) -> int:
-        return await self._store.count_players_by_name(name)
-
-    async def search_players(
-        self,
-        name: str,
-        *,
-        limit: int,
-        page: int,
-    ) -> list[PlayerRecord]:
-        return await self._store.search_players(name, limit=limit, page=page)
-
-    async def count_bans(self, *, name_filter: str | None) -> int:
-        return await self._store.count_bans(name_filter=name_filter)
-
-    async def list_bans(
-        self,
-        *,
-        name_filter: str | None,
-        limit: int,
-        page: int,
-    ) -> list[BanRecord]:
-        return await self._store.list_bans(
-            name_filter=name_filter, limit=limit, page=page
-        )
-
-    async def rpc_subnet_rules_command(self, **kwargs):
-        return await self._bus.rpc_subnet_rules_command(**kwargs)
-
-    async def rpc_subnet_rules_list(self, target_server: str, timeout_ms: int):
-        return await self._bus.rpc_subnet_rules_list(target_server, timeout_ms)
-
-    async def rpc_subnet_rules_check(
-        self, target_server: str, ip: str, timeout_ms: int
-    ):
-        return await self._bus.rpc_subnet_rules_check(target_server, ip, timeout_ms)
-
-    async def rpc_maps_list(
-        self, *, server: str, timeout_ms: int
-    ) -> list[dict[str, str]]:
-        return await self._bus.rpc_maps_list(server=server, timeout_ms=timeout_ms)
-
-    async def claim_idempotency(self, key: str, *, ttl_seconds: int = 600) -> bool:
-        return await self._bus.claim_idempotency(key, ttl_seconds=ttl_seconds)
-
-    async def rpc_remove_map(
-        self,
-        *,
-        server: str,
-        file_name: str,
-        timeout_ms: int,
-    ) -> str:
-        return await self._bus.rpc_remove_map(
-            server=server,
-            file_name=file_name,
-            timeout_ms=timeout_ms,
-        )
-
-    async def rpc_upload_maps(
-        self, *, server: str, files: list[dict[str, object]], timeout_ms: int
-    ) -> MapsUploadResponseV1:
-        return await self._bus.rpc_upload_maps(
-            server=server, files=files, timeout_ms=timeout_ms
-        )
-
-    async def publish_maps_load(
-        self,
-        *,
-        server: str,
-        files: list[dict[str, object]],
-    ) -> None:
-        await self._bus.publish_maps_load(server=server, files=files)
-
-    async def now_utc(self) -> datetime:
-        return self._store.now_utc()
-
-    async def upsert_ban(
-        self,
-        *,
-        uuid: str,
-        ip: str | None,
-        pid: int | None,
-        name: str,
-        admin_name: str,
-        admin_discord_id: str | None,
-        reason: str,
-        expire_date: datetime,
-        case_number: int | None = None,
-        ban_id: int | None = None,
-    ) -> None:
-        await self._store.upsert_ban(
-            uuid=uuid,
-            ip=ip,
-            pid=pid,
-            name=name,
-            admin_name=admin_name,
-            admin_discord_id=admin_discord_id,
-            reason=reason,
-            expire_date=expire_date,
-            ban_id=ban_id,
-            **({"case_number": case_number} if case_number is not None else {}),
-        )
-
-    async def publish_kick_banned(self, *, uuid_value: str, ip: str | None) -> None:
-        await self._bus.publish_kick_banned(uuid_value=uuid_value, ip=ip)
-
-    async def find_ban(
-        self,
-        *,
-        uuid: str,
-        ip: str | None,
-    ) -> BanRecord | None:
-        return await self._store.find_ban(uuid=uuid, ip=ip)
-
-    async def next_ban_id(self) -> int:
-        return await self._store.next_ban_id()
-
-    async def find_ban_by_id(self, ban_id: int) -> BanRecord | None:
-        return await self._store.find_ban_by_id(ban_id)
-
-    async def ensure_ban_id(self, *, uuid: str, ip: str | None) -> BanRecord | None:
-        return await self._store.ensure_ban_id(uuid=uuid, ip=ip)
-
-    async def update_ban_expiry(self, *, ban_id: int, new_expiry: datetime) -> bool:
-        return await self._store.update_ban_expiry(ban_id=ban_id, new_expiry=new_expiry)
-
-    async def delete_ban(
-        self, *, uuid: str, ip: str | None, ban_id: int | None = None
-    ) -> int:
-        return await self._store.delete_ban(
-            uuid=uuid,
-            ip=ip,
-            **({"ban_id": ban_id} if ban_id is not None else {}),
-        )
-
-    async def publish_pardon_player(self, *, uuid_value: str) -> None:
-        await self._bus.publish_pardon_player(uuid_value=uuid_value)
-
-    async def upsert_mute(
-        self,
-        *,
-        uuid: str,
-        pid: int | None,
-        name: str,
-        admin_name: str,
-        admin_discord_id: str | None,
-        reason: str,
-        expire_date: datetime,
-        case_number: int | None = None,
-    ) -> None:
-        await self._store.upsert_mute(
-            uuid=uuid,
-            pid=pid,
-            name=name,
-            admin_name=admin_name,
-            admin_discord_id=admin_discord_id,
-            reason=reason,
-            expire_date=expire_date,
-            **({"case_number": case_number} if case_number is not None else {}),
-        )
-
-    async def delete_mute(self, *, uuid: str) -> int:
-        return await self._store.delete_mute(uuid=uuid)
-
-    async def find_mute(self, *, uuid: str) -> MuteRecord | None:
-        return await self._store.find_mute(uuid=uuid)
-
-    async def set_admin_access(
-        self, *, uuid: str, is_admin: bool, admin_source: str
-    ) -> tuple[bool, bool]:
-        if self.roles_mode:
-            raise RuntimeError("Direct admin writes are disabled in roles mode")
-        return await self._store.set_admin_access(
-            uuid=uuid, is_admin=is_admin, admin_source=admin_source
-        )
-
-    async def publish_discord_admin_access_changed(
-        self,
-        *,
-        player_uuid: str,
-        player_pid: int,
-        player_name: str,
-        discord_id: str,
-        discord_username: str | None,
-        admin: bool,
-        source_name: str,
-        source_type: ActorRefV1ActorType,
-        actor_name: str,
-        actor_discord_id: str | None,
-        actor_type: ActorRefV1ActorType,
-        reason: str,
-    ) -> None:
-        await self._bus.publish_discord_admin_access_changed(
-            player_uuid=player_uuid,
-            player_pid=player_pid,
-            player_name=player_name,
-            discord_id=discord_id,
-            discord_username=discord_username,
-            admin=admin,
-            source_name=source_name,
-            source_type=source_type,
-            actor_name=actor_name,
-            actor_discord_id=actor_discord_id,
-            actor_type=actor_type,
-            reason=reason,
-        )
-
-    async def reset_password(self, *, uuid: str) -> bool:
-        if self.roles_mode:
-            return await self._ensure_container().players.reset_password(uuid=uuid)
-        return await self._store.reset_password(uuid=uuid)
-
-    async def merge_player_accounts(
-        self,
-        *,
-        source_pid: int,
-        target_pid: int,
-        actor_name: str,
-        actor_discord_id: str | None,
-        reason: str,
-        keep_pid: str = MERGE_KEEP_PID_TARGET,
-    ) -> AccountMergeResult:
-        return await self._ensure_container().players.merge_player_accounts(
-            source_pid=source_pid,
-            target_pid=target_pid,
-            actor_name=actor_name,
-            actor_discord_id=actor_discord_id,
-            reason=reason,
-            keep_pid=keep_pid,
-        )
-
-    async def grant_badge(self, *, uuid: str, badge_id: str) -> bool:
-        return await self._store.grant_badge(uuid=uuid, badge_id=badge_id)
-
-    async def revoke_badge(self, *, uuid: str, badge_id: str) -> bool:
-        return await self._store.revoke_badge(uuid=uuid, badge_id=badge_id)
-
-    async def publish_player_active_badge_changed(
-        self, *, uuid_value: str, active_badge: str | None
-    ) -> None:
-        await self._bus.publish_player_active_badge_changed(
-            uuid_value=uuid_value,
-            active_badge=active_badge,
-        )
-
-    async def publish_player_badge_inventory_changed(
-        self,
-        *,
-        uuid_value: str,
-        active_badge: str | None,
-        unlocked_badges: list[str] | tuple[str, ...],
-    ) -> None:
-        await self._bus.publish_player_badge_inventory_changed(
-            uuid_value=uuid_value,
-            active_badge=active_badge,
-            unlocked_badges=unlocked_badges,
-        )
-
-    async def publish_player_password_reset(self, *, uuid_value: str) -> None:
-        if self.roles_mode:
-            return
-        await self._bus.publish_player_password_reset(uuid_value=uuid_value)
-
-    async def find_player_by_pid(self, pid: int) -> PlayerRecord | None:
-        return await self._store.find_player_by_pid(pid)
-
-    async def find_player_by_username(self, username: str) -> PlayerRecord | None:
-        return await self._store.find_player_by_username(username)
-
-    async def find_player_by_uuid(self, uuid: str) -> PlayerRecord | None:
-        return await self._store.find_player_by_uuid(uuid)
-
-    async def list_audit_for_player(
-        self, *, uuid: str, limit: int, page: int
-    ) -> list[AuditRecordSummary]:
-        return await self._store.list_audit_for_player(
-            uuid=uuid, limit=limit, page=page
-        )
-
-    async def count_audit_for_player(self, *, uuid: str) -> int:
-        return await self._store.count_audit_for_player(uuid=uuid)
-
-    async def list_audit_for_actor(
-        self,
-        *,
-        actor_id: str,
-        actor_discord_id: str | None,
-        limit: int,
-        page: int,
-    ) -> list[AuditRecordSummary]:
-        return await self._store.list_audit_for_actor(
-            actor_id=actor_id,
-            actor_discord_id=actor_discord_id,
-            limit=limit,
-            page=page,
-        )
-
-    async def count_audit_for_actor(
-        self,
-        *,
-        actor_id: str,
-        actor_discord_id: str | None,
-    ) -> int:
-        return await self._store.count_audit_for_actor(
-            actor_id=actor_id,
-            actor_discord_id=actor_discord_id,
-        )
-
-    async def find_audit_by_id(self, *, audit_id: str) -> AuditRecordSummary | None:
-        return await self._store.find_audit_by_id(audit_id=audit_id)
-
-    async def append_moderation_audit(
-        self,
-        *,
-        action: str,
-        target_uuid: str,
-        target_pid: int | None,
-        target_name: str,
-        target_ip: str | None,
-        actor_discord_id: str | None,
-        actor_name: str,
-        reason: str,
-        occurred_at: datetime,
-        duration_ms: int | None = None,
-        expires_at: datetime | None = None,
-        related_audit_id: str | None = None,
-        supersedes_audit_id: str | None = None,
-        request_id: str | None = None,
-        extra: dict[str, object] | None = None,
-    ) -> str:
-        return await self._store.append_moderation_audit(
-            action=action,
-            target_uuid=target_uuid,
-            target_pid=target_pid,
-            target_name=target_name,
-            target_ip=target_ip,
-            actor_discord_id=actor_discord_id,
-            actor_name=actor_name,
-            reason=reason,
-            occurred_at=occurred_at,
-            duration_ms=duration_ms,
-            expires_at=expires_at,
-            related_audit_id=related_audit_id,
-            supersedes_audit_id=supersedes_audit_id,
-            request_id=request_id,
-            **({"extra": extra} if extra else {}),
-        )
-
-    async def find_discord_link_code(self, code: str) -> dict[str, object] | None:
-        return await self._bus.get_discord_link_code(code)
-
-    async def find_players_by_discord_id(self, discord_id: str) -> list[PlayerRecord]:
-        return await self._store.find_players_by_discord_id(discord_id)
-
-    async def find_discord_admin_players(self) -> list[PlayerRecord]:
-        return await self._store.find_discord_admin_players()
 
     async def set_discord_admin_role(
         self,
@@ -585,7 +78,7 @@ class XCoreDiscordBot(commands.Bot):
         should_have_role: bool,
         reason: str,
     ) -> bool:
-        guild_id = self._settings.discord_guild_id
+        guild_id = self.settings.discord_guild_id
         if guild_id <= 0:
             raise RuntimeError(
                 "DISCORD_GUILD_ID must be configured for /admin add/remove"
@@ -604,7 +97,7 @@ class XCoreDiscordBot(commands.Bot):
         if member is None:
             member = await guild.fetch_member(member_id)
 
-        role = guild.get_role(self._settings.discord_admin_role_id)
+        role = guild.get_role(self.settings.discord_admin_role_id)
         if role is None:
             raise RuntimeError("Configured admin role was not found in the guild")
 
@@ -623,347 +116,6 @@ class XCoreDiscordBot(commands.Bot):
         await member.remove_roles(role, reason=reason)
         return True
 
-    async def get_discord_admin_member_ids(self) -> set[str]:
-        guild_id = self._settings.discord_guild_id
-        if guild_id <= 0:
-            raise RuntimeError(
-                "DISCORD_GUILD_ID must be configured for admin reconcile"
-            )
-
-        guild = self.get_guild(guild_id)
-        if guild is None:
-            guild = await self.fetch_guild(guild_id)
-
-        role = guild.get_role(self._settings.discord_admin_role_id)
-        if role is None:
-            raise RuntimeError("Configured admin role was not found in the guild")
-
-        members = getattr(role, "members", None)
-        if not members:
-            await guild.chunk()
-            members = getattr(role, "members", [])
-
-        return {
-            str(member.id)
-            for member in members
-            if getattr(member, "id", None) is not None
-        }
-
-    async def reconcile_discord_admin_access(self) -> dict[str, object]:
-        if self.roles_mode:
-            daemon = self._ensure_container().staff_sync_daemon
-            assert daemon is not None
-            result = await daemon.reconcile()
-            return {
-                "applied": result["synced"],
-                "revoked": 0,
-                "discord_admins": 0,
-                **result,
-            }
-        discord_admin_ids = await self.get_discord_admin_member_ids()
-        linked_admin_players = await self.find_discord_admin_players()
-
-        if not discord_admin_ids and linked_admin_players:
-            logger.warning(
-                "Skipping admin revoke because Discord admin snapshot is empty while %s linked admins exist; this is likely a cache/intents issue.",
-                len(linked_admin_players),
-            )
-            return {
-                "applied": 0,
-                "revoked": 0,
-                "discord_admins": 0,
-                "skipped_empty_snapshot": 1,
-                "applied_players": [],
-                "revoked_players": [],
-                "skipped": [],
-            }
-
-        applied = 0
-        revoked = 0
-        applied_players: list[dict[str, object]] = []
-        revoked_players: list[dict[str, object]] = []
-        skipped: list[dict[str, str]] = []
-
-        processed_ids: set[str] = set()
-        for player in linked_admin_players:
-            discord_id = str(player.discord_id or "").strip()
-            if not discord_id:
-                continue
-
-            processed_ids.add(discord_id)
-            uuid_value = str(player.uuid or "").strip()
-            if not uuid_value:
-                skipped.append(
-                    {
-                        "discord_id": discord_id,
-                        "player": player.nickname,
-                        "reason": "linked admin account is missing UUID",
-                    }
-                )
-                continue
-
-            should_be_admin = discord_id in discord_admin_ids
-            if should_be_admin:
-                continue
-
-            matched, changed = await self.set_admin_access(
-                uuid=uuid_value,
-                is_admin=False,
-                admin_source="NONE",
-            )
-            if not matched:
-                continue
-            await self.publish_discord_admin_access_changed(
-                player_uuid=uuid_value,
-                player_pid=player.pid,
-                player_name=player.nickname,
-                discord_id=discord_id,
-                discord_username=player.discord_username,
-                admin=False,
-                source_name="NONE",
-                source_type=ActorRefV1ActorType.SYSTEM,
-                actor_name="system/reconcile",
-                actor_discord_id=None,
-                actor_type=ActorRefV1ActorType.SYSTEM,
-                reason="discord role missing during reconcile",
-            )
-            if changed:
-                revoked += 1
-                revoked_players.append(
-                    {
-                        "discord_id": discord_id,
-                        "pid": player.pid,
-                        "nickname": player.nickname,
-                    }
-                )
-
-        for discord_id in discord_admin_ids:
-            if discord_id in processed_ids:
-                continue
-
-            players = await self.find_players_by_discord_id(discord_id)
-            if not players:
-                logger.warning(
-                    "Skipping admin apply for discord_id=%s during reconcile because there are no linked accounts",
-                    discord_id,
-                )
-                skipped.append(
-                    {
-                        "discord_id": discord_id,
-                        "player": "-",
-                        "reason": "no linked Mindustry accounts",
-                    }
-                )
-                continue
-
-            for player in players:
-                uuid_value = str(player.uuid or "").strip()
-                if not uuid_value:
-                    skipped.append(
-                        {
-                            "discord_id": discord_id,
-                            "player": player.nickname,
-                            "reason": "linked account is missing UUID",
-                        }
-                    )
-                    continue
-
-                matched, changed = await self.set_admin_access(
-                    uuid=uuid_value,
-                    is_admin=True,
-                    admin_source="DISCORD_ROLE",
-                )
-                if not matched:
-                    continue
-                await self.publish_discord_admin_access_changed(
-                    player_uuid=uuid_value,
-                    player_pid=player.pid,
-                    player_name=player.nickname,
-                    discord_id=discord_id,
-                    discord_username=player.discord_username,
-                    admin=True,
-                    source_name="DISCORD_ROLE",
-                    source_type=ActorRefV1ActorType.DISCORD,
-                    actor_name="system/reconcile",
-                    actor_discord_id=None,
-                    actor_type=ActorRefV1ActorType.SYSTEM,
-                    reason="discord role present during reconcile",
-                )
-                if changed:
-                    applied += 1
-                    applied_players.append(
-                        {
-                            "discord_id": discord_id,
-                            "pid": player.pid,
-                            "nickname": player.nickname,
-                        }
-                    )
-
-        def _safe_sort_pid(val: object) -> int:
-            try:
-                return int(str(val))
-            except (ValueError, TypeError):
-                return 0
-
-        applied_players.sort(
-            key=lambda item: (
-                str(item["discord_id"]),
-                _safe_sort_pid(item["pid"]),
-                str(item["nickname"]),
-            )
-        )
-        revoked_players.sort(
-            key=lambda item: (
-                str(item["discord_id"]),
-                _safe_sort_pid(item["pid"]),
-                str(item["nickname"]),
-            )
-        )
-        skipped.sort(
-            key=lambda item: (
-                str(item["discord_id"]),
-                str(item["player"]),
-                str(item["reason"]),
-            )
-        )
-
-        return {
-            "applied": applied,
-            "revoked": revoked,
-            "discord_admins": len(discord_admin_ids),
-            "skipped_empty_snapshot": 0,
-            "applied_players": applied_players,
-            "revoked_players": revoked_players,
-            "skipped": skipped,
-        }
-
-    async def _admin_reconcile_loop(self) -> None:
-        await self.wait_until_ready()
-        while not self.is_closed():
-            await asyncio.sleep(self._settings.admin_reconcile_interval_seconds)
-            try:
-                await self.reconcile_discord_admin_access()
-            except asyncio.CancelledError:
-                raise
-            except Exception:
-                logger.exception("Failed to reconcile Discord admin access")
-
-    async def publish_discord_link_confirm(
-        self,
-        *,
-        code: str,
-        player_uuid: str,
-        player_pid: int,
-        player_name: str,
-        discord_id: str,
-        discord_username: str,
-    ) -> None:
-        await self._bus.publish_discord_link_confirm(
-            code=code,
-            player_uuid=player_uuid,
-            player_pid=player_pid,
-            player_name=player_name,
-            discord_id=discord_id,
-            discord_username=discord_username,
-        )
-
-    async def publish_discord_unlink(
-        self,
-        *,
-        player_uuid: str,
-        player_pid: int,
-        player_name: str,
-        discord_id: str,
-        discord_username: str,
-        actor_name: str,
-        actor_discord_id: str,
-    ) -> None:
-        await self._bus.publish_discord_unlink(
-            player_uuid=player_uuid,
-            player_pid=player_pid,
-            player_name=player_name,
-            discord_id=discord_id,
-            discord_username=discord_username,
-            actor_name=actor_name,
-            actor_discord_id=actor_discord_id,
-        )
-
-    async def reconnect_bus(self) -> None:
-        await self._bus.reconnect()
-
-    async def consume_game_chat_events(
-        self, callback: Callable[..., Awaitable[None]]
-    ) -> None:
-        await self._bus.consume_game_chat(callback)
-
-    async def consume_global_chat_events(
-        self, callback: Callable[..., Awaitable[None]]
-    ) -> None:
-        await self._bus.consume_global_chat(callback)
-
-    async def consume_server_heartbeats_stream(
-        self, callback: Callable[..., Awaitable[None]]
-    ) -> None:
-        await self._bus.consume_server_heartbeats(callback)
-
-    async def consume_player_join_leave_events(
-        self, callback: Callable[..., Awaitable[None]]
-    ) -> None:
-        await self._bus.consume_player_join_leave(callback)
-
-    async def consume_server_actions_events(
-        self, callback: Callable[..., Awaitable[None]]
-    ) -> None:
-        await self._bus.consume_server_actions(callback)
-
-    async def consume_bans_stream(
-        self, callback: Callable[..., Awaitable[None]]
-    ) -> None:
-        await self._bus.consume_bans(callback)
-
-    async def consume_case_reports_stream(
-        self,
-        callback: Callable[..., Awaitable[None]],
-        *,
-        is_active: Callable[[], bool] | None = None,
-    ) -> None:
-        await self._bus.consume_case_reports(callback, is_active=is_active)
-
-    async def consume_mutes_stream(
-        self, callback: Callable[..., Awaitable[None]]
-    ) -> None:
-        await self._bus.consume_mutes(callback)
-
-    async def consume_vote_kicks_stream(
-        self, callback: Callable[..., Awaitable[None]]
-    ) -> None:
-        await self._bus.consume_vote_kicks(callback)
-
-    async def consume_discord_link_status_changed_stream(
-        self, callback: Callable[..., Awaitable[None]]
-    ) -> None:
-        await self._bus.consume_discord_link_status_changed(callback)
-
-    async def consume_season_started_stream(
-        self, callback: Callable[..., Awaitable[None]]
-    ) -> None:
-        await self._bus.consume_season_started(callback)
-
-    async def consume_season_ending_soon_stream(
-        self, callback: Callable[..., Awaitable[None]]
-    ) -> None:
-        await self._bus.consume_season_ending_soon(callback)
-
-    async def consume_season_ended_stream(
-        self, callback: Callable[..., Awaitable[None]]
-    ) -> None:
-        await self._bus.consume_season_ended(callback)
-
-    async def consume_season_rescheduled_stream(
-        self, callback: Callable[..., Awaitable[None]]
-    ) -> None:
-        await self._bus.consume_season_rescheduled(callback)
-
     async def setup_hook(self) -> None:
         await self.add_cog(InfoCog(self))
         await self.add_cog(AdminCog(self))
@@ -971,7 +123,7 @@ class XCoreDiscordBot(commands.Bot):
         await self.add_cog(MapsCog(self))
         await self.add_cog(SubnetCog(self))
         await self.add_cog(SeasonsCog(self))
-        if self._settings.cases_enabled:
+        if self.settings.cases_enabled:
             # /cases and /language exist only while at least one flow is switched on.
             await self.add_cog(CasesCog(self))
         # Always registered: a button left on an old card answers "not available" instead
@@ -984,12 +136,12 @@ class XCoreDiscordBot(commands.Bot):
             interaction: Interaction,
             error: app_commands.AppCommandError,
         ) -> None:
-            await self._handle_app_command_error(interaction, error)
+            await self.handle_app_command_error(interaction, error)
 
-        await self._bus.connect()
-        await self._store.connect()
-        container = self._ensure_container()
-        if self._settings.cases_enabled:
+        await self.bus.connect()
+        await self.store.connect()
+        container = self.container
+        if self.settings.cases_enabled:
             try:
                 await container.cases.store.load_locale_prefs()
                 await container.cases.store.ensure_indexes()
@@ -1000,20 +152,19 @@ class XCoreDiscordBot(commands.Bot):
                 container.cases.storage_available = False
             container.cases_reconcile_daemon.start()
 
-        self._ensure_container().stream_supervisor.start()
-        self._ensure_container().presence_daemon.start()
-        container = self._ensure_container()
+        self.container.stream_supervisor.start()
+        self.container.presence_daemon.start()
         if container.staff_sync_daemon is not None:
             container.staff_sync_daemon.start()
         else:
             container.admin_sync_daemon.start()
-        self._ensure_container().rating_merge_daemon.start()
+        self.container.rating_merge_daemon.start()
 
         await self._sync_application_commands()
 
     async def _sync_application_commands(self) -> None:
-        guild_id = self._settings.discord_guild_id
-        clear_stale = self._settings.discord_clear_stale_commands
+        guild_id = self.settings.discord_guild_id
+        clear_stale = self.settings.discord_clear_stale_commands
 
         if guild_id:
             guild_obj = discord.Object(id=guild_id)
@@ -1034,14 +185,17 @@ class XCoreDiscordBot(commands.Bot):
 
     async def on_ready(self) -> None:
         logger.info("Discord bot connected as %s", self.user)
-        await self._update_presence_once()
+        await self.container.presence_daemon.update_presence_once()
         try:
-            result = await self.reconcile_discord_admin_access()
+            daemon = (
+                self.container.staff_sync_daemon or self.container.admin_sync_daemon
+            )
+            result = await daemon.reconcile()
             logger.info(
                 "Startup admin reconcile complete: applied=%s revoked=%s discord_admins=%s",
-                result["applied"],
-                result["revoked"],
-                result["discord_admins"],
+                result.get("applied", result.get("synced", 0)),
+                result.get("revoked", 0),
+                result.get("discord_admins", 0),
             )
         except Exception:
             logger.exception("Startup admin reconcile failed")
@@ -1055,10 +209,10 @@ class XCoreDiscordBot(commands.Bot):
         if isinstance(message.channel, discord.DMChannel):
             code = message.content.strip().upper()
             if code:
-                code_doc = await self.find_discord_link_code(code)
+                code_doc = await self.bus.get_discord_link_code(code)
                 player = None
                 if code_doc is not None:
-                    player = await self.find_player_by_uuid(
+                    player = await self.store.find_player_by_uuid(
                         str(
                             code_doc.get("playerUuid")
                             or code_doc.get("player_uuid")
@@ -1078,7 +232,7 @@ class XCoreDiscordBot(commands.Bot):
                         )
                         return
 
-                    await self.publish_discord_link_confirm(
+                    await self.bus.publish_discord_link_confirm(
                         code=code,
                         player_uuid=player.uuid,
                         player_pid=player.pid,
@@ -1095,7 +249,7 @@ class XCoreDiscordBot(commands.Bot):
         if target_server is None or not message.content:
             return
 
-        await self._bus.publish_discord_message(
+        await self.bus.publish_discord_message(
             server=target_server,
             author_name=message.author.display_name,
             message=message.content,
@@ -1104,17 +258,17 @@ class XCoreDiscordBot(commands.Bot):
 
     async def _dispatch_case_hook(self, hook: str, value: object) -> None:
         # With every cases flag off no flow is enabled and the registry returns at once.
-        cases = getattr(getattr(self, "container", None), "cases", None)
+        cases = self.container.cases
         if cases is not None:
             await cases.registry.dispatch(hook, cases, value)
 
     async def on_interaction(self, interaction: Interaction) -> None:
         # An observer, not a response handler: it never delays a modal or command
         # acknowledgement. It keeps the ``auto`` language row fresh for later DMs.
-        cases = getattr(getattr(self, "container", None), "cases", None)
+        cases = self.container.cases
         if (
             cases is None
-            or not self._settings.cases_enabled
+            or not self.settings.cases_enabled
             or interaction.type == discord.InteractionType.autocomplete
         ):
             return
@@ -1130,21 +284,20 @@ class XCoreDiscordBot(commands.Bot):
         await self._dispatch_case_hook("on_thread_delete", payload)
 
     async def close(self) -> None:
-        if hasattr(self, "container"):
-            if self.container.cases_reconcile_daemon is not None:
-                await self.container.cases_reconcile_daemon.stop()
-            self.container.presence_daemon.stop()
-            self.container.admin_sync_daemon.stop()
-            if self.container.staff_sync_daemon is not None:
-                await self.container.staff_sync_daemon.stop()
-            self.container.rating_merge_daemon.stop()
-            await self.container.stream_supervisor.stop()
+        if self.container.cases_reconcile_daemon is not None:
+            await self.container.cases_reconcile_daemon.stop()
+        self.container.presence_daemon.stop()
+        self.container.admin_sync_daemon.stop()
+        if self.container.staff_sync_daemon is not None:
+            await self.container.staff_sync_daemon.stop()
+        self.container.rating_merge_daemon.stop()
+        await self.container.stream_supervisor.stop()
 
-        await self._bus.close()
-        await self._store.close()
+        await self.bus.close()
+        await self.store.close()
         await super().close()
 
-    async def _resolve_messageable_channel(
+    async def resolve_channel(
         self,
         channel_id: int,
         *,
@@ -1168,117 +321,7 @@ class XCoreDiscordBot(commands.Bot):
 
         return channel
 
-    def _channel_id_for_server(self, server: str, *, context: str) -> int | None:
-        channel_id = server_registry.get_channel_for_server(server)
-        if channel_id is None:
-            logger.debug("No channel registered for server=%s (%s)", server, context)
-        return channel_id
-
-    @staticmethod
-    def _get_live_servers():
-        return server_registry.get_all_servers()
-
-    @staticmethod
-    def _sort_live_servers(servers, mode: Literal["players", "name"]):
-        return PresenceDaemon.sort_live_servers(servers, mode)
-
-    def _build_servers_embed_for_mode(
-        self,
-        mode: Literal["players", "name"],
-    ) -> discord.Embed:
-        servers = self._sort_live_servers(self._get_live_servers(), mode)
-        return build_servers_embed(servers, sort_mode=mode)
-
-    def _build_presence_activity(self) -> discord.Activity:
-        servers = self._get_live_servers()
-        if not servers:
-            return discord.Activity(
-                type=discord.ActivityType.watching,
-                name="silence on servers...",
-            )
-
-        total_players = sum(server.players for server in servers)
-        server_count = len(servers)
-        templates: tuple[tuple[discord.ActivityType, str], ...] = (
-            (discord.ActivityType.watching, "{players} players on XCore"),
-            (discord.ActivityType.playing, "Mindustry | {servers} servers"),
-        )
-        activity_type, template = templates[
-            self._presence_rotation_index % len(templates)
-        ]
-        self._presence_rotation_index += 1
-        return discord.Activity(
-            type=activity_type,
-            name=template.format(players=total_players, servers=server_count),
-        )
-
-    async def _update_presence_once(self) -> None:
-        await self.change_presence(activity=self._build_presence_activity())
-
-    async def _update_presence_loop(self) -> None:
-        await self.wait_until_ready()
-        while not self.is_closed():
-            await asyncio.sleep(PRESENCE_UPDATE_INTERVAL_SECONDS)
-            try:
-                await self._update_presence_once()
-            except asyncio.CancelledError:
-                raise
-            except Exception:
-                logger.exception("Failed to update Discord presence")
-
-    @staticmethod
-    @staticmethod
-    def _disabled_interaction_buttons_view(
-        interaction: Interaction,
-    ) -> discord.ui.View | None:
-        if interaction.message is None:
-            return None
-
-        try:
-            view = discord.ui.View.from_message(interaction.message)
-        except (ValueError, TypeError, AttributeError):
-            return None
-
-        changed = False
-        for item in view.children:
-            if isinstance(item, discord.ui.Button) and not item.disabled:
-                item.disabled = True
-                changed = True
-
-        return view if changed else None
-
-    # ── helpers ──────────────────────────────────────────────────────────────
-
-    async def _send_paginated(
-        self,
-        interaction: Interaction,
-        fetch_page: Callable[[int], Awaitable[tuple[discord.Embed, bool]]],
-        *,
-        ephemeral: bool = False,
-        allowed_mentions: discord.AllowedMentions | None = None,
-    ) -> None:
-        """Send an embed with Prev/Next pagination buttons via an Interaction."""
-        page = 0
-        embed, has_next = await fetch_page(page)
-        view = _PaginatorView(
-            page=page, has_prev=False, has_next=has_next, fetch_page=fetch_page
-        )
-        if allowed_mentions is None:
-            await interaction.response.send_message(
-                embed=embed,
-                view=view,
-                ephemeral=ephemeral,
-            )
-        else:
-            await interaction.response.send_message(
-                embed=embed,
-                view=view,
-                ephemeral=ephemeral,
-                allowed_mentions=allowed_mentions,
-            )
-        view.bot_message = await interaction.original_response()
-
-    async def _handle_app_command_error(
+    async def handle_app_command_error(
         self,
         interaction: Interaction,
         error: app_commands.AppCommandError,
@@ -1294,7 +337,7 @@ class XCoreDiscordBot(commands.Bot):
                     await interaction.followup.send(message, ephemeral=True)
                 else:
                     await interaction.response.send_message(message, ephemeral=True)
-                channel_id = self._settings.discord_error_log_channel_id
+                channel_id = self.settings.discord_error_log_channel_id
                 if channel_id:
                     # Avoid the ordinary channel resolver's exception-text diagnostics.
                     channel = self.get_channel(channel_id)
@@ -1332,11 +375,11 @@ class XCoreDiscordBot(commands.Bot):
         except discord.HTTPException:
             logger.warning("Failed to send command error message", exc_info=True)
 
-        error_channel_id = self._settings.discord_error_log_channel_id
+        error_channel_id = self.settings.discord_error_log_channel_id
         if not error_channel_id:
             return
 
-        channel = await self._resolve_messageable_channel(
+        channel = await self.resolve_channel(
             error_channel_id,
             context="error logs",
         )
@@ -1398,145 +441,3 @@ class XCoreDiscordBot(commands.Bot):
         if not parts:
             return f"/{command_name}"
         return f"/{command_name} " + " ".join(parts)
-
-    async def _claim_mutation(
-        self, interaction: Interaction, *, operation: str, scope: str
-    ) -> bool:
-        claim_key = f"cmd:{operation}:{interaction.id}:{scope}"
-        if await self.claim_idempotency(claim_key, ttl_seconds=600):
-            return True
-
-        await interaction.response.send_message(MSG_DUPLICATE_MUTATION, ephemeral=True)
-        return False
-
-    async def _reply_player_not_found(self, interaction: Interaction) -> None:
-        await interaction.response.send_message(MSG_PLAYER_NOT_FOUND, ephemeral=True)
-
-    async def _get_player_or_reply(
-        self, interaction: Interaction, player_id: int
-    ) -> PlayerRecord | None:
-        player = await self.find_player_by_pid(player_id)
-        if player is None:
-            await self._reply_player_not_found(interaction)
-            return None
-        return player
-
-    async def _reply_missing_uuid_for_action(
-        self,
-        interaction: Interaction,
-        *,
-        action: str,
-    ) -> None:
-        await interaction.response.send_message(
-            f"Cannot {action}: UUID is missing in player data.",
-            ephemeral=True,
-        )
-
-    async def _require_player_uuid(
-        self,
-        interaction: Interaction,
-        player: PlayerRecord,
-        *,
-        action: str,
-    ) -> str | None:
-        uuid_value, _ip_value = self._player_identifiers(player)
-        if uuid_value is None:
-            await self._reply_missing_uuid_for_action(interaction, action=action)
-            return None
-        return uuid_value
-
-    async def _require_player_uuid_or_ip(
-        self,
-        interaction: Interaction,
-        player: PlayerRecord,
-        *,
-        action: str,
-    ) -> tuple[str | None, str | None] | None:
-        uuid_value, ip_value = self._player_identifiers(player)
-        if uuid_value is None and ip_value is None:
-            await interaction.response.send_message(
-                f"Cannot {action}: both UUID and IP are missing in player data.",
-                ephemeral=True,
-            )
-            return None
-        return uuid_value, ip_value
-
-    @staticmethod
-    def _player_name(player: PlayerRecord) -> str:
-        return player.nickname
-
-    async def _parse_duration_or_reply(
-        self,
-        interaction: Interaction,
-        period: str,
-    ) -> timedelta | None:
-        try:
-            return parse_duration(period)
-        except ValueError as error:
-            await interaction.response.send_message(str(error), ephemeral=True)
-            return None
-
-    @staticmethod
-    def _doc_value(
-        doc: Mapping[str, object] | None,
-        key: str,
-        *,
-        default: str,
-    ) -> str:
-        return str((doc or {}).get(key) or default)
-
-    def _build_moderation_reversal_embed(
-        self,
-        *,
-        action_label: str,
-        subject_name: str,
-        player_id: int,
-        previous_actor_label: str,
-        previous_actor_value: str,
-        reason: str,
-        expire_value: object,
-        actor_label: str,
-        actor_name: str,
-        format_expire_date,
-    ) -> discord.Embed:
-        embed = discord.Embed(
-            title=f"{action_label} {subject_name}",
-            color=discord.Color.green(),
-        )
-        embed.add_field(name="PID", value=str(player_id), inline=False)
-        embed.add_field(
-            name=previous_actor_label,
-            value=previous_actor_value,
-            inline=False,
-        )
-        embed.add_field(name="Reason", value=reason, inline=False)
-        embed.add_field(
-            name="Was set to expire",
-            value=format_expire_date(expire_value),
-            inline=False,
-        )
-        embed.add_field(name=actor_label, value=actor_name, inline=False)
-        return embed
-
-    @staticmethod
-    def _player_identifiers(
-        player: PlayerRecord,
-    ) -> tuple[str | None, str | None]:
-        uuid_value = str(player.uuid).strip() if player.uuid is not None else ""
-
-        ip_raw = player.ip or player.last_ip
-        ip_value = str(ip_raw).strip() if ip_raw is not None else ""
-
-        uuid_final = uuid_value if uuid_value else None
-        ip_final = ip_value if ip_value else None
-        return uuid_final, ip_final
-
-    @staticmethod
-    def _parse_iso_datetime(raw: str | None) -> datetime | None:
-        if raw is None:
-            return None
-        try:
-            normalized = raw.replace("Z", "+00:00")
-            return datetime.fromisoformat(normalized)
-        except ValueError:
-            return None
