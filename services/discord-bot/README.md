@@ -69,7 +69,9 @@ Optional:
 - `PERMISSIONS_MODE` (`legacy` by default, or `roles`)
 - `PERMISSIONS_CONFIG_PATH` (required in `roles`; path to the shared `permissions.toml`)
 - `PERMISSIONS_RPC_SERVER` (required in `roles`; exact name of the server answering security RPCs)
-- `MONGO_URI` (default: `mongodb://127.0.0.1:27017`)
+- `MONGO_URI` (default: `mongodb://127.0.0.1:27017`). Account merges write in one transaction, so
+  they need a replica set (`...?replicaSet=rs0`); against a standalone server a merge is refused
+  and nothing is changed
 - `MONGO_DB_NAME` (default: `xcore`)
 
 ## Permission roles rollout

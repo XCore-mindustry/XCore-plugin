@@ -73,7 +73,13 @@ class _IdentityCollection(_Collection):
             raise DuplicateKeyError("duplicate ban id")
 
     async def find_one_and_update(
-        self, query, update, *, upsert=False, return_document=ReturnDocument.BEFORE
+        self,
+        query,
+        update,
+        *,
+        upsert=False,
+        return_document=ReturnDocument.BEFORE,
+        session=None,
     ):
         async with self.lock:
             self.updates.append(
@@ -128,7 +134,7 @@ class _IdentityCollection(_Collection):
             self.docs = [doc for doc in self.docs if not _identity_matches(doc, query)]
             return SimpleNamespace(deleted_count=before - len(self.docs))
 
-    async def insert_one(self, doc):
+    async def insert_one(self, doc, *, session=None):
         self.docs.append(deepcopy(doc))
 
 

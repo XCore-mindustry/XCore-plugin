@@ -1,12 +1,15 @@
 from __future__ import annotations
 
+from copy import deepcopy
 from dataclasses import dataclass, field
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import MagicMock
 
 import discord
 import pytest
 from bot_fakes import make_bot, make_settings
+from cases_fakes import Collection, Database
+from pymongo.errors import OperationFailure, PyMongoError
 
 from xcore_discord_bot.dto import (
     MERGE_KEEP_PID_SOURCE,
@@ -285,122 +288,139 @@ async def test_merge_view_cancel_reports_english_message() -> None:
     assert all(getattr(child, "disabled", False) for child in view.children)
 
 
-def _merge_store() -> tuple[MongoStore, dict[str, MagicMock]]:
-    store = MongoStore(MagicMock())
-    db = MagicMock()
-    store._db = db
-
-    players_col = MagicMock()
-    games_col = MagicMock()
-    bans_col = MagicMock()
-    mutes_col = MagicMock()
-    audit_col = MagicMock()
-
-    cols = {
-        "players": players_col,
-        "games_v2": games_col,
-        "bans": bans_col,
-        "mutes": mutes_col,
-        "moderation_audit": audit_col,
-    }
-    db.__getitem__.side_effect = lambda k: cols[k]
-
-    return store, cols
-
-
-def _wire_store(cols: dict[str, MagicMock], *, online_source: bool = False) -> None:
-    source_doc = {
-        "_id": "s-id",
-        "pid": 10,
-        "uuid": "source-uuid",
-        "nickname": "SourceUser",
-        "total_play_time": 100,
-        "pvp_rating": 1400,
-        "hexed_points": 15,
-        "unlocked_badges": ["b1"],
-        "discord_id": "disc-1",
-        "discord_username": "user1",
-        "online": online_source,
-    }
-    target_doc = {
-        "_id": "t-id",
-        "pid": 20,
-        "uuid": "target-uuid",
-        "nickname": "TargetUser",
-        "total_play_time": 50,
-        "pvp_rating": 1600,
-        "hexed_points": 5,
-        "unlocked_badges": ["b2"],
-        "discord_id": None,
-        "online": False,
-    }
-
-    async def mock_find_one(query: dict[str, Any]) -> dict[str, Any] | None:
-        if query.get("pid") == 10:
-            return dict(source_doc)
-        if query.get("pid") == 20 or query.get("_id") == "t-id":
-            return dict(target_doc)
-        return None
-
-    cols["players"].find_one = AsyncMock(side_effect=mock_find_one)
-    cols["players"].update_one = AsyncMock(return_value=MagicMock(modified_count=1))
-    cols["games_v2"].update_many = AsyncMock(return_value=MagicMock(modified_count=3))
-    for name in ("bans", "mutes"):
-        cols[name].find_one = AsyncMock(return_value=None)
-        cols[name].update_one = AsyncMock(return_value=MagicMock(modified_count=1))
-        cols[name].insert_one = AsyncMock()
-    cols["moderation_audit"].insert_one = AsyncMock()
+SOURCE_DOC: dict[str, Any] = {
+    "_id": "s-id",
+    "pid": 10,
+    "uuid": "source-uuid",
+    "nickname": "SourceUser",
+    "total_play_time": 100,
+    "pvp_rating": 1400,
+    "hexed_points": 15,
+    "unlocked_badges": ["b1"],
+    "discord_id": "disc-1",
+    "discord_username": "user1",
+    "online": False,
+}
+TARGET_DOC: dict[str, Any] = {
+    "_id": "t-id",
+    "pid": 20,
+    "uuid": "target-uuid",
+    "nickname": "TargetUser",
+    "total_play_time": 50,
+    "pvp_rating": 1600,
+    "hexed_points": 5,
+    "unlocked_badges": ["b2"],
+    "discord_id": None,
+    "online": False,
+}
+SOURCE_BAN: dict[str, Any] = {
+    "_id": "ban-1",
+    "ban_id": 7,
+    "uuid": "source-uuid",
+    "ip": "1.2.3.4",
+    "pid": 10,
+    "name": "SourceUser",
+    "admin_name": "Moderator",
+    "reason": "Cheating",
+}
+SOURCE_MUTE: dict[str, Any] = {
+    "_id": "mute-1",
+    "uuid": "source-uuid",
+    "pid": 10,
+    "name": "SourceUser",
+    "admin_name": "Moderator",
+    "reason": "Spam",
+}
 
 
-def _set_fields(cols: dict[str, MagicMock], doc_id: str) -> dict[str, Any]:
-    update_call = next(
-        c
-        for c in cols["players"].update_one.call_args_list
-        if c[0][0] == {"_id": doc_id}
+async def _merge_store(
+    *,
+    source: dict[str, Any] | None = None,
+    target: dict[str, Any] | None = None,
+    bans: tuple[dict[str, Any], ...] = (),
+    mutes: tuple[dict[str, Any], ...] = (),
+) -> tuple[MongoStore, Database]:
+    db = Database()
+    store = MongoStore(make_settings())
+    store._db = db  # type: ignore[assignment]
+    await db["bans"].create_index(
+        "ban_id", unique=True, partialFilterExpression={"ban_id": {"$type": "int"}}
     )
-    return update_call[0][1]["$set"]
+    await db["counters"].insert_one({"_id": "ban_id", "seq": 7})
+    await db["players"].insert_one(dict(SOURCE_DOC, **(source or {})))
+    await db["players"].insert_one(dict(TARGET_DOC, **(target or {})))
+    await db["games_v2"].insert_one(
+        {
+            "_id": "game-1",
+            "player_stats": [{"uuid": "source-uuid"}, {"uuid": "someone-else"}],
+        }
+    )
+    for ban in bans:
+        await db["bans"].insert_one(ban)
+    for mute in mutes:
+        await db["mutes"].insert_one(mute)
+    return store, db
+
+
+async def _merge(store: MongoStore, **overrides: Any) -> AccountMergeResult:
+    kwargs: dict[str, Any] = {
+        "source_pid": 10,
+        "target_pid": 20,
+        "actor_name": "Admin",
+        "actor_discord_id": "999",
+        "reason": "Device migration",
+    }
+    kwargs.update(overrides)
+    return await store.merge_player_accounts(**kwargs)
+
+
+def _player(db: Database, doc_id: str) -> dict[str, Any]:
+    return next(doc for doc in db["players"].docs if doc["_id"] == doc_id)
+
+
+def _contents(db: Database) -> dict[str, list[dict[str, Any]]]:
+    return {name: deepcopy(c.docs) for name, c in db.collections.items() if c.docs}
 
 
 @pytest.mark.asyncio
 async def test_mongo_store_merge_player_accounts_logic() -> None:
-    store, cols = _merge_store()
-    _wire_store(cols)
+    store, db = await _merge_store()
 
-    result = await store.merge_player_accounts(
-        source_pid=10,
-        target_pid=20,
-        actor_name="Admin",
-        actor_discord_id="999",
-        reason="Device migration",
-    )
+    result = await _merge(store)
 
     assert result.success is True
-    assert result.games_transferred == 3
+    assert result.games_transferred == 1
     assert result.source_before is not None and result.source_before.pid == 10
     assert result.target_before is not None and result.target_before.pid == 20
+    assert result.target_after is not None
+    assert result.target_after.total_play_time == 150
 
     # Default keeps the target PID on the surviving account.
     assert result.keep_pid == MERGE_KEEP_PID_TARGET
     assert result.surviving_pid == 20
     assert result.tombstone_pid == 10
 
-    target_set = _set_fields(cols, "t-id")
-    assert target_set["pid"] == 20
-    assert target_set["total_play_time"] == 150
-    assert "pvp_rating" not in target_set
-    assert target_set["hexed_points"] == 20
-    assert (
-        "b1" in target_set["unlocked_badges"] and "b2" in target_set["unlocked_badges"]
-    )
-    assert target_set["discord_id"] == "disc-1"
+    target = _player(db, "t-id")
+    assert target["pid"] == 20
+    assert target["total_play_time"] == 150
+    assert target["pvp_rating"] == 1600
+    assert target["hexed_points"] == 20
+    assert target["unlocked_badges"] == ["b1", "b2"]
+    assert target["discord_id"] == "disc-1"
 
-    source_set = _set_fields(cols, "s-id")
-    assert source_set["uuid"] == "merged:source-uuid"
-    assert source_set["total_play_time"] == 0
-    assert source_set["pid"] == 10
-    assert "#20" in source_set["description"]
+    source = _player(db, "s-id")
+    assert source["uuid"] == "merged:source-uuid"
+    assert source["total_play_time"] == 0
+    assert source["pid"] == 10
+    assert "#20" in source["description"]
 
-    audit_doc = cols["moderation_audit"].insert_one.call_args[0][0]
+    assert db["games_v2"].docs[0]["player_stats"] == [
+        {"uuid": "target-uuid"},
+        {"uuid": "someone-else"},
+    ]
+
+    (audit_doc,) = db["moderation_audit"].docs
+    assert audit_doc["audit_id"] == result.audit_id
     assert audit_doc["action"] == "MERGE"
     assert audit_doc["target"]["pid"] == 20
     merge_extra = audit_doc["details"]["extra"]["merge"]
@@ -412,17 +432,9 @@ async def test_mongo_store_merge_player_accounts_logic() -> None:
 
 @pytest.mark.asyncio
 async def test_mongo_store_merge_keeps_source_pid_when_requested() -> None:
-    store, cols = _merge_store()
-    _wire_store(cols)
+    store, db = await _merge_store()
 
-    result = await store.merge_player_accounts(
-        source_pid=10,
-        target_pid=20,
-        actor_name="Admin",
-        actor_discord_id="999",
-        reason="Device migration",
-        keep_pid=MERGE_KEEP_PID_SOURCE,
-    )
+    result = await _merge(store, keep_pid=MERGE_KEEP_PID_SOURCE)
 
     assert result.success is True
     assert result.keep_pid == MERGE_KEEP_PID_SOURCE
@@ -430,149 +442,193 @@ async def test_mongo_store_merge_keeps_source_pid_when_requested() -> None:
     assert result.tombstone_pid == 20
 
     # UUID always comes from the target, only the PID moves.
-    target_set = _set_fields(cols, "t-id")
-    assert target_set["pid"] == 10
+    target = _player(db, "t-id")
+    assert target["pid"] == 10
+    assert target["uuid"] == "target-uuid"
 
-    source_set = _set_fields(cols, "s-id")
-    assert source_set["pid"] == 20
-    assert source_set["uuid"] == "merged:source-uuid"
-    assert "Merged into PID #10" in source_set["description"]
+    source = _player(db, "s-id")
+    assert source["pid"] == 20
+    assert source["uuid"] == "merged:source-uuid"
+    assert "Merged into PID #10" in source["description"]
 
-    audit_doc = cols["moderation_audit"].insert_one.call_args[0][0]
+    (audit_doc,) = db["moderation_audit"].docs
     assert audit_doc["target"]["pid"] == 10
     assert audit_doc["details"]["extra"]["merge"]["keep_pid"] == MERGE_KEEP_PID_SOURCE
 
 
 @pytest.mark.asyncio
 async def test_mongo_store_merge_clears_source_discord_link() -> None:
-    store, cols = _merge_store()
-    _wire_store(cols)
+    store, db = await _merge_store()
 
-    result = await store.merge_player_accounts(
-        source_pid=10,
-        target_pid=20,
-        actor_name="Admin",
-        actor_discord_id="999",
-        reason="Device migration",
-    )
+    result = await _merge(store)
 
     assert result.discord_link_moved is True
     assert result.discord_link_conflict is False
-    source_set = _set_fields(cols, "s-id")
-    assert source_set["discord_id"] == ""
-    assert source_set["discord_linked_at"] == 0
+    source = _player(db, "s-id")
+    assert source["discord_id"] == ""
+    assert source["discord_linked_at"] == 0
 
 
 @pytest.mark.asyncio
 async def test_mongo_store_merge_rejects_online_player() -> None:
-    store, cols = _merge_store()
-    _wire_store(cols, online_source=True)
+    store, db = await _merge_store(source={"online": True})
+    before = _contents(db)
 
-    result = await store.merge_player_accounts(
-        source_pid=10,
-        target_pid=20,
-        actor_name="Admin",
-        actor_discord_id="999",
-        reason="Device migration",
-    )
+    result = await _merge(store)
 
     assert result.success is False
     assert "#10" in (result.error or "")
-    assert cols["players"].update_one.await_count == 0
+    assert _contents(db) == before
 
 
 @pytest.mark.asyncio
 async def test_mongo_store_merge_rejects_closed_target() -> None:
-    store, cols = _merge_store()
-    _wire_store(cols)
+    store, db = await _merge_store(target={"uuid": "merged:old-target"})
+    before = _contents(db)
 
-    async def mock_find_one(query: dict[str, Any]) -> dict[str, Any] | None:
-        if query.get("pid") == 10:
-            return {
-                "_id": "s-id",
-                "pid": 10,
-                "uuid": "source-uuid",
-                "nickname": "SourceUser",
-            }
-        if query.get("pid") == 20:
-            return {
-                "_id": "t-id",
-                "pid": 20,
-                "uuid": "merged:old-target",
-                "nickname": "TargetUser",
-            }
-        return None
-
-    cols["players"].find_one = AsyncMock(side_effect=mock_find_one)
-
-    result = await store.merge_player_accounts(
-        source_pid=10,
-        target_pid=20,
-        actor_name="Admin",
-        actor_discord_id="999",
-        reason="Device migration",
-    )
+    result = await _merge(store)
 
     assert result.success is False
     assert "closed account" in (result.error or "")
+    assert _contents(db) == before
 
 
 @pytest.mark.asyncio
 async def test_mongo_store_merge_rejects_unknown_keep_pid() -> None:
-    store, cols = _merge_store()
-    _wire_store(cols)
+    store, db = await _merge_store()
+    before = _contents(db)
 
-    result = await store.merge_player_accounts(
-        source_pid=10,
-        target_pid=20,
-        actor_name="Admin",
-        actor_discord_id="999",
-        reason="Device migration",
-        keep_pid="whatever",
-    )
+    result = await _merge(store, keep_pid="whatever")
 
     assert result.success is False
     assert "keep_pid" in (result.error or "")
-    assert cols["players"].update_one.await_count == 0
+    assert _contents(db) == before
 
 
 @pytest.mark.asyncio
 async def test_mongo_store_merge_rewrites_punishment_pids() -> None:
-    store, cols = _merge_store()
-    _wire_store(cols)
+    store, db = await _merge_store(bans=(SOURCE_BAN,))
 
-    source_ban = {
-        "_id": "ban-1",
-        "uuid": "source-uuid",
-        "pid": 10,
-        "name": "SourceUser",
-        "reason": "Cheating",
-    }
-
-    async def ban_find_one(query: dict[str, Any]) -> dict[str, Any] | None:
-        if query.get("uuid") == "source-uuid":
-            return dict(source_ban)
-        return None
-
-    cols["bans"].find_one = AsyncMock(side_effect=ban_find_one)
-
-    result = await store.merge_player_accounts(
-        source_pid=10,
-        target_pid=20,
-        actor_name="Admin",
-        actor_discord_id="999",
-        reason="Device migration",
-        keep_pid=MERGE_KEEP_PID_SOURCE,
-    )
+    result = await _merge(store, keep_pid=MERGE_KEEP_PID_SOURCE)
 
     assert result.success is True
     assert result.ban_transferred is True
 
-    # Closed account keeps its own punishment with the tombstone PID.
-    cols["bans"].update_one.assert_awaited_once_with(
-        {"_id": "ban-1"}, {"$set": {"pid": 20}}
-    )
+    kept, transferred = db["bans"].docs
+    # Closed account keeps its own punishment with the tombstone PID, banning its
+    # device UUID only: the IP now belongs to the surviving account's ban.
+    expected = dict(SOURCE_BAN, pid=20)
+    del expected["ip"]
+    assert kept == expected
+    assert transferred["ip"] == "1.2.3.4"
     # Transferred ban belongs to the surviving account (PID 10 in this scenario).
-    transferred = cols["bans"].insert_one.call_args[0][0]
     assert transferred["uuid"] == "target-uuid"
     assert transferred["pid"] == 10
+    assert transferred["reason"] == "[Merged from #10] Cheating"
+
+
+@pytest.mark.asyncio
+async def test_mongo_store_merge_gives_the_transferred_ban_its_own_id() -> None:
+    # ban_id is unique; copying the closed account's id made the insert fail mid-merge.
+    store, db = await _merge_store(bans=(SOURCE_BAN,))
+
+    result = await _merge(store)
+
+    assert result.success is True
+    assert [ban["ban_id"] for ban in db["bans"].docs] == [7, 8]
+    assert db["counters"].docs == [{"_id": "ban_id", "seq": 8}]
+
+
+@pytest.mark.asyncio
+async def test_mongo_store_merge_unban_of_the_surviving_account_lifts_the_ip_ban() -> (
+    None
+):
+    store, _ = await _merge_store(bans=(SOURCE_BAN,))
+    await _merge(store)
+
+    survivor_ban = await store.find_ban(uuid="target-uuid", ip="1.2.3.4")
+    assert survivor_ban is not None and survivor_ban.ban_id == 8
+    await store.delete_ban(uuid="target-uuid", ip="1.2.3.4", ban_id=8)
+
+    assert await store.find_ban(uuid="target-uuid", ip="1.2.3.4") is None
+    # The closed account's device stays banned.
+    assert await store.find_ban(uuid="source-uuid", ip=None) is not None
+
+
+@pytest.mark.asyncio
+async def test_mongo_store_merge_strips_the_ip_when_the_target_has_its_own_ban() -> (
+    None
+):
+    target_ban = dict(SOURCE_BAN, _id="ban-2", ban_id=3, uuid="target-uuid", pid=20)
+    store, db = await _merge_store(bans=(SOURCE_BAN, target_ban))
+
+    result = await _merge(store)
+
+    assert result.ban_transferred is False
+    kept, own = db["bans"].docs
+    assert "ip" not in kept
+    assert own["ip"] == "1.2.3.4"
+
+
+def _fail_call(collection: Collection, method: str, call: int) -> None:
+    """Make the ``call``-th call of ``collection.method`` raise, after the earlier ones ran."""
+    original = getattr(collection, method)
+    calls = 0
+
+    async def failing(*args: Any, **kwargs: Any) -> Any:
+        nonlocal calls
+        calls += 1
+        if calls == call:
+            raise PyMongoError(f"Injected {method} failure")
+        return await original(*args, **kwargs)
+
+    setattr(collection, method, failing)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("collection", "method", "call"),
+    [
+        ("players", "update_one", 1),
+        ("players", "update_one", 2),
+        ("games_v2", "update_many", 1),
+        ("bans", "insert_one", 1),
+        ("counters", "find_one_and_update", 1),
+        ("mutes", "update_one", 1),
+        ("mutes", "insert_one", 1),
+        ("moderation_audit", "insert_one", 1),
+    ],
+)
+async def test_mongo_store_merge_failure_leaves_both_accounts_unchanged(
+    collection: str, method: str, call: int
+) -> None:
+    store, db = await _merge_store(bans=(SOURCE_BAN,), mutes=(SOURCE_MUTE,))
+    before = _contents(db)
+    _fail_call(db[collection], method, call)
+
+    with pytest.raises(PyMongoError, match="Injected"):
+        await _merge(store)
+
+    assert _contents(db) == before
+
+
+@pytest.mark.asyncio
+async def test_mongo_store_merge_without_replica_set_changes_nothing() -> None:
+    store, db = await _merge_store()
+    before = _contents(db)
+
+    async def refuse(callback: Any) -> Any:
+        raise OperationFailure(
+            "Transaction numbers are only allowed on a replica set member or mongos",
+            code=20,
+        )
+
+    session = db.client.start_session()
+    session.with_transaction = refuse  # type: ignore[method-assign]
+    db.client.start_session = lambda: session  # type: ignore[method-assign]
+
+    result = await _merge(store)
+
+    assert result.success is False
+    assert "replica set" in (result.error or "")
+    assert _contents(db) == before

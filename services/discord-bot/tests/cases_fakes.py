@@ -89,6 +89,26 @@ def assign(doc, key, value):
     target[parts[-1]] = deepcopy(value)
 
 
+def assign_filtered(doc, parts, value, array_filters):
+    """Set ``value`` at a path whose ``$[name]`` steps pick array items by ``array_filters``."""
+    head, rest = parts[0], parts[1:]
+    if head.startswith("$[") and head.endswith("]"):
+        prefix = head[2:-1] + "."
+        condition = {
+            key.removeprefix(prefix): want
+            for array_filter in array_filters
+            for key, want in array_filter.items()
+            if key.startswith(prefix)
+        }
+        for item in doc:
+            if matches(item, condition):
+                assign_filtered(item, rest, value, array_filters)
+    elif rest:
+        assign_filtered(doc.setdefault(head, {}), rest, value, array_filters)
+    else:
+        doc[head] = deepcopy(value)
+
+
 def unset(doc, key):
     parts = key.split(".")
     target = doc
@@ -124,14 +144,23 @@ class Cursor:
 
 
 class Collection:
-    def __init__(self):
+    def __init__(self, db=None):
+        self.db = db
         self.docs = []
         self.indexes = []
+
+    def _join(self, session):
+        # A real server would apply such a call outside the transaction, so a rollback
+        # would not undo it.
+        open_transaction = self.db.transaction if self.db is not None else None
+        if open_transaction is not None and session is not open_transaction:
+            raise AssertionError("Call outside the open transaction")
 
     def find(self, query):
         return Cursor([doc for doc in self.docs if matches(doc, query)])
 
-    async def find_one(self, query):
+    async def find_one(self, query, *, session=None):
+        self._join(session)
         return next((deepcopy(doc) for doc in self.docs if matches(doc, query)), None)
 
     async def count_documents(self, query):
@@ -164,16 +193,26 @@ class Collection:
                 if all(get(other, name) == get(doc, name) for name in names):
                     raise DuplicateKeyError(f"Duplicate {keys}")
 
-    async def insert_one(self, doc):
+    async def insert_one(self, doc, *, session=None):
+        self._join(session)
         self._unique(doc)
         self.docs.append(deepcopy(doc))
 
     async def delete_many(self, query):
+        before = len(self.docs)
         self.docs = [doc for doc in self.docs if not matches(doc, query)]
+        return SimpleNamespace(deleted_count=before - len(self.docs))
 
     async def find_one_and_update(
-        self, query, update, *, upsert=False, return_document=ReturnDocument.BEFORE
+        self,
+        query,
+        update,
+        *,
+        upsert=False,
+        return_document=ReturnDocument.BEFORE,
+        session=None,
     ):
+        self._join(session)
         target = next((doc for doc in self.docs if matches(doc, query)), None)
         if target is None and not upsert:
             return None
@@ -209,22 +248,75 @@ class Collection:
             deepcopy(candidate) if return_document == ReturnDocument.AFTER else before
         )
 
-    async def update_one(self, query, update, *, upsert=False):
-        before = await self.find_one(query)
+    async def update_one(self, query, update, *, upsert=False, session=None):
+        before = await self.find_one(query, session=session)
         after = await self.find_one_and_update(
-            query, update, upsert=upsert, return_document=ReturnDocument.AFTER
+            query,
+            update,
+            upsert=upsert,
+            return_document=ReturnDocument.AFTER,
+            session=session,
         )
         return SimpleNamespace(
             modified_count=int(before != after), matched_count=int(before is not None)
         )
 
+    async def update_many(self, query, update, *, array_filters=(), session=None):
+        self._join(session)
+        matched = modified = 0
+        for doc in self.docs:
+            if not matches(doc, query):
+                continue
+            before = deepcopy(doc)
+            for key, value in update.get("$set", {}).items():
+                assign_filtered(doc, key.split("."), value, array_filters)
+            matched += 1
+            modified += before != doc
+        return SimpleNamespace(modified_count=modified, matched_count=matched)
+
+
+class Session:
+    """A client session whose transaction undoes every write when its callback raises."""
+
+    def __init__(self, db):
+        self.db = db
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *exc_info):
+        return None
+
+    async def with_transaction(self, callback):
+        assert self.db.transaction is None, "Transactions do not nest"
+        snapshot = {name: deepcopy(c.docs) for name, c in self.db.collections.items()}
+        self.db.transaction = self
+        try:
+            return await callback(self)
+        except BaseException:
+            for name, collection in self.db.collections.items():
+                collection.docs = snapshot.get(name, [])
+            raise
+        finally:
+            self.db.transaction = None
+
+
+class Client:
+    def __init__(self, db):
+        self.db = db
+
+    def start_session(self):
+        return Session(self.db)
+
 
 class Database:
     def __init__(self):
         self.collections = {}
+        self.client = Client(self)
+        self.transaction = None
 
     def __getitem__(self, name):
-        return self.collections.setdefault(name, Collection())
+        return self.collections.setdefault(name, Collection(self))
 
 
 class Failures:
