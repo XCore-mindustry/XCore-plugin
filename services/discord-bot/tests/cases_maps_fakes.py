@@ -31,7 +31,8 @@ async def map_core(**kwargs):
     service.registry.enable(CaseKind.MAP)
     bot.map_cache = {}
     bot.bus.rpc_upload_maps = bus.rpc_upload_maps
-    bot.container.rpc = make_rpc(bot.bus)
+    # Tests swap the upload RPC on bot.bus while a case runs.
+    bot.container.rpc = make_rpc(bot.bus, maps=bot.bus)
     author.bot = False
     author.name = "mapper"
     forum = bot.channels[400]

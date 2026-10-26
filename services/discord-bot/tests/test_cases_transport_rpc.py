@@ -12,6 +12,7 @@ from xcore_protocol.generated.maps import MapsInspectResponseV1
 
 from xcore_discord_bot.bus import transport as bus_module
 from xcore_discord_bot.bus.cases import CasesBus
+from xcore_discord_bot.bus.maps import MapsBus
 from xcore_discord_bot.bus.transport import RpcFailed, RpcRejected
 from xcore_discord_bot.cases.redis_transport import RedisCaseTransport
 from xcore_discord_bot.protocol_outbound import (
@@ -287,7 +288,7 @@ async def test_rpc_decoder_rejects_mismatched_and_unknown_response(bus, kind, in
                 server="mini-pvp", player_uuid="target"
             )
         else:
-            await bus.rpc_inspect_map(
+            await MapsBus(bus).rpc_inspect_map(
                 server="mini-pvp",
                 url="https://example/arena.msav",
                 file_name="arena.msav",
@@ -318,49 +319,56 @@ async def test_offline_evidence_response_is_valid_and_never_falls_back(bus):
     "error", [TimeoutError(), RpcFailed("maps.inspect.request", "FAILED", "storage")]
 )
 async def test_inspection_any_live_server_falls_back_in_stable_order(bus, error):
+    maps = MapsBus(bus)
     live("zulu", "beta", "Alpha")
-    bus.rpc_inspect_map = AsyncMock(
+    maps.rpc_inspect_map = AsyncMock(
         side_effect=[error, MapsInspectResponseV1.from_payload(inspected("beta"))]
     )
-    result = await RedisCaseTransport(CasesBus(bus), make_rpc(bus)).rpc_inspect_map(
+    result = await RedisCaseTransport(
+        CasesBus(bus), make_rpc(bus, maps=maps)
+    ).rpc_inspect_map(
         url="https://example/arena.msav", file_name="arena.msav", profile="pvp"
     )
     assert result["server"] == "beta"
-    assert [call.kwargs["server"] for call in bus.rpc_inspect_map.call_args_list] == [
+    assert [call.kwargs["server"] for call in maps.rpc_inspect_map.call_args_list] == [
         "Alpha",
         "beta",
     ]
 
 
 async def test_explicit_inspection_does_not_switch_servers(bus):
+    maps = MapsBus(bus)
     live("other")
-    bus.rpc_inspect_map = AsyncMock(side_effect=TimeoutError())
+    maps.rpc_inspect_map = AsyncMock(side_effect=TimeoutError())
     with pytest.raises(TimeoutError):
-        await RedisCaseTransport(CasesBus(bus), make_rpc(bus)).rpc_inspect_map(
+        await RedisCaseTransport(
+            CasesBus(bus), make_rpc(bus, maps=maps)
+        ).rpc_inspect_map(
             server="chosen", url="https://example/arena.msav", file_name="arena.msav"
         )
-    assert [call.kwargs["server"] for call in bus.rpc_inspect_map.call_args_list] == [
+    assert [call.kwargs["server"] for call in maps.rpc_inspect_map.call_args_list] == [
         "chosen"
     ]
 
 
 async def test_inspection_refusal_is_final_and_no_live_server_is_explicit(bus):
-    transport = RedisCaseTransport(CasesBus(bus), make_rpc(bus))
-    bus.rpc_inspect_map = AsyncMock()
+    maps = MapsBus(bus)
+    transport = RedisCaseTransport(CasesBus(bus), make_rpc(bus, maps=maps))
+    maps.rpc_inspect_map = AsyncMock()
     with pytest.raises(NoLiveServerError):
         await transport.rpc_inspect_map(
             url="https://example/arena.msav", file_name="arena.msav"
         )
-    bus.rpc_inspect_map.assert_not_awaited()
+    maps.rpc_inspect_map.assert_not_awaited()
     live("alpha", "beta")
-    bus.rpc_inspect_map.side_effect = RpcRejected(
+    maps.rpc_inspect_map.side_effect = RpcRejected(
         "maps.inspect.request", "REJECTED", "refused"
     )
     with pytest.raises(RpcRejected):
         await transport.rpc_inspect_map(
             url="https://example/arena.msav", file_name="arena.msav"
         )
-    assert bus.rpc_inspect_map.await_count == 1
+    assert maps.rpc_inspect_map.await_count == 1
 
 
 @pytest.mark.parametrize("status", ["download_failed", "invalid_map"])

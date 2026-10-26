@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 from .bus.accounts import AccountsBus
 from .bus.cases import CasesBus
 from .bus.chat import ChatBus
+from .bus.maps import MapsBus
 from .bus.moderation import ModerationBus
 from .bus.rating import RatingBus
 from .cases import flows  # noqa: F401 -- importing modules registers flow definitions
@@ -42,6 +43,7 @@ class ServiceContainer:
     accounts_bus: AccountsBus
     cases_bus: CasesBus
     chat_bus: ChatBus
+    maps_bus: MapsBus
     moderation_bus: ModerationBus
     rating_bus: RatingBus
     rpc: MindustryRpcClient
@@ -71,9 +73,10 @@ class ServiceContainer:
         accounts_bus = AccountsBus(bus)
         cases_bus = CasesBus(bus)
         chat_bus = ChatBus(bus)
+        maps_bus = MapsBus(bus)
         moderation_bus = ModerationBus(bus)
         rating_bus = RatingBus(bus)
-        rpc = MindustryRpcClient(bus, cases=cases_bus, rating=rating_bus)
+        rpc = MindustryRpcClient(bus, cases=cases_bus, maps=maps_bus, rating=rating_bus)
 
         ratings = RatingStore(store)
         rating_service = RatingService(
@@ -112,6 +115,7 @@ class ServiceContainer:
             accounts_bus=accounts_bus,
             cases_bus=cases_bus,
             chat_bus=chat_bus,
+            maps_bus=maps_bus,
             moderation_bus=moderation_bus,
             rating_bus=rating_bus,
             rpc=rpc,

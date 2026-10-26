@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import json
 from types import MethodType, SimpleNamespace
-from typing import Any
 
 import pytest
 from xcore_protocol.generated.maps import (
@@ -13,39 +12,8 @@ from xcore_protocol.generated.maps import (
 )
 from xcore_protocol.generated.shared import MapEntryV1
 
+from xcore_discord_bot.bus.maps import MapsBus
 from xcore_discord_bot.redis_bus import RedisBus
-
-
-@pytest.mark.asyncio
-async def test_publish_maps_load_uses_expected_event_metadata() -> None:
-    settings = SimpleNamespace(
-        redis_url="redis://127.0.0.1:6379",
-        redis_group_prefix="xcore:cg",
-        redis_consumer_name="discord-bot",
-    )
-    bus = RedisBus(settings)
-    captured: dict[str, Any] = {}
-
-    async def fake_publish_event(self, **kwargs):
-        captured.update(kwargs)
-
-    bus.publish = MethodType(fake_publish_event, bus)
-
-    files = [{"url": "https://example/maps/one.msav", "filename": "one.msav"}]
-    await bus.publish_maps_load(server="mini-pvp", files=files)
-
-    assert captured["stream"] == "xcore:cmd:maps-load:mini-pvp"
-    assert captured["event_type"] == "maps.load.command"
-    assert captured["ttl_ms"] == 300_000
-    assert captured["server"] == "mini-pvp"
-    assert captured["idempotency_prefix"] == "maps.load"
-    payload = captured["payload"]
-    assert payload["messageType"] == "maps.load.command"
-    assert payload["messageVersion"] == 1
-    assert payload["server"] == "mini-pvp"
-    assert payload["files"] == [
-        {"url": "https://example/maps/one.msav", "fileName": "one.msav"}
-    ]
 
 
 @pytest.mark.asyncio
@@ -90,7 +58,7 @@ async def test_rpc_maps_list_parses_canonical_response() -> None:
 
     bus.rpc_request = MethodType(fake_rpc_request, bus)
 
-    result = await bus.rpc_maps_list("mini-pvp", 5000)
+    result = await MapsBus(bus).rpc_maps_list("mini-pvp", 5000)
 
     assert result == [
         {
@@ -147,7 +115,7 @@ async def test_rpc_remove_map_uses_canonical_payload() -> None:
 
     bus.rpc_request = MethodType(fake_rpc_request, bus)
 
-    result = await bus.rpc_remove_map("mini-pvp", "map-a.msav", 5000)
+    result = await MapsBus(bus).rpc_remove_map("mini-pvp", "map-a.msav", 5000)
     assert result == "ok"
 
 
@@ -184,7 +152,7 @@ async def test_upload_metadata_roundtrips_through_outbound_and_list_normalizatio
             "discordUpload": upload,
         }
     )
-    result = RedisBus._normalize_map_entry_v1(entry)
+    result = MapsBus._normalize_map_entry_v1(entry)
     assert result["uploaded_by_discord_id"] == upload["uploadedBy"]["discordId"]
     assert result["creator_name"] == "Creator"
     assert result["uploaded_at"] == str(upload["uploadedAt"])
@@ -218,7 +186,7 @@ async def test_upload_rpc_uses_canonical_request_and_matches_result_files() -> N
             },
         }
     ]
-    result = await bus.rpc_upload_maps(
+    result = await MapsBus(bus).rpc_upload_maps(
         server="mini-pvp", files=files, timeout_ms=120000
     )
     assert result.results[0].status.value == "installed"
@@ -228,7 +196,9 @@ async def test_upload_rpc_uses_canonical_request_and_matches_result_files() -> N
     response["results"][0]["fileName"] = "other.msav"
     bus.rpc_request.return_value = {"payload_json": json.dumps(response)}
     with pytest.raises(ValueError, match="does not match"):
-        await bus.rpc_upload_maps(server="mini-pvp", files=files, timeout_ms=120000)
+        await MapsBus(bus).rpc_upload_maps(
+            server="mini-pvp", files=files, timeout_ms=120000
+        )
 
 
 @pytest.mark.asyncio
@@ -253,8 +223,12 @@ async def test_upload_response_cannot_add_or_omit_requested_files() -> None:
         {"filename": "second.msav", "url": "https://example/second"},
     ]
     with pytest.raises(ValueError, match="does not match"):
-        await bus.rpc_upload_maps(server="mini-pvp", files=files, timeout_ms=120000)
+        await MapsBus(bus).rpc_upload_maps(
+            server="mini-pvp", files=files, timeout_ms=120000
+        )
     response["results"].append({"fileName": "arena.msav", "status": "installed"})
     bus.rpc_request.return_value = {"payload_json": json.dumps(response)}
     with pytest.raises(ValueError, match="does not match"):
-        await bus.rpc_upload_maps(server="mini-pvp", files=files[:1], timeout_ms=120000)
+        await MapsBus(bus).rpc_upload_maps(
+            server="mini-pvp", files=files[:1], timeout_ms=120000
+        )

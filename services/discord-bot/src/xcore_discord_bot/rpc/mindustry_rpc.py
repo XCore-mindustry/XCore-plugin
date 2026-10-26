@@ -28,6 +28,7 @@ from xcore_protocol.generated.sentinel import (
 from xcore_protocol.generated.shared import SeasonPrizeV1
 
 from ..bus.cases import CasesBus
+from ..bus.maps import MapsBus
 from ..bus.rating import RatingBus
 from ..bus.transport import RpcFailed
 from ..redis_bus import RedisBus
@@ -48,9 +49,12 @@ class NoLiveServerError(RuntimeError):
 class MindustryRpcClient:
     """Which server answers, retries and request ids, over the per-family buses."""
 
-    def __init__(self, bus: RedisBus, *, cases: CasesBus, rating: RatingBus) -> None:
+    def __init__(
+        self, bus: RedisBus, *, cases: CasesBus, maps: MapsBus, rating: RatingBus
+    ) -> None:
         self._bus = bus
         self._cases = cases
+        self._maps = maps
         self._rating = rating
 
     async def _retry_staff(self, call: Callable[[], Awaitable[T]]) -> T:
@@ -279,7 +283,7 @@ class MindustryRpcClient:
         server: str | None = None,
     ) -> MapsInspectResponseV1:
         async def inspect(name: str) -> MapsInspectResponseV1:
-            return await self._bus.rpc_inspect_map(
+            return await self._maps.rpc_inspect_map(
                 server=name, url=url, file_name=file_name, profile=profile
             )
 
@@ -292,18 +296,18 @@ class MindustryRpcClient:
 
     async def list_maps(self, *, server: str, timeout_ms: int) -> list[dict[str, str]]:
         return await retry_read_rpc(
-            lambda: self._bus.rpc_maps_list(server=server, timeout_ms=timeout_ms)
+            lambda: self._maps.rpc_maps_list(server=server, timeout_ms=timeout_ms)
         )
 
     async def remove_map(self, *, server: str, file_name: str, timeout_ms: int) -> str:
-        return await self._bus.rpc_remove_map(
+        return await self._maps.rpc_remove_map(
             server=server, file_name=file_name, timeout_ms=timeout_ms
         )
 
     async def upload_maps(
         self, *, server: str, files: list[dict[str, object]], timeout_ms: int
     ) -> MapsUploadResponseV1:
-        return await self._bus.rpc_upload_maps(
+        return await self._maps.rpc_upload_maps(
             server=server, files=files, timeout_ms=timeout_ms
         )
 

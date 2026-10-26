@@ -5,6 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 from xcore_discord_bot.bot import XCoreDiscordBot
 from xcore_discord_bot.bus.cases import CasesBus
+from xcore_discord_bot.bus.maps import MapsBus
 from xcore_discord_bot.bus.rating import RatingBus
 from xcore_discord_bot.bus.transport import RedisTransport
 from xcore_discord_bot.mongo_store import MongoStore
@@ -24,8 +25,22 @@ def make_settings(**overrides) -> Settings:
     )
 
 
-FAMILY_BUSES = ("accounts_bus", "cases_bus", "chat_bus", "moderation_bus", "rating_bus")
-FAMILY_CLASSES = ("AccountsBus", "CasesBus", "ChatBus", "ModerationBus", "RatingBus")
+FAMILY_BUSES = (
+    "accounts_bus",
+    "cases_bus",
+    "chat_bus",
+    "maps_bus",
+    "moderation_bus",
+    "rating_bus",
+)
+FAMILY_CLASSES = (
+    "AccountsBus",
+    "CasesBus",
+    "ChatBus",
+    "MapsBus",
+    "ModerationBus",
+    "RatingBus",
+)
 
 
 def make_bot(
@@ -64,12 +79,16 @@ def make_bot(
 
 
 def make_rpc(bus, **families) -> MindustryRpcClient:
-    """An RPC client whose family buses all sit on ``bus``, unless a test passes one."""
-    defaults = {"cases": CasesBus, "rating": RatingBus}
+    """An RPC client whose family buses all sit on ``bus``, unless a test passes one.
+
+    A hand-written fake bus stands in for the family buses itself, as in make_bot.
+    """
+    defaults = {"cases": CasesBus, "maps": MapsBus, "rating": RatingBus}
+    fake_bus = not isinstance(bus, RedisTransport)
     return MindustryRpcClient(
         bus,
         **{
-            name: families[name] if name in families else family(bus)
+            name: families.get(name, bus if fake_bus else family(bus))
             for name, family in defaults.items()
         },
     )
