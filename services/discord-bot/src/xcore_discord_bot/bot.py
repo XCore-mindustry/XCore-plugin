@@ -261,21 +261,18 @@ class XCoreDiscordBot(commands.Bot):
     async def _dispatch_case_hook(self, hook: str, value: object) -> None:
         # With every cases flag off no flow is enabled and the registry returns at once.
         cases = self.container.cases
-        if cases is not None:
-            await cases.registry.dispatch(hook, cases, value)
+        await cases.registry.dispatch(hook, cases, value)
 
     async def on_interaction(self, interaction: Interaction) -> None:
         # An observer, not a response handler: it never delays a modal or command
         # acknowledgement. It keeps the ``auto`` language row fresh for later DMs.
-        cases = self.container.cases
         if (
-            cases is None
-            or not self.settings.cases_enabled
+            not self.settings.cases_enabled
             or interaction.type == discord.InteractionType.autocomplete
         ):
             return
         try:
-            await cases.store.remember_interaction(interaction)
+            await self.container.cases.store.remember_interaction(interaction)
         except Exception:
             logger.exception("Could not refresh Discord locale preference")
 
@@ -286,8 +283,7 @@ class XCoreDiscordBot(commands.Bot):
         await self._dispatch_case_hook("on_thread_delete", payload)
 
     async def close(self) -> None:
-        if self.container.cases_reconcile_daemon is not None:
-            await self.container.cases_reconcile_daemon.stop()
+        await self.container.cases_reconcile_daemon.stop()
         self.container.presence_daemon.stop()
         self.container.admin_sync_daemon.stop()
         if self.container.staff_sync_daemon is not None:

@@ -283,7 +283,10 @@ def test_legacy_container_does_not_load_roles_config(settings):
     legacy = settings.model_copy(
         update={"permissions_mode": "legacy", "permissions_config_path": "/missing"}
     )
-    assert ServiceContainer.create(legacy, MagicMock()).staff_sync_daemon is None
+    container = ServiceContainer.create(
+        legacy, MagicMock(), store=MongoStore(legacy), bus=RedisBus(legacy)
+    )
+    assert container.staff_sync_daemon is None
 
 
 async def test_generated_rpc_wire_payload_and_response(settings):

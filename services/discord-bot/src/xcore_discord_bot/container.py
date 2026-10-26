@@ -31,9 +31,9 @@ if TYPE_CHECKING:
 
 @dataclass(slots=True)
 class ServiceContainer:
+    """The services built on the bot's store and bus; the bot owns those two itself."""
+
     settings: Settings
-    store: MongoStore
-    bus: RedisBus
     rpc: MindustryRpcClient
     players: PlayerService
     ratings: RatingStore
@@ -43,10 +43,11 @@ class ServiceContainer:
     admin_sync_daemon: AdminSyncDaemon
     rating_merge_daemon: RatingMergeDaemon
     stream_supervisor: StreamSupervisor
+    cases: CaseService
+    case_panel: CasePanel
+    cases_reconcile_daemon: CasesReconcileDaemon
+    # Only roles mode syncs game roles; legacy mode reconciles admins instead.
     staff_sync_daemon: StaffSyncDaemon | None = None
-    cases: CaseService | None = None
-    case_panel: CasePanel | None = None
-    cases_reconcile_daemon: CasesReconcileDaemon | None = None
 
     @classmethod
     def create(
@@ -54,11 +55,9 @@ class ServiceContainer:
         settings: Settings,
         bot: XCoreDiscordBot,
         *,
-        store: MongoStore | None = None,
-        bus: RedisBus | None = None,
+        store: MongoStore,
+        bus: RedisBus,
     ) -> ServiceContainer:
-        bus = bus if bus is not None else RedisBus(settings)
-        store = store if store is not None else MongoStore(settings)
         rpc = MindustryRpcClient(bus)
 
         ratings = RatingStore(store)
@@ -90,8 +89,6 @@ class ServiceContainer:
 
         return cls(
             settings=settings,
-            store=store,
-            bus=bus,
             rpc=rpc,
             players=players,
             ratings=ratings,

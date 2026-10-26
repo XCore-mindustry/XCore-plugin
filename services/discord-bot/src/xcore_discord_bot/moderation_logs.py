@@ -82,8 +82,6 @@ async def _case_log_secrets(
     bot, number: int, supplied: tuple[str, ...], actor_id: str | None
 ) -> tuple[str, ...]:
     service = bot.container.cases
-    if service is None:
-        return supplied
     case = await service.get(number)
     secrets = [*supplied, *case_secrets(case)]
     if service.players is not None:

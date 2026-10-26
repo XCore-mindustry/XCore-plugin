@@ -9,6 +9,7 @@ from bot_fakes import make_bot, make_settings
 from test_ban_identity import NOW, _ban, _store
 from xcore_protocol.generated.maps import MapsUploadResponseV1
 
+from xcore_discord_bot.cases.model import Case, CaseKind, CaseStatus, Origin, Party
 from xcore_discord_bot.dto import PlayerRecord
 from xcore_discord_bot.moderation_logs import post_ban_log
 from xcore_discord_bot.redis_bus import RpcError
@@ -114,8 +115,23 @@ def _action_bot():
     )
     bot.map_cache = {"mini-pvp": (0, [])}
     bot.resolve_channel = AsyncMock(return_value=channel)
-    bot.container.cases = None
+    bot.container.cases.get = _case
     return bot, db, bus, channel
+
+
+async def _case(number):
+    # The case an action is taken from; its parties' UUIDs are hidden in the logs.
+    return Case(
+        number,
+        CaseKind.REPORT,
+        CaseStatus.OPEN,
+        1,
+        Origin("game", "submission"),
+        Party(player_uuid="uuid-opener"),
+        Party(player_uuid=PLAYER.uuid),
+        NOW,
+        NOW,
+    )
 
 
 def _assert_audit(

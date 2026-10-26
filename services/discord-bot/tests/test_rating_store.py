@@ -47,6 +47,9 @@ class _Cursor:
         self._docs = self._docs[:count]
         return self
 
+    async def to_list(self, length=None):
+        return self._docs[:length]
+
     def __aiter__(self):
         async def generate():
             for doc in self._docs:

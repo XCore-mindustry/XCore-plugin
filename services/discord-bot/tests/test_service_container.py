@@ -3,6 +3,8 @@ from __future__ import annotations
 from unittest.mock import MagicMock
 
 from xcore_discord_bot.container import ServiceContainer
+from xcore_discord_bot.mongo_store import MongoStore
+from xcore_discord_bot.redis_bus import RedisBus
 from xcore_discord_bot.settings import Settings
 
 
@@ -16,7 +18,9 @@ def test_service_container_creation() -> None:
         mongo_uri="mongodb://localhost:27017",
     )
     bot = MagicMock()
-    container = ServiceContainer.create(settings, bot)
+    container = ServiceContainer.create(
+        settings, bot, store=MongoStore(settings), bus=RedisBus(settings)
+    )
 
     assert container.settings is settings
     assert container.players is not None
