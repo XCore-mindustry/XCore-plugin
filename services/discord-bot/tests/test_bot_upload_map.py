@@ -1,11 +1,17 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from types import SimpleNamespace
 from typing import Any
+from unittest.mock import AsyncMock, create_autospec
 
-from bot_fakes import make_bot, make_settings
+from backends import published, real_bot
+from bot_fakes import make_settings
+from xcore_protocol.generated.maps import MapsUploadResponseV1
 
 from xcore_discord_bot.handlers_misc import cmd_upload_map
+
+CHAT = "xcore:cmd:discord-message:mini-pvp"
 
 
 @dataclass
@@ -58,36 +64,39 @@ class _Interaction:
         return self.response.ephemeral_replies
 
 
-class _Bus:
-    def __init__(self) -> None:
-        self.claimed = True
-        self.maps_calls: list[tuple[str, list[dict[str, str]]]] = []
+def _installed(*, server: str, files: list[dict[str, object]], timeout_ms: int):
+    return MapsUploadResponseV1.from_payload(
+        {
+            "messageType": "maps.upload.response",
+            "messageVersion": 1,
+            "server": server,
+            "results": [
+                {"fileName": item["filename"], "status": "installed"} for item in files
+            ],
+        }
+    )
 
-    async def claim_idempotency(self, key: str, ttl_seconds: int = 600) -> bool:
-        return self.claimed
 
-    async def rpc_upload_maps(
-        self, *, server: str, files: list[dict[str, object]], timeout_ms: int
-    ):
-        from xcore_protocol.generated.maps import MapsUploadResponseV1
+async def _bot(*, map_cache=None, **answer: Any):
+    """A real bot whose game server answers the upload RPC with ``answer``."""
+    bot, _ = await real_bot(settings=make_settings(discord_map_reviewer_role_id=200))
+    maps_bus = bot.container.maps_bus
+    maps_bus.rpc_upload_maps = create_autospec(
+        maps_bus.rpc_upload_maps, **(answer or {"side_effect": _installed})
+    )
+    bot.map_cache = {} if map_cache is None else map_cache
+    return bot
 
-        self.maps_calls.append((server, files))
-        return MapsUploadResponseV1.from_payload(
-            {
-                "messageType": "maps.upload.response",
-                "messageVersion": 1,
-                "server": server,
-                "results": [
-                    {"fileName": item["filename"], "status": "installed"}
-                    for item in files
-                ],
-            }
-        )
+
+def _uploads(bot) -> list[tuple[str, list[dict[str, Any]]]]:
+    return [
+        (call.kwargs["server"], call.kwargs["files"])
+        for call in bot.container.maps_bus.rpc_upload_maps.await_args_list
+    ]
 
 
 async def test_upload_map_requires_valid_msav_files() -> None:
-    bot = make_bot(settings=make_settings(discord_map_reviewer_role_id=200), bus=_Bus())
-    bot.map_cache = {}
+    bot = await _bot()
 
     interaction = _Interaction(
         id=10,
@@ -103,12 +112,11 @@ async def test_upload_map_requires_valid_msav_files() -> None:
 
     assert interaction.ephemeral_replies
     assert "No valid .msav files attached." in interaction.ephemeral_replies[0]
-    assert bot.bus.maps_calls == []
+    assert _uploads(bot) == []
 
 
 async def test_upload_map_publishes_msav_files() -> None:
-    bot = make_bot(settings=make_settings(discord_map_reviewer_role_id=200), bus=_Bus())
-    bot.map_cache = {}
+    bot = await _bot()
 
     interaction = _Interaction(
         id=20,
@@ -122,8 +130,8 @@ async def test_upload_map_publishes_msav_files() -> None:
     ]
     await cmd_upload_map(bot, interaction, "mini-pvp", attachments)
 
-    assert len(bot.bus.maps_calls) == 1
-    server, files = bot.bus.maps_calls[0]
+    assert len(_uploads(bot)) == 1
+    server, files = _uploads(bot)[0]
     assert server == "mini-pvp"
     assert [item["filename"] for item in files] == ["one.msav", "two.MSAV"]
     assert any("Uploading 2 map" in reply for reply in interaction.replies)
@@ -139,8 +147,7 @@ async def test_upload_map_publishes_msav_files() -> None:
 
 
 async def test_upload_map_records_selected_creator_for_all_files() -> None:
-    bot = make_bot(settings=make_settings(discord_map_reviewer_role_id=200), bus=_Bus())
-    bot.map_cache = {}
+    bot = await _bot()
     interaction = _Interaction(id=30, user=_Member(roles=[_Role(200)]))
     creator = _Member(roles=[], display_name="Mapper", id=234567890123456789)
     await cmd_upload_map(
@@ -153,7 +160,7 @@ async def test_upload_map_records_selected_creator_for_all_files() -> None:
         ],
         creator=creator,
     )
-    _, files = bot.bus.maps_calls[0]
+    _, files = _uploads(bot)[0]
     assert all(
         item["discordUpload"]["creator"]
         == {"discordId": str(creator.id), "discordUsername": "Mapper"}
@@ -163,8 +170,7 @@ async def test_upload_map_records_selected_creator_for_all_files() -> None:
 
 
 async def test_upload_creator_overrides_follow_original_attachment_positions() -> None:
-    bot = make_bot(settings=make_settings(discord_map_reviewer_role_id=200), bus=_Bus())
-    bot.map_cache = {}
+    bot = await _bot()
     interaction = _Interaction(id=40, user=_Member(roles=[_Role(200)]))
     default = _Member([], "Default", 111)
     override = _Member([], "Override", 222)
@@ -180,7 +186,7 @@ async def test_upload_creator_overrides_follow_original_attachment_positions() -
         creator=default,
         creators=[None, None, override],
     )
-    files = bot.bus.maps_calls[0][1]
+    files = _uploads(bot)[0][1]
     assert [item["discordUpload"]["creator"]["discordId"] for item in files] == [
         "111",
         "222",
@@ -190,11 +196,7 @@ async def test_upload_creator_overrides_follow_original_attachment_positions() -
 async def test_upload_timeout_reports_uncertainty_without_claiming_failure_or_retrying() -> (
     None
 ):
-    from unittest.mock import AsyncMock
-
-    bot = make_bot(settings=make_settings(discord_map_reviewer_role_id=200), bus=_Bus())
-    bot.map_cache = {}
-    bot.bus.rpc_upload_maps = AsyncMock(side_effect=TimeoutError)
+    bot = await _bot(side_effect=TimeoutError)
     interaction = _Interaction(id=50, user=_Member(roles=[_Role(200)]))
     await cmd_upload_map(
         bot,
@@ -203,17 +205,12 @@ async def test_upload_timeout_reports_uncertainty_without_claiming_failure_or_re
         [_Attachment("arena.msav", "https://example/arena")],
     )
     assert "Some files may already be installed" in interaction.replies[-1]
-    assert bot.bus.rpc_upload_maps.await_count == 1
+    assert len(_uploads(bot)) == 1
 
 
 async def test_upload_formats_partial_result_and_disables_mentions() -> None:
-    from unittest.mock import AsyncMock
-
-    from xcore_protocol.generated.maps import MapsUploadResponseV1
-
-    bot = make_bot(settings=make_settings(discord_map_reviewer_role_id=200), bus=_Bus())
-    bot.map_cache = {"mini-pvp": (0, [])}
-    bot.bus.rpc_upload_maps = AsyncMock(
+    bot = await _bot(
+        map_cache={"mini-pvp": (0, [])},
         return_value=MapsUploadResponseV1.from_payload(
             {
                 "messageType": "maps.upload.response",
@@ -224,7 +221,7 @@ async def test_upload_formats_partial_result_and_disables_mentions() -> None:
                     {"fileName": "bad.msav", "status": "invalid_map"},
                 ],
             }
-        )
+        ),
     )
     interaction = _Interaction(id=60, user=_Member(roles=[_Role(200)]))
     interaction.edit_original_response = AsyncMock()
@@ -246,11 +243,10 @@ async def test_upload_formats_partial_result_and_disables_mentions() -> None:
 async def test_malformed_response_invalidates_cached_map_list_and_finishes_message() -> (
     None
 ):
-    from unittest.mock import AsyncMock
-
-    bot = make_bot(settings=make_settings(discord_map_reviewer_role_id=200), bus=_Bus())
-    bot.map_cache = {"mini-pvp": (0, [])}
-    bot.bus.rpc_upload_maps = AsyncMock(side_effect=TypeError("results must be a list"))
+    bot = await _bot(
+        map_cache={"mini-pvp": (0, [])},
+        side_effect=TypeError("results must be a list"),
+    )
     interaction = _Interaction(id=70, user=_Member(roles=[_Role(200)]))
     await cmd_upload_map(
         bot,
@@ -263,8 +259,7 @@ async def test_malformed_response_invalidates_cached_map_list_and_finishes_messa
 
 
 async def test_invalid_upload_is_rejected_before_rpc_or_uploading_message() -> None:
-    bot = make_bot(settings=make_settings(discord_map_reviewer_role_id=200), bus=_Bus())
-    bot.map_cache = {}
+    bot = await _bot()
     interaction = _Interaction(id=80, user=_Member(roles=[_Role(200)]))
     await cmd_upload_map(
         bot,
@@ -273,21 +268,36 @@ async def test_invalid_upload_is_rejected_before_rpc_or_uploading_message() -> N
         [_Attachment("../arena.msav", "https://example/arena")],
     )
     assert "nothing was sent" in interaction.ephemeral_replies[-1]
-    assert bot.bus.maps_calls == []
+    assert _uploads(bot) == []
     assert not interaction.replies
 
 
-async def test_attachment_only_discord_message_is_not_published_as_empty_chat(
-    monkeypatch,
-) -> None:
-    from types import SimpleNamespace
-    from unittest.mock import AsyncMock
-
-    bot = make_bot()
-    bot.container.chat_bus = SimpleNamespace(publish_discord_message=AsyncMock())
+async def test_attachment_only_discord_message_is_not_published_as_empty_chat() -> None:
+    bot, _ = await real_bot()
+    # Channel 1 is the bridge channel of mini-pvp.
     bot.container.servers.update_server("mini-pvp", 1, 0, 10, "v1")
-    message = SimpleNamespace(
-        author=SimpleNamespace(bot=False), channel=SimpleNamespace(id=1), content=""
-    )
-    await bot.on_message(message)
-    bot.container.chat_bus.publish_discord_message.assert_not_awaited()
+    author = SimpleNamespace(bot=False, display_name="tester")
+
+    def message(id: int, content: str) -> Any:
+        return SimpleNamespace(
+            id=id, author=author, channel=SimpleNamespace(id=1), content=content
+        )
+
+    await bot.on_message(message(1, ""))
+    assert await published(bot.bus, CHAT) == []
+
+    await bot.on_message(message(2, "hello"))
+    assert [event["message"] for event in await published(bot.bus, CHAT)] == ["hello"]
+
+
+async def test_repeated_upload_interaction_sends_the_maps_once() -> None:
+    bot = await _bot()
+    attachments: list[Any] = [_Attachment("arena.msav", "https://example/arena")]
+
+    first = _Interaction(id=90, user=_Member(roles=[_Role(200)]))
+    await cmd_upload_map(bot, first, "mini-pvp", attachments)
+    repeat = _Interaction(id=90, user=_Member(roles=[_Role(200)]))
+    await cmd_upload_map(bot, repeat, "mini-pvp", attachments)
+
+    assert len(_uploads(bot)) == 1
+    assert repeat.ephemeral_replies

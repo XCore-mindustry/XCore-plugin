@@ -1,12 +1,13 @@
 from __future__ import annotations
 
-import asyncio
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any
+from unittest.mock import AsyncMock
 
 import pytest
-from bot_fakes import make_bot, make_settings
+from backends import consumed, emit, real_bot
+from bot_fakes import make_settings
 from xcore_protocol.generated.shared import (
     ActorRefV1,
     ExpirationInfoV1,
@@ -22,7 +23,6 @@ from xcore_discord_bot.contracts import (
     PlayerJoinLeaveV1,
     ServerActionV1,
 )
-from xcore_discord_bot.dto import PlayerRecord
 from xcore_discord_bot.runtime_consumers import (
     consume_bans,
     consume_game_chat,
@@ -48,311 +48,149 @@ class _Channel:
         return _Message(content=content, view=view)
 
 
-class _GameChatBus:
-    def __init__(self, *, channel_id: int | None, channel: _Channel | None) -> None:
-        self.channel_id = channel_id
-        self.channel = channel
-
-    async def resolve_channel(
-        self,
-        channel_id: int,
-        *,
-        context: str,
-    ) -> _Channel | None:
-        assert channel_id == 555
-        assert context == "game chat"
-        return self.channel
-
-    async def consume_game_chat(self, callback) -> None:
-        await callback(
-            ChatMessageV1(
-                authorName="[#ecececff]mod`name",
-                message="hello `[red]world`",
-                server="mini-pvp",
-            )
-        )
-        raise asyncio.CancelledError()
-
-    async def reconnect(self) -> None:
-        raise AssertionError("reconnect should not be called")
-
-    async def find_player_by_uuid(self, uuid):
-        return None
+CHAT = "xcore:evt:chat:message"
+JOIN_LEAVE = "xcore:evt:player:joinleave"
+SERVER_ACTION = "xcore:evt:server:action"
+BANS = "xcore:evt:moderation:ban"
+MUTES = "xcore:evt:moderation:mute"
+VOTE_KICKS = "xcore:evt:moderation:votekick"
+BAN = ModerationBanCreatedV1(
+    target=PlayerRefV1(playerUuid="uuid-1", playerName="Target"),
+    actor=ActorRefV1(actorName="Admin", actorDiscordId="123"),
+    reason="Rule 1",
+    expiration=ExpirationInfoV1(expiresAt="bad-date"),
+)
+MUTE = ModerationMuteCreatedV1(
+    target=PlayerRefV1(playerUuid="uuid-1", playerName="Target"),
+    actor=ActorRefV1(actorName="Admin", actorDiscordId="456"),
+    reason="Rule 1",
+    expiration=ExpirationInfoV1(expiresAt="bad-date"),
+)
+NOW = datetime(2026, 1, 1, tzinfo=UTC)
+TARGET = {"_id": 1, "pid": 42, "uuid": "uuid-1", "nickname": "Target"}
 
 
-def _GameChatBot(*, channel_id, channel):
-    backend = _GameChatBus(channel_id=channel_id, channel=channel)
-    bot = make_bot(store=backend, bus=backend)
+async def _server_bot(channel_id: int | None):
+    """A bot with mini-pvp bound to ``channel_id``; the Discord channel is stubbed."""
+    bot, _ = await real_bot()
     if channel_id is not None:
         bot.container.servers.update_server("mini-pvp", channel_id, 0, 20, "test")
-    bot.container.chat_bus = backend
-    bot.resolve_channel = backend.resolve_channel
+    channel = _Channel()
+    bot.resolve_channel = AsyncMock(return_value=channel)
+    return bot, channel
+
+
+async def _log_bot(**channels: int):
+    bot, db = await real_bot(settings=make_settings(**channels))
+    await db["players"].insert_one(dict(TARGET))
+    bot.store.now_utc = lambda: NOW
     return bot
 
 
-class _JoinLeaveBus:
-    def __init__(self, *, channel_id: int | None, channel: _Channel | None) -> None:
-        self.channel_id = channel_id
-        self.channel = channel
-
-    async def resolve_channel(
-        self,
-        channel_id: int,
-        *,
-        context: str,
-    ) -> _Channel | None:
-        assert channel_id == 556
-        assert context == "join/leave"
-        return self.channel
-
-    async def consume_player_join_leave(self, callback) -> None:
-        await callback(
-            PlayerJoinLeaveV1(
-                playerName="mod`name",
-                server="mini-pvp",
-                joined=True,
-            )
-        )
-        raise asyncio.CancelledError()
-
-    async def reconnect(self) -> None:
-        raise AssertionError("reconnect should not be called")
-
-    async def find_player_by_uuid(self, uuid):
-        return None
-
-
-def _JoinLeaveBot(*, channel_id, channel):
-    backend = _JoinLeaveBus(channel_id=channel_id, channel=channel)
-    bot = make_bot(store=backend, bus=backend)
-    if channel_id is not None:
-        bot.container.servers.update_server("mini-pvp", channel_id, 0, 20, "test")
-    bot.container.chat_bus = backend
-    bot.resolve_channel = backend.resolve_channel
-    return bot
-
-
-class _ServerActionBus:
-    def __init__(self, *, channel_id: int | None, channel: _Channel | None) -> None:
-        self.channel_id = channel_id
-        self.channel = channel
-
-    async def resolve_channel(
-        self,
-        channel_id: int,
-        *,
-        context: str,
-    ) -> _Channel | None:
-        assert channel_id == 557
-        assert context == "server action"
-        return self.channel
-
-    async def consume_server_actions(self, callback) -> None:
-        await callback(
-            ServerActionV1(
-                message="Server `started`",
-                server="mini-pvp",
-            )
-        )
-        raise asyncio.CancelledError()
-
-    async def reconnect(self) -> None:
-        raise AssertionError("reconnect should not be called")
-
-    async def find_player_by_uuid(self, uuid):
-        return None
-
-
-def _ServerActionBot(*, channel_id, channel):
-    backend = _ServerActionBus(channel_id=channel_id, channel=channel)
-    bot = make_bot(store=backend, bus=backend)
-    if channel_id is not None:
-        bot.container.servers.update_server("mini-pvp", channel_id, 0, 20, "test")
-    bot.container.chat_bus = backend
-    bot.resolve_channel = backend.resolve_channel
-    return bot
-
-
-class _BanBus:
-    def __init__(self, *, bans_channel_id: int, player: PlayerRecord | None) -> None:
-        self.bans_channel_id = bans_channel_id
-        self.player = player
-        self.now_calls = 0
-
-    async def consume_bans(self, callback) -> None:
-        await callback(
-            ModerationBanCreatedV1(
-                target=PlayerRefV1(playerUuid="uuid-1", playerName="Target"),
-                actor=ActorRefV1(actorName="Admin", actorDiscordId="123"),
-                reason="Rule 1",
-                expiration=ExpirationInfoV1(expiresAt="bad-date"),
-            )
-        )
-        raise asyncio.CancelledError()
-
-    async def reconnect(self) -> None:
-        raise AssertionError("reconnect should not be called")
-
-    async def find_player_by_uuid(self, uuid: str) -> PlayerRecord | None:
-        assert uuid == "uuid-1"
-        return self.player
-
-    def now_utc(self) -> datetime:
-        self.now_calls += 1
-        return datetime(2026, 1, 1, tzinfo=UTC)
-
-    async def run_ban_log_once(self, event, callback):
-        await callback()
-
-
-def _BanBot(**kwargs):
-    backend = _BanBus(**kwargs)
-    return make_bot(
-        store=backend,
-        bus=backend,
-        settings=make_settings(discord_bans_channel_id=backend.bans_channel_id),
-    )
-
-
-class _MuteBus:
-    def __init__(self, *, mutes_channel_id: int, player: PlayerRecord | None) -> None:
-        self.mutes_channel_id = mutes_channel_id
-        self.player = player
-        self.now_calls = 0
-
-    async def consume_mutes(self, callback) -> None:
-        await callback(
-            ModerationMuteCreatedV1(
-                target=PlayerRefV1(playerUuid="uuid-1", playerName="Target"),
-                actor=ActorRefV1(actorName="Admin", actorDiscordId="456"),
-                reason="Rule 1",
-                expiration=ExpirationInfoV1(expiresAt="bad-date"),
-            )
-        )
-        raise asyncio.CancelledError()
-
-    async def reconnect(self) -> None:
-        raise AssertionError("reconnect should not be called")
-
-    async def find_player_by_uuid(self, uuid: str) -> PlayerRecord | None:
-        assert uuid == "uuid-1"
-        return self.player
-
-    def now_utc(self) -> datetime:
-        self.now_calls += 1
-        return datetime(2026, 1, 1, tzinfo=UTC)
-
-
-def _MuteBot(**kwargs):
-    backend = _MuteBus(**kwargs)
-    return make_bot(
-        store=backend,
-        bus=backend,
-        settings=make_settings(discord_mutes_channel_id=backend.mutes_channel_id),
-    )
-
-
-class _VoteKickBus:
-    def __init__(self, *, votekicks_channel_id: int) -> None:
-        self.votekicks_channel_id = votekicks_channel_id
-
-    async def consume_vote_kicks(self, callback) -> None:
-        await callback(
-            ModerationVoteKickCreatedV1(
-                target=PlayerRefV1(
-                    playerUuid="uuid-target",
-                    playerPid=42,
-                    playerName="Target",
-                ),
-                actor=ActorRefV1(actorName="Starter", actorDiscordId="123456"),
-                reason="griefing",
-                votesFor=(
-                    VoteKickParticipantV1(
-                        playerName="Starter", playerPid=7, discordId="123456"
-                    ),
-                ),
-                votesAgainst=(
-                    VoteKickParticipantV1(
-                        playerName="Voter2", playerPid=8, discordId="654321"
-                    ),
-                ),
-            )
-        )
-        raise asyncio.CancelledError()
-
-    async def reconnect(self) -> None:
-        raise AssertionError("reconnect should not be called")
-
-    async def find_player_by_uuid(self, uuid):
-        return None
-
-
-def _VoteKickBot(**kwargs):
-    backend = _VoteKickBus(**kwargs)
-    return make_bot(
-        store=backend,
-        bus=backend,
-        settings=make_settings(
-            discord_votekicks_channel_id=backend.votekicks_channel_id
+def _vote_kick(*, starter_discord_id: str | None) -> ModerationVoteKickCreatedV1:
+    return ModerationVoteKickCreatedV1(
+        target=PlayerRefV1(playerUuid="uuid-target", playerPid=42, playerName="Target"),
+        actor=ActorRefV1(actorName="Starter", actorDiscordId="123456"),
+        reason="griefing",
+        votesFor=(
+            VoteKickParticipantV1(
+                playerName="Starter", playerPid=7, discordId=starter_discord_id
+            ),
+        ),
+        votesAgainst=(
+            VoteKickParticipantV1(playerName="Voter2", playerPid=8, discordId="654321"),
         ),
     )
 
 
 @pytest.mark.asyncio
 async def test_consume_game_chat_sanitizes_message() -> None:
-    channel = _Channel()
-    bot = _GameChatBot(channel_id=555, channel=channel)
+    bot, channel = await _server_bot(555)
+    await emit(
+        bot.bus,
+        CHAT,
+        ChatMessageV1(
+            authorName="[#ecececff]mod`name",
+            message="hello `[red]world`",
+            server="mini-pvp",
+        ),
+    )
 
-    with pytest.raises(asyncio.CancelledError):
-        await consume_game_chat(bot)
+    await consumed(bot.bus, consume_game_chat(bot), CHAT)
 
+    bot.resolve_channel.assert_awaited_once_with(555, context="game chat")
     assert channel.sent == [{"content": "`modname: hello world`", "view": None}]
 
 
 @pytest.mark.asyncio
 async def test_consume_game_chat_skips_when_channel_missing() -> None:
-    bot = _GameChatBot(channel_id=None, channel=None)
+    bot, channel = await _server_bot(None)
+    await emit(
+        bot.bus, CHAT, ChatMessageV1(authorName="a", message="b", server="mini-pvp")
+    )
 
-    with pytest.raises(asyncio.CancelledError):
-        await consume_game_chat(bot)
+    await consumed(bot.bus, consume_game_chat(bot), CHAT)
+
+    bot.resolve_channel.assert_not_awaited()
+    assert channel.sent == []
 
 
 @pytest.mark.asyncio
 async def test_consume_join_leave_formats_generated_payload() -> None:
-    channel = _Channel()
-    bot = _JoinLeaveBot(channel_id=556, channel=channel)
+    bot, channel = await _server_bot(556)
+    await emit(
+        bot.bus,
+        JOIN_LEAVE,
+        PlayerJoinLeaveV1(playerName="mod`name", server="mini-pvp", joined=True),
+    )
 
-    with pytest.raises(asyncio.CancelledError):
-        await consume_join_leave(bot)
+    await consumed(bot.bus, consume_join_leave(bot), JOIN_LEAVE)
 
+    bot.resolve_channel.assert_awaited_once_with(556, context="join/leave")
     assert channel.sent == [{"content": "`modname` joined", "view": None}]
 
 
 @pytest.mark.asyncio
 async def test_consume_join_leave_skips_when_channel_missing() -> None:
-    bot = _JoinLeaveBot(channel_id=None, channel=None)
+    bot, channel = await _server_bot(None)
+    await emit(
+        bot.bus,
+        JOIN_LEAVE,
+        PlayerJoinLeaveV1(playerName="a", server="mini-pvp", joined=False),
+    )
 
-    with pytest.raises(asyncio.CancelledError):
-        await consume_join_leave(bot)
+    await consumed(bot.bus, consume_join_leave(bot), JOIN_LEAVE)
+
+    bot.resolve_channel.assert_not_awaited()
+    assert channel.sent == []
 
 
 @pytest.mark.asyncio
 async def test_consume_server_actions_formats_generated_payload() -> None:
-    channel = _Channel()
-    bot = _ServerActionBot(channel_id=557, channel=channel)
+    bot, channel = await _server_bot(557)
+    await emit(
+        bot.bus,
+        SERVER_ACTION,
+        ServerActionV1(message="Server `started`", server="mini-pvp"),
+    )
 
-    with pytest.raises(asyncio.CancelledError):
-        await consume_server_actions(bot)
+    await consumed(bot.bus, consume_server_actions(bot), SERVER_ACTION)
 
+    bot.resolve_channel.assert_awaited_once_with(557, context="server action")
     assert channel.sent == [{"content": "Server started", "view": None}]
 
 
 @pytest.mark.asyncio
 async def test_consume_server_actions_skips_when_channel_missing() -> None:
-    bot = _ServerActionBot(channel_id=None, channel=None)
+    bot, channel = await _server_bot(None)
+    await emit(
+        bot.bus, SERVER_ACTION, ServerActionV1(message="started", server="mini-pvp")
+    )
 
-    with pytest.raises(asyncio.CancelledError):
-        await consume_server_actions(bot)
+    await consumed(bot.bus, consume_server_actions(bot), SERVER_ACTION)
+
+    bot.resolve_channel.assert_not_awaited()
+    assert channel.sent == []
 
 
 @pytest.mark.asyncio
@@ -387,12 +225,11 @@ async def test_consume_bans_uses_now_when_expire_date_invalid(
         "xcore_discord_bot.runtime_consumers.post_ban_log", fake_post_ban_log
     )
 
-    bot = _BanBot(bans_channel_id=777, player=PlayerRecord(pid=42, nickname="Target"))
+    bot = await _log_bot(discord_bans_channel_id=777)
+    await emit(bot.bus, BANS, BAN)
 
-    with pytest.raises(asyncio.CancelledError):
-        await consume_bans(bot)
+    await consumed(bot.bus, consume_bans(bot), BANS)
 
-    assert bot.store.now_calls == 1
     assert captured["pid"] == 42
     assert captured["name"] == "Target"
     assert captured["admin_name"] == "Admin"
@@ -415,12 +252,11 @@ async def test_consume_bans_returns_early_when_ban_logs_disabled(
         "xcore_discord_bot.runtime_consumers.post_ban_log", fake_post_ban_log
     )
 
-    bot = _BanBot(bans_channel_id=0, player=PlayerRecord(pid=42, nickname="Target"))
+    bot = await _log_bot(discord_bans_channel_id=0)
+    await emit(bot.bus, BANS, BAN)
 
-    with pytest.raises(asyncio.CancelledError):
-        await consume_bans(bot)
+    await consumed(bot.bus, consume_bans(bot), BANS)
 
-    assert bot.store.now_calls == 0
     assert called is False
 
 
@@ -456,15 +292,11 @@ async def test_consume_mutes_uses_now_when_expire_date_invalid(
         "xcore_discord_bot.runtime_consumers.post_mute_log", fake_post_mute_log
     )
 
-    bot = _MuteBot(
-        mutes_channel_id=778,
-        player=PlayerRecord(pid=42, nickname="Target"),
-    )
+    bot = await _log_bot(discord_mutes_channel_id=778)
+    await emit(bot.bus, MUTES, MUTE)
 
-    with pytest.raises(asyncio.CancelledError):
-        await consume_mutes(bot)
+    await consumed(bot.bus, consume_mutes(bot), MUTES)
 
-    assert bot.store.now_calls == 1
     assert captured["pid"] == 42
     assert captured["name"] == "Target"
     assert captured["admin_name"] == "Admin"
@@ -487,12 +319,11 @@ async def test_consume_mutes_returns_early_when_mute_logs_disabled(
         "xcore_discord_bot.runtime_consumers.post_mute_log", fake_post_mute_log
     )
 
-    bot = _MuteBot(mutes_channel_id=0, player=PlayerRecord(pid=42, nickname="Target"))
+    bot = await _log_bot(discord_mutes_channel_id=0)
+    await emit(bot.bus, MUTES, MUTE)
 
-    with pytest.raises(asyncio.CancelledError):
-        await consume_mutes(bot)
+    await consumed(bot.bus, consume_mutes(bot), MUTES)
 
-    assert bot.store.now_calls == 0
     assert called is False
 
 
@@ -533,10 +364,10 @@ async def test_consume_vote_kicks_dispatches_vote_payload_to_log_handler(
         fake_post_vote_kick_log,
     )
 
-    bot = _VoteKickBot(votekicks_channel_id=779)
+    bot = await _log_bot(discord_votekicks_channel_id=779)
+    await emit(bot.bus, VOTE_KICKS, _vote_kick(starter_discord_id="123456"))
 
-    with pytest.raises(asyncio.CancelledError):
-        await consume_vote_kicks(bot)
+    await consumed(bot.bus, consume_vote_kicks(bot), VOTE_KICKS)
 
     assert captured["target_name"] == "Target"
     assert captured["target_pid"] == 42
@@ -558,42 +389,16 @@ async def test_consume_vote_kicks_uses_participant_name_fallback_for_starter_pid
         del bot
         captured.update(kwargs)
 
-    class _VoteKickNameFallbackBus(_VoteKickBus):
-        async def consume_vote_kicks(self, callback) -> None:
-            await callback(
-                ModerationVoteKickCreatedV1(
-                    target=PlayerRefV1(
-                        playerUuid="uuid-target",
-                        playerPid=42,
-                        playerName="Target",
-                    ),
-                    actor=ActorRefV1(actorName="Starter", actorDiscordId="999999"),
-                    reason="griefing",
-                    votesFor=(
-                        VoteKickParticipantV1(
-                            playerName="Starter",
-                            playerPid=7,
-                            discordId=None,
-                        ),
-                    ),
-                    votesAgainst=(),
-                )
-            )
-            raise asyncio.CancelledError()
-
     monkeypatch.setattr(
         "xcore_discord_bot.runtime_consumers.post_vote_kick_log",
         fake_post_vote_kick_log,
     )
 
-    bot = make_bot(
-        store=_VoteKickNameFallbackBus(votekicks_channel_id=779),
-        bus=_VoteKickNameFallbackBus(votekicks_channel_id=779),
-        settings=make_settings(discord_votekicks_channel_id=779),
-    )
+    bot = await _log_bot(discord_votekicks_channel_id=779)
+    # The starter's vote carries no Discord id, so it is matched by name.
+    await emit(bot.bus, VOTE_KICKS, _vote_kick(starter_discord_id=None))
 
-    with pytest.raises(asyncio.CancelledError):
-        await consume_vote_kicks(bot)
+    await consumed(bot.bus, consume_vote_kicks(bot), VOTE_KICKS)
 
     assert captured["starter_pid"] == 7
 
@@ -613,9 +418,9 @@ async def test_consume_vote_kicks_returns_early_when_logs_disabled(
         fake_post_vote_kick_log,
     )
 
-    bot = _VoteKickBot(votekicks_channel_id=0)
+    bot = await _log_bot(discord_votekicks_channel_id=0)
+    await emit(bot.bus, VOTE_KICKS, _vote_kick(starter_discord_id="123456"))
 
-    with pytest.raises(asyncio.CancelledError):
-        await consume_vote_kicks(bot)
+    await consumed(bot.bus, consume_vote_kicks(bot), VOTE_KICKS)
 
     assert called is False
