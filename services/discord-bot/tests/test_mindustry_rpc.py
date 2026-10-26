@@ -4,6 +4,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
+from xcore_discord_bot.bus.rating import RatingBus
 from xcore_discord_bot.rpc.mindustry_rpc import MindustryRpcClient
 
 
@@ -16,7 +17,7 @@ def _client(method: str, *results) -> tuple[MindustryRpcClient, AsyncMock]:
     bus = MagicMock()
     call = AsyncMock(side_effect=list(results))
     setattr(bus, method, call)
-    return MindustryRpcClient(bus), call
+    return MindustryRpcClient(bus, rating=RatingBus(bus)), call
 
 
 @pytest.mark.parametrize(

@@ -310,7 +310,7 @@ async def test_ended_consumer_dispatches_to_the_handler() -> None:
         await callback(_ended((_entry(1, "Ann", None),)))
         raise asyncio.CancelledError()
 
-    bot.bus.consume_season_ended = consume
+    bot.container.rating_bus.consume_season_ended = consume
     bot.bus.reconnect = AsyncMock(
         side_effect=AssertionError("reconnect should not be called")
     )

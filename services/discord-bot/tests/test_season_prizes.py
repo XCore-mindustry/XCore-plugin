@@ -20,6 +20,7 @@ from xcore_protocol.generated.shared import (
 )
 
 from xcore_discord_bot.badges import BADGE_BY_ID, get_badge
+from xcore_discord_bot.bus.rating import RatingBus
 from xcore_discord_bot.bus.transport import RpcRejected
 from xcore_discord_bot.cogs.seasons import SeasonsCog, parse_places
 from xcore_discord_bot.handlers_seasons import (
@@ -446,7 +447,7 @@ async def test_prize_rpcs_go_to_a_live_server() -> None:
         async def rpc_prize_delivered(self, *, server, **kwargs):
             seen.append(("delivered", server))
 
-    client = MindustryRpcClient(_Bus())
+    client = MindustryRpcClient(SimpleNamespace(), rating=_Bus())
     prize = _prize_v1(1, 1, SeasonPrizeV1Kind.BADGE, "veteran")
     await client.add_season_prize(
         ladder="l", prize=prize, discord_id="5", actor_name="H", timeout_ms=1
@@ -518,8 +519,9 @@ async def test_the_bus_sends_the_canonical_prize_requests() -> None:
         return {"payload_json": json.dumps(body)}
 
     bus.rpc_request = MethodType(fake_rpc_request, bus)
+    rating = RatingBus(bus)
 
-    added = await bus.rpc_season_prize_add(
+    added = await rating.rpc_season_prize_add(
         server="mini-pvp",
         ladder="minipvp",
         prize=_prize_v1(1, 1, SeasonPrizeV1Kind.BADGE, "veteran"),
@@ -527,7 +529,7 @@ async def test_the_bus_sends_the_canonical_prize_requests() -> None:
         actor_name="Head",
         timeout_ms=100,
     )
-    await bus.rpc_season_prize_remove(
+    await rating.rpc_season_prize_remove(
         server="mini-pvp",
         ladder="minipvp",
         place_from=2,
@@ -536,7 +538,7 @@ async def test_the_bus_sends_the_canonical_prize_requests() -> None:
         actor_name="Head",
         timeout_ms=100,
     )
-    delivered = await bus.rpc_prize_delivered(
+    delivered = await rating.rpc_prize_delivered(
         server="mini-pvp",
         ladder="minipvp",
         season=3,
@@ -546,7 +548,7 @@ async def test_the_bus_sends_the_canonical_prize_requests() -> None:
         note="sent",
         timeout_ms=100,
     )
-    await bus.rpc_prize_delivered(
+    await rating.rpc_prize_delivered(
         server="mini-pvp",
         ladder="minipvp",
         season=3,

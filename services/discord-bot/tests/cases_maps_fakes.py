@@ -6,6 +6,7 @@ from cases_badges_fakes import badge_core
 from cases_fakes import NOW, Message, Thread, member
 from test_cases_msav import msav
 
+from xcore_discord_bot.bus.rating import RatingBus
 from xcore_discord_bot.cases.flows.maps import MAP_FLOW
 from xcore_discord_bot.cases.model import CaseKind
 from xcore_discord_bot.cases.msav import validate_msav
@@ -31,7 +32,7 @@ async def map_core(**kwargs):
     service.registry.enable(CaseKind.MAP)
     bot.map_cache = {}
     bot.bus.rpc_upload_maps = bus.rpc_upload_maps
-    bot.container.rpc = MindustryRpcClient(bot.bus)
+    bot.container.rpc = MindustryRpcClient(bot.bus, rating=RatingBus(bot.bus))
     author.bot = False
     author.name = "mapper"
     forum = bot.channels[400]

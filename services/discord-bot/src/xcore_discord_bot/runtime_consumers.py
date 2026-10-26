@@ -306,7 +306,10 @@ async def consume_season_started(bot: XCoreDiscordBot) -> None:
         await on_season_started(bot, event)
 
     await run_consumer_forever(
-        bot.bus, "Season started", bot.bus.consume_season_started, dispatch
+        bot.bus,
+        "Season started",
+        bot.container.rating_bus.consume_season_started,
+        dispatch,
     )
 
 
@@ -315,7 +318,10 @@ async def consume_season_ending_soon(bot: XCoreDiscordBot) -> None:
         await on_season_ending_soon(bot, event)
 
     await run_consumer_forever(
-        bot.bus, "Season ending soon", bot.bus.consume_season_ending_soon, dispatch
+        bot.bus,
+        "Season ending soon",
+        bot.container.rating_bus.consume_season_ending_soon,
+        dispatch,
     )
 
 
@@ -324,7 +330,7 @@ async def consume_season_ended(bot: XCoreDiscordBot) -> None:
         await on_season_ended(bot, event)
 
     await run_consumer_forever(
-        bot.bus, "Season ended", bot.bus.consume_season_ended, dispatch
+        bot.bus, "Season ended", bot.container.rating_bus.consume_season_ended, dispatch
     )
 
 
@@ -333,7 +339,10 @@ async def consume_season_rescheduled(bot: XCoreDiscordBot) -> None:
         await on_season_rescheduled(bot, event)
 
     await run_consumer_forever(
-        bot.bus, "Season rescheduled", bot.bus.consume_season_rescheduled, dispatch
+        bot.bus,
+        "Season rescheduled",
+        bot.container.rating_bus.consume_season_rescheduled,
+        dispatch,
     )
 
 

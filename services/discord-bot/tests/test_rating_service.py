@@ -8,6 +8,7 @@ from typing import Any
 import pytest
 from xcore_protocol.generated.rating import RatingSeasonRescheduleRequestV1Operation
 
+from xcore_discord_bot.bus.rating import RatingBus
 from xcore_discord_bot.bus.transport import RpcFailed, RpcRejected
 from xcore_discord_bot.daemons.rating_merge_daemon import RatingMergeDaemon
 from xcore_discord_bot.dto import AccountMergeResult, PlayerRecord
@@ -343,7 +344,9 @@ async def test_rpc_client_tries_the_next_server_when_one_stays_silent() -> None:
             raise TimeoutError()
         return server
 
-    result = await MindustryRpcClient(SimpleNamespace()).on_any_live_server(call)
+    result = await MindustryRpcClient(
+        SimpleNamespace(), rating=SimpleNamespace()
+    ).on_any_live_server(call)
 
     assert result == "b-server"
     assert tried == ["a-server", "b-server"]
@@ -359,7 +362,9 @@ async def test_rpc_client_gives_up_after_a_few_silent_servers() -> None:
         raise TimeoutError()
 
     with pytest.raises(TimeoutError):
-        await MindustryRpcClient(SimpleNamespace()).on_any_live_server(call)
+        await MindustryRpcClient(
+            SimpleNamespace(), rating=SimpleNamespace()
+        ).on_any_live_server(call)
 
     assert len(tried) == MAX_SERVERS_TRIED
 
@@ -374,7 +379,9 @@ async def test_rpc_client_does_not_ask_another_server_after_a_refusal() -> None:
         raise RpcRejected("x", "REJECTED", "no")
 
     with pytest.raises(RpcRejected):
-        await MindustryRpcClient(SimpleNamespace()).on_any_live_server(call)
+        await MindustryRpcClient(
+            SimpleNamespace(), rating=SimpleNamespace()
+        ).on_any_live_server(call)
 
     assert tried == ["a"]
 
@@ -392,7 +399,12 @@ async def test_rpc_client_tries_the_next_server_when_one_could_not_carry_it_out(
             raise RpcFailed("x", "FAILED", "see the server log")
         return server
 
-    assert await MindustryRpcClient(SimpleNamespace()).on_any_live_server(call) == "b"
+    assert (
+        await MindustryRpcClient(
+            SimpleNamespace(), rating=SimpleNamespace()
+        ).on_any_live_server(call)
+        == "b"
+    )
     assert tried == ["a", "b"]
 
 
@@ -420,7 +432,7 @@ async def test_rpc_client_names_a_season_change_once_for_every_server_it_tries()
             seen.append(("remove", server, request_id))
             return "removed"
 
-    client = MindustryRpcClient(_Bus())
+    client = MindustryRpcClient(SimpleNamespace(), rating=_Bus())
     actor = {"discord_id": "5", "actor_name": "Head", "timeout_ms": 100}
     await client.reschedule_season(
         ladder="minipvp",
@@ -503,9 +515,9 @@ async def test_rpc_client_needs_a_live_server() -> None:
     _live()
 
     with pytest.raises(NoLiveServerError):
-        await MindustryRpcClient(SimpleNamespace()).on_any_live_server(
-            lambda server: None
-        )
+        await MindustryRpcClient(
+            SimpleNamespace(), rating=SimpleNamespace()
+        ).on_any_live_server(lambda server: None)
 
 
 # --------------------------------------------------------------------- the bus
@@ -558,11 +570,12 @@ async def test_bus_sends_the_canonical_season_and_merge_requests() -> None:
         return {"payload_json": json.dumps(body)}
 
     bus.rpc_request = MethodType(fake_rpc_request, bus)
+    rating = RatingBus(bus)
 
-    merged = await bus.rpc_ratings_merge(
+    merged = await rating.rpc_ratings_merge(
         server="mini-pvp", source_uuid="s", target_uuid="t", timeout_ms=100
     )
-    moved = await bus.rpc_season_reschedule(
+    moved = await rating.rpc_season_reschedule(
         server="mini-pvp",
         ladder="minipvp",
         operation=RatingSeasonRescheduleRequestV1Operation.EXTEND,
@@ -580,7 +593,7 @@ async def test_bus_sends_the_canonical_season_and_merge_requests() -> None:
     assert seen[1].payload["actor"]["actorDiscordId"] == "5"
     assert "requestId" not in seen[1].payload
 
-    await bus.rpc_season_reschedule(
+    await rating.rpc_season_reschedule(
         server="mini-pvp",
         ladder="minipvp",
         operation=RatingSeasonRescheduleRequestV1Operation.END_NOW,

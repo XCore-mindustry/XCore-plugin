@@ -27,6 +27,7 @@ from xcore_protocol.generated.sentinel import (
 )
 from xcore_protocol.generated.shared import SeasonPrizeV1
 
+from ..bus.rating import RatingBus
 from ..bus.transport import RpcFailed
 from ..redis_bus import RedisBus
 from ..registry import server_registry
@@ -44,8 +45,11 @@ class NoLiveServerError(RuntimeError):
 
 
 class MindustryRpcClient:
-    def __init__(self, bus: RedisBus) -> None:
+    """Which server answers, retries and request ids, over the per-family buses."""
+
+    def __init__(self, bus: RedisBus, *, rating: RatingBus) -> None:
         self._bus = bus
+        self._rating = rating
 
     async def _retry_staff(self, call: Callable[[], Awaitable[T]]) -> T:
         for attempt in range(2):
@@ -145,7 +149,7 @@ class MindustryRpcClient:
     ) -> RatingSeasonRescheduleResponseV1:
         request_id = self._request_id()
         return await self.on_any_live_server(
-            lambda server: self._bus.rpc_season_reschedule(
+            lambda server: self._rating.rpc_season_reschedule(
                 server=server,
                 ladder=ladder,
                 operation=operation,
@@ -170,7 +174,7 @@ class MindustryRpcClient:
     ) -> RatingSeasonPrizesSetResponseV1:
         request_id = self._request_id()
         return await self.on_any_live_server(
-            lambda server: self._bus.rpc_season_prize_add(
+            lambda server: self._rating.rpc_season_prize_add(
                 server=server,
                 ladder=ladder,
                 prize=prize,
@@ -193,7 +197,7 @@ class MindustryRpcClient:
     ) -> RatingSeasonPrizesSetResponseV1:
         request_id = self._request_id()
         return await self.on_any_live_server(
-            lambda server: self._bus.rpc_season_prize_remove(
+            lambda server: self._rating.rpc_season_prize_remove(
                 server=server,
                 ladder=ladder,
                 place_from=place_from,
@@ -218,7 +222,7 @@ class MindustryRpcClient:
         player_pid: int | None = None,
     ) -> RatingPrizeGrantUpdateResponseV1:
         return await self.on_any_live_server(
-            lambda server: self._bus.rpc_prize_delivered(
+            lambda server: self._rating.rpc_prize_delivered(
                 server=server,
                 ladder=ladder,
                 season=season,
@@ -239,7 +243,7 @@ class MindustryRpcClient:
         timeout_ms: int,
     ) -> RatingAccountsMergeResponseV1:
         return await self.on_any_live_server(
-            lambda server: self._bus.rpc_ratings_merge(
+            lambda server: self._rating.rpc_ratings_merge(
                 server=server,
                 source_uuid=source_uuid,
                 target_uuid=target_uuid,
