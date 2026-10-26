@@ -41,6 +41,10 @@ def get(doc, key, default=None):
 
 def matches(doc, query):
     for key, want in query.items():
+        if key == "$expr":
+            if not evaluate(want, doc):
+                return False
+            continue
         if key == "$or":
             if not any(matches(doc, option) for option in want):
                 return False
@@ -109,7 +113,12 @@ def evaluate(expr, doc, variables=None):
             for item in evaluate(arg["input"], doc, variables)
             if evaluate(arg["cond"], doc, {**variables, name: item})
         ]
+    if op == "$regexMatch":
+        found = evaluate(arg["input"], doc, variables)
+        return re.search(evaluate(arg["regex"], doc, variables), found) is not None
     values = evaluate(arg, doc, variables)
+    if op == "$toString":
+        return None if values is None else str(values)
     if op == "$ifNull":
         return values[0] if values[0] is not None else values[1]
     if op == "$eq":
@@ -147,6 +156,15 @@ def assign_filtered(doc, parts, value, array_filters):
         assign_filtered(doc.setdefault(head, {}), rest, value, array_filters)
     else:
         doc[head] = deepcopy(value)
+
+
+def project(doc, projection):
+    """An inclusion projection, which is the only kind the bot sends."""
+    assert all(include in (0, 1) for include in projection.values()), projection
+    kept = {key for key, include in projection.items() if include}
+    if projection.get("_id", 1):
+        kept.add("_id")
+    return {key: value for key, value in doc.items() if key in kept}
 
 
 def unset(doc, key):
@@ -206,12 +224,26 @@ class Collection:
     def find(self, query, projection=None):
         found = [doc for doc in self.docs if matches(doc, query)]
         if projection:
-            # Inclusion projections only, which is what the bot sends.
-            kept = {key for key, include in projection.items() if include}
-            if projection.get("_id", 1):
-                kept.add("_id")
-            found = [{k: v for k, v in doc.items() if k in kept} for doc in found]
+            found = [project(doc, projection) for doc in found]
         return Cursor(found)
+
+    async def aggregate(self, pipeline):
+        cursor = Cursor(self.docs)
+        for stage in pipeline:
+            ((name, arg),) = stage.items()
+            if name == "$match":
+                cursor.docs = [doc for doc in cursor.docs if matches(doc, arg)]
+            elif name == "$sort":
+                cursor.sort(list(arg.items()))
+            elif name == "$skip":
+                cursor.skip(arg)
+            elif name == "$limit":
+                cursor.limit(arg)
+            elif name == "$project":
+                cursor.docs = [project(doc, arg) for doc in cursor.docs]
+            else:
+                raise AssertionError(f"Unsupported fake stage {name}")
+        return cursor
 
     async def find_one(self, query, *, session=None):
         self._join(session)
@@ -253,6 +285,31 @@ class Collection:
         doc.setdefault("_id", ObjectId())
         self._unique(doc)
         self.docs.append(deepcopy(doc))
+
+    async def replace_one(self, query, replacement, *, upsert=False):
+        target = next((doc for doc in self.docs if matches(doc, query)), None)
+        if target is None and not upsert:
+            return SimpleNamespace(matched_count=0, modified_count=0, upserted_id=None)
+        candidate = deepcopy(replacement)
+        candidate["_id"] = target["_id"] if target is not None else ObjectId()
+        self._unique(candidate, ignore=target)
+        if target is None:
+            self.docs.append(candidate)
+            return SimpleNamespace(
+                matched_count=0, modified_count=0, upserted_id=candidate["_id"]
+            )
+        modified = int(candidate != target)
+        target.clear()
+        target.update(candidate)
+        return SimpleNamespace(
+            matched_count=1, modified_count=modified, upserted_id=None
+        )
+
+    async def delete_one(self, query):
+        target = next((doc for doc in self.docs if matches(doc, query)), None)
+        if target is not None:
+            self.docs.remove(target)
+        return SimpleNamespace(deleted_count=int(target is not None))
 
     async def delete_many(self, query):
         before = len(self.docs)

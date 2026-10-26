@@ -1,13 +1,12 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field, replace
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any
 
 import pytest
-from bot_fakes import make_bot
+from backends import published, real_bot
 
-from xcore_discord_bot.dto import BanRecord, MuteRecord, PlayerRecord
 from xcore_discord_bot.handlers_moderation import (
     MSG_NO_ACTIVE_BAN,
     MSG_NO_ACTIVE_MUTE,
@@ -43,92 +42,50 @@ class _Interaction:
     response: _Response = field(default_factory=_Response)
 
 
-class _Bus:
-    def __init__(self) -> None:
-        self.pardon_calls: list[str] = []
-
-    async def claim_idempotency(self, key: str, ttl_seconds: int = 600) -> bool:
-        return True
-
-    async def publish_pardon_player(self, uuid_value: str) -> None:
-        self.pardon_calls.append(uuid_value)
-
-
-class _Store:
-    def __init__(self) -> None:
-        self.audit_rows: list[dict[str, Any]] = []
-
-    def now_utc(self) -> datetime:
-        return datetime(2026, 1, 1, tzinfo=UTC)
-
-    async def find_player_by_pid(self, pid: int) -> PlayerRecord | None:
-        if pid != 123:
-            return None
-        return PlayerRecord(pid=123, uuid="uuid-123", ip="1.2.3.4", nickname="Vortex")
-
-    async def find_ban(self, *, uuid: str, ip: str | None) -> BanRecord | None:
-        return BanRecord(
-            name="Vortex",
-            admin_name="mod-1",
-            admin_discord_id="111",
-            reason="griefing",
-            expire_date=datetime(2026, 12, 31, 15, 0, tzinfo=UTC),
-        )
-
-    async def ensure_ban_id(self, *, uuid: str, ip: str | None) -> BanRecord | None:
-        ban = await self.find_ban(uuid=uuid, ip=ip)
-        return replace(ban, ban_id=1, uuid=uuid, ip=ip) if ban is not None else None
-
-    async def delete_ban(
-        self, *, uuid: str, ip: str | None, ban_id: int | None = None
-    ) -> int:
-        return 1
-
-    async def find_mute(self, *, uuid: str) -> MuteRecord | None:
-        return MuteRecord(
-            uuid=uuid,
-            pid=123,
-            name="Vortex",
-            admin_name="mod-2",
-            admin_discord_id="222",
-            reason="spam",
-            expire_date=datetime(2026, 12, 31, 16, 0, tzinfo=UTC),
-        )
-
-    async def delete_mute(self, *, uuid: str) -> int:
-        return 1
-
-    async def append_moderation_audit(self, **kwargs: Any) -> str:
-        self.audit_rows.append(dict(kwargs))
-        return f"audit-{len(self.audit_rows)}"
-
-    async def find_player_by_uuid(self, uuid):
-        return None
+PLAYER = {"pid": 123, "uuid": "uuid-123", "ip": "1.2.3.4", "nickname": "Vortex"}
+# Written before bans had ids, so the unban assigns one first.
+BAN = {
+    "uuid": "uuid-123",
+    "ip": "1.2.3.4",
+    "name": "Vortex",
+    "admin_name": "mod-1",
+    "admin_discord_id": "111",
+    "reason": "griefing",
+    "expire_date": datetime(2026, 12, 31, 15, 0, tzinfo=UTC),
+}
+MUTE = {
+    "uuid": "uuid-123",
+    "pid": 123,
+    "name": "Vortex",
+    "admin_name": "mod-2",
+    "admin_discord_id": "222",
+    "reason": "spam",
+    "expire_date": datetime(2026, 12, 31, 16, 0, tzinfo=UTC),
+}
+PARDON = "xcore:cmd:pardon-player:mini-pvp"
 
 
-class _NoActiveStore(_Store):
-    async def delete_ban(
-        self, *, uuid: str, ip: str | None, ban_id: int | None = None
-    ) -> int:
-        return 0
-
-    async def delete_mute(self, *, uuid: str) -> int:
-        return 0
-
-    async def find_player_by_uuid(self, uuid):
-        return None
+async def _bot(*, ban: bool = True, mute: bool = True):
+    bot, db = await real_bot()
+    bot.container.servers.update_server("mini-pvp", 1, 0, 10, "v1")
+    await db["players"].insert_one(dict(PLAYER))
+    if ban:
+        await db["bans"].insert_one(dict(BAN))
+    if mute:
+        await db["mutes"].insert_one(dict(MUTE))
+    return bot, db
 
 
 @pytest.mark.asyncio
 async def test_cmd_unban_sends_rich_embed() -> None:
-    bus = _Bus()
-    store = _Store()
-    bot = make_bot(bus=bus, store=store)
+    bot, db = await _bot()
 
     interaction = _Interaction(id=1, user=_User(id=7, display_name="admin-x"))
     await cmd_unban(bot, interaction, 123)
 
-    assert bus.pardon_calls == ["uuid-123"]
+    assert await db["bans"].count_documents({}) == 0
+    (pardon,) = await published(bot.bus, PARDON)
+    assert pardon["target"]["playerUuid"] == "uuid-123"
     assert len(interaction.response.calls) == 1
     call = interaction.response.calls[0]
     assert call["content"] is None
@@ -143,17 +100,17 @@ async def test_cmd_unban_sends_rich_embed() -> None:
     assert fields["Reason"] == "griefing"
     assert "<t:" in fields["Was set to expire"]
     assert fields["Unbanned by"] == "admin-x"
-    assert len(store.audit_rows) == 1
-    assert store.audit_rows[0]["action"] == "UNBAN"
-    assert store.audit_rows[0]["reason"] == "griefing"
-    assert store.audit_rows[0]["actor_discord_id"] == "7"
-    assert store.audit_rows[0]["request_id"] == "1"
+    (audit,) = await db["moderation_audit"].find({}).to_list()
+    assert audit["action"] == "UNBAN"
+    assert audit["reason"] == "griefing"
+    assert audit["actor"]["discord_id"] == "7"
+    assert audit["origin"]["request_id"] == "1"
+    assert audit["details"]["extra"]["ban_id"] == "1"
 
 
 @pytest.mark.asyncio
 async def test_cmd_unmute_sends_rich_embed() -> None:
-    store = _Store()
-    bot = make_bot(bus=_Bus(), store=store)
+    bot, db = await _bot()
 
     interaction = _Interaction(id=2, user=_User(id=7, display_name="admin-y"))
     await cmd_unmute(bot, interaction, 123)
@@ -169,16 +126,17 @@ async def test_cmd_unmute_sends_rich_embed() -> None:
     assert fields["Reason"] == "spam"
     assert "<t:" in fields["Was set to expire"]
     assert fields["Unmuted by"] == "admin-y"
-    assert len(store.audit_rows) == 1
-    assert store.audit_rows[0]["action"] == "UNMUTE"
-    assert store.audit_rows[0]["reason"] == "spam"
-    assert store.audit_rows[0]["actor_discord_id"] == "7"
-    assert store.audit_rows[0]["request_id"] == "2"
+    assert await db["mutes"].count_documents({}) == 0
+    (audit,) = await db["moderation_audit"].find({}).to_list()
+    assert audit["action"] == "UNMUTE"
+    assert audit["reason"] == "spam"
+    assert audit["actor"]["discord_id"] == "7"
+    assert audit["origin"]["request_id"] == "2"
 
 
 @pytest.mark.asyncio
 async def test_cmd_unban_no_active_ban_message() -> None:
-    bot = make_bot(bus=_Bus(), store=_NoActiveStore())
+    bot, db = await _bot(ban=False)
 
     interaction = _Interaction(id=3, user=_User(id=7, display_name="admin"))
     await cmd_unban(bot, interaction, 123)
@@ -186,11 +144,13 @@ async def test_cmd_unban_no_active_ban_message() -> None:
     assert interaction.response.calls == [
         {"content": MSG_NO_ACTIVE_BAN, "embed": None, "ephemeral": True}
     ]
+    assert await published(bot.bus, PARDON) == []
+    assert await db["moderation_audit"].count_documents({}) == 0
 
 
 @pytest.mark.asyncio
 async def test_cmd_unmute_no_active_mute_message() -> None:
-    bot = make_bot(bus=_Bus(), store=_NoActiveStore())
+    bot, db = await _bot(mute=False)
 
     interaction = _Interaction(id=4, user=_User(id=7, display_name="admin"))
     await cmd_unmute(bot, interaction, 123)
@@ -198,3 +158,4 @@ async def test_cmd_unmute_no_active_mute_message() -> None:
     assert interaction.response.calls == [
         {"content": MSG_NO_ACTIVE_MUTE, "embed": None, "ephemeral": True}
     ]
+    assert await db["moderation_audit"].count_documents({}) == 0

@@ -5,64 +5,10 @@ from datetime import UTC, datetime
 from typing import Any
 
 import pytest
-from bot_fakes import make_bot
+from backends import real_bot
 
-from xcore_discord_bot import staff_actions
-from xcore_discord_bot.dto import PlayerRecord
 from xcore_discord_bot.handlers_moderation import cmd_mute
 from xcore_discord_bot.mongo_store import MuteDoc
-
-
-class _Store:
-    def __init__(self) -> None:
-        self.upserts: list[dict[str, Any]] = []
-        self.audit_rows: list[dict[str, Any]] = []
-
-    async def find_player_by_pid(self, pid: int) -> PlayerRecord | None:
-        if pid != 55:
-            return None
-        return PlayerRecord(pid=55, uuid="uuid-55", nickname="Target")
-
-    def now_utc(self) -> datetime:
-        return datetime(2026, 1, 1, tzinfo=UTC)
-
-    async def upsert_mute(
-        self,
-        *,
-        uuid: str,
-        pid: int | None,
-        name: str,
-        admin_name: str,
-        admin_discord_id: str | None,
-        reason: str,
-        expire_date: datetime,
-    ) -> None:
-        self.upserts.append(
-            {
-                "uuid": uuid,
-                "pid": pid,
-                "name": name,
-                "admin_name": admin_name,
-                "admin_discord_id": admin_discord_id,
-                "reason": reason,
-                "expire_date": expire_date,
-            }
-        )
-
-    async def append_moderation_audit(self, **kwargs: Any) -> str:
-        self.audit_rows.append(dict(kwargs))
-        return f"audit-{len(self.audit_rows)}"
-
-    async def delete_mute(self, *, uuid):
-        return 1
-
-    async def find_player_by_uuid(self, uuid):
-        return None
-
-
-class _Bus:
-    async def claim_idempotency(self, key: str, ttl_seconds: int = 600) -> bool:
-        return True
 
 
 @dataclass
@@ -108,24 +54,22 @@ class _Interaction:
 
 @pytest.mark.asyncio
 async def test_cmd_mute_persists_pid() -> None:
-    store = _Store()
-    bot = make_bot(store=store, bus=_Bus())
-
+    bot, db = await real_bot()
+    await db["players"].insert_one({"pid": 55, "uuid": "uuid-55", "nickname": "Target"})
     interaction = _Interaction(id=101, user=_User(id=999, display_name="Moderator"))
 
-    original_post_mute_log = staff_actions.post_mute_log
+    await cmd_mute(bot, interaction, 55, "1d", "spam")
 
-    async def fake_post_mute_log(*args, **kwargs):
-        return None
-
-    staff_actions.post_mute_log = fake_post_mute_log
-    try:
-        await cmd_mute(bot, interaction, 55, "1d", "spam")
-    finally:
-        staff_actions.post_mute_log = original_post_mute_log
-
-    assert len(store.upserts) == 1
-    assert store.upserts[0]["pid"] == 55
+    (mute,) = await db["mutes"].find({}).to_list()
+    assert mute["uuid"] == "uuid-55"
+    assert mute["pid"] == 55
+    assert mute["name"] == "Target"
+    assert mute["admin_name"] == "Moderator"
+    assert mute["admin_discord_id"] == "999"
+    assert mute["reason"] == "spam"
+    (audit,) = await db["moderation_audit"].find({}).to_list()
+    assert audit["action"] == "MUTE"
+    assert audit["target"]["pid"] == 55
 
 
 def test_mute_doc_accepts_optional_pid() -> None:

@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from typing import Any
 
 import pytest
-from bot_fakes import make_bot
+from backends import real_bot
 from discord import AppCommandOptionType
 
 from xcore_discord_bot.cogs.autocomplete import (
@@ -12,7 +12,6 @@ from xcore_discord_bot.cogs.autocomplete import (
     _autocomplete_stats_player,
 )
 from xcore_discord_bot.cogs.info import InfoCog
-from xcore_discord_bot.dto import PlayerRecord
 from xcore_discord_bot.moderation_logs import format_vote_kick_party_value
 from xcore_discord_bot.player_pids import NO_PID, is_assigned, or_none
 
@@ -35,42 +34,34 @@ def test_vote_kick_party_shows_a_negative_pid() -> None:
 
 
 @dataclass
-class _Store:
-    rows: list[PlayerRecord]
-
-    async def find_player_by_uuid(self, uuid):
-        return None
-
-    async def autocomplete_players(
-        self, query: str, limit: int = 25
-    ) -> list[PlayerRecord]:
-        del query, limit
-        return self.rows
-
-
-@dataclass
 class _Interaction:
     client: Any
 
 
+async def _interaction(*players: dict[str, Any]) -> Any:
+    bot, db = await real_bot()
+    for player in players:
+        await db["players"].insert_one(dict(player))
+    return _Interaction(client=bot)
+
+
+EVENT = {"pid": -12, "nickname": "Event", "username": "br"}
+ZERO = {"pid": 0, "nickname": "Zero", "username": "zero"}
+NOBODY = {"pid": NO_PID, "nickname": "Nobody"}
+
+
 @pytest.mark.asyncio
 async def test_autocomplete_offers_zero_and_negative_pids() -> None:
-    interaction: Any = _Interaction(
-        client=make_bot(
-            store=_Store(
-                [
-                    PlayerRecord(pid=-12, nickname="Event"),
-                    PlayerRecord(pid=0, nickname="Zero", username="zero"),
-                    PlayerRecord(pid=NO_PID, nickname="Nobody"),
-                ]
-            )
-        )
-    )
+    interaction = await _interaction(EVENT, ZERO, NOBODY)
 
-    choices = await _autocomplete_player_id(interaction, "-")
+    # The reserved value also starts with "-", but it is never offered.
+    negative = await _autocomplete_player_id(interaction, "-")
+    zero = await _autocomplete_player_id(interaction, "#0")
 
-    assert [(choice.name, choice.value) for choice in choices] == [
-        ("Event (#-12)", -12),
+    assert [(choice.name, choice.value) for choice in negative] == [
+        ("Event @br (#-12)", -12),
+    ]
+    assert [(choice.name, choice.value) for choice in zero] == [
         ("Zero @zero (#0)", 0),
     ]
 
@@ -84,11 +75,7 @@ def test_stats_player_option_accepts_text_with_autocomplete() -> None:
 
 @pytest.mark.asyncio
 async def test_stats_suggestions_use_string_pids() -> None:
-    interaction: Any = _Interaction(
-        client=make_bot(
-            store=_Store([PlayerRecord(pid=-12, nickname="Event", username="br")])
-        )
-    )
+    interaction = await _interaction(EVENT, ZERO)
 
     choices = await _autocomplete_stats_player(interaction, "@br")
 

@@ -1,13 +1,11 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import UTC
 from typing import Any
 
 import pytest
-from bot_fakes import make_bot
+from backends import real_bot
 
-from xcore_discord_bot.dto import PlayerRecord
 from xcore_discord_bot.handlers_moderation import cmd_mute
 from xcore_discord_bot.moderation_views import MuteUndoView
 
@@ -63,72 +61,31 @@ class _Interaction:
         return self._original_message
 
 
-class _Store:
-    def __init__(self) -> None:
-        self.deleted: list[str] = []
-        self.upserts: list[dict[str, Any]] = []
-        self.audit_rows: list[dict[str, Any]] = []
-
-    async def delete_mute(self, *, uuid: str) -> int:
-        self.deleted.append(uuid)
-        return 1
-
-    async def find_player_by_pid(self, pid: int) -> PlayerRecord | None:
-        if pid != 123:
-            return None
-        return PlayerRecord(pid=123, uuid="uuid-123", nickname="Vortex")
-
-    def now_utc(self):
-        from datetime import datetime
-
-        return datetime(2026, 1, 1, tzinfo=UTC)
-
-    async def upsert_mute(
-        self,
-        *,
-        uuid: str,
-        pid: int | None,
-        name: str,
-        admin_name: str,
-        admin_discord_id: str | None,
-        reason: str,
-        expire_date: Any,
-    ) -> None:
-        self.upserts.append(
-            {
-                "uuid": uuid,
-                "pid": pid,
-                "name": name,
-                "admin_name": admin_name,
-                "admin_discord_id": admin_discord_id,
-                "reason": reason,
-                "expire_date": expire_date,
-            }
-        )
-
-    async def append_moderation_audit(self, **kwargs: Any) -> str:
-        self.audit_rows.append(dict(kwargs))
-        return f"audit-{len(self.audit_rows)}"
-
-    async def find_player_by_uuid(self, uuid):
-        return None
+MUTE = {"uuid": "uuid-123", "pid": 123, "name": "Vortex", "reason": "spam"}
 
 
-class _Bus:
-    async def claim_idempotency(self, key: str, ttl_seconds: int = 600) -> bool:
-        return True
+async def _muted_bot():
+    bot, db = await real_bot()
+    await db["players"].insert_one(
+        {"pid": 123, "uuid": "uuid-123", "nickname": "Vortex"}
+    )
+    await db["mutes"].insert_one(dict(MUTE))
+    return bot, db
+
+
+def _view(bot) -> MuteUndoView:
+    return MuteUndoView(
+        requester_id=10,
+        uuid="uuid-123",
+        player_name="Vortex",
+        delete_mute=bot.container.punishments.delete_mute,
+    )
 
 
 @pytest.mark.asyncio
 async def test_mute_undo_view_blocks_other_users() -> None:
-    store = _Store()
-
-    view = MuteUndoView(
-        requester_id=10,
-        uuid="uuid-123",
-        player_name="Vortex",
-        delete_mute=store.delete_mute,
-    )
+    bot, db = await _muted_bot()
+    view = _view(bot)
     interaction = _Interaction(id=1, user=_User(id=11, display_name="other"))
 
     allowed = await view.interaction_check(interaction)
@@ -137,18 +94,13 @@ async def test_mute_undo_view_blocks_other_users() -> None:
     assert interaction.response.sent == [
         ("Only the moderator who started this action can undo it.", True)
     ]
+    assert await db["mutes"].count_documents({}) == 1
 
 
 @pytest.mark.asyncio
 async def test_mute_undo_view_removes_mute_and_edits_message() -> None:
-    store = _Store()
-
-    view = MuteUndoView(
-        requester_id=10,
-        uuid="uuid-123",
-        player_name="Vortex",
-        delete_mute=store.delete_mute,
-    )
+    bot, db = await _muted_bot()
+    view = _view(bot)
     interaction = _Interaction(id=2, user=_User(id=10, display_name="moderator"))
 
     undo_button = view.children[0]
@@ -156,7 +108,7 @@ async def test_mute_undo_view_removes_mute_and_edits_message() -> None:
     assert callback is not None
     await callback(interaction)
 
-    assert store.deleted == ["uuid-123"]
+    assert await db["mutes"].count_documents({}) == 0
     assert interaction.response.edited == [
         {"content": "Mute undone for Vortex.", "view": None}
     ]
@@ -164,13 +116,8 @@ async def test_mute_undo_view_removes_mute_and_edits_message() -> None:
 
 @pytest.mark.asyncio
 async def test_mute_undo_view_timeout_hides_button() -> None:
-    store = _Store()
-    view = MuteUndoView(
-        requester_id=10,
-        uuid="uuid-123",
-        player_name="Vortex",
-        delete_mute=store.delete_mute,
-    )
+    bot, _ = await _muted_bot()
+    view = _view(bot)
     message = _Message()
     view.message = message
 
@@ -181,8 +128,10 @@ async def test_mute_undo_view_timeout_hides_button() -> None:
 
 @pytest.mark.asyncio
 async def test_cmd_mute_attaches_undo_view() -> None:
-    store = _Store()
-    bot = make_bot(store=store, bus=_Bus())
+    bot, db = await real_bot()
+    await db["players"].insert_one(
+        {"pid": 123, "uuid": "uuid-123", "nickname": "Vortex"}
+    )
 
     interaction = _Interaction(id=99, user=_User(id=10, display_name="moderator"))
     await cmd_mute(bot, interaction, 123, "10m", "spam")
@@ -192,3 +141,20 @@ async def test_cmd_mute_attaches_undo_view() -> None:
     assert sent["content"].startswith("Muted `Vortex` until")
     assert isinstance(sent["view"], MuteUndoView)
     assert sent["view"].message is interaction._original_message
+
+
+@pytest.mark.asyncio
+async def test_cmd_mute_undo_removes_the_stored_mute() -> None:
+    bot, db = await real_bot()
+    await db["players"].insert_one(
+        {"pid": 123, "uuid": "uuid-123", "nickname": "Vortex"}
+    )
+    interaction = _Interaction(id=98, user=_User(id=10, display_name="moderator"))
+    await cmd_mute(bot, interaction, 123, "10m", "spam")
+    assert await db["mutes"].count_documents({"uuid": "uuid-123"}) == 1
+
+    view = interaction.response.command_messages[0]["view"]
+    callback = view.children[0].callback
+    await callback(_Interaction(id=97, user=_User(id=10, display_name="moderator")))
+
+    assert await db["mutes"].count_documents({}) == 0
