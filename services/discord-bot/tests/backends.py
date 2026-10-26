@@ -11,8 +11,8 @@ import asyncio
 import json
 import time
 import uuid
-from collections.abc import Awaitable, Callable
-from contextlib import suppress
+from collections.abc import Awaitable, Callable, Iterator
+from contextlib import contextmanager, suppress
 from dataclasses import dataclass
 from typing import Any, cast
 from unittest.mock import create_autospec, patch
@@ -88,12 +88,25 @@ async def connected_store(
     return store, db
 
 
+@contextmanager
+def redis_connections(*, down: int = 0) -> Iterator[list[_Redis]]:
+    """While this lasts, each connection a bus opens is to a new in-memory Redis, the
+    first ``down`` of them unreachable. Yields the connections opened, oldest first."""
+    opened: list[_Redis] = []
+
+    def from_url(*args: Any, **kwargs: Any) -> _Redis:
+        redis = _Redis()
+        redis.server.connected = len(opened) >= down
+        opened.append(redis)
+        return redis
+
+    with patch("xcore_discord_bot.bus.transport.Redis.from_url", from_url):
+        yield opened
+
+
 async def connected_bus(settings: Settings | None = None) -> RedisTransport:
     bus = RedisTransport(settings or make_settings())
-    with patch(
-        "xcore_discord_bot.bus.transport.Redis.from_url",
-        lambda *args, **kwargs: _Redis(),
-    ):
+    with redis_connections():
         await bus.connect()
     return bus
 

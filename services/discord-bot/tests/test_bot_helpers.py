@@ -7,17 +7,17 @@ from types import SimpleNamespace
 from typing import Any
 
 import pytest
+from backends import GameServer, connected_bus, published, real_bot, redis_connections
 from bot_fakes import make_bot, make_settings
 from bson.datetime_ms import DatetimeMS
 from discord import app_commands
+from test_ban_identity import NOW
+from test_staff_actions import PLAYER, _action_bot, _assert_audit
 
-from xcore_discord_bot import staff_actions
 from xcore_discord_bot.bot import XCoreDiscordBot
 from xcore_discord_bot.command_helpers import claim_mutation
-from xcore_discord_bot.dto import PlayerRecord
 from xcore_discord_bot.handlers_moderation import (
     cmd_pardon,
-    cmd_reset_password,
     perform_ban,
 )
 from xcore_discord_bot.presentation import (
@@ -222,22 +222,9 @@ class _FakeInteraction:
         return self
 
 
-class _FakeBus:
-    def __init__(self, should_claim: bool) -> None:
-        self.should_claim = should_claim
-
-    async def claim_idempotency(self, key: str, ttl_seconds: int = 600) -> bool:
-        return self.should_claim
-
-
-class _SettingsClient:
-    def __init__(self, settings: object) -> None:
-        self.settings = settings
-
-
 @pytest.mark.asyncio
 async def test_claim_mutation_success() -> None:
-    bot = make_bot(bus=_FakeBus(should_claim=True))
+    bot, _ = await real_bot()
     interaction = _FakeInteraction()
 
     claimed = await claim_mutation(
@@ -250,11 +237,14 @@ async def test_claim_mutation_success() -> None:
     assert claimed is True
     assert interaction.replies == []
     assert interaction.ephemeral_replies == []
+    assert 590 < await bot.bus.redis.ttl("xcore:idmp:cmd:ban:1:1:1d:test") <= 600
 
 
 @pytest.mark.asyncio
 async def test_claim_mutation_duplicate() -> None:
-    bot = make_bot(bus=_FakeBus(should_claim=False))
+    bot, _ = await real_bot()
+    await claim_mutation(bot, _FakeInteraction(), operation="ban", scope="1:1d:test")
+    # The same interaction delivered again.
     interaction = _FakeInteraction()
 
     claimed = await claim_mutation(
@@ -267,161 +257,47 @@ async def test_claim_mutation_duplicate() -> None:
     assert claimed is False
     assert len(interaction.ephemeral_replies) == 1
     assert "Duplicate command ignored" in interaction.ephemeral_replies[0]
-
-
-class _BanStore:
-    def __init__(self) -> None:
-        self.bans: list[dict[str, object]] = []
-        self.audit_rows: list[dict[str, object]] = []
-
-    def now_utc(self) -> datetime:
-        return datetime(2026, 1, 1, tzinfo=UTC)
-
-    async def next_ban_id(self) -> int:
-        return len(self.bans) + 1
-
-    async def upsert_ban(
-        self,
-        *,
-        uuid: str,
-        ip: str | None,
-        pid: int | None,
-        name: str,
-        admin_name: str,
-        admin_discord_id: str | None,
-        reason: str,
-        expire_date: datetime,
-        ban_id: int | None = None,
-    ) -> None:
-        self.bans.append(
-            {
-                "ban_id": ban_id,
-                "uuid": uuid,
-                "ip": ip,
-                "pid": pid,
-                "name": name,
-                "admin_name": admin_name,
-                "admin_discord_id": admin_discord_id,
-                "reason": reason,
-                "expire_date": expire_date,
-            }
-        )
-
-    async def append_moderation_audit(self, **kwargs: object) -> str:
-        self.audit_rows.append(dict(kwargs))
-        return "audit-1"
-
-    async def find_player_by_uuid(self, uuid):
-        return None
-
-
-class _BanBus:
-    def __init__(self) -> None:
-        self._keys: set[str] = set()
-        self.kicks: list[tuple[str, str | None]] = []
-
-    async def claim_idempotency(self, key: str, ttl_seconds: int = 600) -> bool:
-        if key in self._keys:
-            return False
-        self._keys.add(key)
-        return True
-
-    async def publish_kick_banned(self, uuid_value: str, ip: str | None) -> None:
-        self.kicks.append((uuid_value, ip))
+    # Another command for the same player is not a duplicate.
+    assert await claim_mutation(
+        bot, _FakeInteraction(id=2), operation="ban", scope="1:1d:test"
+    )
 
 
 @pytest.mark.asyncio
-async def test_perform_ban_idempotent_by_entity_key() -> None:
-    store = _BanStore()
-    bus = _BanBus()
-    bot = make_bot(store=store, bus=bus)
+async def test_perform_ban_reports_a_repeated_ban_instead_of_banning_twice() -> None:
+    bot, db, game, channel = await _action_bot()
+    ban: dict[str, Any] = {
+        "actor_name": "Moderator",
+        "actor_discord_id": "123",
+        "player_id": PLAYER.pid,
+        "period": "1d",
+        "reason": "griefing",
+        "duration": timedelta(days=1),
+        "player": PLAYER,
+    }
 
-    calls: list[dict[str, object]] = []
+    first = await perform_ban(bot, **ban)
+    second = await perform_ban(bot, **ban)
 
-    async def fake_post_ban_log(
-        *,
-        pid: int,
-        name: str,
-        admin_name: str,
-        admin_discord_id: str | None,
-        reason: str,
-        expire: datetime,
-    ) -> None:
-        calls.append(
-            {
-                "pid": pid,
-                "name": name,
-                "admin_name": admin_name,
-                "admin_discord_id": admin_discord_id,
-                "reason": reason,
-                "expire": expire,
-            }
-        )
-
-    original_post_ban_log = staff_actions.post_ban_log
-
-    async def patched_post_ban_log(
-        _bot: XCoreDiscordBot,
-        *,
-        pid: int,
-        name: str,
-        admin_name: str,
-        admin_discord_id: str | None,
-        reason: str,
-        expire: datetime,
-        ban_id: int | None = None,
-        case_number: int | None = None,
-    ) -> None:
-        await fake_post_ban_log(
-            pid=pid,
-            name=name,
-            admin_name=admin_name,
-            admin_discord_id=admin_discord_id,
-            reason=reason,
-            expire=expire,
-        )
-
-    staff_actions.post_ban_log = patched_post_ban_log
-
-    player = PlayerRecord(pid=10, uuid="u-1", ip="1.2.3.4", nickname="Nick")
-
-    first = await perform_ban(
-        bot,
-        actor_name="admin",
-        actor_discord_id="123",
-        player_id=10,
-        period="1d",
-        reason="r",
-        duration=timedelta(days=1),
-        player=player,
-    )
-    second = await perform_ban(
-        bot,
-        actor_name="admin",
-        actor_discord_id="123",
-        player_id=10,
-        period="1d",
-        reason="r",
-        duration=timedelta(days=1),
-        player=player,
-    )
-
-    assert first.startswith("Banned `Nick`")
+    assert first.startswith("Banned `Target`")
     assert second == "This ban was already processed recently."
-    assert len(store.bans) == 1
-    assert store.bans[0]["pid"] == 10
-    assert store.bans[0]["admin_discord_id"] == "123"
-    assert len(store.audit_rows) == 1
-    assert store.audit_rows[0]["action"] == "BAN"
-    assert store.audit_rows[0]["target_pid"] == 10
-    assert store.audit_rows[0]["target_uuid"] == "u-1"
-    assert store.audit_rows[0]["actor_discord_id"] == "123"
-    assert store.audit_rows[0]["actor_name"] == "admin"
-    assert store.audit_rows[0]["duration_ms"] == 86400000
-    assert bus.kicks == [("u-1", "1.2.3.4")]
-    assert len(calls) == 1
-    assert calls[0]["admin_discord_id"] == "123"
-    staff_actions.post_ban_log = original_post_ban_log
+    (row,) = db["bans"].docs
+    assert (row["pid"], row["admin_name"], row["admin_discord_id"]) == (
+        42,
+        "Moderator",
+        "123",
+    )
+    (audit,) = db["moderation_audit"].docs
+    _assert_audit(
+        audit,
+        action="BAN",
+        extra={"ban_id": "1"},
+        expires_at=NOW + timedelta(days=1),
+        duration_ms=86_400_000,
+        request_id=audit["origin"]["request_id"],  # generated per action
+    )
+    assert await game.kicks() == [("uuid-42", "1.2.3.4")]
+    assert len(channel.embeds) == 1
 
 
 @dataclass
@@ -449,34 +325,6 @@ class _CmdInteraction:
     id: int
     user: _User
     response: _ResponseCollector = field(default_factory=_ResponseCollector)
-
-
-class _ResetPasswordStore:
-    async def find_player_by_pid(self, pid: int) -> PlayerRecord | None:
-        if pid != 7:
-            return None
-        return PlayerRecord(pid=7, uuid="u-7", nickname="Target")
-
-    async def reset_password(self, uuid: str) -> bool:
-        return uuid == "u-7"
-
-    async def find_player_by_uuid(self, uuid):
-        return None
-
-
-class _ResetPasswordBus:
-    def __init__(self) -> None:
-        self.password_reset_calls: list[str] = []
-        self.pardon_calls: list[str] = []
-
-    async def claim_idempotency(self, key: str, ttl_seconds: int = 600) -> bool:
-        return True
-
-    async def publish_player_password_reset(self, *, uuid_value: str) -> None:
-        self.password_reset_calls.append(uuid_value)
-
-    async def publish_pardon_player(self, uuid_value: str) -> None:
-        self.pardon_calls.append(uuid_value)
 
 
 @dataclass
@@ -592,41 +440,12 @@ async def testhandle_app_command_error_posts_embed_to_error_channel() -> None:
 
 
 @pytest.mark.asyncio
-async def test_reset_password_publishes_password_reset_event() -> None:
-    bus = _ResetPasswordBus()
-    bot = make_bot(
-        bus=bus,
-        store=_ResetPasswordStore(),
-        settings=make_settings(
-            discord_general_admin_role_id=10,
-            discord_admin_role_id=20,
-        ),
-    )
-
-    interaction = _CmdInteraction(
-        id=777,
-        user=_User(id=1, display_name="mod", roles=[_Role(id=10)]),
-    )
-
-    await cmd_reset_password(bot, interaction, 7)
-
-    assert bus.password_reset_calls == ["u-7"]
-    assert interaction.response.messages
-    assert interaction.response.messages[0][0].startswith("Password reset for")
-
-
-@pytest.mark.asyncio
 async def test_pardon_publishes_pardon_event() -> None:
-    bus = _ResetPasswordBus()
-    bot = make_bot(
-        bus=bus,
-        store=_ResetPasswordStore(),
-        settings=make_settings(
-            discord_general_admin_role_id=10,
-            discord_admin_role_id=20,
-        ),
+    bot, db = await real_bot()
+    game = GameServer(bot)
+    await db["players"].insert_one(
+        {"_id": 1, "pid": 7, "uuid": "u-7", "nickname": "Target"}
     )
-
     interaction = _CmdInteraction(
         id=778,
         user=_User(id=1, display_name="mod", roles=[_Role(id=10)]),
@@ -634,25 +453,15 @@ async def test_pardon_publishes_pardon_event() -> None:
 
     await cmd_pardon(bot, interaction, 7)
 
-    assert bus.pardon_calls == ["u-7"]
-    assert interaction.response.messages
-    assert interaction.response.messages[0][0].startswith("Pardoned `Target`")
-
-
-class _ReconnectBus:
-    def __init__(self) -> None:
-        self.reconnected = 0
-
-    async def reconnect(self) -> None:
-        self.reconnected += 1
+    assert await game.pardons() == ["u-7"]
+    assert interaction.response.messages == [("Pardoned `Target`", False)]
 
 
 @pytest.mark.asyncio
 async def test_run_consumer_forever_restarts_after_failure(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    bus = _ReconnectBus()
-    bot = make_bot(bus=bus)
+    bus = await connected_bus()
 
     async def fast_sleep(_seconds: float) -> None:
         return None
@@ -670,19 +479,20 @@ async def test_run_consumer_forever_restarts_after_failure(
     async def callback() -> None:
         return None
 
-    with pytest.raises(asyncio.CancelledError):
-        await run_consumer_forever(bot.bus, "Test", consume, callback)
+    with redis_connections() as opened, pytest.raises(asyncio.CancelledError):
+        await run_consumer_forever(bus, "Test", consume, callback)
 
     assert calls["n"] == 2
-    assert bus.reconnected == 1
+    # The consumer resumed on a new connection.
+    assert len(opened) == 1
+    assert bus.redis is opened[0]
 
 
 @pytest.mark.asyncio
 async def test_run_consumer_forever_retries_when_reconnect_fails(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    bus = _ReconnectBus()
-    bot = make_bot(bus=bus)
+    bus = await connected_bus()
 
     sleep_calls: list[float] = []
 
@@ -691,12 +501,6 @@ async def test_run_consumer_forever_retries_when_reconnect_fails(
 
     monkeypatch.setattr("xcore_discord_bot.runtime_consumers.asyncio.sleep", fast_sleep)
     monkeypatch.setattr("xcore_discord_bot.retry.asyncio.sleep", fast_sleep)
-
-    async def failing_reconnect() -> None:
-        bus.reconnected += 1
-        raise ConnectionError("still down")
-
-    bot.bus.reconnect = failing_reconnect
 
     calls = {"n": 0}
 
@@ -709,33 +513,13 @@ async def test_run_consumer_forever_retries_when_reconnect_fails(
     async def callback() -> None:
         return None
 
-    with pytest.raises(asyncio.CancelledError):
-        await run_consumer_forever(bot.bus, "Test", consume, callback)
+    with redis_connections(down=2) as opened, pytest.raises(asyncio.CancelledError):
+        await run_consumer_forever(bus, "Test", consume, callback)
 
     assert calls["n"] == 2
-    assert bus.reconnected == 2
+    # Redis stayed down through both attempts; the consumer waited and ran again.
+    assert len(opened) == 2
     assert sleep_calls == [2, 2.0, 2]
-
-
-class _MessageBus:
-    def __init__(self) -> None:
-        self.calls: list[dict[str, Any]] = []
-
-    async def publish_discord_message(
-        self,
-        server: str | None,
-        author_name: str,
-        message: str,
-        source_message_id: str | None = None,
-    ) -> None:
-        self.calls.append(
-            {
-                "server": server,
-                "author_name": author_name,
-                "message": message,
-                "source_message_id": source_message_id,
-            }
-        )
 
 
 @dataclass
@@ -759,10 +543,9 @@ class _DiscordMessage:
 
 @pytest.mark.asyncio
 async def test_on_message_routes_to_server_registry_mapping() -> None:
-    bus = _MessageBus()
-    bot = make_bot(bus=bus)
-    bot.container.chat_bus = bus
+    bot, _ = await real_bot()
     bot.container.servers.update_server("mini-pvp", 333, 1, 10, "v1")
+    bot.container.servers.update_server("hexed", 444, 1, 10, "v1")
 
     message = _DiscordMessage(
         id=44,
@@ -772,11 +555,9 @@ async def test_on_message_routes_to_server_registry_mapping() -> None:
     )
     await XCoreDiscordBot.on_message(bot, message)
 
-    assert bus.calls == [
-        {
-            "server": "mini-pvp",
-            "author_name": "mod",
-            "message": "hello",
-            "source_message_id": "44",
-        }
-    ]
+    (command,) = await published(bot.bus, "xcore:cmd:discord-message:mini-pvp")
+    assert (command["authorName"], command["message"]) == ("mod", "hello")
+    assert await published(bot.bus, "xcore:cmd:discord-message:hexed") == []
+    # Keyed by the Discord message, so the game server drops a redelivery.
+    ((_, fields),) = await bot.bus.redis.xrange("xcore:cmd:discord-message:mini-pvp")
+    assert fields["idempotency_key"] == "discord.message:44"
