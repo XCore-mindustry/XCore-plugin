@@ -307,7 +307,7 @@ fresh audit, or the report stays open.
 ## `CaseService`
 
 Attributes: `store`, `settings`, `registry`, `threads`, `notifier`, `claims` (the Redis bus:
-`claim_idempotency(key, ttl_seconds)`), `players` (`MongoStore`), `transport`, `bot`, `now()`.
+`claim_idempotency(key, ttl_seconds)`), `player_store` (`MongoStore`), `transport`, `bot`, `now()`.
 
 | Method | Use |
 |---|---|
@@ -472,7 +472,9 @@ def card(case: Case, locale: str) -> discord.Embed:
 async def submit(context: PanelContext, values: dict[str, str]) -> Case:
     player = None
     if values["player"].isdigit():
-        player = await context.service.players.find_player_by_pid(int(values["player"]))
+        player = await context.service.player_store.find_player_by_pid(
+            int(values["player"])
+        )
     if player is None:
         raise ActionFailed(t(context.locale, "reports-player-unknown"))
     user = context.interaction.user
@@ -520,7 +522,9 @@ async def mute(context: ActionContext) -> Case | None:
 
     async def staff_action(case: Case) -> Resolution:
         service = context.service
-        player = await service.players.find_player_by_uuid(case.subject.player_uuid)
+        player = await service.player_store.find_player_by_uuid(
+            case.subject.player_uuid
+        )
         result = await perform_mute(
             service.bot,
             player,

@@ -722,7 +722,7 @@ async def core(*, flow=None, tags=True, **kwargs):
         threads=CaseThreads(bot, cfg),
         notifier=CaseNotifier(bot, cfg, find_player=players.find_player_by_uuid),
         claims=Claims(),
-        players=players,
+        player_store=players,
         now=lambda: NOW,
     )
     bot.settings = cfg

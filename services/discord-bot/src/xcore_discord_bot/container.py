@@ -83,7 +83,7 @@ class ServiceContainer:
             threads=CaseThreads(bot, settings),
             notifier=CaseNotifier(bot, settings, find_player=store.find_player_by_uuid),
             claims=bus,
-            players=store,
+            player_store=store,
         )
         case_panel = CasePanel(cases, bot)
 

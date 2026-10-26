@@ -578,7 +578,7 @@ async def test_stable_actor_uuid_or_discord_history_is_bounded_unique_and_suppor
         case.number, member(101, (20,)), Party(discord_id="99")
     )
     assert case.evidence["subject_actions"]["total"] == 2
-    service.players.by_discord["99"] = [actor1, actor2]
+    service.player_store.by_discord["99"] = [actor1, actor2]
     collection = db["moderation_audit"]
     original_find, original_count = collection.find, collection.count_documents
     queries, limits = [], []
@@ -632,7 +632,7 @@ async def test_subject_cleanup_precedes_linked_actor_lookup_even_on_link_lookup_
         assert discord_id == "99" and 99 not in thread.members
         raise RuntimeError(RAW)
 
-    service.players.find_players_by_discord_id = failed_links
+    service.player_store.find_players_by_discord_id = failed_links
     case = await service.set_subject(
         case.number, member(101, (20,)), Party(discord_id="99")
     )

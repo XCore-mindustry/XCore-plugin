@@ -64,7 +64,7 @@ def test_invalid_reference(value):
 async def test_disabled_flow_import_startup_panel_and_no_io():
     assert flow_registry.copy()._flows[CaseKind.APPEAL] is APPEAL_FLOW
     service, _, bot, *_ = await appeal_core(enabled=False)
-    service.players.find_players_by_discord_id = AsyncMock(
+    service.player_store.find_players_by_discord_id = AsyncMock(
         side_effect=AssertionError("disabled I/O")
     )
     interaction = Interaction(bot)
@@ -73,22 +73,22 @@ async def test_disabled_flow_import_startup_panel_and_no_io():
         ("message", t("en", "error-try-again-later"), {"ephemeral": True})
     ]
     assert not panel_view(service.registry).children
-    service.players.find_players_by_discord_id.assert_not_awaited()
+    service.player_store.find_players_by_discord_id.assert_not_awaited()
 
 
 async def test_one_linked_modal_first_response_no_io_and_registered_threads():
     service, _db, bot, mutations, *_ = await appeal_core()
     interaction = Interaction(bot, user=member(42, ()))
-    original = service.players.find_players_by_discord_id
+    original = service.player_store.find_players_by_discord_id
 
     async def linked(discord_id):
         assert interaction.events[0][0] == "defer"
         return await original(discord_id)
 
-    service.players.find_players_by_discord_id = linked
+    service.player_store.find_players_by_discord_id = linked
     await PanelButton(CaseKind.APPEAL).callback(interaction)
     view = interaction.events[-1][2]["view"]
-    service.players.find_players_by_discord_id = AsyncMock(
+    service.player_store.find_players_by_discord_id = AsyncMock(
         side_effect=AssertionError("modal I/O")
     )
     step = Interaction(bot, user=member(42, ()))
@@ -96,7 +96,7 @@ async def test_one_linked_modal_first_response_no_io_and_registered_threads():
     modal = step.events[0][1]
     assert step.events[0][0] == "modal" and "B-101" in modal.title
     assert "reference" not in modal.inputs
-    service.players.find_players_by_discord_id = original
+    service.player_store.find_players_by_discord_id = original
     result = await submit(bot, modal)
     assert result.events[0][0] == "defer"
     case = await service.store.by_submission("discord:700")
@@ -118,13 +118,13 @@ async def test_paginated_all_linked_bans_dedup_and_private_selection():
         bans=[ban_row(i) for i in range(1, 29)],
     )
     # duplicate linked record does not produce a duplicate sanction option.
-    original = service.players.find_players_by_discord_id
+    original = service.player_store.find_players_by_discord_id
 
     async def duplicated(discord_id):
         rows = await original(discord_id)
         return [*rows, rows[0]]
 
-    service.players.find_players_by_discord_id = duplicated
+    service.player_store.find_players_by_discord_id = duplicated
     interaction = Interaction(bot, user=member(42, ()))
     await PanelButton(CaseKind.APPEAL).callback(interaction)
     assert (

@@ -46,7 +46,7 @@ def _name(player: PlayerRecord, locale: str) -> str:
 
 async def _linked(service, discord_id: str) -> list[PlayerRecord]:
     # A list query is not a licence to trust stale or incorrectly scoped records.
-    players = await service.players.find_players_by_discord_id(discord_id)
+    players = await service.player_store.find_players_by_discord_id(discord_id)
     unique = {}
     for player in players:
         if player.uuid and str(player.discord_id) == discord_id:
@@ -55,7 +55,7 @@ async def _linked(service, discord_id: str) -> list[PlayerRecord]:
 
 
 async def _recipient(service, discord_id: str, uuid: str, locale: str) -> PlayerRecord:
-    player = await service.players.find_player_by_uuid(uuid)
+    player = await service.player_store.find_player_by_uuid(uuid)
     if player is None or player.uuid != uuid or str(player.discord_id) != discord_id:
         raise ActionFailed(t(locale, "badges-link-needed"))
     return player
@@ -269,7 +269,9 @@ async def grant(context):
             or claimed.dedup_key != f"badge:{subject.player_uuid}:{badge.id}"
         ):
             raise ActionFailed(t(context.locale, "cases-error-player"))
-        player = await context.service.players.find_player_by_uuid(subject.player_uuid)
+        player = await context.service.player_store.find_player_by_uuid(
+            subject.player_uuid
+        )
         if player is None or player.uuid != subject.player_uuid:
             raise ActionFailed(t(context.locale, "cases-error-player"))
         try:
@@ -345,7 +347,7 @@ async def grant_map_maker(
         )
         # Without a case number the slash-compatible helper does not verify a false
         # modification result. Confirm it ourselves; missing data is explicit pending.
-        fresh = await service.players.find_player_by_uuid(player.uuid)
+        fresh = await service.player_store.find_player_by_uuid(player.uuid)
         if (
             fresh is None
             or fresh.uuid != player.uuid

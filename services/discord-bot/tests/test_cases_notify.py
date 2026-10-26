@@ -59,7 +59,7 @@ async def test_notice_is_durable_idempotent_and_dm_locale_is_resolved(
     if pref:
         await service.store.set_locale_pref(42, pref.locale, source=pref.source)
     if player_present:
-        service.players.by_uuid["opener-secret"] = SimpleNamespace(
+        service.player_store.by_uuid["opener-secret"] = SimpleNamespace(
             language=current_language, online_server=None
         )
     calls = []
@@ -180,7 +180,7 @@ async def test_wakeup_goes_where_the_player_is_and_nowhere_when_unknown(
 ):
     service, db, _ = await core(flow=replace(DUMMY_FLOW, outcomes=None))
     case = await opened(service, source=origin)
-    service.players.by_uuid["opener-secret"] = SimpleNamespace(
+    service.player_store.by_uuid["opener-secret"] = SimpleNamespace(
         language="ru", online_server=online_server
     )
     calls = []

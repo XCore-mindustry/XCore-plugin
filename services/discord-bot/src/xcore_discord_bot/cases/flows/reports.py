@@ -189,8 +189,8 @@ async def _sanctions(service, uuid: str) -> dict[str, Any]:
     result["last"] = [audit_entry(row, (uuid,)) for row in rows]
     now = service.now()
     for key, current in (
-        ("current_ban", await service.players.find_ban(uuid=uuid, ip=None)),
-        ("current_mute", await service.players.find_mute(uuid=uuid)),
+        ("current_ban", await service.player_store.find_ban(uuid=uuid, ip=None)),
+        ("current_mute", await service.player_store.find_mute(uuid=uuid)),
     ):
         if current is None:
             continue
@@ -430,7 +430,7 @@ async def submitted(service, event: CasesReportSubmittedV1) -> None:
     )
     if refused is not None:
         return
-    players = service.players
+    players = service.player_store
     reporter = await players.find_player_by_uuid(event.reporter.playerUuid)
     dedup_key = f"report:{event.target.playerUuid}"
     merging = await service.store.by_dedup(CaseKind.REPORT, dedup_key) is not None
@@ -473,9 +473,9 @@ async def _find_player(service, who: str) -> PlayerRecord | None:
     one player matches (9.2 step 2)."""
     typed = _PID.fullmatch(who)
     if typed:
-        player = await service.players.find_player_by_pid(int(typed[1]))
+        player = await service.player_store.find_player_by_pid(int(typed[1]))
         return player if player is not None and player.uuid else None
-    matches = await service.players.find_players_by_exact_name(who)
+    matches = await service.player_store.find_players_by_exact_name(who)
     return matches[0] if len(matches) == 1 and matches[0].uuid else None
 
 
@@ -484,7 +484,9 @@ async def _member_party(service, user) -> Party:
     notice of 9.2 step 8)."""
     linked = [
         player
-        for player in await service.players.find_players_by_discord_id(str(user.id))
+        for player in await service.player_store.find_players_by_discord_id(
+            str(user.id)
+        )
         if player.uuid
     ]
     name = _plain(user.display_name, 64)
@@ -809,7 +811,7 @@ async def _target(context: ActionContext) -> PlayerRecord:
     typed = _PID.fullmatch(context.values["pid"])
     player = None
     if typed and is_assigned(int(typed[1])):
-        player = await context.service.players.find_player_by_pid(int(typed[1]))
+        player = await context.service.player_store.find_player_by_pid(int(typed[1]))
     if player is None or not player.uuid:
         raise ActionFailed(t(context.locale, "cases-error-player"))
     subject = context.case.subject
@@ -943,7 +945,7 @@ async def refresh(context: ActionContext) -> str:
     """Read the sanctions again and, when the player is online, the live evidence (9.2 step 7)."""
     service, number = context.service, context.case.number
     uuid = context.case.subject.player_uuid
-    player = await service.players.find_player_by_uuid(uuid)
+    player = await service.player_store.find_player_by_uuid(uuid)
     live = await _live(service, player) if player is not None else None
     fields = {"evidence.sanctions": await _sanctions(service, uuid)}
     unset: tuple[str, ...] = ()

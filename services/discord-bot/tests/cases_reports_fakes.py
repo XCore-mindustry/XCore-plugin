@@ -119,8 +119,8 @@ async def reports_core(*, enabled=True, guild=None, **settings):
     database_bans = mutations["bans"]
     db.collections["bans"] = database_bans
     db.collections["mutes"] = mutations["mutes"]
-    service.players = Players(action_bot, mutations)
-    service.notifier.find_player = service.players.find_player_by_uuid
+    service.player_store = Players(action_bot, mutations)
+    service.notifier.find_player = service.player_store.find_player_by_uuid
     service.claims = Claims()
     bot.settings = service.settings.model_copy(
         update={"discord_bans_channel_id": 10, "discord_mutes_channel_id": 20}
@@ -240,7 +240,7 @@ async def sanction(service, case, verb="ban", *, pid="-5", duration="1d", user=N
 
 def player(service, uuid):
     return next(
-        r for r in service.players.database["players"].docs if r["uuid"] == uuid
+        r for r in service.player_store.database["players"].docs if r["uuid"] == uuid
     )
 
 

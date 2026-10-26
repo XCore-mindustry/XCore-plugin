@@ -101,7 +101,7 @@ async def test_issuer_linked_names_are_loaded_by_service_without_senior_override
         assert discord_id == "101"
         return [SimpleNamespace(nickname="Issuer", username="admin")]
 
-    service.players = SimpleNamespace(find_players_by_discord_id=players)
+    service.player_store = SimpleNamespace(find_players_by_discord_id=players)
     with pytest.raises(AccessDenied):
         await service.take(case.number, member(101, (10, 20)))
 
@@ -374,7 +374,9 @@ async def test_the_example_flow_of_the_contract_document_works(monkeypatch, tmp_
     registered.enable(CaseKind.REPORT)
     service, _, bot = await core(flow=registered.require(CaseKind.REPORT))
     player = SimpleNamespace(uuid="subject-secret", pid=7, nickname="Griefer")
-    service.players.by_pid[7] = service.players.by_uuid["subject-secret"] = player
+    service.player_store.by_pid[7] = service.player_store.by_uuid["subject-secret"] = (
+        player
+    )
 
     click = Interaction(bot, user=member(42, ()))
     await PanelButton(CaseKind.REPORT).callback(click)

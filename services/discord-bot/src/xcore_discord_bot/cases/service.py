@@ -78,7 +78,7 @@ class CaseService:
         threads,
         notifier,
         claims,
-        players=None,
+        player_store=None,
         now: Callable[[], datetime] | None = None,
     ) -> None:
         self.store = store
@@ -87,7 +87,7 @@ class CaseService:
         self.threads = threads
         self.notifier = notifier
         self.claims = claims
-        self.players = players
+        self.player_store = player_store
         self.now = now or (lambda: datetime.now(UTC))
         self.started_at = self.now()
         self._locks: dict[str, tuple[asyncio.Lock, int]] = {}
@@ -127,15 +127,15 @@ class CaseService:
         self.registry.require(case.kind)
         linked_names: tuple[str, ...] = ()
         linked_uuids: tuple[str, ...] = ()
-        if case.kind == CaseKind.REPORT and self.players is not None:
-            players = await self.players.find_players_by_discord_id(str(member.id))
+        if case.kind == CaseKind.REPORT and self.player_store is not None:
+            players = await self.player_store.find_players_by_discord_id(str(member.id))
             linked_uuids = tuple(p.uuid for p in players if p.uuid)
         if (
             case.kind == CaseKind.APPEAL
             and not case.payload.get("ban_snapshot", {}).get("admin_discord_id")
-            and self.players is not None
+            and self.player_store is not None
         ):
-            players = await self.players.find_players_by_discord_id(str(member.id))
+            players = await self.player_store.find_players_by_discord_id(str(member.id))
             linked_names = tuple(p.nickname or p.username or "" for p in players)
         check_access(
             self.settings,

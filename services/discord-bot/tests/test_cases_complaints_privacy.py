@@ -166,7 +166,7 @@ async def test_raw_complaint_exception_text_never_enters_logs_or_public_channels
     caplog.set_level(logging.ERROR)
     fail = AsyncMock(side_effect=RuntimeError(RAW))
     if stage == "submit":
-        service.players.find_players_by_discord_id = fail
+        service.player_store.find_players_by_discord_id = fail
         await submit(bot, await form(bot), statement=RAW)
     elif stage == "creation":
         service.threads.ensure_post = fail
@@ -213,7 +213,7 @@ async def test_raw_complaint_exception_text_never_enters_logs_or_public_channels
             )
         elif stage == "wakeup":
             service.transport.publish_case_notice = fail
-            service.players.by_uuid["private-1="].online_server = "test"
+            service.player_store.by_uuid["private-1="].online_server = "test"
             await act(service, case, "resolve", values={"note": RAW})
     assert caplog.records, stage
     assert RAW not in caplog.text and "private-1=" not in caplog.text

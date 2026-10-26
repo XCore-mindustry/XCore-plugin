@@ -61,7 +61,9 @@ async def _sanctions(service, uuids):
 async def submit(context: PanelContext, values: dict[str, str]) -> Case:
     values = clean_values(OPEN_FIELDS, values)
     user = context.interaction.user
-    players = await context.service.players.find_players_by_discord_id(str(user.id))
+    players = await context.service.player_store.find_players_by_discord_id(
+        str(user.id)
+    )
     # Aggregate all linked accounts; a single account also receives the neutral game notice.
     uuids = list(dict.fromkeys(p.uuid for p in players if p.uuid))
     player = players[0] if len(players) == 1 else None
@@ -180,7 +182,9 @@ async def subject_set(service, case: Case) -> None:
     audit = service.store.database["moderation_audit"]
     uuids = case.payload.get("account_uuids", [])
     # Stable Discord OR game actor identity; one Mongo predicate counts each row once.
-    players = await service.players.find_players_by_discord_id(case.subject.discord_id)
+    players = await service.player_store.find_players_by_discord_id(
+        case.subject.discord_id
+    )
     actor_uuids = list(dict.fromkeys(p.uuid for p in players if p.uuid))
     query = {
         "target.uuid": {"$in": uuids},

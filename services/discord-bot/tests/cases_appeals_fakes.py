@@ -57,8 +57,8 @@ async def appeal_core(*, players=None, bans=None, enabled=True, **settings):
     action_bot.store.now_utc = lambda: NOW
     # Same raw bans as the real Mongo helper. Core cases/audits retain their richer fakes.
     database.collections["bans"] = mutations["bans"]
-    service.players = Players(action_bot, mutations)
-    service.notifier.find_player = service.players.find_player_by_uuid
+    service.player_store = Players(action_bot, mutations)
+    service.notifier.find_player = service.player_store.find_player_by_uuid
     service.claims = Claims()
     bot.settings = service.settings.model_copy(
         update={"discord_bans_channel_id": 10, "discord_mutes_channel_id": 20}

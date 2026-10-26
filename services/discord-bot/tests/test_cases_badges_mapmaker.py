@@ -148,8 +148,8 @@ async def test_mapmaker_fresh_membership_refuses_changed_accounts(failure):
     service, _, bot, mutations, _, _, author = await badge_core(
         discord_map_maker_role_id=70
     )
-    snapshot = await service.players.find_player_by_uuid("private-account-1=")
-    service.players.find_players_by_discord_id = AsyncMock(return_value=[snapshot])
+    snapshot = await service.player_store.find_player_by_uuid("private-account-1=")
+    service.player_store.find_players_by_discord_id = AsyncMock(return_value=[snapshot])
     if failure == "unlink":
         mutations["players"].docs[0]["discord_id"] = "43"
     elif failure == "missing":
@@ -157,7 +157,7 @@ async def test_mapmaker_fresh_membership_refuses_changed_accounts(failure):
     else:
         from dataclasses import replace
 
-        service.players.find_player_by_uuid = AsyncMock(
+        service.player_store.find_player_by_uuid = AsyncMock(
             return_value=replace(snapshot, uuid="other")
         )
     bot.store.grant_badge = AsyncMock(

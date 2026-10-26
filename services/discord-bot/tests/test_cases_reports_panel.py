@@ -72,7 +72,7 @@ async def test_a_name_with_colour_tags_is_found_by_its_plain_text():
 @pytest.mark.parametrize("who", ["Nobody Known", "Targ", "Twin", "99999"])
 async def test_an_unknown_or_ambiguous_player_leaves_the_subject_for_staff(who):
     service, _, bot = await reports_core()
-    players = service.players.database["players"].docs
+    players = service.player_store.database["players"].docs
     players += [
         {"_id": 10, "uuid": "twin-1", "pid": 11, "nickname": "[blue]Twin"},
         {"_id": 11, "uuid": "twin-2", "pid": 12, "custom_nickname": "twin"},

@@ -35,8 +35,8 @@ async def badge_core(*, rows=None, enabled=True, **settings):
     action_bot, mutations, bus, _ = _action_bot()
     mutations["players"].docs = [player_row()] if rows is None else rows
     action_bot.store.now_utc = lambda: NOW
-    service.players = Players(action_bot, mutations)
-    service.notifier.find_player = service.players.find_player_by_uuid
+    service.player_store = Players(action_bot, mutations)
+    service.notifier.find_player = service.player_store.find_player_by_uuid
     bot.store = action_bot.store
     bot.bus = action_bot.bus
     bot.resolve_channel = action_bot.resolve_channel

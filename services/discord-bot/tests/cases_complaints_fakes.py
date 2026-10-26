@@ -45,8 +45,8 @@ async def complaint_core(*, players=None, audits=(), enabled=True, **settings):
     if not enabled:
         service.registry.disable(CaseKind.COMPLAINT)
     linked = [player()] if players is None else players
-    service.players.by_discord["42"] = linked
-    service.players.by_uuid = {p.uuid: p for p in linked}
+    service.player_store.by_discord["42"] = linked
+    service.player_store.by_uuid = {p.uuid: p for p in linked}
     db["moderation_audit"].docs = list(audits)
     # Ordinary members see an otherwise empty parent. Staff deny view; seniors allow it.
     for role_id in (10, 30):

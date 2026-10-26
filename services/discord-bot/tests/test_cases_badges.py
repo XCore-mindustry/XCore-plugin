@@ -36,7 +36,7 @@ from xcore_discord_bot.i18n import SUPPORTED, loader, t
 async def test_autoimport_and_disabled_panel_do_no_player_io():
     assert flow_registry.copy()._flows[CaseKind.BADGE] is BADGE_FLOW
     service, _, bot, *_ = await badge_core(enabled=False)
-    service.players.find_players_by_discord_id = AsyncMock(
+    service.player_store.find_players_by_discord_id = AsyncMock(
         side_effect=AssertionError("disabled I/O")
     )
     assert not panel_view(service.registry).children
@@ -45,7 +45,7 @@ async def test_autoimport_and_disabled_panel_do_no_player_io():
     assert interaction.events == [
         ("message", t("en", "error-try-again-later"), {"ephemeral": True})
     ]
-    service.players.find_players_by_discord_id.assert_not_awaited()
+    service.player_store.find_players_by_discord_id.assert_not_awaited()
 
 
 @pytest.mark.parametrize(
@@ -206,8 +206,8 @@ async def test_private_choice_and_modal_reject_forgery_stale_disabled_blackliste
         pytest.fail("No player or store I/O may precede the modal first response")
 
     with monkeypatch.context() as patch:
-        patch.setattr(service.players, "find_players_by_discord_id", forbidden)
-        patch.setattr(service.players, "find_player_by_uuid", forbidden)
+        patch.setattr(service.player_store, "find_players_by_discord_id", forbidden)
+        patch.setattr(service.player_store, "find_player_by_uuid", forbidden)
         patch.setattr(service.store, "remember_interaction", forbidden)
         form_click = await choose(view, bot, "map-maker")
     assert form_click.events[0][0] == "modal" and len(form_click.events) == 1
@@ -262,10 +262,10 @@ async def test_submit_refuses_stale_link_list_and_other_account_uuid():
         rows=[player_row(), player_row(2, discord_id="43")]
     )
     form = await badge_form(bot)
-    snapshot = await service.players.find_player_by_uuid(
+    snapshot = await service.player_store.find_player_by_uuid(
         mutations["players"].docs[0]["uuid"]
     )
-    service.players.find_players_by_discord_id = AsyncMock(return_value=[snapshot])
+    service.player_store.find_players_by_discord_id = AsyncMock(return_value=[snapshot])
     mutations["players"].docs[0]["discord_id"] = "43"
     refused = await submit_form(bot, form)
     assert (

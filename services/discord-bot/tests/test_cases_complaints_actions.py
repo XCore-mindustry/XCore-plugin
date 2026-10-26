@@ -328,7 +328,7 @@ async def test_current_player_link_cannot_notify_complaint_subject(subject_uuid)
         member(101, (20,)),
         Party(discord_id="99", player_uuid=subject_uuid),
     )
-    service.players.by_uuid["private-1="].discord_id = "99"
+    service.player_store.by_uuid["private-1="].discord_id = "99"
     thread = bot.channels[int(case.discord["user_thread_id"])]
     before = len(thread.messages)
     # A stale, game-only recipient must be checked against the current subject.

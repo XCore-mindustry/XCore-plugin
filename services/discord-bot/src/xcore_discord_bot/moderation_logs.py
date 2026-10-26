@@ -84,13 +84,15 @@ async def _case_log_secrets(
     service = bot.container.cases
     case = await service.get(number)
     secrets = [*supplied, *case_secrets(case)]
-    if service.players is not None:
+    if service.player_store is not None:
         for uuid in case_secrets(case):
-            player = await service.players.find_player_by_uuid(uuid)
+            player = await service.player_store.find_player_by_uuid(uuid)
             if player is not None and player.ip:
                 secrets.append(player.ip)
         if actor_id:
-            for player in await service.players.find_players_by_discord_id(actor_id):
+            for player in await service.player_store.find_players_by_discord_id(
+                actor_id
+            ):
                 secrets.extend((player.uuid or "", player.ip or ""))
     return tuple(secrets)
 
