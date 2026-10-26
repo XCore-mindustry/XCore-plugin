@@ -194,7 +194,7 @@ async def panel_handler(context: PanelContext) -> None:
                 context.service, str(interaction.user.id), accounts[value], locale
             )
             await _badges(current, player)
-        except Exception as error:
+        except Exception as error:  # shown to the user; unexpected ones are logged
             if not isinstance(error, ValueError):
                 logger.exception("Badge account selection failed")
             await interaction.followup.send(error_text(locale, error), ephemeral=True)

@@ -145,7 +145,7 @@ class XCoreDiscordBot(commands.Bot):
             try:
                 await container.cases.store.load_locale_prefs()
                 await container.cases.store.ensure_indexes()
-            except Exception:
+            except Exception:  # the bot still starts with cases disabled
                 logger.exception(
                     "Cases storage initialization failed; flows stay disabled"
                 )
@@ -199,7 +199,7 @@ class XCoreDiscordBot(commands.Bot):
                     len(result.revoked),
                     result.discord_admins,
                 )
-        except Exception:
+        except Exception:  # the periodic pass retries it
             logger.exception("Startup admin reconcile failed")
 
     async def on_message(self, message: discord.Message) -> None:
@@ -273,7 +273,7 @@ class XCoreDiscordBot(commands.Bot):
             return
         try:
             await self.container.cases.store.remember_interaction(interaction)
-        except Exception:
+        except Exception:  # an observer must not fail the interaction
             logger.exception("Could not refresh Discord locale preference")
 
     async def on_thread_create(self, thread: discord.Thread) -> None:
@@ -348,7 +348,7 @@ class XCoreDiscordBot(commands.Bot):
                     )
                     embed.add_field(name="Error ID", value=error_id, inline=False)
                     await channel.send(embed=embed)
-            except Exception:
+            except Exception:  # noqa: BLE001 -- logged by reference; details stay private
                 logger.error("Private cases error delivery failed [ref=%s]", error_id)
             return
         if isinstance(error, app_commands.CheckFailure):
@@ -406,7 +406,7 @@ class XCoreDiscordBot(commands.Bot):
         embed.add_field(name="User", value=f"{user_name} (id={user_id})", inline=False)
         try:
             await channel.send(embed=embed)
-        except Exception:
+        except Exception:  # error reporting must not raise
             logger.warning("Failed to send error log embed", exc_info=True)
 
     @staticmethod

@@ -169,7 +169,7 @@ async def _loaded(awaitable: Awaitable[T], what: str, player: PlayerRecord) -> T
     """A section of the stats, or ``None`` when it cannot be read: the rest still opens."""
     try:
         return await awaitable
-    except Exception:
+    except Exception:  # the rest of the stats still opens
         logger.exception("Cannot load %s for player #%s", what, player.pid)
         return None
 
@@ -182,7 +182,7 @@ async def _staff_notes(bot: XCoreDiscordBot, player: PlayerRecord) -> StaffNotes
             ban=await bot.store.find_ban(uuid=player.uuid, ip=player.ip),
             mute=await bot.store.find_mute(uuid=player.uuid),
         )
-    except Exception:
+    except Exception:  # the rest of the stats still opens
         logger.exception("Cannot load punishments for player #%s", player.pid)
         return StaffNotes(loaded=False)
 

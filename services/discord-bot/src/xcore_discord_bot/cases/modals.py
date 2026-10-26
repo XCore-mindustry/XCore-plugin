@@ -141,7 +141,7 @@ class OpenCaseModal(FormModal):
             check_opening(service.settings, interaction.user)
             context = PanelContext(service, interaction, self.context.kind, locale)
             case = await self.submit(context, self.values())
-        except Exception as error:
+        except Exception as error:  # noqa: BLE001 -- shown to the user; unexpected ones are logged
             if not isinstance(error, ValueError):
                 log_failure(
                     logger,
@@ -159,7 +159,7 @@ class OpenCaseModal(FormModal):
                 if not case.discord.get("thread_id"):
                     raise LookupError("The case post does not exist yet")
                 await service.threads.upload_attachments(service, case.number, uploads)
-            except Exception:
+            except Exception:  # noqa: BLE001 -- the case exists; the user is asked to upload again
                 log_failure(
                     logger, case.kind, "Could not copy files for case #%s", case.number
                 )

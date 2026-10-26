@@ -81,7 +81,7 @@ async def _autocomplete_ladder(
     bot = interaction.client
     try:
         known = await bot.container.ratings.ladders()
-    except Exception:
+    except Exception:  # autocomplete falls back to the known ladders
         logger.exception("Cannot list ladders for autocomplete")
         known = []
     ladders = sorted(set(known) | set(LADDER_NAMES))
@@ -237,7 +237,7 @@ class SeasonsCog(commands.Cog):
                 "❌ The servers could not carry this out. "
                 "Check `/season info` before retrying."
             )
-        except Exception:
+        except Exception:  # any other failure is reported to the admin
             logger.exception("Season administration failed")
             return "❌ Something went wrong. Check the logs."
         return "✅ " + describe(response)

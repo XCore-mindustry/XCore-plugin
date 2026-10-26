@@ -382,7 +382,7 @@ class CaseThreads:
                 await self.channel(thread_id)
             except discord.NotFound:
                 await service.thread_deleted(int(thread_id))
-            except Exception as error:
+            except Exception as error:  # noqa: BLE001 -- collected; the caller records the step for a retry
                 errors.append(error)
         if errors:
             raise ExceptionGroup("Private thread lookup failed", errors)
@@ -412,7 +412,7 @@ class CaseThreads:
                 await service.authorize(case, member, "take")
             except (AccessDenied, discord.NotFound):
                 staff = None
-            except Exception as error:
+            except Exception as error:  # noqa: BLE001 -- collected; the caller records the step for a retry
                 staff = None
                 errors.append(error)
         legacy = case.progress.get("user_thread_staff", [])
@@ -465,7 +465,7 @@ class CaseThreads:
                     )
                 if not case.active and (not thread.archived or not thread.locked):
                     await thread.edit(archived=True, locked=True)
-            except Exception as error:
+            except Exception as error:  # noqa: BLE001 -- collected; the caller records the step for a retry
                 errors.append(error)
         if errors:
             raise ExceptionGroup("Private thread membership repair failed", errors)

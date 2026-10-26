@@ -91,7 +91,6 @@ async def cmd_link(bot: XCoreDiscordBot, interaction: Interaction, code: str) ->
                 await bot.container.admin_sync_daemon.get_discord_admin_member_ids()
             )
             if discord_id in discord_admin_ids:
-                is_admin = True
                 await bot.store.set_admin_access(
                     uuid=player.uuid,
                     is_admin=True,
@@ -111,7 +110,8 @@ async def cmd_link(bot: XCoreDiscordBot, interaction: Interaction, code: str) ->
                     actor_type=ActorRefV1ActorType.DISCORD,
                     reason="discord admin linked account",
                 )
-    except Exception:
+                is_admin = True
+    except Exception:  # the periodic admin reconcile grants it later
         logger.exception("Failed to grant instant admin access after link")
 
     clean_name = _clean_player_name(player.nickname)

@@ -83,7 +83,7 @@ async def run_case_action(
         result = await service.dispatch_action(
             number, verb, interaction.user, locale, values, interaction=interaction
         )
-    except Exception as error:
+    except Exception as error:  # noqa: BLE001 -- shown to the user; unexpected ones are logged
         if not isinstance(error, ValueError):
             log_failure(
                 logger,
@@ -299,7 +299,7 @@ class PanelButton(discord.ui.DynamicItem[discord.ui.Button], template=PANEL_PATT
             context.locale = await service.store.remember_interaction(interaction)
             try:
                 await flow.panel.handler(context)
-            except Exception as error:
+            except Exception as error:  # noqa: BLE001 -- shown to the user; unexpected ones are logged
                 if not isinstance(error, ValueError):
                     log_failure(logger, self.kind, "Panel entry %s failed", self.kind)
                 await interaction.followup.send(

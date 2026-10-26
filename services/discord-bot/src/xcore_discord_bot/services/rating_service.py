@@ -14,10 +14,13 @@ from xcore_protocol.generated.shared import SeasonPrizeV1, SeasonPrizeV1Kind
 
 from ..dto import AccountMergeResult
 from ..rating_store import RatingStore
-from ..redis_bus import RpcRejected
-from ..rpc.mindustry_rpc import MindustryRpcClient
+from ..redis_bus import RpcFailed, RpcRejected
+from ..retry import TRANSIENT_EXCEPTIONS
+from ..rpc.mindustry_rpc import MindustryRpcClient, NoLiveServerError
 
 logger = logging.getLogger(__name__)
+# A later try or another server may get through.
+MERGE_UNAVAILABLE = (RpcFailed, NoLiveServerError, *TRANSIENT_EXCEPTIONS)
 
 Operation = RatingSeasonRescheduleRequestV1Operation
 
@@ -234,9 +237,17 @@ class RatingService:
                 error,
             )
             return RatingMergeOutcome(merged=False, error=str(error))
-        except Exception as error:
+        except MERGE_UNAVAILABLE as error:
             logger.warning(
                 "Rating merge %s -> %s postponed: %s", source_uuid, target_uuid, error
+            )
+            await self._store.add_pending_merge(source_uuid, target_uuid)
+            return RatingMergeOutcome(merged=False, queued=True, error=str(error))
+        except Exception as error:  # the accounts are merged; keep the ratings queued
+            logger.exception(
+                "Rating merge %s -> %s failed unexpectedly; queued",
+                source_uuid,
+                target_uuid,
             )
             await self._store.add_pending_merge(source_uuid, target_uuid)
             return RatingMergeOutcome(merged=False, queued=True, error=str(error))
@@ -255,11 +266,22 @@ class RatingService:
             except RpcRejected as error:
                 # Retrying cannot change a refusal. The administrator was told the merge
                 # would be retried, so it stays on record and is reported, not dropped.
-                logger.error("Queued rating merge %s -> %s refused: %s", source, target, error)
+                logger.error(
+                    "Queued rating merge %s -> %s refused: %s", source, target, error
+                )
                 await self._store.fail_pending_merge(source, target, str(error))
                 refused.append(RefusedMerge(source, target, str(error)))
-            except Exception as error:
-                logger.info("Queued rating merge %s -> %s still waiting: %s", source, target, error)
+            except MERGE_UNAVAILABLE as error:
+                logger.info(
+                    "Queued rating merge %s -> %s still waiting: %s",
+                    source,
+                    target,
+                    error,
+                )
+            except Exception:  # one merge must not hold up the rest of the queue
+                logger.exception(
+                    "Queued rating merge %s -> %s failed unexpectedly", source, target
+                )
             else:
                 await self._store.clear_pending_merge(source, target)
                 delivered += 1

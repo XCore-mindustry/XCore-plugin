@@ -373,7 +373,7 @@ class CaseService:
                     await self.threads.reconcile_memberships(self, case)
                     return await self.get(number)
                 await self._create(case, flow)
-            except Exception as error:
+            except Exception as error:  # noqa: BLE001 -- recorded on the case; reconcile resumes creation
                 log_failure(
                     logger, case.kind, "Creation of case #%s is incomplete", number
                 )
@@ -465,14 +465,14 @@ class CaseService:
                 fields = {f"discord.{key}": value for key, value in ids.items()}
                 fields["progress.user_thread_done"] = True
                 case = await self.checkpoint(number, set_fields=fields)
-        except Exception as error:
+        except Exception as error:  # noqa: BLE001 -- collected and raised together below
             errors.append(error)
         case = await self.get(number)
         for joined in case.co_openers:
             if self.owes_thread(case, joined):
                 try:
                     case = await self.threads.ensure_reporter_thread(self, case, joined)
-                except Exception as error:
+                except Exception as error:  # noqa: BLE001 -- collected and raised together below
                     errors.append(error)
         if errors:
             raise ExceptionGroup("Owned private threads are incomplete", errors)
@@ -581,7 +581,7 @@ class CaseService:
                     # Serialize cleanup with subject decisions and invitation projection.
                     # Evidence I/O runs afterwards, outside this lock.
                     await self.threads.exclude_subject(case)
-                except Exception:
+                except Exception:  # noqa: BLE001 -- logged for repair; the subject is already stored
                     log_failure(
                         logger,
                         case.kind,
@@ -592,7 +592,7 @@ class CaseService:
         if flow.on_subject_set:
             try:
                 await flow.on_subject_set(self, case)
-            except Exception:
+            except Exception:  # noqa: BLE001 -- logged for repair; the subject is already stored
                 log_failure(
                     logger, case.kind, "Case #%s needs subject evidence repair", number
                 )
@@ -675,7 +675,7 @@ class CaseService:
         try:
             resolution = await action(claimed)
             self._check_resolution(case.kind, resolution)
-        except Exception as error:
+        except Exception as error:  # recovered from the audit, or the guard is released and it re-raises
             if not await self._recover(number):
                 await self._release_guard(number, token, actor, verb, type(error))
                 raise
@@ -1083,7 +1083,7 @@ class CaseService:
             self.registry.require(case.kind)
             try:
                 await self.threads.render(self, case)
-            except Exception:
+            except Exception:  # noqa: BLE001 -- reconcile repeats the projection
                 log_failure(
                     logger, case.kind, "Case #%s needs a projection repair", number
                 )
@@ -1101,22 +1101,22 @@ class CaseService:
             errors = []
             try:
                 case = await self.threads.validate_private_threads(self, case)
-            except Exception as error:
+            except Exception as error:  # noqa: BLE001 -- each closing step is independent; reconcile repeats closing
                 errors.append(error)
             try:
                 case = await self._ensure_private_threads(await self.get(number))
-            except Exception as error:
+            except Exception as error:  # noqa: BLE001 -- each closing step is independent; reconcile repeats closing
                 errors.append(error)
             case = await self.get(number)
             if case.progress.get("closed_done") and not errors:
                 try:
                     await self.threads.reconcile_memberships(self, case)
-                except Exception as error:
+                except Exception as error:  # noqa: BLE001 -- recorded on the case; reconcile repeats it
                     await self._note_error(number, "closing", error)
                 return
             try:
                 case = await self._creation_hooks(case, flow)
-            except Exception as error:
+            except Exception as error:  # noqa: BLE001 -- each closing step is independent; reconcile repeats closing
                 errors.append(error)
             try:
                 if not case.progress.get("closed_hook_done"):
@@ -1125,13 +1125,13 @@ class CaseService:
                     case = await self.checkpoint(
                         number, set_fields={"progress.closed_hook_done": True}
                     )
-            except Exception as error:
+            except Exception as error:  # noqa: BLE001 -- each closing step is independent; reconcile repeats closing
                 errors.append(error)
             if not case.progress.get("outcomes_done"):
                 for outcome in flow.outcomes(case) if flow.outcomes else ():
                     try:
                         await self.notifier.send(self, case, outcome)
-                    except Exception as error:
+                    except Exception as error:  # noqa: BLE001 -- each closing step is independent; reconcile repeats closing
                         log_failure(
                             logger, case.kind, "Case #%s needs closing repair", number
                         )
@@ -1144,7 +1144,7 @@ class CaseService:
                     )
             try:
                 await self.threads.render(self, await self.get(number))
-            except Exception as error:
+            except Exception as error:  # noqa: BLE001 -- each closing step is independent; reconcile repeats closing
                 log_failure(logger, case.kind, "Case #%s needs closing repair", number)
                 errors.append(error)
             if errors:

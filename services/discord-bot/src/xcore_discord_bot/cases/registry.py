@@ -256,14 +256,14 @@ class FlowRegistry:
                 await service.threads.announce_user_message(service, value)
             elif hook == "on_thread_delete":
                 await service.thread_deleted(value.thread_id, value.parent_id)
-        except Exception:
+        except Exception:  # noqa: BLE001 -- one hook must not stop the others
             log_failure(logger, None, "Case core %s hook failed", hook)
         for flow in self.active_flows():
             callback = getattr(flow, hook)
             if callback:
                 try:
                     await callback(service, value)
-                except Exception:
+                except Exception:  # noqa: BLE001 -- one flow must not stop the others
                     log_failure(
                         logger, flow.kind, "Case %s hook failed for %s", hook, flow.kind
                     )

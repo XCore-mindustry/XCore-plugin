@@ -187,6 +187,46 @@ async def test_a_queued_merge_stays_until_a_server_answers() -> None:
     assert store.pending == {("s", "t")}
 
 
+@pytest.mark.asyncio
+async def test_an_unexpected_merge_failure_is_logged_with_its_traceback_and_queued(
+    caplog,
+) -> None:
+    service, store, _ = _service(KeyError("bug"), KeyError("bug"))
+
+    outcome = await service.merge_standings("s", "t")
+    # The accounts are already merged, so the ratings must not be dropped.
+    assert (outcome.merged, outcome.queued) == (False, True)
+    assert store.pending == {("s", "t")}
+
+    report = await service.retry_pending_merges()
+    assert (report.delivered, report.refused) == (0, ())
+    assert store.pending == {("s", "t")}
+
+    unexpected = [r for r in caplog.records if "failed unexpectedly" in r.message]
+    assert len(unexpected) == 2
+    assert all(r.exc_info and r.exc_info[0] is KeyError for r in unexpected)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "error",
+    [
+        NoLiveServerError("offline"),
+        RpcFailed("rating.accounts.merge.request", "FAILED", "busy"),
+        TimeoutError(),
+        ConnectionError(),
+    ],
+)
+async def test_an_unavailable_server_is_not_logged_as_a_failure(error, caplog) -> None:
+    service, store, _ = _service(error, error)
+
+    await service.merge_standings("s", "t")
+    await service.retry_pending_merges()
+
+    assert store.pending == {("s", "t")}
+    assert all(r.exc_info is None for r in caplog.records)
+
+
 def _merge_result(source_uuid="s", target_uuid="t") -> AccountMergeResult:
     return AccountMergeResult(
         success=True,

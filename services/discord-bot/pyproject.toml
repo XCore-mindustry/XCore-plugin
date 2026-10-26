@@ -48,7 +48,8 @@ testpaths = ["tests"]
 target-version = "py311"
 
 [tool.ruff.lint]
-ignore = ["BLE001"]
+# A broad `except Exception` needs a stated reason: `# noqa: BLE001 -- why`.
+extend-select = ["BLE001"]
 
 [build-system]
 requires = ["hatchling"]

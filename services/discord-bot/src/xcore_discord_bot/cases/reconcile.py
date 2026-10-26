@@ -74,7 +74,7 @@ async def reconcile_cases(service) -> None:
                 await reconcile_case(service, case, audited=case.number in audited)
             except CaseRace:
                 logger.debug("Case #%s changed during reconciliation", case.number)
-            except Exception:
+            except Exception:  # noqa: BLE001 -- one broken case must not stop the pass
                 log_failure(logger, case.kind, "Cannot reconcile case #%s", case.number)
 
 

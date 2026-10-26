@@ -641,7 +641,7 @@ async def _badge(service, case):
             actor=Actor(case.resolution.by_discord_id, case.resolution.by_name or ""),
             request_id=f"map-maker:{case.number}",
         )
-    except Exception as error:
+    except Exception as error:  # noqa: BLE001 -- recorded; reconcile retries the pending badge
         await service._note_error(case.number, "map_maker", error)
         return
     await service.checkpoint(

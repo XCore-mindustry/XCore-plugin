@@ -65,5 +65,5 @@ class PresenceDaemon:
                 await self.update_presence_once()
             except asyncio.CancelledError:
                 raise
-            except Exception:
+            except Exception:  # a failed update must not stop the loop
                 logger.exception("Failed to update Discord presence")

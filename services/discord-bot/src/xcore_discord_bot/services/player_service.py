@@ -68,7 +68,7 @@ class PlayerService:
                     uuid_value=result.source_before.uuid,
                     ip=None,
                 )
-            except Exception as error:
+            except Exception as error:  # noqa: BLE001 -- re-raised after the ratings below
                 # The accounts are merged already; a kick that could not be sent must not
                 # leave the ratings behind unattempted and unqueued.
                 kick_error = error

@@ -300,7 +300,7 @@ class StaffSyncDaemon:
                 await self.reconcile()
             except asyncio.CancelledError:
                 raise
-            except Exception:
+            except Exception:  # a failed pass must not stop the loop
                 logger.exception("Failed to check linked staff accounts")
             delay = max(
                 0, self.CHECK_INTERVAL_SECONDS - (time.monotonic() - started_at)

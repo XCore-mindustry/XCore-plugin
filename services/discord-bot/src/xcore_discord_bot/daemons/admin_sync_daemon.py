@@ -218,5 +218,5 @@ class AdminSyncDaemon:
                 await self.reconcile()
             except asyncio.CancelledError:
                 raise
-            except Exception:
+            except Exception:  # a failed pass must not stop the loop
                 logger.exception("Failed to reconcile Discord admin access")

@@ -348,7 +348,7 @@ async def run_consumer_forever(
             await consume(callback)
         except asyncio.CancelledError:
             raise
-        except Exception:
+        except Exception:  # a crashed consumer reconnects and resumes
             logger.exception("%s consumer crashed; reconnecting in 2s", label)
             await asyncio.sleep(2)
             try:

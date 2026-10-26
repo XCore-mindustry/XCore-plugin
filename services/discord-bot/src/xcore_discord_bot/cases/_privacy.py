@@ -33,6 +33,6 @@ async def private_case_command(bot, interaction) -> bool:
         if number is None:
             number = getattr(getattr(interaction, "namespace", None), "number", None)
         case = await bot.container.cases.get(parse_case_number(number))
-    except Exception:
+    except Exception:  # noqa: BLE001 -- any doubt counts as private
         return True  # No cached kind, fallback case or exception text is safe here.
     return case.kind == CaseKind.COMPLAINT

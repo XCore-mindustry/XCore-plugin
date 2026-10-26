@@ -586,7 +586,7 @@ class RedisBus:
                 parsed = parse_payload(payload)
             else:
                 raise RuntimeError("No parser configured for stream consumer")
-        except Exception as error:
+        except Exception as error:  # noqa: BLE001 -- a message that does not parse goes to the DLQ
             attempts = await self._increment_failure_counter(
                 stream=stream, group=group, message_id=message_id
             )
@@ -621,7 +621,7 @@ class RedisBus:
                 await callback(parsed)
             finally:
                 self._ban_log_delivery.reset(token)
-        except Exception as error:
+        except Exception as error:  # noqa: BLE001 -- a failed handler is retried, then dead-lettered
             attempts = await self._increment_failure_counter(
                 stream=stream, group=group, message_id=message_id
             )

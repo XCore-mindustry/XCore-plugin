@@ -47,7 +47,7 @@ class RatingMergeDaemon:
                 await self.run_once()
             except asyncio.CancelledError:
                 raise
-            except Exception:
+            except Exception:  # a failed pass must not stop the loop
                 logger.exception("Failed to retry queued rating merges")
             await asyncio.sleep(self._interval)
 
@@ -75,7 +75,7 @@ class RatingMergeDaemon:
                 "The ratings are still on the closed account and have to be moved by hand.",
                 allowed_mentions=discord.AllowedMentions.none(),
             )
-        except Exception:
+        except Exception:  # reporting must not stop the retries
             logger.exception(
                 "Failed to report the refused rating merge %s -> %s",
                 refused.source_uuid,

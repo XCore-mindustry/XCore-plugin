@@ -25,7 +25,7 @@ def case_command_boundary(callback):
         interaction.extras["cases_command_number"] = number
         try:
             return await callback(self, interaction, number, *args, **kwargs)
-        except Exception as error:
+        except Exception as error:  # noqa: BLE001 -- handed to the global command error handler
             await self.bot.handle_app_command_error(
                 interaction, app_commands.CommandInvokeError(interaction.command, error)
             )

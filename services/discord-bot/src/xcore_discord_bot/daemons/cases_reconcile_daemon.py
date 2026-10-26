@@ -45,6 +45,6 @@ class CasesReconcileDaemon:
                 await self.run_once()
             except asyncio.CancelledError:
                 raise
-            except Exception:
+            except Exception:  # a failed pass must not stop the loop
                 logger.exception("Cases reconciliation failed")
             await asyncio.sleep(self.interval_seconds)

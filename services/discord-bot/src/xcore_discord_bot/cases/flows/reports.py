@@ -407,7 +407,7 @@ async def _refuse(
             player_uuid=event.reporter.playerUuid,
             server=getattr(reporter, "online_server", None) or event.server,
         )
-    except Exception:
+    except Exception:  # the stored notice is delivered when the player joins
         logger.exception("Notice wake-up failed for a refused report")
 
 
@@ -440,7 +440,7 @@ async def submitted(service, event: CasesReportSubmittedV1) -> None:
         if reason == "burst":
             try:
                 await _burst_alert(service)
-            except Exception:
+            except Exception:  # the refusal is stored; the alert is extra
                 logger.exception("The report burst alert could not be posted")
         return
     target = await players.find_player_by_uuid(event.target.playerUuid)
