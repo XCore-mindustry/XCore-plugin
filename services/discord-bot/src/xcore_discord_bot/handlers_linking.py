@@ -7,7 +7,8 @@ import discord
 from discord import Interaction
 from xcore_protocol.generated.shared import ActorRefV1ActorType
 
-from .command_helpers import claim_mutation, get_player_or_reply
+from .command_helpers import claim_mutation, get_player_or_reply, reply_locale
+from .i18n import t
 from .utils.mindustry_colors import strip_mindustry_colors
 
 if TYPE_CHECKING:
@@ -24,15 +25,16 @@ def _clean_player_name(name: str | None) -> str:
 
 
 async def cmd_link(bot: XCoreDiscordBot, interaction: Interaction, code: str) -> None:  # noqa: C901
+    locale = reply_locale(bot, interaction)
     if not code or not code.strip():
         await interaction.response.send_message(
-            "Link code is required.", ephemeral=True
+            t(locale, "link-code-required"), ephemeral=True
         )
         return
     normalized_code = code.strip().upper()
     if not normalized_code:
         await interaction.response.send_message(
-            "Link code is required.", ephemeral=True
+            t(locale, "link-code-required"), ephemeral=True
         )
         return
 
@@ -41,12 +43,15 @@ async def cmd_link(bot: XCoreDiscordBot, interaction: Interaction, code: str) ->
         interaction,
         operation="discord-link",
         scope=f"{interaction.user.id}:{normalized_code}",
+        locale=locale,
     ):
         return
 
     code_doc = await bot.container.accounts_bus.get_discord_link_code(normalized_code)
     if code_doc is None:
-        await interaction.response.send_message("Link code not found.", ephemeral=True)
+        await interaction.response.send_message(
+            t(locale, "link-code-not-found"), ephemeral=True
+        )
         return
 
     expires_at_raw = code_doc.get("expires_at")
@@ -54,7 +59,7 @@ async def cmd_link(bot: XCoreDiscordBot, interaction: Interaction, code: str) ->
     now_ms = int((bot.store.now_utc()).timestamp() * 1000)
     if expires_at > 0 and expires_at <= now_ms:
         await interaction.response.send_message(
-            "This link code has expired.", ephemeral=True
+            t(locale, "link-code-expired"), ephemeral=True
         )
         return
 
@@ -62,17 +67,14 @@ async def cmd_link(bot: XCoreDiscordBot, interaction: Interaction, code: str) ->
     player = await bot.store.find_player_by_uuid(player_uuid)
     if player is None or player.uuid is None:
         await interaction.response.send_message(
-            "Player for this code was not found.", ephemeral=True
+            t(locale, "link-player-not-found"), ephemeral=True
         )
         return
 
     discord_id = str(interaction.user.id)
     discord_username = interaction.user.display_name
     if player.discord_id and player.discord_id != discord_id:
-        await interaction.response.send_message(
-            "This Mindustry account is already linked to another Discord account.",
-            ephemeral=True,
-        )
+        await interaction.response.send_message(t(locale, "link-taken"), ephemeral=True)
         return
 
     await bot.container.accounts_bus.publish_discord_link_confirm(
@@ -114,25 +116,24 @@ async def cmd_link(bot: XCoreDiscordBot, interaction: Interaction, code: str) ->
     except Exception:  # the periodic admin reconcile grants it later
         logger.exception("Failed to grant instant admin access after link")
 
-    clean_name = _clean_player_name(player.nickname)
-    if is_admin:
-        msg = f"Account linked to `{clean_name}` (`pid={player.pid}`). Admin access granted!"
-    else:
-        msg = f"Account linked to `{clean_name}` (`pid={player.pid}`). Return in-game in a moment."
-
     await interaction.response.send_message(
-        msg,
+        t(
+            locale,
+            "link-done-admin" if is_admin else "link-done",
+            name=_clean_player_name(player.nickname),
+            pid=player.pid,
+        ),
         ephemeral=True,
     )
 
 
 async def cmd_link_status(bot: XCoreDiscordBot, interaction: Interaction) -> None:
+    locale = reply_locale(bot, interaction)
     discord_id = str(interaction.user.id)
     players = await bot.store.find_players_by_discord_id(discord_id)
     if not players:
         await interaction.response.send_message(
-            "No Mindustry accounts are linked to this Discord account.",
-            ephemeral=True,
+            t(locale, "link-status-none"), ephemeral=True
         )
         return
 
@@ -140,7 +141,7 @@ async def cmd_link_status(bot: XCoreDiscordBot, interaction: Interaction) -> Non
         f"`{player.pid}` — {_clean_player_name(player.nickname)}" for player in players
     ]
     embed = discord.Embed(
-        title="Linked Mindustry accounts",
+        title=t(locale, "link-status-title"),
         description="\n".join(lines),
         color=discord.Color.blurple(),
     )
@@ -150,22 +151,21 @@ async def cmd_link_status(bot: XCoreDiscordBot, interaction: Interaction) -> Non
 async def cmd_unlink(
     bot: XCoreDiscordBot, interaction: Interaction, player_id: int
 ) -> None:
-    player = await get_player_or_reply(bot, interaction, player_id)
+    locale = reply_locale(bot, interaction)
+    player = await get_player_or_reply(bot, interaction, player_id, locale=locale)
     if player is None:
         return
 
     discord_id = str(interaction.user.id)
     if player.discord_id != discord_id:
         await interaction.response.send_message(
-            "This player is not linked to your Discord account.",
-            ephemeral=True,
+            t(locale, "unlink-not-yours"), ephemeral=True
         )
         return
 
     if player.uuid is None:
         await interaction.response.send_message(
-            "Cannot unlink player: UUID is missing.",
-            ephemeral=True,
+            t(locale, "unlink-no-uuid"), ephemeral=True
         )
         return
 
@@ -174,6 +174,7 @@ async def cmd_unlink(
         interaction,
         operation="discord-unlink",
         scope=f"{discord_id}:{player_id}",
+        locale=locale,
     ):
         return
 
@@ -186,8 +187,7 @@ async def cmd_unlink(
         actor_name=interaction.user.display_name,
         actor_discord_id=str(interaction.user.id),
     )
-    clean_name = _clean_player_name(player.nickname)
     await interaction.response.send_message(
-        f"Unlink request sent for `{clean_name}`.",
+        t(locale, "unlink-sent", name=_clean_player_name(player.nickname)),
         ephemeral=True,
     )

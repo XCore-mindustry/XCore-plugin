@@ -296,6 +296,10 @@ class CaseStore:
             async for row in self.database["discord_user_prefs"].find({})
         }
 
+    def cached_locale_pref(self, discord_id: int) -> LocalePref | None:
+        """The stored language choice from the warm cache, without I/O."""
+        return self._prefs.get(discord_id)
+
     def interaction_locale_now(self, interaction) -> str:
         """A warm preference cache lets a modal be the first response without I/O."""
         return pick_interaction_locale(

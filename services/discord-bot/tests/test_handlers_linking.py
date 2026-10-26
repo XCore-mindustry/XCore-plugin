@@ -2,12 +2,16 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from typing import Any, cast
+from unittest.mock import AsyncMock, MagicMock
 
+import discord
 import pytest
 from bot_fakes import make_bot, make_settings
 
+from xcore_discord_bot.bot import XCoreDiscordBot
 from xcore_discord_bot.dto import PlayerRecord
 from xcore_discord_bot.handlers_linking import cmd_link, cmd_link_status
+from xcore_discord_bot.i18n import LocalePref
 
 
 @dataclass
@@ -35,6 +39,7 @@ class _Interaction:
     id: int = 77
     user: _User = field(default_factory=_User)
     response: _Response = field(default_factory=_Response)
+    locale: object = None
 
 
 class _Backend:
@@ -199,3 +204,94 @@ async def test_cmd_link_status_renders_same_linked_account_output() -> None:
     assert ephemeral is True
     assert embed.title == "Linked Mindustry accounts"
     assert embed.description == "`7` — Target\n`9` — Alt"
+
+
+@pytest.mark.asyncio
+async def test_link_answers_in_the_users_discord_language() -> None:
+    bot = _bot()
+    interaction = _Interaction(locale=discord.Locale.russian)
+
+    await cmd_link(cast(Any, bot), cast(Any, interaction), "abc123")
+
+    assert interaction.response.sent == [
+        ("Аккаунт `Target` (`pid=7`) привязан. Можно возвращаться в игру.", True)
+    ]
+
+
+@pytest.mark.asyncio
+async def test_a_language_chosen_with_the_language_command_wins() -> None:
+    bot = _bot()
+    bot.container.cases.store.cached_locale_pref = lambda discord_id: LocalePref(
+        "uk", "manual"
+    )
+    interaction = _Interaction(locale=discord.Locale.russian)
+
+    await cmd_link_status(cast(Any, bot), cast(Any, interaction))
+
+    assert interaction.response.embeds[0][0].title == "Прив'язані акаунти Mindustry"
+
+
+@pytest.mark.asyncio
+async def test_unlink_refuses_someone_elses_player_in_the_users_language() -> None:
+    bot = _bot()
+    interaction = _Interaction(user=_User(id=556), locale=discord.Locale.ukrainian)
+
+    from xcore_discord_bot.handlers_linking import cmd_unlink
+
+    await cmd_unlink(cast(Any, bot), cast(Any, interaction), 7)
+
+    assert interaction.response.sent == [
+        ("Цей гравець не прив'язаний до вашого акаунта Discord.", True)
+    ]
+    assert bot.store.published == []
+
+
+def _dm(content: str, author_id: int = 555) -> Any:
+    channel = MagicMock(spec=discord.DMChannel)
+    channel.send = AsyncMock()
+    author = MagicMock(id=author_id, display_name="discord-user", bot=False)
+    return MagicMock(content=content, channel=channel, author=author)
+
+
+async def _send_dm(player: PlayerRecord, *, pref: LocalePref | None = None) -> Any:
+    bot = _bot()
+    bot.store.find_player_by_uuid = AsyncMock(return_value=player)
+    bot.container.cases.store.get_locale_pref = AsyncMock(return_value=pref)
+    message = _dm("abc123")
+    await XCoreDiscordBot.on_message(bot, message)
+    return bot, message
+
+
+@pytest.mark.asyncio
+async def test_a_code_sent_in_a_dm_links_and_answers_in_the_players_language() -> None:
+    player = PlayerRecord(pid=7, uuid="uuid-7", nickname="Target", language="ru")
+
+    bot, message = await _send_dm(player)
+
+    assert bot.store.published[0]["code"] == "ABC123"
+    message.channel.send.assert_awaited_once_with(
+        "Запрос на привязку `Target` (`pid=7`) отправлен."
+    )
+
+
+@pytest.mark.asyncio
+async def test_a_dm_follows_a_stored_language_choice_over_the_game_language() -> None:
+    player = PlayerRecord(pid=7, uuid="uuid-7", nickname="Target", language="ru")
+
+    _, message = await _send_dm(player, pref=LocalePref("uk", "manual"))
+
+    message.channel.send.assert_awaited_once_with(
+        "Запит на прив'язку `Target` (`pid=7`) надіслано."
+    )
+
+
+@pytest.mark.asyncio
+async def test_a_dm_code_for_an_account_linked_elsewhere_is_refused() -> None:
+    player = PlayerRecord(pid=7, uuid="uuid-7", nickname="Target", discord_id="999")
+
+    bot, message = await _send_dm(player)
+
+    assert bot.store.published == []
+    message.channel.send.assert_awaited_once_with(
+        "This Mindustry account is already linked to another Discord account."
+    )

@@ -10,34 +10,53 @@ import discord
 from discord import Interaction
 
 from .dto import PlayerRecord, record_identifiers
+from .i18n import DEFAULT, pick_interaction_locale, t
 from .server_views import PaginatorView
 from .utils.duration import parse_duration
 
 if TYPE_CHECKING:
     from .bot import XCoreDiscordBot
 
-MSG_PLAYER_NOT_FOUND = "Player not found"
-MSG_DUPLICATE_MUTATION = (
-    "Duplicate command ignored: this operation was already processed recently."
-)
+
+def reply_locale(bot: XCoreDiscordBot, interaction: Interaction) -> str:
+    """The language to answer a command in: the user's /language choice, then Discord's.
+
+    The case store keeps the choices and loads them at start-up while cases are enabled;
+    without them the reply follows Discord's locale.
+    """
+    pref = bot.container.cases.store.cached_locale_pref(int(interaction.user.id))
+    return pick_interaction_locale(pref, getattr(interaction, "locale", None))
 
 
 async def claim_mutation(
-    bot: XCoreDiscordBot, interaction: Interaction, *, operation: str, scope: str
+    bot: XCoreDiscordBot,
+    interaction: Interaction,
+    *,
+    operation: str,
+    scope: str,
+    locale: str = DEFAULT,
 ) -> bool:
     claim_key = f"cmd:{operation}:{interaction.id}:{scope}"
     if await bot.bus.claim_idempotency(claim_key, ttl_seconds=600):
         return True
-    await interaction.response.send_message(MSG_DUPLICATE_MUTATION, ephemeral=True)
+    await interaction.response.send_message(
+        t(locale, "command-duplicate"), ephemeral=True
+    )
     return False
 
 
 async def get_player_or_reply(
-    bot: XCoreDiscordBot, interaction: Interaction, player_id: int
+    bot: XCoreDiscordBot,
+    interaction: Interaction,
+    player_id: int,
+    *,
+    locale: str = DEFAULT,
 ) -> PlayerRecord | None:
     player = await bot.store.find_player_by_pid(player_id)
     if player is None:
-        await interaction.response.send_message(MSG_PLAYER_NOT_FOUND, ephemeral=True)
+        await interaction.response.send_message(
+            t(locale, "command-player-not-found"), ephemeral=True
+        )
     return player
 
 

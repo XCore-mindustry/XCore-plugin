@@ -16,7 +16,7 @@ from .cases.views import CaseActionButton, PanelButton
 from .cogs import AdminCog, InfoCog, LinkingCog, MapsCog, SeasonsCog, SubnetCog
 from .cogs.cases import CasesCog
 from .container import ServiceContainer
-from .i18n import XCoreTranslator
+from .i18n import XCoreTranslator, resolve_dm_locale, t
 from .mongo_store import MongoStore
 from .settings import Settings
 
@@ -229,12 +229,13 @@ class XCoreDiscordBot(commands.Bot):
                     and player.uuid is not None
                     and code_doc is not None
                 ):
+                    locale = await resolve_dm_locale(
+                        message.author.id, self.container.cases.store, player.language
+                    )
                     if player.discord_id and player.discord_id != str(
                         message.author.id
                     ):
-                        await message.channel.send(
-                            "This Mindustry account is already linked to another Discord account."
-                        )
+                        await message.channel.send(t(locale, "link-taken"))
                         return
 
                     await self.container.accounts_bus.publish_discord_link_confirm(
@@ -246,7 +247,12 @@ class XCoreDiscordBot(commands.Bot):
                         discord_username=message.author.display_name,
                     )
                     await message.channel.send(
-                        f"Link request sent for `{player.nickname}` (`pid={player.pid}`)."
+                        t(
+                            locale,
+                            "link-dm-sent",
+                            name=player.nickname or "",
+                            pid=player.pid,
+                        )
                     )
                     return
 
