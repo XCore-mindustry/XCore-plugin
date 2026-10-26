@@ -84,8 +84,6 @@ def test_prizes_are_read_from_the_season_document() -> None:
         Prize(1, 1, "badge", "season-champion", None),
         Prize(2, 4, "custom", "Nitro", "A month"),
     )
-    assert season.prizes_for(3) == (season.prizes[1],)
-    assert season.prizes_for(5) == ()
     assert season.prizes[1].places == "2-4"
     assert season.prizes[0].places == "1"
 

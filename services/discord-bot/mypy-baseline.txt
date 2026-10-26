@@ -83,8 +83,6 @@ src/xcore_discord_bot/handlers_moderation.py:0: error: Incompatible types in ass
 src/xcore_discord_bot/daemons/staff_sync_daemon.py:0: error: Incompatible types in assignment (expression has type "float", variable has type "int")  [assignment]
 src/xcore_discord_bot/cases/flows/badges.py:0: error: Value of type "dict[str, Any] | None" is not indexable  [index]
 src/xcore_discord_bot/cases/flows/badges.py:0: error: Argument 3 to "_recipient" has incompatible type "str | None"; expected "str"  [arg-type]
-src/xcore_discord_bot/handlers_misc.py:0: error: Argument 4 to "cmd_stats_audit" has incompatible type "Mapping[str, object]"; expected "dict[str, object]"  [arg-type]
-src/xcore_discord_bot/handlers_misc.py:0: error: Argument 4 to "cmd_stats_audit" has incompatible type "Mapping[str, object]"; expected "dict[str, object]"  [arg-type]
 src/xcore_discord_bot/handlers_misc.py:0: error: Argument "sort_mode" to "MapsListView" has incompatible type "str"; expected "Literal['reputation', 'popularity', 'name']"  [arg-type]
 src/xcore_discord_bot/handlers_misc.py:0: error: Function does not return a value (it only ever returns None)  [func-returns-value]
 src/xcore_discord_bot/handlers_misc.py:0: error: Argument 1 to "identity" has incompatible type "User | None"; expected "User"  [arg-type]

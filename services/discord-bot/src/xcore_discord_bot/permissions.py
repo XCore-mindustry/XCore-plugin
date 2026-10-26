@@ -4,7 +4,6 @@ from collections.abc import Iterable
 
 from discord import Interaction, app_commands
 
-from .client_protocols import SupportsSettings
 from .settings import Settings
 
 
@@ -28,10 +27,9 @@ def member_role_ids(user: object) -> set[int]:
 
 
 def settings_from_interaction(interaction: Interaction) -> Settings | None:
-    client = interaction.client
-    if not isinstance(client, SupportsSettings):
-        return None
-    return client.settings
+    # The bot's own client always carries settings; foreign clients (tests,
+    # embeds) may not, so fall back to None instead of raising.
+    return getattr(interaction.client, "settings", None)
 
 
 def has_any_role(user: object, role_ids: Iterable[int | None]) -> bool:

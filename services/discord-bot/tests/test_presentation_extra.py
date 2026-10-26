@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from xcore_discord_bot.presentation import (
-    as_int,
     build_servers_embed,
     format_ban_expire_date_from_millis,
     format_epoch_millis,
@@ -28,13 +27,6 @@ def test_format_epoch_millis_returns_na_for_non_positive_values() -> None:
     assert format_epoch_millis(0) == "n/a"
     assert format_epoch_millis(-1) == "n/a"
     assert format_epoch_millis("bad") == "n/a"
-
-
-def test_as_int_handles_bool_float_and_numeric_string() -> None:
-    assert as_int(True, default=9) == 9
-    assert as_int(5.9) == 5
-    assert as_int(" 42 ") == 42
-    assert as_int("nope", default=7) == 7
 
 
 def test_format_hexed_rank_block_clamps_rank_bounds() -> None:

@@ -23,7 +23,6 @@ LADDER_NAMES = {
     "hexed": "HexedCore",
 }
 PLACE_MARKS = {1: "🥇", 2: "🥈", 3: "🥉"}
-EMBED_TITLE_LIMIT = 256
 FIELD_LIMIT = 1024
 GRANT_MARKS = {
     "PENDING": "⏳ waiting",

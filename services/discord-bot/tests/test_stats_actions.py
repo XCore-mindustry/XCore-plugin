@@ -325,7 +325,7 @@ async def test_stats_actions_view_blocks_non_admin() -> None:
     view = StatsActionsView(
         settings=bot.settings,
         player_id=123,
-        player={"nickname": "Vortex"},
+        player=PlayerRecord(pid=1, nickname="Vortex"),
         create_ban_modal=lambda **kwargs: StatsBanModal(
             player_id=kwargs["player_id"],
             player=kwargs["player"],
@@ -374,7 +374,7 @@ async def test_stats_actions_view_ban_button_opens_modal() -> None:
     view = StatsActionsView(
         settings=bot.settings,
         player_id=123,
-        player={"nickname": "Vortex"},
+        player=PlayerRecord(pid=1, nickname="Vortex"),
         create_ban_modal=lambda **kwargs: StatsBanModal(
             player_id=kwargs["player_id"],
             player=kwargs["player"],
@@ -424,7 +424,9 @@ async def test_stats_actions_view_history_button_opens_paginated_audit() -> None
     view = StatsActionsView(
         settings=bot.settings,
         player_id=123,
-        player={"nickname": "Vortex", "uuid": "uuid-123", "discord_id": "discord-123"},
+        player=PlayerRecord(
+            pid=1, nickname="Vortex", uuid="uuid-123", discord_id="discord-123"
+        ),
         create_ban_modal=lambda **kwargs: StatsBanModal(
             player_id=kwargs["player_id"],
             player=kwargs["player"],
@@ -473,7 +475,9 @@ async def test_stats_actions_view_actions_button_opens_actor_audit() -> None:
     view = StatsActionsView(
         settings=bot.settings,
         player_id=123,
-        player={"nickname": "Vortex", "uuid": "uuid-123", "discord_id": "discord-123"},
+        player=PlayerRecord(
+            pid=1, nickname="Vortex", uuid="uuid-123", discord_id="discord-123"
+        ),
         create_ban_modal=lambda **kwargs: StatsBanModal(
             player_id=kwargs["player_id"],
             player=kwargs["player"],
@@ -516,7 +520,7 @@ async def test_stats_mute_modal_calls_cmd_mute() -> None:
 
     modal = StatsMuteModal(
         player_id=123,
-        player={"nickname": "Vortex"},
+        player=PlayerRecord(pid=1, nickname="Vortex"),
         on_submit_mute=cast(Any, _fake_cmd_mute),
     )
     cast(Any, modal).period = SimpleNamespace(value="10m")

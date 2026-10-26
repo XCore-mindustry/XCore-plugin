@@ -57,7 +57,7 @@ class InfoCog(commands.Cog):
             self.bot,
             interaction,
             player_id,
-            handlers_misc._player_record_as_mapping(player),
+            player,
             mode="target",
         )
 
@@ -73,6 +73,6 @@ class InfoCog(commands.Cog):
             self.bot,
             interaction,
             player_id,
-            handlers_misc._player_record_as_mapping(player),
+            player,
             mode="actor",
         )

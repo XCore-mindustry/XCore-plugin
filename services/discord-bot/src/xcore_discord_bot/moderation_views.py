@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Awaitable, Callable, Mapping
+from collections.abc import Awaitable, Callable
 from datetime import timedelta
 
 import discord
@@ -28,8 +28,7 @@ PerformMergeFn = Callable[..., Awaitable[AccountMergeResult]]
 PerformRemoveMapFn = Callable[..., Awaitable[str]]
 DeleteMuteFn = Callable[..., Awaitable[int]]
 CreateModalFn = Callable[..., discord.ui.Modal]
-FindPlayerByPidFn = Callable[[int], Awaitable[PlayerRecord | None]]
-OpenAuditFn = Callable[[Interaction, int, Mapping[str, object]], Awaitable[None]]
+OpenAuditFn = Callable[[Interaction, int, PlayerRecord], Awaitable[None]]
 
 
 class AccountMergeConfirmView(discord.ui.View):
@@ -326,7 +325,7 @@ class StatsActionsView(discord.ui.View):
         *,
         settings: Settings,
         player_id: int,
-        player: Mapping[str, object],
+        player: PlayerRecord,
         create_ban_modal: CreateModalFn,
         create_mute_modal: CreateModalFn,
         open_target_audit: OpenAuditFn,
@@ -335,7 +334,7 @@ class StatsActionsView(discord.ui.View):
         super().__init__(timeout=180)
         self._settings = settings
         self._player_id = player_id
-        self._player = dict(player)
+        self._player = player
         self._create_ban_modal = create_ban_modal
         self._create_mute_modal = create_mute_modal
         self._open_target_audit = open_target_audit

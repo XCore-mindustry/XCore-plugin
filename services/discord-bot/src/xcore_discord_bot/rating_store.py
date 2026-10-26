@@ -30,7 +30,6 @@ PENDING_MERGES = "rating_merge_pending"
 PRIZE_GRANTS = "rating_prize_grants"
 
 ACTIVE = "ACTIVE"
-CLOSING = "CLOSING"
 ARCHIVED = "ARCHIVED"
 
 
@@ -113,9 +112,6 @@ class Season:
     participants: int | None
     podium: tuple[PodiumEntry, ...]
     prizes: tuple[Prize, ...] = ()
-
-    def prizes_for(self, place: int) -> tuple[Prize, ...]:
-        return tuple(prize for prize in self.prizes if prize.covers(place))
 
     @property
     def id(self) -> str:

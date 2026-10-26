@@ -44,7 +44,6 @@ class Settings(BaseSettings):
     discord_seasons_channel_id: int = 0
     discord_guild_id: int = 0  # 0 = global slash command sync (slower)
     discord_clear_stale_commands: bool = False
-    discord_interaction_hmac_secret: str = ""
     discord_error_log_channel_id: int | None = None
     admin_reconcile_interval_seconds: int = Field(default=300, gt=0)
 

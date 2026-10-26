@@ -129,27 +129,6 @@ class AuditStore:
         except PyMongoError:
             return 0
 
-    async def find_audit_by_id(self, *, audit_id: str) -> AuditRecordSummary | None:
-        if not audit_id.strip():
-            return None
-        raw = await self._store.database["moderation_audit"].find_one(
-            {"audit_id": audit_id},
-            {
-                "_id": 0,
-                "audit_id": 1,
-                "action": 1,
-                "target": 1,
-                "actor": 1,
-                "reason": 1,
-                "details": 1,
-                "occurred_at": 1,
-                "created_at_epoch_ms": 1,
-            },
-        )
-        if raw is None:
-            return None
-        return self._audit_record_from_doc(raw)
-
     async def append_moderation_audit(
         self,
         *,

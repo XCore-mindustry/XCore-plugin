@@ -52,26 +52,6 @@ def format_epoch_millis(value: object) -> str:
     return "n/a"
 
 
-def as_int(value: object, default: int = 0) -> int:
-    if isinstance(value, bool):
-        return default
-    if isinstance(value, int):
-        return value
-    if isinstance(value, float):
-        try:
-            return int(value)
-        except (ValueError, OverflowError):
-            return default
-    if isinstance(value, str):
-        normalized = value.strip()
-        if normalized and normalized.lstrip("-").isdigit():
-            try:
-                return int(normalized)
-            except ValueError:
-                return default
-    return default
-
-
 def format_hexed_rank_block(rank_value: int, points: int) -> tuple[str, str]:
     safe_rank = max(0, min(rank_value, len(HEXED_RANKS) - 1))
     rank_label, _ = HEXED_RANKS[safe_rank]

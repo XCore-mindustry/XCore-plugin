@@ -6,6 +6,7 @@ from typing import Any
 
 import pytest
 
+from xcore_discord_bot.dto import PlayerRecord
 from xcore_discord_bot.moderation_views import (
     BanConfirmView,
     MapRemoveConfirmView,
@@ -58,7 +59,7 @@ async def test_ban_confirm_view_cancel_disables_buttons() -> None:
     view = BanConfirmView(
         requester_id=7,
         player_id=12,
-        player={"nickname": "Target"},
+        player=PlayerRecord(pid=12, nickname="Target"),
         period="1d",
         reason="reason",
         duration=timedelta(days=1),

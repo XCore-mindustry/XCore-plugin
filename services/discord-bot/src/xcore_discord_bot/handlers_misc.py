@@ -299,14 +299,14 @@ async def cmd_stats(
     view = StatsActionsView(
         settings=bot.settings,
         player_id=player.pid,
-        player=_player_record_as_mapping(player),
+        player=player,
         create_ban_modal=lambda **kwargs: create_stats_ban_modal(bot, **kwargs),
         create_mute_modal=lambda **kwargs: create_stats_mute_modal(bot, **kwargs),
-        open_target_audit=lambda interaction, pid, player_mapping: cmd_stats_audit(
-            bot, interaction, pid, player_mapping
+        open_target_audit=lambda interaction, pid, player: cmd_stats_audit(
+            bot, interaction, pid, player
         ),
-        open_actor_audit=lambda interaction, pid, player_mapping: cmd_stats_audit(
-            bot, interaction, pid, player_mapping, mode="actor"
+        open_actor_audit=lambda interaction, pid, player: cmd_stats_audit(
+            bot, interaction, pid, player, mode="actor"
         ),
     )
     await interaction.response.send_message(embed=embed, view=view)
@@ -340,20 +340,20 @@ async def cmd_stats_audit(
     bot: XCoreDiscordBot,
     interaction: Interaction,
     player_id: int,
-    player: dict[str, object],
+    player: PlayerRecord,
     mode: str = "target",
 ) -> None:
     page_size = 6
-    nickname = str(player.get("nickname") or "Unknown")
+    nickname = player.nickname or "Unknown"
     if mode == "actor":
-        actor_discord_id = str(player.get("discord_id") or "").strip() or None
+        actor_discord_id = str(player.discord_id or "").strip() or None
         actor_id = nickname
         total_entries = await bot.container.audit.count_audit_for_actor(
             actor_id=actor_id,
             actor_discord_id=actor_discord_id,
         )
     else:
-        uuid_value = str(player.get("uuid") or "").strip()
+        uuid_value = str(player.uuid or "").strip()
         if not uuid_value:
             await interaction.response.send_message(
                 "Cannot open audit: UUID is missing in player data.",
@@ -462,32 +462,6 @@ async def cmd_search(
         return embed, has_next
 
     await send_paginated(interaction, fetch_page)
-
-
-def _player_record_as_mapping(player: PlayerRecord) -> dict[str, object]:
-    return {
-        "pid": player.pid,
-        "nickname": player.nickname,
-        "uuid": player.uuid,
-        "ip": player.ip,
-        "last_ip": player.last_ip,
-        "custom_nickname": player.custom_nickname,
-        "description": player.description,
-        "language": player.language,
-        "translator_language": player.translator_language,
-        "total_play_time": player.total_play_time,
-        "hexed_rank": player.hexed_rank,
-        "hexed_points": player.hexed_points,
-        "leaderboard": player.leaderboard,
-        "unlocked_badges": player.unlocked_badges,
-        "active_badge": player.active_badge,
-        "blocked_private_uuids": player.blocked_private_uuids,
-        "is_admin": player.is_admin,
-        "admin_source": player.admin_source,
-        "discord_id": player.discord_id,
-        "created_at": player.created_at,
-        "updated_at": player.updated_at,
-    }
 
 
 async def cmd_bans(
