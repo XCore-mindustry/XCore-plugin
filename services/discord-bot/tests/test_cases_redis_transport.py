@@ -11,12 +11,13 @@ from fakeredis.aioredis import FakeRedis
 from xcore_protocol.generated.cases import CasesReportSubmittedV1
 
 from xcore_discord_bot.bus import transport as bus_module
-from xcore_discord_bot.redis_bus import (
+from xcore_discord_bot.bus.cases import (
     CASE_REPORT_GROUP_SUFFIX,
     CASE_REPORT_STREAM,
-    RedisBus,
+    CasesBus,
     parse_case_report_payload,
 )
+from xcore_discord_bot.redis_bus import RedisBus
 
 GROUP = f"xcore:cg:{CASE_REPORT_GROUP_SUFFIX}"
 
@@ -90,7 +91,7 @@ async def consume_one_batch(bus, callback, **kwargs):
     bus._redis.xreadgroup = bounded_read
     try:
         with pytest.raises(asyncio.CancelledError):
-            await bus.consume_case_reports(callback, **kwargs)
+            await CasesBus(bus).consume_case_reports(callback, **kwargs)
     finally:
         bus._redis.xreadgroup = read
 
@@ -258,7 +259,7 @@ async def test_inactive_flow_never_creates_group_or_reads_backlog(bus, monkeypat
 
     monkeypatch.setattr(bus_module.asyncio, "sleep", stop)
     with pytest.raises(asyncio.CancelledError):
-        await bus.consume_case_reports(callback, is_active=lambda: False)
+        await CasesBus(bus).consume_case_reports(callback, is_active=lambda: False)
     assert await bus._redis.xinfo_groups(CASE_REPORT_STREAM) == []
     assert await bus._redis.xlen(CASE_REPORT_STREAM) == 1
     callback.assert_not_awaited()
@@ -298,7 +299,7 @@ async def test_flow_disabled_while_reading_preserves_batch(bus, monkeypatch):
     monkeypatch.setattr(bus_module.asyncio, "sleep", stop)
     callback = AsyncMock()
     with pytest.raises(asyncio.CancelledError):
-        await bus.consume_case_reports(callback, is_active=lambda: active)
+        await CasesBus(bus).consume_case_reports(callback, is_active=lambda: active)
     callback.assert_not_awaited()
     assert (await bus._redis.xpending(CASE_REPORT_STREAM, GROUP))["pending"] == 1
     assert await bus._redis.xlen("xcore:dlq:evt") == 0

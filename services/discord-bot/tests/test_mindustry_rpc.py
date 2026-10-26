@@ -3,8 +3,8 @@ from __future__ import annotations
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from bot_fakes import make_rpc
 
-from xcore_discord_bot.bus.rating import RatingBus
 from xcore_discord_bot.rpc.mindustry_rpc import MindustryRpcClient
 
 
@@ -17,7 +17,7 @@ def _client(method: str, *results) -> tuple[MindustryRpcClient, AsyncMock]:
     bus = MagicMock()
     call = AsyncMock(side_effect=list(results))
     setattr(bus, method, call)
-    return MindustryRpcClient(bus, rating=RatingBus(bus)), call
+    return make_rpc(bus), call
 
 
 @pytest.mark.parametrize(

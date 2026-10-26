@@ -27,6 +27,7 @@ from xcore_protocol.generated.sentinel import (
 )
 from xcore_protocol.generated.shared import SeasonPrizeV1
 
+from ..bus.cases import CasesBus
 from ..bus.rating import RatingBus
 from ..bus.transport import RpcFailed
 from ..redis_bus import RedisBus
@@ -47,8 +48,9 @@ class NoLiveServerError(RuntimeError):
 class MindustryRpcClient:
     """Which server answers, retries and request ids, over the per-family buses."""
 
-    def __init__(self, bus: RedisBus, *, rating: RatingBus) -> None:
+    def __init__(self, bus: RedisBus, *, cases: CasesBus, rating: RatingBus) -> None:
         self._bus = bus
+        self._cases = cases
         self._rating = rating
 
     async def _retry_staff(self, call: Callable[[], Awaitable[T]]) -> T:
@@ -261,7 +263,7 @@ class MindustryRpcClient:
     ) -> CasesEvidenceResponseV1:
         # Evidence belongs to this server's recent chat/history; another server
         # cannot answer for it. An offline target is a valid typed response.
-        return await self._bus.rpc_case_evidence(
+        return await self._cases.rpc_case_evidence(
             server=server,
             player_uuid=player_uuid,
             chat_lines=chat_lines,

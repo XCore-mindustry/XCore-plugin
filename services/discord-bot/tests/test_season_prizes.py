@@ -6,6 +6,7 @@ from types import MethodType, SimpleNamespace
 from typing import Any
 
 import pytest
+from bot_fakes import make_rpc
 from test_rating_store import _season, _store
 from test_season_announcements import SEASON, _Bot, _Channel, _entry
 from xcore_protocol.generated.rating import (
@@ -37,7 +38,6 @@ from xcore_discord_bot.rating_store import (
 )
 from xcore_discord_bot.redis_bus import RedisBus
 from xcore_discord_bot.registry import server_registry
-from xcore_discord_bot.rpc.mindustry_rpc import MindustryRpcClient
 from xcore_discord_bot.season_embeds import (
     build_season_ended_embed,
     build_season_ending_soon_embed,
@@ -447,7 +447,7 @@ async def test_prize_rpcs_go_to_a_live_server() -> None:
         async def rpc_prize_delivered(self, *, server, **kwargs):
             seen.append(("delivered", server))
 
-    client = MindustryRpcClient(SimpleNamespace(), rating=_Bus())
+    client = make_rpc(SimpleNamespace(), rating=_Bus())
     prize = _prize_v1(1, 1, SeasonPrizeV1Kind.BADGE, "veteran")
     await client.add_season_prize(
         ladder="l", prize=prize, discord_id="5", actor_name="H", timeout_ms=1

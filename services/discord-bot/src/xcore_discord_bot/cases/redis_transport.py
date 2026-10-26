@@ -8,13 +8,13 @@ from __future__ import annotations
 
 from typing import Any
 
-from ..redis_bus import RedisBus
+from ..bus.cases import CasesBus
 from ..rpc.mindustry_rpc import MindustryRpcClient
 
 
 class RedisCaseTransport:
-    def __init__(self, bus: RedisBus, rpc: MindustryRpcClient) -> None:
-        self._bus = bus
+    def __init__(self, cases: CasesBus, rpc: MindustryRpcClient) -> None:
+        self._cases = cases
         self._rpc = rpc
 
     async def publish_case_notice(
@@ -22,7 +22,7 @@ class RedisCaseTransport:
     ) -> None:
         # Only a wake-up identifier. Mongo content, leases and delivery ACKs
         # belong to the cases core and the plugin respectively.
-        await self._bus.publish_case_notice(
+        await self._cases.publish_case_notice(
             notice_id=notice_id, player_uuid=player_uuid, server=server
         )
 

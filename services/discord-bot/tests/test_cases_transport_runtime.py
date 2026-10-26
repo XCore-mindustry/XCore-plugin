@@ -15,6 +15,7 @@ from xcore_protocol.generated.shared import ActorRefV1, PlayerRefV1
 
 from xcore_discord_bot import runtime_consumers
 from xcore_discord_bot.bot import XCoreDiscordBot
+from xcore_discord_bot.bus.cases import parse_case_report_payload
 from xcore_discord_bot.bus.moderation import ModerationBus
 from xcore_discord_bot.cases.model import CaseKind
 from xcore_discord_bot.cases.notify import Outcome
@@ -23,7 +24,7 @@ from xcore_discord_bot.cases.registry import Flow, FlowRegistry
 from xcore_discord_bot.cases.transport import NoCaseTransport
 from xcore_discord_bot.daemons.stream_supervisor import StreamSupervisor
 from xcore_discord_bot.player_pids import NO_PID
-from xcore_discord_bot.redis_bus import RedisBus, parse_case_report_payload
+from xcore_discord_bot.redis_bus import RedisBus
 from xcore_discord_bot.settings import Settings
 
 
@@ -148,10 +149,10 @@ async def test_report_runtime_waits_for_startup_before_creating_group(monkeypatc
     try:
         await asyncio.sleep(0)
         assert await redis.keys("*") == []
-        bus.consume_case_reports = AsyncMock()
+        consume = bot.container.cases_bus.consume_case_reports = AsyncMock()
         ready.set()
         await task
-        bus.consume_case_reports.assert_awaited_once()
+        consume.assert_awaited_once()
     finally:
         task.cancel()
         await asyncio.gather(task, return_exceptions=True)
@@ -212,7 +213,8 @@ async def test_bot_installs_adapter_after_container_creation_and_wires_notifier(
     from cases_fakes import core
 
     cases, _, _ = await core(flow=DUMMY_FLOW)
-    container = SimpleNamespace(cases=cases, rpc=MagicMock())
+    cases_bus = MagicMock()
+    container = SimpleNamespace(cases=cases, cases_bus=cases_bus, rpc=MagicMock())
     factory = MagicMock(return_value=container)
     monkeypatch.setattr("xcore_discord_bot.bot.ServiceContainer.create", factory)
     settings = Settings(
@@ -231,17 +233,18 @@ async def test_bot_installs_adapter_after_container_creation_and_wires_notifier(
     if enabled:
         from test_cases_service import opened
 
-        bus.publish_case_notice = AsyncMock()
+        cases_bus.publish_case_notice = AsyncMock()
         case = await opened(cases)
         await cases.notifier.send(
             cases, case, Outcome(case.opener, "report_resolved", "cases-outcome")
         )
-        bus.publish_case_notice.assert_awaited_once_with(
+        cases_bus.publish_case_notice.assert_awaited_once_with(
             notice_id=f"{case.number}:opener-secret:report_resolved",
             player_uuid="opener-secret",
             server="server",
         )
-        assert cases.transport._bus is bus and cases.transport._rpc is container.rpc
+        assert cases.transport._cases is cases_bus
+        assert cases.transport._rpc is container.rpc
     # Close the base bot only; fake container daemons do not own running tasks.
     await discord.ext.commands.Bot.close(bot)
 
@@ -399,7 +402,7 @@ async def test_constructor_installs_transport_for_notifier(monkeypatch):
     from cases_fakes import core
 
     cases, _, _ = await core(flow=DUMMY_FLOW)
-    container = SimpleNamespace(cases=cases, rpc=MagicMock())
+    container = SimpleNamespace(cases=cases, cases_bus=MagicMock(), rpc=MagicMock())
     monkeypatch.setattr(
         "xcore_discord_bot.bot.ServiceContainer.create", lambda *a, **kw: container
     )
@@ -408,12 +411,12 @@ async def test_constructor_installs_transport_for_notifier(monkeypatch):
     assert isinstance(cases.transport, RedisCaseTransport)
     from test_cases_service import opened
 
-    bot.bus.publish_case_notice = AsyncMock()
+    container.cases_bus.publish_case_notice = AsyncMock()
     case = await opened(cases)
     await cases.notifier.send(
         cases, case, Outcome(case.opener, "report_resolved", "cases-outcome")
     )
-    bot.bus.publish_case_notice.assert_awaited_once_with(
+    container.cases_bus.publish_case_notice.assert_awaited_once_with(
         notice_id=f"{case.number}:opener-secret:report_resolved",
         player_uuid="opener-secret",
         server="server",

@@ -205,7 +205,7 @@ async def consume_case_reports(bot: XCoreDiscordBot) -> None:
         await service.registry.dispatch_event(CASE_REPORT_EVENT, service, payload)
 
     async def consume(callback) -> None:
-        await bot.bus.consume_case_reports(
+        await bot.container.cases_bus.consume_case_reports(
             callback, is_active=lambda: case_reports_active(bot)
         )
 

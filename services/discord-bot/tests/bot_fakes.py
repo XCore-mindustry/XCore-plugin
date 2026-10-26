@@ -4,9 +4,12 @@ from contextlib import nullcontext
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from xcore_discord_bot.bot import XCoreDiscordBot
+from xcore_discord_bot.bus.cases import CasesBus
+from xcore_discord_bot.bus.rating import RatingBus
 from xcore_discord_bot.bus.transport import RedisTransport
 from xcore_discord_bot.mongo_store import MongoStore
 from xcore_discord_bot.redis_bus import RedisBus
+from xcore_discord_bot.rpc.mindustry_rpc import MindustryRpcClient
 from xcore_discord_bot.settings import Settings
 
 
@@ -21,8 +24,8 @@ def make_settings(**overrides) -> Settings:
     )
 
 
-FAMILY_BUSES = ("accounts_bus", "chat_bus", "moderation_bus", "rating_bus")
-FAMILY_CLASSES = ("AccountsBus", "ChatBus", "ModerationBus", "RatingBus")
+FAMILY_BUSES = ("accounts_bus", "cases_bus", "chat_bus", "moderation_bus", "rating_bus")
+FAMILY_CLASSES = ("AccountsBus", "CasesBus", "ChatBus", "ModerationBus", "RatingBus")
 
 
 def make_bot(
@@ -58,3 +61,15 @@ def make_bot(
 
         bot.container.moderation_bus.run_ban_log_once = AsyncMock(side_effect=run_log)
     return bot
+
+
+def make_rpc(bus, **families) -> MindustryRpcClient:
+    """An RPC client whose family buses all sit on ``bus``, unless a test passes one."""
+    defaults = {"cases": CasesBus, "rating": RatingBus}
+    return MindustryRpcClient(
+        bus,
+        **{
+            name: families[name] if name in families else family(bus)
+            for name, family in defaults.items()
+        },
+    )

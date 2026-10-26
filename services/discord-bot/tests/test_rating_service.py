@@ -6,6 +6,7 @@ from types import MethodType, SimpleNamespace
 from typing import Any
 
 import pytest
+from bot_fakes import make_rpc
 from xcore_protocol.generated.rating import RatingSeasonRescheduleRequestV1Operation
 
 from xcore_discord_bot.bus.rating import RatingBus
@@ -16,7 +17,6 @@ from xcore_discord_bot.redis_bus import RedisBus
 from xcore_discord_bot.registry import server_registry
 from xcore_discord_bot.rpc.mindustry_rpc import (
     MAX_SERVERS_TRIED,
-    MindustryRpcClient,
     NoLiveServerError,
 )
 from xcore_discord_bot.services.player_service import PlayerService
@@ -350,7 +350,7 @@ async def test_rpc_client_tries_the_next_server_when_one_stays_silent() -> None:
             raise TimeoutError()
         return server
 
-    result = await MindustryRpcClient(
+    result = await make_rpc(
         SimpleNamespace(), rating=SimpleNamespace()
     ).on_any_live_server(call)
 
@@ -368,9 +368,9 @@ async def test_rpc_client_gives_up_after_a_few_silent_servers() -> None:
         raise TimeoutError()
 
     with pytest.raises(TimeoutError):
-        await MindustryRpcClient(
-            SimpleNamespace(), rating=SimpleNamespace()
-        ).on_any_live_server(call)
+        await make_rpc(SimpleNamespace(), rating=SimpleNamespace()).on_any_live_server(
+            call
+        )
 
     assert len(tried) == MAX_SERVERS_TRIED
 
@@ -385,9 +385,9 @@ async def test_rpc_client_does_not_ask_another_server_after_a_refusal() -> None:
         raise RpcRejected("x", "REJECTED", "no")
 
     with pytest.raises(RpcRejected):
-        await MindustryRpcClient(
-            SimpleNamespace(), rating=SimpleNamespace()
-        ).on_any_live_server(call)
+        await make_rpc(SimpleNamespace(), rating=SimpleNamespace()).on_any_live_server(
+            call
+        )
 
     assert tried == ["a"]
 
@@ -406,9 +406,9 @@ async def test_rpc_client_tries_the_next_server_when_one_could_not_carry_it_out(
         return server
 
     assert (
-        await MindustryRpcClient(
-            SimpleNamespace(), rating=SimpleNamespace()
-        ).on_any_live_server(call)
+        await make_rpc(SimpleNamespace(), rating=SimpleNamespace()).on_any_live_server(
+            call
+        )
         == "b"
     )
     assert tried == ["a", "b"]
@@ -438,7 +438,7 @@ async def test_rpc_client_names_a_season_change_once_for_every_server_it_tries()
             seen.append(("remove", server, request_id))
             return "removed"
 
-    client = MindustryRpcClient(SimpleNamespace(), rating=_Bus())
+    client = make_rpc(SimpleNamespace(), rating=_Bus())
     actor = {"discord_id": "5", "actor_name": "Head", "timeout_ms": 100}
     await client.reschedule_season(
         ladder="minipvp",
@@ -521,9 +521,9 @@ async def test_rpc_client_needs_a_live_server() -> None:
     _live()
 
     with pytest.raises(NoLiveServerError):
-        await MindustryRpcClient(
-            SimpleNamespace(), rating=SimpleNamespace()
-        ).on_any_live_server(lambda server: None)
+        await make_rpc(SimpleNamespace(), rating=SimpleNamespace()).on_any_live_server(
+            lambda server: None
+        )
 
 
 # --------------------------------------------------------------------- the bus

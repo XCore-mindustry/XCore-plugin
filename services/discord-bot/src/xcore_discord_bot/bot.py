@@ -45,7 +45,7 @@ class XCoreDiscordBot(commands.Bot):
         )
         if settings.cases_enabled:
             self.container.cases.set_transport(
-                RedisCaseTransport(self.bus, self.container.rpc)
+                RedisCaseTransport(self.container.cases_bus, self.container.rpc)
             )
         self.map_cache: dict[str, tuple[float, list[dict[str, str]]]] = {}
 

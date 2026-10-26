@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock, MagicMock
 import discord
 import pytest
 from aiohttp import ClientConnectionError
-from bot_fakes import make_bot
+from bot_fakes import make_bot, make_rpc
 from pydantic import ValidationError
 from redis.exceptions import RedisError
 from xcore_protocol.generated.discord import (
@@ -21,14 +21,12 @@ from xcore_protocol.generated.security import (
 from xcore_protocol.generated.shared import DiscordIdentityRefV1, PlayerRefV1
 
 from xcore_discord_bot.bus.moderation import ModerationBus
-from xcore_discord_bot.bus.rating import RatingBus
 from xcore_discord_bot.bus.transport import RpcFailed
 from xcore_discord_bot.container import ServiceContainer
 from xcore_discord_bot.daemons.staff_sync_daemon import StaffSyncDaemon, StaffSyncResult
 from xcore_discord_bot.dto import PlayerRecord
 from xcore_discord_bot.mongo_store import MongoStore
 from xcore_discord_bot.redis_bus import RedisBus
-from xcore_discord_bot.rpc.mindustry_rpc import MindustryRpcClient
 from xcore_discord_bot.services.player_service import PlayerService
 from xcore_discord_bot.settings import Settings
 
@@ -136,7 +134,7 @@ async def test_retry_reuses_operation_id_and_new_attempt_changes_it(error):
         return SecurityStaffSyncResponseV1(request.server, request.operationId, 1, True)
 
     bus.rpc_staff_sync = AsyncMock(side_effect=sync)
-    rpc = MindustryRpcClient(bus, rating=RatingBus(bus))
+    rpc = make_rpc(bus)
     kwargs = {
         "server": "mini-pvp",
         "player_uuid": "uuid-1",
@@ -272,7 +270,7 @@ async def test_password_reset_retry_reuses_request():
         )
 
     bus.rpc_staff_reset_password = AsyncMock(side_effect=reset)
-    await MindustryRpcClient(bus, rating=RatingBus(bus)).reset_staff_password(
+    await make_rpc(bus).reset_staff_password(
         server="mini-pvp", player_uuid="uuid-1", timeout_ms=100
     )
     assert requests[0] is requests[1]
@@ -315,7 +313,7 @@ async def test_generated_rpc_wire_payload_and_response(settings):
         return {"payload_json": json.dumps(response.to_payload())}
 
     bus.rpc_request = AsyncMock(side_effect=respond)
-    response = await MindustryRpcClient(bus, rating=RatingBus(bus)).sync_staff(
+    response = await make_rpc(bus).sync_staff(
         server="mini-pvp",
         player_uuid="uuid-1",
         discord_id="456",
@@ -442,7 +440,7 @@ async def test_reset_password_generated_wire_payload(settings):
 
     bus.rpc_request = AsyncMock(side_effect=respond)
     assert (
-        await MindustryRpcClient(bus, rating=RatingBus(bus)).reset_staff_password(
+        await make_rpc(bus).reset_staff_password(
             server="mini-pvp", player_uuid="uuid-1", timeout_ms=100
         )
     ).changed
@@ -454,7 +452,7 @@ async def test_not_found_is_not_retried():
         side_effect=RpcFailed("security.staff.sync.request", "NOT_FOUND", "not linked")
     )
     with pytest.raises(RpcFailed, match="NOT_FOUND"):
-        await MindustryRpcClient(bus, rating=RatingBus(bus)).sync_staff(
+        await make_rpc(bus).sync_staff(
             server="mini-pvp",
             player_uuid="uuid-1",
             discord_id="456",
