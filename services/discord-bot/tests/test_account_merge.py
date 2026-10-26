@@ -7,12 +7,14 @@ from unittest.mock import MagicMock
 
 import discord
 import pytest
-from bot_fakes import make_bot, make_settings
+from backends import GameServer, connected_store, real_bot
+from bot_fakes import make_settings
 from cases_fakes import Collection, Database
 from pymongo.errors import OperationFailure, PyMongoError
 
 from xcore_discord_bot.account_merge_store import AccountMergeStore
 from xcore_discord_bot.audit_store import AuditStore
+from xcore_discord_bot.bot import XCoreDiscordBot
 from xcore_discord_bot.dto import (
     MERGE_KEEP_PID_SOURCE,
     MERGE_KEEP_PID_TARGET,
@@ -23,6 +25,8 @@ from xcore_discord_bot.handlers_moderation import cmd_merge_player
 from xcore_discord_bot.moderation_views import AccountMergeConfirmView
 from xcore_discord_bot.mongo_store import MongoStore
 from xcore_discord_bot.punishment_store import PunishmentStore
+
+RATING_MERGE = "rating.accounts.merge.request"
 
 
 @dataclass
@@ -74,48 +78,15 @@ class _Interaction:
         return MagicMock()
 
 
-class _MockBackend:
-    def __init__(self, players: dict[int, PlayerRecord]) -> None:
-        self._players = players
-        self.merge_calls: list[dict[str, Any]] = []
-
-    async def merge_player_accounts(self, **kwargs: Any) -> AccountMergeResult:
-        self.merge_calls.append(kwargs)
-        s = self._players.get(kwargs["source_pid"])
-        t = self._players.get(kwargs["target_pid"])
-        return AccountMergeResult(
-            success=True,
-            source_before=s,
-            target_before=t,
-            target_after=t,
-            games_transferred=5,
-            audit_id="audit-test-123",
-        )
-
-    async def find_player_by_pid(self, player_id):
-        p = self._players.get(player_id)
-        return p
-
-    async def find_player_by_uuid(self, uuid):
-        return None
-
-
-def _Mockbot(*args, **kwargs):
-    backend = _MockBackend(*args, **kwargs)
-    bot = make_bot(store=backend, bus=backend, settings=make_settings())
-    bot.container.players.merge_player_accounts = backend.merge_player_accounts
-    return bot
-
-
 async def _run_merge(
-    bot: _Mockbot,
+    bot: XCoreDiscordBot,
     interaction: _Interaction,
     source_pid: int,
     target_pid: int,
     reason: str,
     keep_pid: str = MERGE_KEEP_PID_TARGET,
 ) -> None:
-    # Test doubles intentionally stand in for the bot and the Discord interaction.
+    # A test double stands in for the Discord interaction.
     await cmd_merge_player(bot, interaction, source_pid, target_pid, reason, keep_pid)  # type: ignore[arg-type]
 
 
@@ -151,9 +122,115 @@ def _target_player(**overrides: Any) -> PlayerRecord:
     return PlayerRecord(**base)
 
 
+SOURCE_DOC: dict[str, Any] = {
+    "_id": "s-id",
+    "pid": 10,
+    "uuid": "source-uuid",
+    "nickname": "SourceUser",
+    "total_play_time": 100,
+    "pvp_rating": 1400,
+    "hexed_points": 15,
+    "unlocked_badges": ["b1"],
+    "discord_id": "disc-1",
+    "discord_username": "user1",
+    "online": False,
+}
+TARGET_DOC: dict[str, Any] = {
+    "_id": "t-id",
+    "pid": 20,
+    "uuid": "target-uuid",
+    "nickname": "TargetUser",
+    "total_play_time": 50,
+    "pvp_rating": 1600,
+    "hexed_points": 5,
+    "unlocked_badges": ["b2"],
+    "discord_id": None,
+    "online": False,
+}
+SOURCE_BAN: dict[str, Any] = {
+    "_id": "ban-1",
+    "ban_id": 7,
+    "uuid": "source-uuid",
+    "ip": "1.2.3.4",
+    "pid": 10,
+    "name": "SourceUser",
+    "admin_name": "Moderator",
+    "reason": "Cheating",
+}
+SOURCE_MUTE: dict[str, Any] = {
+    "_id": "mute-1",
+    "uuid": "source-uuid",
+    "pid": 10,
+    "name": "SourceUser",
+    "admin_name": "Moderator",
+    "reason": "Spam",
+}
+
+
+async def _seed(
+    db: Database,
+    *,
+    source: dict[str, Any] | None = None,
+    target: dict[str, Any] | None = None,
+    bans: tuple[dict[str, Any], ...] = (),
+    mutes: tuple[dict[str, Any], ...] = (),
+) -> None:
+    await db["bans"].create_index(
+        "ban_id", unique=True, partialFilterExpression={"ban_id": {"$type": "int"}}
+    )
+    await db["counters"].insert_one({"_id": "ban_id", "seq": 7})
+    await db["players"].insert_one(dict(SOURCE_DOC, **(source or {})))
+    await db["players"].insert_one(dict(TARGET_DOC, **(target or {})))
+    await db["games_v2"].insert_one(
+        {
+            "_id": "game-1",
+            "player_stats": [{"uuid": "source-uuid"}, {"uuid": "someone-else"}],
+        }
+    )
+    for ban in bans:
+        await db["bans"].insert_one(ban)
+    for mute in mutes:
+        await db["mutes"].insert_one(mute)
+
+
+async def _merge_store(**seed: Any) -> tuple[MongoStore, Database]:
+    store, db = await connected_store()
+    await _seed(db, **seed)
+    return store, db
+
+
+async def _merge_bot(**seed: Any) -> tuple[XCoreDiscordBot, Database]:
+    bot, db = await real_bot()
+    await _seed(db, **seed)
+    return bot, db
+
+
+async def _merge(store: MongoStore, **overrides: Any) -> AccountMergeResult:
+    kwargs: dict[str, Any] = {
+        "source_pid": 10,
+        "target_pid": 20,
+        "actor_name": "Admin",
+        "actor_discord_id": "999",
+        "reason": "Device migration",
+    }
+    kwargs.update(overrides)
+    merges = AccountMergeStore(
+        store, PunishmentStore(store), AuditStore(store), make_settings()
+    )
+    return await merges.merge_player_accounts(**kwargs)
+
+
+def _player(db: Database, doc_id: str) -> dict[str, Any]:
+    return next(doc for doc in db["players"].docs if doc["_id"] == doc_id)
+
+
+def _contents(db: Database) -> dict[str, list[dict[str, Any]]]:
+    return {name: deepcopy(c.docs) for name, c in db.collections.items() if c.docs}
+
+
 @pytest.mark.asyncio
 async def test_cmd_merge_player_self_merge_rejected() -> None:
-    bot = _Mockbot({})
+    bot, _ = await _merge_bot()
     interaction = _Interaction()
     await _run_merge(bot, interaction, 10, 10, "Test")
 
@@ -162,8 +239,20 @@ async def test_cmd_merge_player_self_merge_rejected() -> None:
 
 
 @pytest.mark.asyncio
+async def test_cmd_merge_player_reports_an_unknown_account() -> None:
+    bot, _ = await _merge_bot()
+    interaction = _Interaction()
+
+    await _run_merge(bot, interaction, 10, 30, "Reinstalled phone")
+
+    assert interaction.response.sent_embeds == []
+    assert interaction.response.sent_texts == ["Player not found"]
+
+
+@pytest.mark.asyncio
 async def test_cmd_merge_player_shows_confirm_view() -> None:
-    bot = _Mockbot({10: _source_player(), 20: _target_player()})
+    bot, db = await _merge_bot()
+    before = _contents(db)
     interaction = _Interaction()
 
     await _run_merge(bot, interaction, 10, 20, "Reinstalled phone")
@@ -175,11 +264,13 @@ async def test_cmd_merge_player_shows_confirm_view() -> None:
     view = interaction.response.sent_views[0]
     assert isinstance(view, AccountMergeConfirmView)
     assert view._keep_pid == MERGE_KEEP_PID_TARGET
+    # Nothing is merged until the admin confirms.
+    assert _contents(db) == before
 
 
 @pytest.mark.asyncio
 async def test_cmd_merge_player_keeps_source_pid_in_preview() -> None:
-    bot = _Mockbot({10: _source_player(), 20: _target_player()})
+    bot, _ = await _merge_bot()
     interaction = _Interaction()
 
     await _run_merge(
@@ -195,11 +286,8 @@ async def test_cmd_merge_player_keeps_source_pid_in_preview() -> None:
 
 @pytest.mark.asyncio
 async def test_cmd_merge_player_blocks_online_account() -> None:
-    bot = _Mockbot(
-        {
-            10: _source_player(),
-            20: _target_player(online=True, online_since=1, online_server="mini-pvp"),
-        }
+    bot, _ = await _merge_bot(
+        target={"online": True, "online_since": 1, "online_server": "mini-pvp"}
     )
     interaction = _Interaction()
 
@@ -207,19 +295,67 @@ async def test_cmd_merge_player_blocks_online_account() -> None:
 
     assert interaction.response.sent_embeds == []
     assert len(interaction.response.sent_texts) == 1
-    assert "#20 (NewAcc)" in interaction.response.sent_texts[0]
+    assert "#20 (TargetUser)" in interaction.response.sent_texts[0]
     assert "disconnect" in interaction.response.sent_texts[0]
 
 
 @pytest.mark.asyncio
 async def test_cmd_merge_player_rejects_closed_target() -> None:
-    bot = _Mockbot({10: _source_player(), 20: _target_player(uuid="merged:uuid-other")})
+    bot, _ = await _merge_bot(target={"uuid": "merged:uuid-other"})
     interaction = _Interaction()
 
     await _run_merge(bot, interaction, 10, 20, "Reinstalled phone")
 
     assert interaction.response.sent_embeds == []
     assert "closed" in interaction.response.sent_texts[0]
+
+
+@pytest.mark.asyncio
+async def test_confirming_the_preview_merges_the_accounts() -> None:
+    bot, db = await _merge_bot()
+    game = GameServer(bot)
+    game.answers[RATING_MERGE] = lambda payload: {
+        "messageType": "rating.accounts.merge.response",
+        "messageVersion": 1,
+        "server": payload["server"],
+        "standingsMerged": 1,
+    }
+    interaction = _Interaction()
+    await _run_merge(bot, interaction, 10, 20, "Reinstalled phone")
+    view = interaction.response.sent_views[0]
+
+    await _click(view, 1, interaction)  # keep the source account's PID
+    await _click(view, 0, interaction)
+
+    assert interaction.response.edited_embeds[-1].title == "✅ Accounts merged"
+    assert all(getattr(child, "disabled", False) for child in view.children)
+    target = _player(db, "t-id")
+    assert (target["pid"], target["uuid"]) == (10, "target-uuid")
+    assert _player(db, "s-id")["uuid"] == "merged:source-uuid"
+    (audit,) = db["moderation_audit"].docs
+    assert audit["details"]["extra"]["merge"]["keep_pid"] == MERGE_KEEP_PID_SOURCE
+    # The closed account's device is kicked and its ratings follow the survivor.
+    assert await game.kicks() == [("source-uuid", None)]
+    assert [(p["sourceUuid"], p["targetUuid"]) for p in game.sent(RATING_MERGE)] == [
+        ("source-uuid", "target-uuid")
+    ]
+
+
+@pytest.mark.asyncio
+async def test_a_player_joining_before_the_confirm_stops_the_merge() -> None:
+    bot, db = await _merge_bot()
+    interaction = _Interaction()
+    await _run_merge(bot, interaction, 10, 20, "Reinstalled phone")
+    view = interaction.response.sent_views[0]
+    await db["players"].update_one({"_id": "s-id"}, {"$set": {"online": True}})
+    before = _contents(db)
+
+    await _click(view, 0, interaction)
+
+    embed = interaction.response.edited_embeds[-1]
+    assert embed.title == "❌ Account merge failed"
+    assert "#10" in embed.description
+    assert _contents(db) == before
 
 
 async def _unused_merge(**kwargs: Any) -> AccountMergeResult:
@@ -289,103 +425,6 @@ async def test_merge_view_cancel_reports_english_message() -> None:
 
     assert interaction.response.edited_embeds[0].title == "Merge cancelled"
     assert all(getattr(child, "disabled", False) for child in view.children)
-
-
-SOURCE_DOC: dict[str, Any] = {
-    "_id": "s-id",
-    "pid": 10,
-    "uuid": "source-uuid",
-    "nickname": "SourceUser",
-    "total_play_time": 100,
-    "pvp_rating": 1400,
-    "hexed_points": 15,
-    "unlocked_badges": ["b1"],
-    "discord_id": "disc-1",
-    "discord_username": "user1",
-    "online": False,
-}
-TARGET_DOC: dict[str, Any] = {
-    "_id": "t-id",
-    "pid": 20,
-    "uuid": "target-uuid",
-    "nickname": "TargetUser",
-    "total_play_time": 50,
-    "pvp_rating": 1600,
-    "hexed_points": 5,
-    "unlocked_badges": ["b2"],
-    "discord_id": None,
-    "online": False,
-}
-SOURCE_BAN: dict[str, Any] = {
-    "_id": "ban-1",
-    "ban_id": 7,
-    "uuid": "source-uuid",
-    "ip": "1.2.3.4",
-    "pid": 10,
-    "name": "SourceUser",
-    "admin_name": "Moderator",
-    "reason": "Cheating",
-}
-SOURCE_MUTE: dict[str, Any] = {
-    "_id": "mute-1",
-    "uuid": "source-uuid",
-    "pid": 10,
-    "name": "SourceUser",
-    "admin_name": "Moderator",
-    "reason": "Spam",
-}
-
-
-async def _merge_store(
-    *,
-    source: dict[str, Any] | None = None,
-    target: dict[str, Any] | None = None,
-    bans: tuple[dict[str, Any], ...] = (),
-    mutes: tuple[dict[str, Any], ...] = (),
-) -> tuple[MongoStore, Database]:
-    db = Database()
-    store = MongoStore(make_settings())
-    store._db = db  # type: ignore[assignment]
-    await db["bans"].create_index(
-        "ban_id", unique=True, partialFilterExpression={"ban_id": {"$type": "int"}}
-    )
-    await db["counters"].insert_one({"_id": "ban_id", "seq": 7})
-    await db["players"].insert_one(dict(SOURCE_DOC, **(source or {})))
-    await db["players"].insert_one(dict(TARGET_DOC, **(target or {})))
-    await db["games_v2"].insert_one(
-        {
-            "_id": "game-1",
-            "player_stats": [{"uuid": "source-uuid"}, {"uuid": "someone-else"}],
-        }
-    )
-    for ban in bans:
-        await db["bans"].insert_one(ban)
-    for mute in mutes:
-        await db["mutes"].insert_one(mute)
-    return store, db
-
-
-async def _merge(store: MongoStore, **overrides: Any) -> AccountMergeResult:
-    kwargs: dict[str, Any] = {
-        "source_pid": 10,
-        "target_pid": 20,
-        "actor_name": "Admin",
-        "actor_discord_id": "999",
-        "reason": "Device migration",
-    }
-    kwargs.update(overrides)
-    merges = AccountMergeStore(
-        store, PunishmentStore(store), AuditStore(store), make_settings()
-    )
-    return await merges.merge_player_accounts(**kwargs)
-
-
-def _player(db: Database, doc_id: str) -> dict[str, Any]:
-    return next(doc for doc in db["players"].docs if doc["_id"] == doc_id)
-
-
-def _contents(db: Database) -> dict[str, list[dict[str, Any]]]:
-    return {name: deepcopy(c.docs) for name, c in db.collections.items() if c.docs}
 
 
 @pytest.mark.asyncio
