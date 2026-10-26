@@ -25,6 +25,7 @@ from xcore_discord_bot.cases.registry import Flow, FlowRegistry
 from xcore_discord_bot.cases.transport import NoCaseTransport
 from xcore_discord_bot.daemons.stream_supervisor import StreamSupervisor
 from xcore_discord_bot.player_pids import NO_PID
+from xcore_discord_bot.registry import LiveServerRegistry
 from xcore_discord_bot.settings import Settings
 
 
@@ -357,10 +358,16 @@ async def test_failed_direct_ban_log_remains_retryable_without_checkpoint():
     callback = AsyncMock(side_effect=[RuntimeError("Discord failed"), None, None])
     try:
         with pytest.raises(RuntimeError, match="Discord failed"):
-            await ModerationBus(bus).run_ban_log_once(ban_event(0, 57), callback)
+            await ModerationBus(bus, LiveServerRegistry()).run_ban_log_once(
+                ban_event(0, 57), callback
+            )
         assert await redis.keys("xcore:idmp:ban-event-log:*") == []
-        await ModerationBus(bus).run_ban_log_once(ban_event(0, 57), callback)
-        await ModerationBus(bus).run_ban_log_once(ban_event(0, 57), callback)
+        await ModerationBus(bus, LiveServerRegistry()).run_ban_log_once(
+            ban_event(0, 57), callback
+        )
+        await ModerationBus(bus, LiveServerRegistry()).run_ban_log_once(
+            ban_event(0, 57), callback
+        )
         assert callback.await_count == 3
         assert await redis.keys("xcore:idmp:ban-event-log:*") == []
     finally:

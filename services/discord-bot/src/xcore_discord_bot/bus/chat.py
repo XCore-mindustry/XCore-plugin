@@ -17,13 +17,15 @@ from ..contracts import (
     parse_server_heartbeat_payload,
 )
 from ..protocol_outbound import build_chat_discord_ingress_command
-from ..registry import server_registry
+from ..registry import LiveServerRegistry
 from .transport import RedisTransport
 
 
 class ChatBus:
-    def __init__(self, transport: RedisTransport) -> None:
+    def __init__(self, transport: RedisTransport, servers: LiveServerRegistry) -> None:
         self._transport = transport
+        # Filled from the servers' heartbeats; a message for every server goes to these.
+        self._servers = servers
 
     async def publish_discord_message(
         self,
@@ -32,11 +34,7 @@ class ChatBus:
         message: str,
         source_message_id: str | None = None,
     ) -> None:
-        target_servers = (
-            [server]
-            if server is not None
-            else [srv.name for srv in server_registry.get_all_servers()]
-        )
+        target_servers = [server] if server is not None else self._servers.names()
         for target_server in target_servers:
             await self._transport.publish(
                 stream=f"xcore:cmd:discord-message:{target_server}",
@@ -107,9 +105,8 @@ class ChatBus:
             callback=callback,
         )
 
-    @staticmethod
-    def _update_registry_from_heartbeat(event: ServerHeartbeatV1) -> None:
-        server_registry.update_server(
+    def _update_registry_from_heartbeat(self, event: ServerHeartbeatV1) -> None:
+        self._servers.update_server(
             event.serverName,
             event.discordChannelId,
             event.players,

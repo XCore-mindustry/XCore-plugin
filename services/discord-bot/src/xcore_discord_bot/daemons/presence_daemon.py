@@ -6,8 +6,6 @@ from typing import TYPE_CHECKING
 
 import discord
 
-from ..registry import server_registry
-
 if TYPE_CHECKING:
     from ..bot import XCoreDiscordBot
 
@@ -34,7 +32,7 @@ class PresenceDaemon:
             self._task.cancel()
 
     def build_presence_activity(self) -> discord.Activity:
-        servers = server_registry.get_all_servers()
+        servers = self._bot.container.servers.get_all_servers()
         if not servers:
             return discord.Activity(
                 type=discord.ActivityType.watching,

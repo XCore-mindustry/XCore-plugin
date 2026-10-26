@@ -6,6 +6,7 @@ from xcore_protocol.generated.shared import ActorRefV1ActorType
 
 from xcore_discord_bot.bus.accounts import AccountsBus
 from xcore_discord_bot.bus.transport import RedisTransport
+from xcore_discord_bot.registry import LiveServerRegistry
 from xcore_discord_bot.settings import Settings
 
 
@@ -39,7 +40,7 @@ async def test_publish_discord_admin_access_changed_publishes_for_all_servers(
 
     monkeypatch.setattr(bus, "publish_to_all_servers", fake_publish_for_all_servers)
 
-    await AccountsBus(bus).publish_discord_admin_access_changed(
+    await AccountsBus(bus, LiveServerRegistry()).publish_discord_admin_access_changed(
         player_uuid="uuid-7",
         player_pid=7,
         player_name="Target",
@@ -71,7 +72,7 @@ async def test_publish_discord_admin_access_changed_produces_valid_canonical_pay
 
     monkeypatch.setattr(bus, "publish_to_all_servers", fake_publish_for_all_servers)
 
-    await AccountsBus(bus).publish_discord_admin_access_changed(
+    await AccountsBus(bus, LiveServerRegistry()).publish_discord_admin_access_changed(
         player_uuid="uuid-7",
         player_pid=7,
         player_name="Target",

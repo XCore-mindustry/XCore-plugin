@@ -30,7 +30,7 @@ from xcore_discord_bot.contracts import (
     ServerActionV1,
     ServerHeartbeatV1,
 )
-from xcore_discord_bot.registry import server_registry
+from xcore_discord_bot.registry import LiveServerRegistry
 from xcore_discord_bot.settings import Settings
 
 
@@ -54,12 +54,6 @@ def settings() -> Settings:
 @pytest.fixture
 def mock_redis() -> AsyncMock:
     return AsyncMock()
-
-
-@pytest.fixture(autouse=True)
-def clear_registry() -> None:
-    with server_registry._lock:
-        server_registry._servers.clear()
 
 
 def test_stream_maxlen_policy() -> None:
@@ -104,7 +98,7 @@ async def test_consume_player_join_leave_dispatches_join_event(
 
     callback = AsyncMock()
     try:
-        await ChatBus(bus).consume_player_join_leave(callback)
+        await ChatBus(bus, LiveServerRegistry()).consume_player_join_leave(callback)
     except KeyboardInterrupt:
         pass
 
@@ -149,7 +143,7 @@ async def test_consume_player_join_leave_dispatches_leave_event(
 
     callback = AsyncMock()
     try:
-        await ChatBus(bus).consume_player_join_leave(callback)
+        await ChatBus(bus, LiveServerRegistry()).consume_player_join_leave(callback)
     except KeyboardInterrupt:
         pass
 
@@ -188,7 +182,7 @@ async def test_consume_server_actions_dispatches_event(
 
     callback = AsyncMock()
     try:
-        await ChatBus(bus).consume_server_actions(callback)
+        await ChatBus(bus, LiveServerRegistry()).consume_server_actions(callback)
     except KeyboardInterrupt:
         pass
 
@@ -226,7 +220,7 @@ async def test_consume_server_actions_skips_malformed_payload(
 
     callback = AsyncMock()
     try:
-        await ChatBus(bus).consume_server_actions(callback)
+        await ChatBus(bus, LiveServerRegistry()).consume_server_actions(callback)
     except KeyboardInterrupt:
         pass
 
@@ -266,7 +260,7 @@ async def test_consume_bans_dispatches_event(
 
     callback = AsyncMock()
     try:
-        await ModerationBus(bus).consume_bans(callback)
+        await ModerationBus(bus, LiveServerRegistry()).consume_bans(callback)
     except KeyboardInterrupt:
         pass
 
@@ -320,7 +314,7 @@ async def test_consume_mutes_dispatches_event(
 
     callback = AsyncMock()
     try:
-        await ModerationBus(bus).consume_mutes(callback)
+        await ModerationBus(bus, LiveServerRegistry()).consume_mutes(callback)
     except KeyboardInterrupt:
         pass
 
@@ -381,7 +375,7 @@ async def test_consume_vote_kicks_dispatches_event(
 
     callback = AsyncMock()
     try:
-        await ModerationBus(bus).consume_vote_kicks(callback)
+        await ModerationBus(bus, LiveServerRegistry()).consume_vote_kicks(callback)
     except KeyboardInterrupt:
         pass
 
@@ -448,7 +442,9 @@ async def test_consume_discord_link_status_changed_dispatches_generated_event(
 
     callback = AsyncMock()
     try:
-        await AccountsBus(bus).consume_discord_link_status_changed(callback)
+        await AccountsBus(
+            bus, LiveServerRegistry()
+        ).consume_discord_link_status_changed(callback)
     except KeyboardInterrupt:
         pass
 
@@ -510,7 +506,7 @@ async def test_consume_vote_kicks_dispatches_canonical_generated_payload(
 
     callback = AsyncMock()
     try:
-        await ModerationBus(bus).consume_vote_kicks(callback)
+        await ModerationBus(bus, LiveServerRegistry()).consume_vote_kicks(callback)
     except KeyboardInterrupt:
         pass
 
@@ -572,7 +568,7 @@ async def test_consume_global_chat_dispatches_event(
 
     callback = AsyncMock()
     try:
-        await ChatBus(bus).consume_global_chat(callback)
+        await ChatBus(bus, LiveServerRegistry()).consume_global_chat(callback)
     except KeyboardInterrupt:
         pass
 
@@ -617,7 +613,7 @@ async def test_consume_global_chat_callback_failure_not_acked(
 
     callback = AsyncMock(side_effect=RuntimeError("discord down"))
     try:
-        await ChatBus(bus).consume_global_chat(callback)
+        await ChatBus(bus, LiveServerRegistry()).consume_global_chat(callback)
     except KeyboardInterrupt:
         pass
 
@@ -657,8 +653,9 @@ async def test_consume_server_heartbeats_dispatches_and_updates_registry(
     bus._redis = mock_redis
 
     callback = AsyncMock()
+    servers = LiveServerRegistry()
     try:
-        await ChatBus(bus).consume_server_heartbeats(callback)
+        await ChatBus(bus, servers).consume_server_heartbeats(callback)
     except KeyboardInterrupt:
         pass
 
@@ -671,7 +668,7 @@ async def test_consume_server_heartbeats_dispatches_and_updates_registry(
             version="v1",
         )
     )
-    assert server_registry.get_channel_for_server("mini-pvp") == 321
+    assert servers.get_channel_for_server("mini-pvp") == 321
 
 
 @pytest.mark.asyncio
@@ -706,7 +703,7 @@ async def test_consume_game_chat_dispatches_generated_event(
 
     callback = AsyncMock()
     try:
-        await ChatBus(bus).consume_game_chat(callback)
+        await ChatBus(bus, LiveServerRegistry()).consume_game_chat(callback)
     except KeyboardInterrupt:
         pass
 

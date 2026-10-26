@@ -16,7 +16,6 @@ from xcore_protocol.generated.maps import MapsInspectResponseV1
 
 from ...bus.transport import RpcError
 from ...i18n import resolve_dm_locale, t
-from ...registry import server_registry
 from ...retry import TRANSIENT_EXCEPTIONS
 from ...rpc.mindustry_rpc import NoLiveServerError
 from ...staff_actions import (
@@ -473,7 +472,7 @@ async def accept(context: ActionContext):  # noqa: C901
         raise ActionFailed(t(context.locale, "maps-review-changed"))
     profile = case.payload.get("profile") or case.payload.get("info", {}).get("profile")
     servers = sorted(
-        server_registry.get_all_servers(),
+        context.service.bot.container.servers.get_all_servers(),
         key=lambda s: (s.mode != profile, s.name),
     )
     if not servers:

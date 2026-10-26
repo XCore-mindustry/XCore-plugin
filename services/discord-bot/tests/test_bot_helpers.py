@@ -25,7 +25,7 @@ from xcore_discord_bot.presentation import (
     format_ban_expire_date,
     sort_live_servers,
 )
-from xcore_discord_bot.registry import ServerInfo, server_registry
+from xcore_discord_bot.registry import ServerInfo
 from xcore_discord_bot.runtime_consumers import run_consumer_forever
 from xcore_discord_bot.utils.duration import parse_duration
 from xcore_discord_bot.utils.mindustry_colors import strip_mindustry_colors
@@ -759,13 +759,10 @@ class _DiscordMessage:
 
 @pytest.mark.asyncio
 async def test_on_message_routes_to_server_registry_mapping() -> None:
-    with server_registry._lock:
-        server_registry._servers.clear()
-    server_registry.update_server("mini-pvp", 333, 1, 10, "v1")
-
     bus = _MessageBus()
     bot = make_bot(bus=bus)
     bot.container.chat_bus = bus
+    bot.container.servers.update_server("mini-pvp", 333, 1, 10, "v1")
 
     message = _DiscordMessage(
         id=44,

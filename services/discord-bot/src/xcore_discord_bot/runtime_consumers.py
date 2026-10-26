@@ -27,7 +27,6 @@ from .handlers_seasons import (
 )
 from .moderation_logs import post_ban_log, post_mute_log, post_vote_kick_log
 from .player_pids import NO_PID
-from .registry import server_registry
 from .retry import retry_reconnect_bus
 from .utils.mindustry_colors import strip_mindustry_colors
 
@@ -86,7 +85,7 @@ async def _player_pid_for_uuid(store: MongoStore, uuid: str | None) -> int:
 async def _server_channel(
     bot: XCoreDiscordBot, server: str, *, context: str
 ) -> Messageable | None:
-    channel_id = server_registry.get_channel_for_server(server)
+    channel_id = bot.container.servers.get_channel_for_server(server)
     if channel_id is None:
         logger.debug("No channel registered for server=%s (%s)", server, context)
         return None

@@ -18,7 +18,6 @@ from .cogs.cases import CasesCog
 from .container import ServiceContainer
 from .i18n import XCoreTranslator
 from .mongo_store import MongoStore
-from .registry import server_registry
 from .settings import Settings
 
 logger = logging.getLogger(__name__)
@@ -251,7 +250,9 @@ class XCoreDiscordBot(commands.Bot):
                     )
                     return
 
-        target_server = server_registry.get_server_for_channel(message.channel.id)
+        target_server = self.container.servers.get_server_for_channel(
+            message.channel.id
+        )
         if target_server is None or not message.content:
             return
 

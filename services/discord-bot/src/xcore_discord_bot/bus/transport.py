@@ -13,14 +13,13 @@ import json
 import logging
 import time
 import uuid
-from collections.abc import Awaitable, Callable, Mapping
+from collections.abc import Awaitable, Callable, Iterable, Mapping
 from contextvars import ContextVar
 from typing import Any, cast
 
 from redis.asyncio import Redis
 from redis.exceptions import RedisError, ResponseError
 
-from ..registry import server_registry
 from ..settings import Settings
 
 logger = logging.getLogger(__name__)
@@ -462,13 +461,14 @@ class RedisTransport:
     async def publish_to_all_servers(
         self,
         *,
+        servers: Iterable[str],
         stream_prefix: str,
         event_type: str,
         ttl_ms: int,
         idempotency_prefix: str,
         payload_builder: Callable[[str], dict[str, Any]],
     ) -> None:
-        for server in self._all_server_names():
+        for server in servers:
             await self.publish(
                 stream=f"{stream_prefix}:{server}",
                 event_type=event_type,
@@ -477,10 +477,6 @@ class RedisTransport:
                 payload=payload_builder(server),
                 idempotency_prefix=idempotency_prefix,
             )
-
-    @staticmethod
-    def _all_server_names() -> list[str]:
-        return [srv.name for srv in server_registry.get_all_servers()]
 
     async def rpc_request(
         self, server: str, rpc_type: str, payload: dict[str, Any], timeout_ms: int

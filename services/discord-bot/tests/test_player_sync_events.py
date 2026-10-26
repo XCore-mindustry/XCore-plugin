@@ -12,6 +12,7 @@ from xcore_protocol.generated.security import (
 
 from xcore_discord_bot.bus.accounts import AccountsBus
 from xcore_discord_bot.bus.transport import RedisTransport
+from xcore_discord_bot.registry import LiveServerRegistry
 
 
 def _bus() -> RedisTransport:
@@ -26,7 +27,7 @@ def _bus() -> RedisTransport:
 @pytest.mark.asyncio
 async def test_publish_player_badge_inventory_changed_canonical_payload() -> None:
     transport = _bus()
-    bus = AccountsBus(transport)
+    bus = AccountsBus(transport, LiveServerRegistry())
     captured: dict[str, object] = {}
 
     async def fake_publish_for_all_servers(self, **kwargs):
@@ -56,7 +57,7 @@ async def test_publish_player_badge_inventory_changed_canonical_payload() -> Non
 @pytest.mark.asyncio
 async def test_publish_player_password_reset_canonical_payload() -> None:
     transport = _bus()
-    bus = AccountsBus(transport)
+    bus = AccountsBus(transport, LiveServerRegistry())
     captured: dict[str, object] = {}
 
     async def fake_publish_for_all_servers(self, **kwargs):

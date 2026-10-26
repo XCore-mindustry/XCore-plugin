@@ -283,13 +283,9 @@ async def test_attachment_only_discord_message_is_not_published_as_empty_chat(
     from types import SimpleNamespace
     from unittest.mock import AsyncMock
 
-    from xcore_discord_bot.registry import server_registry
-
     bot = make_bot()
     bot.container.chat_bus = SimpleNamespace(publish_discord_message=AsyncMock())
-    monkeypatch.setattr(
-        server_registry, "get_server_for_channel", lambda channel: "mini-pvp"
-    )
+    bot.container.servers.update_server("mini-pvp", 1, 0, 10, "v1")
     message = SimpleNamespace(
         author=SimpleNamespace(bot=False), channel=SimpleNamespace(id=1), content=""
     )

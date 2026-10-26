@@ -19,12 +19,15 @@ from ..protocol_outbound import (
     build_player_badge_inventory_changed_command,
     build_player_password_reset_command,
 )
+from ..registry import LiveServerRegistry
 from .transport import RedisTransport
 
 
 class AccountsBus:
-    def __init__(self, transport: RedisTransport) -> None:
+    def __init__(self, transport: RedisTransport, servers: LiveServerRegistry) -> None:
         self._transport = transport
+        # Commands for every server go to the ones that sent a heartbeat lately.
+        self._servers = servers
 
     async def get_discord_link_code(self, code: str) -> dict[str, object] | None:
         normalized = code.strip().upper()
@@ -63,6 +66,7 @@ class AccountsBus:
         discord_username: str,
     ) -> None:
         await self._transport.publish_to_all_servers(
+            servers=self._servers.names(),
             stream_prefix="xcore:cmd:discord-link-confirm",
             event_type="discord.link.confirm.command",
             ttl_ms=120_000,
@@ -90,6 +94,7 @@ class AccountsBus:
         actor_discord_id: str,
     ) -> None:
         await self._transport.publish_to_all_servers(
+            servers=self._servers.names(),
             stream_prefix="xcore:cmd:discord-unlink",
             event_type="discord.unlink.command",
             ttl_ms=120_000,
@@ -123,6 +128,7 @@ class AccountsBus:
         reason: str,
     ) -> None:
         await self._transport.publish_to_all_servers(
+            servers=self._servers.names(),
             stream_prefix="xcore:cmd:discord-admin-access",
             event_type="discord.admin-access.changed.command",
             ttl_ms=120_000,
@@ -146,6 +152,7 @@ class AccountsBus:
 
     async def publish_player_password_reset(self, *, uuid_value: str) -> None:
         await self._transport.publish_to_all_servers(
+            servers=self._servers.names(),
             stream_prefix="xcore:cmd:player-password-reset",
             event_type="player.password-reset.command",
             ttl_ms=120_000,
@@ -166,6 +173,7 @@ class AccountsBus:
         normalized_badge = (active_badge or "").strip()
         badges = [str(badge).strip() for badge in unlocked_badges if str(badge).strip()]
         await self._transport.publish_to_all_servers(
+            servers=self._servers.names(),
             stream_prefix="xcore:cmd:player-badge-inventory",
             event_type="player.badge-inventory.changed.command",
             ttl_ms=120_000,

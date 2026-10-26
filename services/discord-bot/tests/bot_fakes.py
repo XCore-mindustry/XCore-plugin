@@ -11,6 +11,7 @@ from xcore_discord_bot.bus.security import SecurityBus
 from xcore_discord_bot.bus.sentinel import SentinelBus
 from xcore_discord_bot.bus.transport import RedisTransport
 from xcore_discord_bot.mongo_store import MongoStore
+from xcore_discord_bot.registry import LiveServerRegistry
 from xcore_discord_bot.rpc.mindustry_rpc import MindustryRpcClient
 from xcore_discord_bot.settings import Settings
 
@@ -48,7 +49,7 @@ FAMILY_CLASSES = (
 )
 
 
-def _itself(dependency):
+def _itself(dependency, *_):
     return dependency
 
 
@@ -88,10 +89,11 @@ def make_bot(
     return bot
 
 
-def make_rpc(bus, **families) -> MindustryRpcClient:
+def make_rpc(bus, *, servers=None, **families) -> MindustryRpcClient:
     """An RPC client whose family buses all sit on ``bus``, unless a test passes one.
 
     A hand-written fake bus stands in for the family buses itself, as in make_bot.
+    ``servers`` is the live server registry; a fresh, empty one by default.
     """
     defaults = {
         "cases": CasesBus,
@@ -106,4 +108,5 @@ def make_rpc(bus, **families) -> MindustryRpcClient:
             name: families.get(name, bus if fake_bus else family(bus))
             for name, family in defaults.items()
         },
+        servers=servers if servers is not None else LiveServerRegistry(),
     )

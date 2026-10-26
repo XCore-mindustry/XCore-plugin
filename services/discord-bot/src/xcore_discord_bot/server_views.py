@@ -7,7 +7,7 @@ import discord
 from discord import Interaction
 
 from .presentation import build_servers_embed, sort_live_servers
-from .registry import server_registry
+from .registry import LiveServerRegistry
 from .ui_helpers import disable_view_buttons, safe_edit_view_message
 
 MapSortMode = Literal["reputation", "popularity", "name"]
@@ -56,10 +56,12 @@ class PaginatorView(discord.ui.View):
 class ServersView(discord.ui.View):
     def __init__(
         self,
+        servers: LiveServerRegistry,
         *,
         sort_mode: Literal["players", "name"] = "players",
     ) -> None:
         super().__init__(timeout=180)
+        self._servers = servers
         self._sort_mode: Literal["players", "name"] = sort_mode
         self.bot_message: discord.Message | None = None
         self._sync_sort_button_label()
@@ -69,7 +71,7 @@ class ServersView(discord.ui.View):
         return self._sort_mode
 
     def build_embed(self) -> discord.Embed:
-        servers = sort_live_servers(server_registry.get_all_servers(), self._sort_mode)
+        servers = sort_live_servers(self._servers.get_all_servers(), self._sort_mode)
         return build_servers_embed(servers, sort_mode=self._sort_mode)
 
     @discord.ui.button(label="Refresh", style=discord.ButtonStyle.primary, emoji="🔄")

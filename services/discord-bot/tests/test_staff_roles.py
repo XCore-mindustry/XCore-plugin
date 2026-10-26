@@ -26,6 +26,7 @@ from xcore_discord_bot.container import ServiceContainer
 from xcore_discord_bot.daemons.staff_sync_daemon import StaffSyncDaemon, StaffSyncResult
 from xcore_discord_bot.dto import PlayerRecord
 from xcore_discord_bot.mongo_store import MongoStore
+from xcore_discord_bot.registry import LiveServerRegistry
 from xcore_discord_bot.services.player_service import PlayerService
 from xcore_discord_bot.settings import Settings
 
@@ -239,7 +240,7 @@ async def test_password_reset_both_modes(settings, mode):
         settings=settings,
         rpc=rpc,
         accounts=bus,
-        moderation=ModerationBus(bus),
+        moderation=ModerationBus(bus, LiveServerRegistry()),
         merges=MagicMock(),
     )
     assert await service.reset_password(uuid="uuid-1")
@@ -405,7 +406,7 @@ async def test_roles_password_command_uses_rpc_without_legacy_event(settings):
             settings=settings,
             rpc=rpc,
             accounts=bus,
-            moderation=ModerationBus(bus),
+            moderation=ModerationBus(bus, LiveServerRegistry()),
             merges=MagicMock(),
         )
     )

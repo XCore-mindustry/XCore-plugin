@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 import discord
 from discord import Interaction, app_commands
@@ -12,7 +12,6 @@ from ..cases.modals import error_text
 from ..cases.model import AccessDenied, ActionFailed, CaseKind
 from ..i18n import t
 from ..permissions import has_any_role, map_reviewer_role_ids
-from ..registry import server_registry
 from .autocomplete import _autocomplete_map_file
 from .checks import map_reviewer_check
 
@@ -24,9 +23,10 @@ async def _autocomplete_server_for_command(
     interaction: Interaction,
     current: str,
 ) -> list[app_commands.Choice[str]]:
+    bot = cast("XCoreDiscordBot", interaction.client)
     current_norm = current.strip().lower()
     choices: list[app_commands.Choice[str]] = []
-    for server in sorted(srv.name for srv in server_registry.get_all_servers()):
+    for server in bot.container.servers.names():
         if current_norm and current_norm not in server.lower():
             continue
         choices.append(app_commands.Choice(name=server, value=server))

@@ -23,7 +23,6 @@ from xcore_discord_bot.contracts import (
     ServerActionV1,
 )
 from xcore_discord_bot.dto import PlayerRecord
-from xcore_discord_bot.registry import server_registry
 from xcore_discord_bot.runtime_consumers import (
     consume_bans,
     consume_game_chat,
@@ -83,9 +82,9 @@ class _GameChatBus:
 
 def _GameChatBot(*, channel_id, channel):
     backend = _GameChatBus(channel_id=channel_id, channel=channel)
-    if channel_id is not None:
-        server_registry.update_server("mini-pvp", channel_id, 0, 20, "test")
     bot = make_bot(store=backend, bus=backend)
+    if channel_id is not None:
+        bot.container.servers.update_server("mini-pvp", channel_id, 0, 20, "test")
     bot.container.chat_bus = backend
     bot.resolve_channel = backend.resolve_channel
     return bot
@@ -125,9 +124,9 @@ class _JoinLeaveBus:
 
 def _JoinLeaveBot(*, channel_id, channel):
     backend = _JoinLeaveBus(channel_id=channel_id, channel=channel)
-    if channel_id is not None:
-        server_registry.update_server("mini-pvp", channel_id, 0, 20, "test")
     bot = make_bot(store=backend, bus=backend)
+    if channel_id is not None:
+        bot.container.servers.update_server("mini-pvp", channel_id, 0, 20, "test")
     bot.container.chat_bus = backend
     bot.resolve_channel = backend.resolve_channel
     return bot
@@ -166,9 +165,9 @@ class _ServerActionBus:
 
 def _ServerActionBot(*, channel_id, channel):
     backend = _ServerActionBus(channel_id=channel_id, channel=channel)
-    if channel_id is not None:
-        server_registry.update_server("mini-pvp", channel_id, 0, 20, "test")
     bot = make_bot(store=backend, bus=backend)
+    if channel_id is not None:
+        bot.container.servers.update_server("mini-pvp", channel_id, 0, 20, "test")
     bot.container.chat_bus = backend
     bot.resolve_channel = backend.resolve_channel
     return bot
@@ -620,9 +619,3 @@ async def test_consume_vote_kicks_returns_early_when_logs_disabled(
         await consume_vote_kicks(bot)
 
     assert called is False
-
-
-@pytest.fixture(autouse=True)
-def clear_registry():
-    with server_registry._lock:
-        server_registry._servers.clear()

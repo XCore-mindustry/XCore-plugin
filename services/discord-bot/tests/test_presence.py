@@ -6,14 +6,15 @@ from unittest.mock import AsyncMock
 import discord
 
 from xcore_discord_bot.daemons.presence_daemon import PresenceDaemon
-from xcore_discord_bot.registry import server_registry
+from xcore_discord_bot.registry import LiveServerRegistry
 
 
 def test_build_presence_activity_offline() -> None:
-    with server_registry._lock:
-        server_registry._servers.clear()
+    servers = LiveServerRegistry()
 
-    bot = SimpleNamespace(change_presence=AsyncMock())
+    bot = SimpleNamespace(
+        change_presence=AsyncMock(), container=SimpleNamespace(servers=servers)
+    )
     daemon = PresenceDaemon(bot)
 
     activity = daemon.build_presence_activity()
@@ -23,12 +24,13 @@ def test_build_presence_activity_offline() -> None:
 
 
 def test_build_presence_activity_rotates_two_templates() -> None:
-    with server_registry._lock:
-        server_registry._servers.clear()
-    server_registry.update_server("alpha", 100, 5, 20, "v1", None, None)
-    server_registry.update_server("beta", 101, 7, 20, "v1", None, None)
+    servers = LiveServerRegistry()
+    servers.update_server("alpha", 100, 5, 20, "v1", None, None)
+    servers.update_server("beta", 101, 7, 20, "v1", None, None)
 
-    bot = SimpleNamespace(change_presence=AsyncMock())
+    bot = SimpleNamespace(
+        change_presence=AsyncMock(), container=SimpleNamespace(servers=servers)
+    )
     daemon = PresenceDaemon(bot)
 
     first = daemon.build_presence_activity()
@@ -46,11 +48,12 @@ def test_build_presence_activity_rotates_two_templates() -> None:
 
 
 async def test_update_presence_once_calls_change_presence() -> None:
-    with server_registry._lock:
-        server_registry._servers.clear()
-    server_registry.update_server("alpha", 100, 3, 20, "v1", None, None)
+    servers = LiveServerRegistry()
+    servers.update_server("alpha", 100, 3, 20, "v1", None, None)
 
-    bot = SimpleNamespace(change_presence=AsyncMock())
+    bot = SimpleNamespace(
+        change_presence=AsyncMock(), container=SimpleNamespace(servers=servers)
+    )
     daemon = PresenceDaemon(bot)
     bot.change_presence = AsyncMock()
 

@@ -33,7 +33,7 @@ from ..bus.rating import RatingBus
 from ..bus.security import SecurityBus
 from ..bus.sentinel import SentinelBus
 from ..bus.transport import RpcFailed
-from ..registry import server_registry
+from ..registry import LiveServerRegistry
 from ..retry import TRANSIENT_EXCEPTIONS, retry_read_rpc
 
 T = TypeVar("T")
@@ -58,12 +58,14 @@ class MindustryRpcClient:
         rating: RatingBus,
         security: SecurityBus,
         sentinel: SentinelBus,
+        servers: LiveServerRegistry,
     ) -> None:
         self._cases = cases
         self._maps = maps
         self._rating = rating
         self._security = security
         self._sentinel = sentinel
+        self._servers = servers
 
     async def _retry_staff(self, call: Callable[[], Awaitable[T]]) -> T:
         for attempt in range(2):
@@ -130,7 +132,7 @@ class MindustryRpcClient:
         which makes every server but the first refuse it.
         """
         names = sorted(
-            (server.name for server in server_registry.get_all_servers()),
+            (server.name for server in self._servers.get_all_servers()),
             key=str.lower,
         )[:MAX_SERVERS_TRIED]
         if not names:

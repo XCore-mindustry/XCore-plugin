@@ -36,7 +36,7 @@ from xcore_discord_bot.rating_store import (
     Season,
     season_from_doc,
 )
-from xcore_discord_bot.registry import server_registry
+from xcore_discord_bot.registry import LiveServerRegistry
 from xcore_discord_bot.season_embeds import (
     build_season_ended_embed,
     build_season_ending_soon_embed,
@@ -430,8 +430,8 @@ async def test_the_service_turns_a_prize_into_one_rpc() -> None:
 
 @pytest.mark.asyncio
 async def test_prize_rpcs_go_to_a_live_server() -> None:
-    server_registry._servers.clear()
-    server_registry.update_server(
+    servers = LiveServerRegistry()
+    servers.update_server(
         name="mini-pvp", channel_id=1, players=0, max_players=10, version="1"
     )
     seen: list[tuple[str, str]] = []
@@ -446,7 +446,7 @@ async def test_prize_rpcs_go_to_a_live_server() -> None:
         async def rpc_prize_delivered(self, *, server, **kwargs):
             seen.append(("delivered", server))
 
-    client = make_rpc(SimpleNamespace(), rating=_Bus())
+    client = make_rpc(SimpleNamespace(), rating=_Bus(), servers=servers)
     prize = _prize_v1(1, 1, SeasonPrizeV1Kind.BADGE, "veteran")
     await client.add_season_prize(
         ladder="l", prize=prize, discord_id="5", actor_name="H", timeout_ms=1

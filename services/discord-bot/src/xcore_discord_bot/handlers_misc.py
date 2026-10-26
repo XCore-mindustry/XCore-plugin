@@ -417,7 +417,7 @@ async def cmd_stats_audit(
 
 
 async def cmd_servers(bot: XCoreDiscordBot, interaction: Interaction) -> None:
-    view = ServersView(sort_mode="players")
+    view = ServersView(bot.container.servers, sort_mode="players")
     await interaction.response.send_message(embed=view.build_embed(), view=view)
     view.bot_message = await interaction.original_response()
 

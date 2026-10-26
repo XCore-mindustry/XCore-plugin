@@ -8,8 +8,6 @@ from typing import TYPE_CHECKING, Any
 
 from discord import Interaction
 
-from .registry import server_registry
-
 if TYPE_CHECKING:
     from .bot import XCoreDiscordBot
 
@@ -87,8 +85,7 @@ def _actor(interaction: Interaction) -> tuple[str, str]:
 
 
 def _control_server(bot: XCoreDiscordBot) -> str:
-    del bot
-    servers = sorted(s.name for s in server_registry.get_all_servers())
+    servers = bot.container.servers.names()
     if not servers:
         raise ValueError("No online server is available as subnet control server.")
     return servers[0]

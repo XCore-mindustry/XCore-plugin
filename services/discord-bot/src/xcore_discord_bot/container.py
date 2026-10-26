@@ -31,6 +31,7 @@ from .game_stats import GameStatsStore
 from .mongo_store import MongoStore
 from .punishment_store import PunishmentStore
 from .rating_store import RatingStore
+from .registry import LiveServerRegistry
 from .rpc.mindustry_rpc import MindustryRpcClient
 from .services.player_service import PlayerService
 from .services.rating_service import RatingService
@@ -54,6 +55,8 @@ class ServiceContainer:
     security_bus: SecurityBus
     sentinel_bus: SentinelBus
     rpc: MindustryRpcClient
+    # The live game servers, as their heartbeats report them.
+    servers: LiveServerRegistry
     players: PlayerService
     punishments: PunishmentStore
     audit: AuditStore
@@ -79,11 +82,12 @@ class ServiceContainer:
         store: MongoStore,
         bus: RedisTransport,
     ) -> ServiceContainer:
-        accounts_bus = AccountsBus(bus)
+        servers = LiveServerRegistry()
+        accounts_bus = AccountsBus(bus, servers)
         cases_bus = CasesBus(bus)
-        chat_bus = ChatBus(bus)
+        chat_bus = ChatBus(bus, servers)
         maps_bus = MapsBus(bus)
-        moderation_bus = ModerationBus(bus)
+        moderation_bus = ModerationBus(bus, servers)
         rating_bus = RatingBus(bus)
         security_bus = SecurityBus(bus)
         sentinel_bus = SentinelBus(bus)
@@ -93,6 +97,7 @@ class ServiceContainer:
             rating=rating_bus,
             security=security_bus,
             sentinel=sentinel_bus,
+            servers=servers,
         )
 
         punishments = PunishmentStore(store)
@@ -142,6 +147,7 @@ class ServiceContainer:
             security_bus=security_bus,
             sentinel_bus=sentinel_bus,
             rpc=rpc,
+            servers=servers,
             players=players,
             punishments=punishments,
             audit=audit,

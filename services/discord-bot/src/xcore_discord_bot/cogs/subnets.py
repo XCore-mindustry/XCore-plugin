@@ -1,12 +1,11 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from discord import Interaction, app_commands
 from discord.ext import commands
 
 from .. import handlers_subnets
-from ..registry import server_registry
 from .checks import general_admin_check
 
 if TYPE_CHECKING:
@@ -16,11 +15,11 @@ if TYPE_CHECKING:
 async def _autocomplete_server(
     interaction: Interaction, current: str
 ) -> list[app_commands.Choice[str]]:
-    del interaction
+    bot = cast("XCoreDiscordBot", interaction.client)
     needle = current.strip().lower()
     return [
         app_commands.Choice(name=server, value=server)
-        for server in sorted(s.name for s in server_registry.get_all_servers())
+        for server in bot.container.servers.names()
         if not needle or needle in server.lower()
     ][:25]
 

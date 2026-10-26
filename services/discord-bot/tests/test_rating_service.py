@@ -14,7 +14,7 @@ from xcore_discord_bot.bus.rating import RatingBus
 from xcore_discord_bot.bus.transport import RedisTransport, RpcFailed, RpcRejected
 from xcore_discord_bot.daemons.rating_merge_daemon import RatingMergeDaemon
 from xcore_discord_bot.dto import AccountMergeResult, PlayerRecord
-from xcore_discord_bot.registry import server_registry
+from xcore_discord_bot.registry import LiveServerRegistry
 from xcore_discord_bot.rpc.mindustry_rpc import (
     MAX_SERVERS_TRIED,
     NoLiveServerError,
@@ -331,17 +331,18 @@ async def test_season_administration_goes_out_as_one_rpc_each() -> None:
 # ------------------------------------------------------------- server fallback
 
 
-def _live(*names: str) -> None:
-    server_registry._servers.clear()
+def _live(*names: str) -> LiveServerRegistry:
+    servers = LiveServerRegistry()
     for name in names:
-        server_registry.update_server(
+        servers.update_server(
             name=name, channel_id=1, players=0, max_players=10, version="1"
         )
+    return servers
 
 
 @pytest.mark.asyncio
 async def test_rpc_client_tries_the_next_server_when_one_stays_silent() -> None:
-    _live("b-server", "a-server")
+    servers = _live("b-server", "a-server")
     tried: list[str] = []
 
     async def call(server: str) -> str:
@@ -351,7 +352,7 @@ async def test_rpc_client_tries_the_next_server_when_one_stays_silent() -> None:
         return server
 
     result = await make_rpc(
-        SimpleNamespace(), rating=SimpleNamespace()
+        SimpleNamespace(), rating=SimpleNamespace(), servers=servers
     ).on_any_live_server(call)
 
     assert result == "b-server"
@@ -360,7 +361,7 @@ async def test_rpc_client_tries_the_next_server_when_one_stays_silent() -> None:
 
 @pytest.mark.asyncio
 async def test_rpc_client_gives_up_after_a_few_silent_servers() -> None:
-    _live("a", "b", "c", "d", "e")
+    servers = _live("a", "b", "c", "d", "e")
     tried: list[str] = []
 
     async def call(server: str) -> str:
@@ -368,16 +369,16 @@ async def test_rpc_client_gives_up_after_a_few_silent_servers() -> None:
         raise TimeoutError()
 
     with pytest.raises(TimeoutError):
-        await make_rpc(SimpleNamespace(), rating=SimpleNamespace()).on_any_live_server(
-            call
-        )
+        await make_rpc(
+            SimpleNamespace(), rating=SimpleNamespace(), servers=servers
+        ).on_any_live_server(call)
 
     assert len(tried) == MAX_SERVERS_TRIED
 
 
 @pytest.mark.asyncio
 async def test_rpc_client_does_not_ask_another_server_after_a_refusal() -> None:
-    _live("a", "b")
+    servers = _live("a", "b")
     tried: list[str] = []
 
     async def call(server: str) -> str:
@@ -385,9 +386,9 @@ async def test_rpc_client_does_not_ask_another_server_after_a_refusal() -> None:
         raise RpcRejected("x", "REJECTED", "no")
 
     with pytest.raises(RpcRejected):
-        await make_rpc(SimpleNamespace(), rating=SimpleNamespace()).on_any_live_server(
-            call
-        )
+        await make_rpc(
+            SimpleNamespace(), rating=SimpleNamespace(), servers=servers
+        ).on_any_live_server(call)
 
     assert tried == ["a"]
 
@@ -396,7 +397,7 @@ async def test_rpc_client_does_not_ask_another_server_after_a_refusal() -> None:
 async def test_rpc_client_tries_the_next_server_when_one_could_not_carry_it_out() -> (
     None
 ):
-    _live("a", "b")
+    servers = _live("a", "b")
     tried: list[str] = []
 
     async def call(server: str) -> str:
@@ -406,9 +407,9 @@ async def test_rpc_client_tries_the_next_server_when_one_could_not_carry_it_out(
         return server
 
     assert (
-        await make_rpc(SimpleNamespace(), rating=SimpleNamespace()).on_any_live_server(
-            call
-        )
+        await make_rpc(
+            SimpleNamespace(), rating=SimpleNamespace(), servers=servers
+        ).on_any_live_server(call)
         == "b"
     )
     assert tried == ["a", "b"]
@@ -418,7 +419,7 @@ async def test_rpc_client_tries_the_next_server_when_one_could_not_carry_it_out(
 async def test_rpc_client_names_a_season_change_once_for_every_server_it_tries() -> (
     None
 ):
-    _live("a", "b")
+    servers = _live("a", "b")
     seen: list[tuple[str, str, str]] = []
 
     class _Bus:
@@ -438,7 +439,7 @@ async def test_rpc_client_names_a_season_change_once_for_every_server_it_tries()
             seen.append(("remove", server, request_id))
             return "removed"
 
-    client = make_rpc(SimpleNamespace(), rating=_Bus())
+    client = make_rpc(SimpleNamespace(), rating=_Bus(), servers=servers)
     actor = {"discord_id": "5", "actor_name": "Head", "timeout_ms": 100}
     await client.reschedule_season(
         ladder="minipvp",
@@ -518,12 +519,12 @@ async def test_bus_tells_a_refusal_from_a_failure(error_code, expected) -> None:
 
 @pytest.mark.asyncio
 async def test_rpc_client_needs_a_live_server() -> None:
-    _live()
+    servers = _live()
 
     with pytest.raises(NoLiveServerError):
-        await make_rpc(SimpleNamespace(), rating=SimpleNamespace()).on_any_live_server(
-            lambda server: None
-        )
+        await make_rpc(
+            SimpleNamespace(), rating=SimpleNamespace(), servers=servers
+        ).on_any_live_server(lambda server: None)
 
 
 # --------------------------------------------------------------------- the bus

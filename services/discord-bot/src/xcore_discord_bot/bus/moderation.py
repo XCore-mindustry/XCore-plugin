@@ -18,12 +18,15 @@ from ..protocol_outbound import (
     build_moderation_kick_banned_command,
     build_moderation_pardon_command,
 )
+from ..registry import LiveServerRegistry
 from .transport import RedisTransport
 
 
 class ModerationBus:
-    def __init__(self, transport: RedisTransport) -> None:
+    def __init__(self, transport: RedisTransport, servers: LiveServerRegistry) -> None:
         self._transport = transport
+        # Commands for every server go to the ones that sent a heartbeat lately.
+        self._servers = servers
         self._ban_log_lock = asyncio.Lock()
 
     async def consume_bans(
@@ -58,6 +61,7 @@ class ModerationBus:
 
     async def publish_kick_banned(self, uuid_value: str, ip: str | None) -> None:
         await self._transport.publish_to_all_servers(
+            servers=self._servers.names(),
             stream_prefix="xcore:cmd:kick-banned",
             event_type="moderation.kick-banned.command",
             ttl_ms=120_000,
@@ -71,6 +75,7 @@ class ModerationBus:
 
     async def publish_pardon_player(self, uuid_value: str) -> None:
         await self._transport.publish_to_all_servers(
+            servers=self._servers.names(),
             stream_prefix="xcore:cmd:pardon-player",
             event_type="moderation.pardon.command",
             ttl_ms=120_000,

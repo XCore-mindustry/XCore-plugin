@@ -32,17 +32,9 @@ from xcore_discord_bot.cases.reconcile import reconcile_cases
 from xcore_discord_bot.cases.startup import initialize_flows
 from xcore_discord_bot.cogs.maps import MapsCog
 from xcore_discord_bot.i18n import t
+from xcore_discord_bot.registry import LiveServerRegistry
 from xcore_discord_bot.rpc.mindustry_rpc import NoLiveServerError
 from xcore_discord_bot.staff_actions import MapUploadFailed
-
-
-@pytest.fixture(autouse=True)
-def servers(monkeypatch):
-    registry = SimpleNamespace(
-        get_all_servers=lambda: [SimpleNamespace(name="mini-pvp", mode="pvp")]
-    )
-    monkeypatch.setattr(maps, "server_registry", registry)
-    return registry
 
 
 async def opened(**settings):
@@ -365,13 +357,15 @@ async def test_error_findings_require_explicit_accept_anyway_and_server_severity
     )
 
 
-async def test_server_selection_prioritizes_matching_profile_and_caps_25(servers):
+async def test_server_selection_prioritizes_matching_profile_and_caps_25():
     env, case = await opened()
     service, _, bot, _, bus, _, _, _, _, _ = env
-    servers.get_all_servers = lambda: (
-        [SimpleNamespace(name=f"server-{i}", mode="attack") for i in range(30)]
-        + [SimpleNamespace(name="matching", mode="pvp")]
-    )
+    bot.container.servers = LiveServerRegistry()
+    for i in range(30):
+        bot.container.servers.update_server(
+            f"server-{i}", i, 0, 20, "v1", mode="attack"
+        )
+    bot.container.servers.update_server("matching", 99, 0, 20, "v1", mode="pvp")
     interaction = Interaction(bot, user=reviewer())
     await service.dispatch_action(
         case.number, "accept", reviewer(), "en", interaction=interaction

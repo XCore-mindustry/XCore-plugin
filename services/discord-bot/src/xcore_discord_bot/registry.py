@@ -88,5 +88,6 @@ class LiveServerRegistry:
         with self._lock:
             return list(self._servers.values())
 
-
-server_registry = LiveServerRegistry()
+    def names(self) -> list[str]:
+        """The live servers' names, sorted."""
+        return sorted(server.name for server in self.get_all_servers())
