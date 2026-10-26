@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from .account_merge_store import AccountMergeStore
 from .bus.accounts import AccountsBus
 from .bus.cases import CasesBus
 from .bus.chat import ChatBus
@@ -101,6 +102,7 @@ class ServiceContainer:
             rpc=rpc,
             accounts=accounts_bus,
             moderation=moderation_bus,
+            merges=AccountMergeStore(store, settings),
         )
 
         presence_daemon = PresenceDaemon(bot=bot)

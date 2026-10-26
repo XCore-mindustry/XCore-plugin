@@ -240,6 +240,7 @@ async def test_password_reset_both_modes(settings, mode):
         rpc=rpc,
         accounts=bus,
         moderation=ModerationBus(bus),
+        merges=MagicMock(),
     )
     assert await service.reset_password(uuid="uuid-1")
     if mode == "legacy":
@@ -405,6 +406,7 @@ async def test_roles_password_command_uses_rpc_without_legacy_event(settings):
             rpc=rpc,
             accounts=bus,
             moderation=ModerationBus(bus),
+            merges=MagicMock(),
         )
     )
     bot.store.find_player_by_pid = AsyncMock(

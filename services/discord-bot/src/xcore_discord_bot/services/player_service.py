@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import replace
 
+from ..account_merge_store import AccountMergeStore
 from ..bus.accounts import AccountsBus
 from ..bus.moderation import ModerationBus
 from ..dto import MERGE_KEEP_PID_TARGET, AccountMergeResult
@@ -21,8 +22,10 @@ class PlayerService:
         *,
         accounts: AccountsBus,
         moderation: ModerationBus,
+        merges: AccountMergeStore,
     ) -> None:
         self._store = store
+        self._merges = merges
         self._accounts = accounts
         self._moderation = moderation
         self._ratings = ratings
@@ -39,7 +42,7 @@ class PlayerService:
         reason: str,
         keep_pid: str = MERGE_KEEP_PID_TARGET,
     ) -> AccountMergeResult:
-        result = await self._store.merge_player_accounts(
+        result = await self._merges.merge_player_accounts(
             source_pid=source_pid,
             target_pid=target_pid,
             actor_name=actor_name,

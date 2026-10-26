@@ -11,6 +11,7 @@ from bot_fakes import make_bot, make_settings
 from cases_fakes import Collection, Database
 from pymongo.errors import OperationFailure, PyMongoError
 
+from xcore_discord_bot.account_merge_store import AccountMergeStore
 from xcore_discord_bot.dto import (
     MERGE_KEEP_PID_SOURCE,
     MERGE_KEEP_PID_TARGET,
@@ -371,7 +372,9 @@ async def _merge(store: MongoStore, **overrides: Any) -> AccountMergeResult:
         "reason": "Device migration",
     }
     kwargs.update(overrides)
-    return await store.merge_player_accounts(**kwargs)
+    return await AccountMergeStore(store, make_settings()).merge_player_accounts(
+        **kwargs
+    )
 
 
 def _player(db: Database, doc_id: str) -> dict[str, Any]:
@@ -383,7 +386,7 @@ def _contents(db: Database) -> dict[str, list[dict[str, Any]]]:
 
 
 @pytest.mark.asyncio
-async def test_mongo_store_merge_player_accounts_logic() -> None:
+async def test_merge_player_accounts_logic() -> None:
     store, db = await _merge_store()
 
     result = await _merge(store)
@@ -431,7 +434,7 @@ async def test_mongo_store_merge_player_accounts_logic() -> None:
 
 
 @pytest.mark.asyncio
-async def test_mongo_store_merge_keeps_source_pid_when_requested() -> None:
+async def test_merge_keeps_source_pid_when_requested() -> None:
     store, db = await _merge_store()
 
     result = await _merge(store, keep_pid=MERGE_KEEP_PID_SOURCE)
@@ -457,7 +460,7 @@ async def test_mongo_store_merge_keeps_source_pid_when_requested() -> None:
 
 
 @pytest.mark.asyncio
-async def test_mongo_store_merge_clears_source_discord_link() -> None:
+async def test_merge_clears_source_discord_link() -> None:
     store, db = await _merge_store()
 
     result = await _merge(store)
@@ -470,7 +473,7 @@ async def test_mongo_store_merge_clears_source_discord_link() -> None:
 
 
 @pytest.mark.asyncio
-async def test_mongo_store_merge_rejects_online_player() -> None:
+async def test_merge_rejects_online_player() -> None:
     store, db = await _merge_store(source={"online": True})
     before = _contents(db)
 
@@ -482,7 +485,7 @@ async def test_mongo_store_merge_rejects_online_player() -> None:
 
 
 @pytest.mark.asyncio
-async def test_mongo_store_merge_rejects_closed_target() -> None:
+async def test_merge_rejects_closed_target() -> None:
     store, db = await _merge_store(target={"uuid": "merged:old-target"})
     before = _contents(db)
 
@@ -494,7 +497,7 @@ async def test_mongo_store_merge_rejects_closed_target() -> None:
 
 
 @pytest.mark.asyncio
-async def test_mongo_store_merge_rejects_unknown_keep_pid() -> None:
+async def test_merge_rejects_unknown_keep_pid() -> None:
     store, db = await _merge_store()
     before = _contents(db)
 
@@ -506,7 +509,7 @@ async def test_mongo_store_merge_rejects_unknown_keep_pid() -> None:
 
 
 @pytest.mark.asyncio
-async def test_mongo_store_merge_rewrites_punishment_pids() -> None:
+async def test_merge_rewrites_punishment_pids() -> None:
     store, db = await _merge_store(bans=(SOURCE_BAN,))
 
     result = await _merge(store, keep_pid=MERGE_KEEP_PID_SOURCE)
@@ -528,7 +531,7 @@ async def test_mongo_store_merge_rewrites_punishment_pids() -> None:
 
 
 @pytest.mark.asyncio
-async def test_mongo_store_merge_gives_the_transferred_ban_its_own_id() -> None:
+async def test_merge_gives_the_transferred_ban_its_own_id() -> None:
     # ban_id is unique; copying the closed account's id made the insert fail mid-merge.
     store, db = await _merge_store(bans=(SOURCE_BAN,))
 
@@ -540,9 +543,7 @@ async def test_mongo_store_merge_gives_the_transferred_ban_its_own_id() -> None:
 
 
 @pytest.mark.asyncio
-async def test_mongo_store_merge_unban_of_the_surviving_account_lifts_the_ip_ban() -> (
-    None
-):
+async def test_merge_unban_of_the_surviving_account_lifts_the_ip_ban() -> None:
     store, _ = await _merge_store(bans=(SOURCE_BAN,))
     await _merge(store)
 
@@ -556,9 +557,7 @@ async def test_mongo_store_merge_unban_of_the_surviving_account_lifts_the_ip_ban
 
 
 @pytest.mark.asyncio
-async def test_mongo_store_merge_strips_the_ip_when_the_target_has_its_own_ban() -> (
-    None
-):
+async def test_merge_strips_the_ip_when_the_target_has_its_own_ban() -> None:
     target_ban = dict(SOURCE_BAN, _id="ban-2", ban_id=3, uuid="target-uuid", pid=20)
     store, db = await _merge_store(bans=(SOURCE_BAN, target_ban))
 
@@ -599,7 +598,7 @@ def _fail_call(collection: Collection, method: str, call: int) -> None:
         ("moderation_audit", "insert_one", 1),
     ],
 )
-async def test_mongo_store_merge_failure_leaves_both_accounts_unchanged(
+async def test_merge_failure_leaves_both_accounts_unchanged(
     collection: str, method: str, call: int
 ) -> None:
     store, db = await _merge_store(bans=(SOURCE_BAN,), mutes=(SOURCE_MUTE,))
@@ -613,7 +612,7 @@ async def test_mongo_store_merge_failure_leaves_both_accounts_unchanged(
 
 
 @pytest.mark.asyncio
-async def test_mongo_store_merge_without_replica_set_changes_nothing() -> None:
+async def test_merge_without_replica_set_changes_nothing() -> None:
     store, db = await _merge_store()
     before = _contents(db)
 
