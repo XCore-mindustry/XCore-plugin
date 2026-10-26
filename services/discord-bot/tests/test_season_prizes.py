@@ -2,13 +2,15 @@ from __future__ import annotations
 
 import json
 from datetime import UTC, datetime
-from types import MethodType, SimpleNamespace
+from types import SimpleNamespace
 from typing import Any
 
 import pytest
-from bot_fakes import make_rpc
+from backends import GameServer, real_bot
+from bot_fakes import make_settings
+from test_rating_service import PRIZES, _prizes_set
 from test_rating_store import _season, _store
-from test_season_announcements import SEASON, _Bot, _Channel, _entry
+from test_season_announcements import SEASON, _bot, _Channel, _entry
 from xcore_protocol.generated.rating import (
     RatingSeasonEndedV1,
     RatingSeasonEndingSoonV1,
@@ -21,8 +23,7 @@ from xcore_protocol.generated.shared import (
 )
 
 from xcore_discord_bot.badges import BADGE_BY_ID, get_badge
-from xcore_discord_bot.bus.rating import RatingBus
-from xcore_discord_bot.bus.transport import RedisTransport, RpcRejected
+from xcore_discord_bot.bus.transport import RpcRejected
 from xcore_discord_bot.cogs.seasons import SeasonsCog, parse_places
 from xcore_discord_bot.handlers_seasons import (
     on_season_ended,
@@ -36,7 +37,6 @@ from xcore_discord_bot.rating_store import (
     Season,
     season_from_doc,
 )
-from xcore_discord_bot.registry import LiveServerRegistry
 from xcore_discord_bot.season_embeds import (
     build_season_ended_embed,
     build_season_ending_soon_embed,
@@ -46,9 +46,9 @@ from xcore_discord_bot.season_embeds import (
     prize_lines,
     prize_text,
 )
-from xcore_discord_bot.services.rating_service import RatingService
 
 CHAMPION = Prize(1, 1, "badge", "season-champion")
+GRANT_UPDATE = "rating.prize.grant.update.request"
 NITRO = Prize(1, 3, "custom", "Discord Nitro, 1 month", "A month of Nitro")
 
 
@@ -94,7 +94,7 @@ def test_a_season_without_prizes_has_none() -> None:
 
 @pytest.mark.asyncio
 async def test_prize_grants_are_read_by_place() -> None:
-    store, db = _store()
+    store, db = await _store()
     db["rating_prize_grants"].docs += [
         {
             "_id": "b",
@@ -313,7 +313,7 @@ def test_prizes_are_read_from_an_event_and_their_absence_means_none() -> None:
 @pytest.mark.asyncio
 async def test_the_ending_soon_post_lists_the_prizes() -> None:
     channel = _Channel()
-    bot = _Bot(channel)
+    bot = await _bot(channel)
 
     await on_season_ending_soon(
         bot,
@@ -336,7 +336,7 @@ async def test_the_results_post_shows_what_each_winner_gets_and_still_mentions_t
     None
 ):
     channel = _Channel()
-    bot = _Bot(channel)
+    bot = await _bot(channel)
     first = _entry(1, "Ann", "111")
     first = SeasonPodiumEntryV1(
         place=first.place,
@@ -368,27 +368,13 @@ async def test_the_results_post_shows_what_each_winner_gets_and_still_mentions_t
 # ---------------------------------------------------------------- service
 
 
-class _Rpc:
-    def __init__(self) -> None:
-        self.calls: list[tuple[str, dict[str, Any]]] = []
-
-    async def add_season_prize(self, **kwargs):
-        self.calls.append(("add", kwargs))
-        return "added"
-
-    async def remove_season_prizes(self, **kwargs):
-        self.calls.append(("remove", kwargs))
-        return "removed"
-
-    async def mark_prize_delivered(self, **kwargs):
-        self.calls.append(("delivered", kwargs))
-        return "delivered"
-
-
 @pytest.mark.asyncio
 async def test_the_service_turns_a_prize_into_one_rpc() -> None:
-    rpc = _Rpc()
-    service = RatingService(store=SimpleNamespace(), rpc=rpc, timeout_ms=1234)
+    bot, _ = await real_bot(settings=make_settings(rpc_timeout_ms=1234))
+    game = GameServer(bot)
+    game.answers[PRIZES] = _prizes_set
+    game.answers[GRANT_UPDATE] = _grant_updated
+    service = bot.container.rating_service
 
     added = await service.add_prize(
         ladder="minipvp",
@@ -412,13 +398,19 @@ async def test_the_service_turns_a_prize_into_one_rpc() -> None:
         note="sent",
     )
 
-    assert added == "added"
-    (_, add), (_, remove), (_, delivered) = rpc.calls
-    assert add["prize"] == SeasonPrizeV1(
-        placeFrom=1, placeTo=3, kind=SeasonPrizeV1Kind.CUSTOM, value="Nitro"
-    )
-    assert add["timeout_ms"] == 1234
-    assert (remove["place_from"], remove["place_to"]) == (2, 2)
+    assert added.server == "mini-pvp"
+    add, remove = game.sent(PRIZES)
+    [delivered] = game.sent(GRANT_UPDATE)
+    # An empty description is left out rather than sent as one.
+    assert (add["operation"], add["ladder"]) == ("add", "minipvp")
+    assert add["prize"] == {
+        "placeFrom": 1,
+        "placeTo": 3,
+        "kind": "custom",
+        "value": "Nitro",
+    }
+    assert {request["timeout_ms"] for request in game.requests} == {"1234"}
+    assert (remove["placeFrom"], remove["placeTo"]) == (2, 2)
     assert (delivered["season"], delivered["place"], delivered["note"]) == (
         3,
         2,
@@ -426,28 +418,29 @@ async def test_the_service_turns_a_prize_into_one_rpc() -> None:
     )
 
 
+def _grant_updated(payload: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "messageType": "rating.prize.grant.update.response",
+        "messageVersion": 1,
+        "server": payload["server"],
+        "season": payload["season"],
+        "place": payload["place"],
+        "updated": 1,
+    }
+
+
 @pytest.mark.asyncio
-async def test_prize_rpcs_go_to_a_live_server() -> None:
-    servers = LiveServerRegistry()
-    servers.update_server(
-        name="mini-pvp", channel_id=1, players=0, max_players=10, version="1"
-    )
-    seen: list[tuple[str, str]] = []
-
-    class _Bus:
-        async def rpc_season_prize_add(self, *, server, **kwargs):
-            seen.append(("add", server))
-
-        async def rpc_season_prize_remove(self, *, server, **kwargs):
-            seen.append(("remove", server))
-
-        async def rpc_prize_delivered(self, *, server, **kwargs):
-            seen.append(("delivered", server))
-
-    client = make_rpc(SimpleNamespace(), rating=_Bus(), servers=servers)
+async def test_prize_rpcs_go_on_to_a_live_server_that_answers() -> None:
+    bot, _ = await real_bot()
+    silent, live = GameServer(bot, "a-silent"), GameServer(bot, "mini-pvp")
+    silent.answers[PRIZES] = silent.answers[GRANT_UPDATE] = lambda payload: None
+    live.answers[PRIZES] = _prizes_set
+    live.answers[GRANT_UPDATE] = _grant_updated
+    client = bot.container.rpc
     prize = _prize_v1(1, 1, SeasonPrizeV1Kind.BADGE, "veteran")
+
     await client.add_season_prize(
-        ladder="l", prize=prize, discord_id="5", actor_name="H", timeout_ms=1
+        ladder="l", prize=prize, discord_id="5", actor_name="H", timeout_ms=50
     )
     await client.remove_season_prizes(
         ladder="l",
@@ -455,68 +448,43 @@ async def test_prize_rpcs_go_to_a_live_server() -> None:
         place_to=1,
         discord_id="5",
         actor_name="H",
-        timeout_ms=1,
+        timeout_ms=50,
     )
-    await client.mark_prize_delivered(
+    delivered = await client.mark_prize_delivered(
         ladder="l",
         season=1,
         place=1,
         discord_id="5",
         actor_name="H",
         note=None,
-        timeout_ms=1,
+        timeout_ms=50,
     )
 
-    assert seen == [
-        ("add", "mini-pvp"),
-        ("remove", "mini-pvp"),
-        ("delivered", "mini-pvp"),
+    assert delivered.updated == 1
+    assert [payload.get("operation") for payload in live.sent(PRIZES)] == [
+        "add",
+        "remove",
     ]
+    assert [request["place"] for request in live.sent(GRANT_UPDATE)] == [1]
+    assert len(silent.requests) == 3
 
 
 @pytest.mark.asyncio
 async def test_the_bus_sends_the_canonical_prize_requests() -> None:
-    bus = RedisTransport(
-        SimpleNamespace(
-            redis_url="redis://127.0.0.1:6379",
-            redis_group_prefix="xcore:cg",
-            redis_consumer_name="discord-bot",
-        )
-    )
-    sent: list[tuple[str, dict[str, Any]]] = []
-    season = {
-        "ladder": "minipvp",
-        "season": 3,
-        "name": "S",
-        "startsAt": "2026-01-01T00:00:00Z",
-        "endsAt": "2026-04-01T00:00:00Z",
-    }
+    bot, _ = await real_bot()
+    game = GameServer(bot)
 
-    async def fake_rpc_request(self, server, rpc_type, payload, timeout_ms):
-        sent.append((rpc_type, payload))
-        if rpc_type == "rating.prize.grant.update.request":
-            body = {
-                "messageType": "rating.prize.grant.update.response",
-                "messageVersion": 1,
-                "server": server,
-                "season": 3,
-                "place": 2,
-                "updated": 1,
-            }
-        else:
-            body = {
-                "messageType": "rating.season.prizes.set.response",
-                "messageVersion": 1,
-                "server": server,
-                "season": season,
-                "prizes": [
-                    {"placeFrom": 1, "placeTo": 1, "kind": "badge", "value": "veteran"}
-                ],
-            }
-        return {"payload_json": json.dumps(body)}
+    def prizes_set(payload: dict[str, Any]) -> dict[str, Any]:
+        return {
+            **_prizes_set(payload),
+            "prizes": [
+                {"placeFrom": 1, "placeTo": 1, "kind": "badge", "value": "veteran"}
+            ],
+        }
 
-    bus.rpc_request = MethodType(fake_rpc_request, bus)
-    rating = RatingBus(bus)
+    game.answers[PRIZES] = prizes_set
+    game.answers[GRANT_UPDATE] = _grant_updated
+    rating = bot.container.rating_bus
 
     added = await rating.rpc_season_prize_add(
         server="mini-pvp",
@@ -559,6 +527,10 @@ async def test_the_bus_sends_the_canonical_prize_requests() -> None:
 
     assert added.prizes[0].value == "veteran"
     assert delivered.updated == 1
+    sent = [
+        (request["rpc_type"], json.loads(request["payload_json"]))
+        for request in game.requests
+    ]
     (_, add), (_, remove), (grant_type, grant), (_, one_player) = sent
     assert add["operation"] == "add"
     assert add["prize"] == {
@@ -730,35 +702,32 @@ async def test_clear_and_delivered_report_what_changed() -> None:
 
 @pytest.mark.asyncio
 async def test_list_is_private_and_shows_the_season_and_its_grants() -> None:
-    season = _season_model("ARCHIVED", (CHAMPION,))
-
-    class _Ratings:
-        async def find_season(self, ladder, number):
-            return season if number == 3 else None
-
-        async def current_season(self, ladder):
-            return season
-
-        async def prize_grants(self, ladder, number):
-            return [
-                PrizeGrantRecord(
-                    "minipvp:3",
-                    1,
-                    "ace",
-                    "badge",
-                    "season-champion",
-                    None,
-                    "GRANTED",
-                    "system",
-                    None,
-                )
-            ]
-
-        async def nicknames(self, uuids):
-            return {"ace": "Ace"}
-
+    ratings, db = await _store()
+    champion = {
+        "place_from": 1,
+        "place_to": 1,
+        "kind": "BADGE",
+        "value": "season-champion",
+        "description": "",
+    }
+    await db["rating_seasons"].insert_one(
+        _season("minipvp", 3, "ARCHIVED", prizes=[champion])
+    )
+    await db["rating_prize_grants"].insert_one(
+        {
+            "_id": "minipvp:3:1:0",
+            "season_id": "minipvp:3",
+            "place": 1,
+            "prize_index": 0,
+            "player_uuid": "ace",
+            "prize": champion,
+            "status": "GRANTED",
+            "granted_by": "system",
+        }
+    )
+    await db["players"].insert_one({"uuid": "ace", "nickname": "Ace", "pid": 1})
     interaction = _interaction()
-    cog = _cog(_Service(), _Ratings())
+    cog = _cog(_Service(), ratings)
 
     await cog.cmd_prize_list.callback(cog, interaction, "minipvp", 3)
     await cog.cmd_prize_list.callback(cog, interaction, "minipvp", 9)

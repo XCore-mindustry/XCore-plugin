@@ -318,6 +318,17 @@ class Collection:
     async def count_documents(self, query):
         return sum(matches(doc, query) for doc in self.docs)
 
+    async def distinct(self, key, query=None):
+        found = []
+        for doc in self.docs:
+            if not matches(doc, query or {}):
+                continue
+            for value in values(doc, key.split(".")):
+                for item in value if isinstance(value, list) else [value]:
+                    if item is not MISSING and item not in found:
+                        found.append(item)
+        return found
+
     async def create_index(self, keys, **options):
         self.indexes.append((keys, options))
         for doc in self.docs:

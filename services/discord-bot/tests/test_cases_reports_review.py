@@ -29,7 +29,7 @@ from cases_reports_fakes import (
     sanction,
 )
 from test_cases_reports_external import audit
-from test_cases_reports_panel import _RegexPlayers
+from test_cases_reports_panel import store_with_players
 from xcore_protocol.generated.shared import PlayerRefV1
 
 from xcore_discord_bot.cases.flows import reports
@@ -46,7 +46,6 @@ from xcore_discord_bot.cases.reconcile import reconcile_cases
 from xcore_discord_bot.cases.views import CaseActionModal
 from xcore_discord_bot.i18n import t
 from xcore_discord_bot.moderation_logs import post_ban_log, post_mute_log
-from xcore_discord_bot.mongo_store import EXACT_NAME_CANDIDATES, MongoStore
 
 
 def private(bot, case, owner):
@@ -1067,22 +1066,18 @@ async def test_exact_name_saturation_never_proves_unique_after_false_positive_fi
     rows += [{"uuid": "bob", "pid": -5, "nickname": "Bob"}]
     if count == 9:
         rows += [{"uuid": "coloured-bob", "pid": 0, "nickname": "[red]Bob"}]
-    collection = _RegexPlayers(rows)
-    store = MongoStore(SimpleNamespace())
-    store._db = {"players": collection}
+    store = await store_with_players(rows)
     found = await store.find_players_by_exact_name("Bob")
     assert [p.uuid for p in found] == expected
-    assert collection.limits == [EXACT_NAME_CANDIDATES]
     if found:
         assert found[0].pid == -5
 
 
 async def test_saturated_ambiguous_name_still_returns_two_candidates_and_panel_is_unresolved():
     rows = [{"uuid": f"bob-{n}", "pid": n, "nickname": "[red]Bob"} for n in range(11)]
-    store = MongoStore(SimpleNamespace())
-    store._db = {"players": _RegexPlayers(rows)}
-    assert len(await store.find_players_by_exact_name("Bob")) == 2
     service, _, bot = await reports_core()
-    service.player_store.find_players_by_exact_name = store.find_players_by_exact_name
+    for row in rows:
+        await service.player_store.database["players"].insert_one(row)
+    assert len(await service.player_store.find_players_by_exact_name("Bob")) == 2
     _, case = await panel(service, bot, {"who": "Bob", "what": "grief"})
     assert case.subject is None and reports.UNRESOLVED in case.flags

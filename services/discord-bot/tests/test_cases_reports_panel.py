@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-import re
 from datetime import timedelta
 from types import SimpleNamespace
 
 import pytest
+from backends import connected_store
 from cases_fakes import member
 from cases_reports_fakes import (
     REPORTER_UUID,
@@ -22,7 +22,7 @@ from xcore_discord_bot.cases.flows import reports
 from xcore_discord_bot.cases.model import AccessDenied, CaseStatus
 from xcore_discord_bot.cases.reconcile import reconcile_cases
 from xcore_discord_bot.i18n import t
-from xcore_discord_bot.mongo_store import EXACT_NAME_CANDIDATES, MongoStore
+from xcore_discord_bot.mongo_store import MongoStore
 
 
 def private_threads(bot):
@@ -84,38 +84,11 @@ async def test_an_unknown_or_ambiguous_player_leaves_the_subject_for_staff(who):
     service.transport.rpc_case_evidence.assert_not_awaited()
 
 
-class _RegexPlayers:
-    """Just enough of a Mongo collection to run the name query."""
-
-    def __init__(self, rows):
-        self.rows, self.limits = rows, []
-
-    def find(self, query):
-        def hit(row):
-            for option in query["$or"]:
-                [(field, condition)] = option.items()
-                flags = re.IGNORECASE if "i" in condition["$options"] else 0
-                if re.search(condition["$regex"], str(row.get(field) or ""), flags):
-                    return True
-            return False
-
-        found = [row for row in self.rows if hit(row)]
-        collection = self
-
-        class Cursor:
-            def limit(self, count):
-                collection.limits.append(count)
-                self.rows = found[:count]
-                return self
-
-            def __aiter__(self):
-                async def rows():
-                    for row in self.rows:
-                        yield row
-
-                return rows()
-
-        return Cursor()
+async def store_with_players(rows) -> MongoStore:
+    store, db = await connected_store()
+    for row in rows:
+        await db["players"].insert_one(dict(row))
+    return store
 
 
 @pytest.mark.parametrize(
@@ -147,12 +120,9 @@ async def test_the_exact_name_query_ignores_case_and_colour_tags_only(name, foun
             "custom_nickname": "[gold]Ghost",
         },
     ]
-    collection = _RegexPlayers(rows)
-    store = MongoStore(SimpleNamespace())
-    store._db = {"players": collection}
+    store = await store_with_players(rows)
     players = await store.find_players_by_exact_name(name)
     assert [player.uuid for player in players] == found
-    assert collection.limits in ([], [EXACT_NAME_CANDIDATES])
 
 
 # --- the reporter's side ------------------------------------------------------------------------

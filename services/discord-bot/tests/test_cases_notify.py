@@ -7,13 +7,17 @@ from types import SimpleNamespace
 
 import discord
 import pytest
+from backends import connected_bus, published
+from bot_fakes import make_rpc
 from cases_dummy_flow import DUMMY_FLOW
 from cases_fakes import Interaction, core, member
 from test_cases_service import opened
 
+from xcore_discord_bot.bus.cases import CasesBus
 from xcore_discord_bot.cases.model import Party
 from xcore_discord_bot.cases.notify import Outcome
 from xcore_discord_bot.cases.reconcile import reconcile_cases
+from xcore_discord_bot.cases.redis_transport import RedisCaseTransport
 from xcore_discord_bot.cases.transport import NoCaseTransport
 from xcore_discord_bot.i18n import LocalePref, t
 
@@ -155,24 +159,16 @@ async def test_transport_noops_and_event_registry_contract():
     assert isinstance(service.transport, NoCaseTransport)
     case = await opened(service)
 
-    class Transport(NoCaseTransport):
-        def __init__(self):
-            self.published = []
-
-        async def publish_case_notice(self, **kwargs):
-            self.published.append(kwargs)
-
-    real = Transport()
+    bus = await connected_bus()
+    real = RedisCaseTransport(CasesBus(bus), make_rpc(bus))
     service.set_transport(real)
     assert service.transport is real
     await service.reject(case.number, member(), reason_code="no_evidence")
-    assert real.published == [
-        {
-            "notice_id": f"{case.number}:opener-secret:report_rejected",
-            "player_uuid": "opener-secret",
-            "server": "server",
-        }
-    ]
+    [notice] = await published(bus, "xcore:cmd:cases-notice:server")
+    assert (notice["noticeId"], notice["playerUuid"]) == (
+        f"{case.number}:opener-secret:report_rejected",
+        "opener-secret",
+    )
 
 
 @pytest.mark.parametrize(

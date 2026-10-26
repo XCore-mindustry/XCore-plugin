@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
-from types import SimpleNamespace
 from typing import Any
 
 import pytest
-from pymongo.errors import DuplicateKeyError
+from backends import connected_store
+from mongo_fakes import Database
 
 from xcore_discord_bot.rating_store import (
     STALE_POST_CLAIM,
@@ -14,99 +14,9 @@ from xcore_discord_bot.rating_store import (
 )
 
 
-def _matches(doc: dict[str, Any], query: dict[str, Any]) -> bool:
-    for key, want in query.items():
-        if key == "$or":
-            if not any(_matches(doc, option) for option in want):
-                return False
-            continue
-        have = doc.get(key)
-        if isinstance(want, dict):
-            if "$in" in want and have not in want["$in"]:
-                return False
-            if "$gt" in want and not (have is not None and have > want["$gt"]):
-                return False
-            if "$lt" in want and not (have is not None and have < want["$lt"]):
-                return False
-        elif have != want:
-            return False
-    return True
-
-
-class _Cursor:
-    def __init__(self, docs: list[dict[str, Any]]) -> None:
-        self._docs = docs
-
-    def sort(self, key, direction=None):
-        keys = key if isinstance(key, list) else [(key, direction)]
-        for field, order in reversed(keys):
-            self._docs.sort(key=lambda doc, f=field: doc.get(f), reverse=order == -1)
-        return self
-
-    def limit(self, count: int):
-        self._docs = self._docs[:count]
-        return self
-
-    async def to_list(self, length=None):
-        return self._docs[:length]
-
-    def __aiter__(self):
-        async def generate():
-            for doc in self._docs:
-                yield doc
-
-        return generate()
-
-
-class _Collection:
-    def __init__(self) -> None:
-        self.docs: list[dict[str, Any]] = []
-
-    def find(self, query: dict[str, Any]):
-        return _Cursor([dict(doc) for doc in self.docs if _matches(doc, query)])
-
-    async def find_one(self, query: dict[str, Any]):
-        return next((dict(doc) for doc in self.docs if _matches(doc, query)), None)
-
-    async def count_documents(self, query: dict[str, Any]) -> int:
-        return sum(1 for doc in self.docs if _matches(doc, query))
-
-    async def distinct(self, field: str):
-        return list({doc[field] for doc in self.docs if field in doc})
-
-    async def insert_one(self, doc: dict[str, Any]):
-        if any(existing["_id"] == doc["_id"] for existing in self.docs):
-            raise DuplicateKeyError("duplicate")
-        self.docs.append(dict(doc))
-
-    async def update_one(self, query, update, upsert=False):
-        target = next((doc for doc in self.docs if _matches(doc, query)), None)
-        if target is None:
-            if not upsert:
-                return SimpleNamespace(modified_count=0)
-            target = {"_id": query["_id"]}
-            target.update(update.get("$setOnInsert", {}))
-            self.docs.append(target)
-        target.update(update.get("$set", {}))
-        for key in update.get("$unset", {}):
-            target.pop(key, None)
-        return SimpleNamespace(modified_count=1)
-
-    async def delete_one(self, query):
-        self.docs = [doc for doc in self.docs if not _matches(doc, query)]
-
-
-class _Database:
-    def __init__(self) -> None:
-        self.collections: dict[str, _Collection] = {}
-
-    def __getitem__(self, name: str) -> _Collection:
-        return self.collections.setdefault(name, _Collection())
-
-
-def _store() -> tuple[RatingStore, _Database]:
-    db = _Database()
-    return RatingStore(SimpleNamespace(database=db)), db
+async def _store() -> tuple[RatingStore, Database]:
+    store, db = await connected_store()
+    return RatingStore(store), db
 
 
 def _season(ladder: str, number: int, status: str, **extra: Any) -> dict[str, Any]:
@@ -163,7 +73,7 @@ def test_season_from_doc_reads_podium_and_summary() -> None:
 
 @pytest.mark.asyncio
 async def test_current_season_prefers_the_running_one() -> None:
-    store, db = _store()
+    store, db = await _store()
     db["rating_seasons"].docs += [
         _season("minipvp", 1, "ARCHIVED"),
         _season("minipvp", 2, "ACTIVE"),
@@ -180,7 +90,7 @@ async def test_current_season_prefers_the_running_one() -> None:
 
 @pytest.mark.asyncio
 async def test_top_orders_by_rating_then_uuid_and_names_players() -> None:
-    store, db = _store()
+    store, db = await _store()
     db["rating_standings"].docs += [
         {
             "ladder": "minipvp",
@@ -224,7 +134,7 @@ async def test_top_orders_by_rating_then_uuid_and_names_players() -> None:
 
 @pytest.mark.asyncio
 async def test_placings_rank_the_player_on_each_ladder_current_season() -> None:
-    store, db = _store()
+    store, db = await _store()
     db["rating_seasons"].docs += [
         _season("minipvp", 1, "ARCHIVED"),
         _season("minipvp", 2, "ACTIVE"),
@@ -259,7 +169,7 @@ async def test_placings_rank_the_player_on_each_ladder_current_season() -> None:
 
 @pytest.mark.asyncio
 async def test_post_claims_are_exclusive_until_released() -> None:
-    store, db = _store()
+    store, db = await _store()
 
     assert await store.claim_post("minipvp:1", "ended") is True
     assert await store.claim_post("minipvp:1", "ended") is False
@@ -272,7 +182,7 @@ async def test_post_claims_are_exclusive_until_released() -> None:
 
 @pytest.mark.asyncio
 async def test_a_claim_left_without_a_message_is_taken_over_once_it_is_stale() -> None:
-    store, db = _store()
+    store, db = await _store()
     assert await store.claim_post("minipvp:1", "ended") is True
     claim = db["discord_season_posts"].docs[0]
 
@@ -287,7 +197,7 @@ async def test_a_claim_left_without_a_message_is_taken_over_once_it_is_stale() -
 
 @pytest.mark.asyncio
 async def test_a_posted_announcement_is_never_taken_over() -> None:
-    store, db = _store()
+    store, db = await _store()
     assert await store.claim_post("minipvp:1", "ended") is True
     await store.record_post("minipvp:1", "ended", 99)
     db["discord_season_posts"].docs[0]["claimed_at"] = datetime.now(UTC) - timedelta(
@@ -299,7 +209,7 @@ async def test_a_posted_announcement_is_never_taken_over() -> None:
 
 @pytest.mark.asyncio
 async def test_a_refused_merge_stays_on_record_but_out_of_the_queue() -> None:
-    store, db = _store()
+    store, db = await _store()
     await store.add_pending_merge("s", "t")
 
     await store.fail_pending_merge("s", "t", "nope")
@@ -313,7 +223,7 @@ async def test_a_refused_merge_stays_on_record_but_out_of_the_queue() -> None:
 
 @pytest.mark.asyncio
 async def test_pending_merges_round_trip_without_duplicates() -> None:
-    store, _ = _store()
+    store, _ = await _store()
 
     await store.add_pending_merge("s", "t")
     await store.add_pending_merge("s", "t")

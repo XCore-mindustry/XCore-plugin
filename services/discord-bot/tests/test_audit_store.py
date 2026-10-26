@@ -1,6 +1,6 @@
 from datetime import UTC, datetime, timedelta
-from types import SimpleNamespace
 
+from backends import connected_store
 from mongo_fakes import Database
 
 from xcore_discord_bot.audit_store import AuditStore
@@ -8,9 +8,9 @@ from xcore_discord_bot.audit_store import AuditStore
 NOW = datetime(2026, 1, 1, tzinfo=UTC)
 
 
-def _audit() -> tuple[AuditStore, Database]:
-    db = Database()
-    return AuditStore(SimpleNamespace(database=db)), db
+async def _audit() -> tuple[AuditStore, Database]:
+    store, db = await connected_store()
+    return AuditStore(store), db
 
 
 async def _append(audit: AuditStore, minutes: int, **overrides) -> str:
@@ -30,7 +30,7 @@ async def _append(audit: AuditStore, minutes: int, **overrides) -> str:
 
 
 async def test_player_history_is_newest_first_and_paged() -> None:
-    audit, _ = _audit()
+    audit, _ = await _audit()
     ids = [await _append(audit, minutes) for minutes in range(3)]
     await _append(audit, 9, target_uuid="uuid-2")
 
@@ -45,7 +45,7 @@ async def test_player_history_is_newest_first_and_paged() -> None:
 
 
 async def test_actor_history_matches_the_discord_id_and_the_name() -> None:
-    audit, _ = _audit()
+    audit, _ = await _audit()
     by_discord = await _append(audit, 0)
     by_name = await _append(audit, 1, actor_discord_id=None, actor_name="Console")
     await _append(audit, 2, actor_discord_id="200")
@@ -63,7 +63,7 @@ async def test_actor_history_matches_the_discord_id_and_the_name() -> None:
 
 
 async def test_append_normalizes_the_written_document() -> None:
-    audit, db = _audit()
+    audit, db = await _audit()
     audit_id = await _append(
         audit,
         0,

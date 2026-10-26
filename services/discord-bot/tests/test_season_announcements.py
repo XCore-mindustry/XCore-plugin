@@ -7,7 +7,8 @@ from typing import Any
 from unittest.mock import AsyncMock
 
 import pytest
-from bot_fakes import make_bot, make_settings
+from backends import real_bot
+from bot_fakes import make_settings
 from xcore_protocol.generated.rating import (
     RatingSeasonEndedV1,
     RatingSeasonEndingSoonV1,
@@ -23,12 +24,14 @@ from xcore_protocol.generated.shared import (
     SeasonSummaryV1,
 )
 
+from xcore_discord_bot.bot import XCoreDiscordBot
 from xcore_discord_bot.handlers_seasons import (
     on_season_ended,
     on_season_ending_soon,
     on_season_rescheduled,
     on_season_started,
 )
+from xcore_discord_bot.rating_store import SEASON_POSTS
 from xcore_discord_bot.runtime_consumers import consume_season_ended
 
 SEASON = SeasonRefV1(
@@ -38,25 +41,6 @@ SEASON = SeasonRefV1(
     startsAt="2026-01-01T00:00:00Z",
     endsAt="2026-04-01T00:00:00Z",
 )
-
-
-class _Ratings:
-    def __init__(self) -> None:
-        self.claimed: set[str] = set()
-        self.recorded: dict[str, int] = {}
-
-    async def claim_post(self, season_id: str, kind: str) -> bool:
-        key = f"{season_id}:{kind}"
-        if key in self.claimed:
-            return False
-        self.claimed.add(key)
-        return True
-
-    async def record_post(self, season_id: str, kind: str, message_id: int) -> None:
-        self.recorded[f"{season_id}:{kind}"] = message_id
-
-    async def release_post(self, season_id: str, kind: str) -> None:
-        self.claimed.discard(f"{season_id}:{kind}")
 
 
 @dataclass
@@ -71,11 +55,18 @@ class _Channel:
         return SimpleNamespace(id=1000 + len(self.sent))
 
 
-def _Bot(channel: _Channel | None, channel_id: int = 777):
-    bot = make_bot(settings=make_settings(discord_seasons_channel_id=channel_id))
-    bot.container.ratings = _Ratings()
-    bot.resolve_channel = AsyncMock(return_value=channel)
+async def _bot(channel: Any, channel_id: int = 777) -> XCoreDiscordBot:
+    bot, _ = await real_bot(
+        settings=make_settings(discord_seasons_channel_id=channel_id)
+    )
+    bot.resolve_channel = AsyncMock(return_value=channel)  # type: ignore[method-assign]
     return bot
+
+
+def _posts(bot: XCoreDiscordBot) -> dict[str, int | None]:
+    """The announcements claimed so far, with the message each was posted as."""
+    posts = bot.store.database[SEASON_POSTS].docs
+    return {post["_id"]: post["message_id"] for post in posts}
 
 
 def _ended(podium: tuple[SeasonPodiumEntryV1, ...]) -> RatingSeasonEndedV1:
@@ -105,7 +96,7 @@ def _entry(place: int, name: str, discord_id: str | None) -> SeasonPodiumEntryV1
 @pytest.mark.asyncio
 async def test_started_is_posted_once_even_when_replayed() -> None:
     channel = _Channel()
-    bot = _Bot(channel)
+    bot = await _bot(channel)
     event = RatingSeasonStartedV1(
         season=SEASON, server="mini-pvp", occurredAt="2026-01-01T00:00:00Z"
     )
@@ -115,13 +106,13 @@ async def test_started_is_posted_once_even_when_replayed() -> None:
 
     assert len(channel.sent) == 1
     assert "Winter" in channel.sent[0]["embed"].title
-    assert bot.container.ratings.recorded == {"minipvp:3:started": 1001}
+    assert _posts(bot) == {"minipvp:3:started": 1001}
 
 
 @pytest.mark.asyncio
 async def test_started_tells_the_first_season_apart_from_a_reset() -> None:
     channel = _Channel()
-    bot = _Bot(channel)
+    bot = await _bot(channel)
 
     await on_season_started(
         bot,
@@ -148,7 +139,7 @@ async def test_started_tells_the_first_season_apart_from_a_reset() -> None:
 @pytest.mark.asyncio
 async def test_nothing_is_posted_without_a_configured_channel() -> None:
     channel = _Channel()
-    bot = _Bot(channel, channel_id=0)
+    bot = await _bot(channel, channel_id=0)
 
     await on_season_started(
         bot,
@@ -158,13 +149,13 @@ async def test_nothing_is_posted_without_a_configured_channel() -> None:
     )
 
     assert channel.sent == []
-    assert bot.container.ratings.claimed == set()
+    assert _posts(bot) == {}
 
 
 @pytest.mark.asyncio
 async def test_each_ending_notice_is_its_own_announcement() -> None:
     channel = _Channel()
-    bot = _Bot(channel)
+    bot = await _bot(channel)
 
     for notice in ("7d", "1d", "7d"):
         await on_season_ending_soon(
@@ -183,7 +174,7 @@ async def test_each_ending_notice_is_its_own_announcement() -> None:
 @pytest.mark.asyncio
 async def test_ended_mentions_only_the_winners_who_linked_discord() -> None:
     channel = _Channel()
-    bot = _Bot(channel)
+    bot = await _bot(channel)
 
     await on_season_ended(
         bot, _ended((_entry(1, "Ann", "4242"), _entry(2, "Bob", None)))
@@ -202,12 +193,12 @@ async def test_ended_mentions_only_the_winners_who_linked_discord() -> None:
 @pytest.mark.asyncio
 async def test_failed_post_is_released_so_a_replay_can_retry() -> None:
     channel = _Channel(fail=True)
-    bot = _Bot(channel)
+    bot = await _bot(channel)
     event = _ended((_entry(1, "Ann", None),))
 
     with pytest.raises(RuntimeError):
         await on_season_ended(bot, event)
-    assert bot.container.ratings.claimed == set()
+    assert _posts(bot) == {}
 
     channel.fail = False
     await on_season_ended(bot, event)
@@ -220,20 +211,20 @@ async def test_cancelled_post_is_released_so_a_replay_can_retry() -> None:
         async def send(self, *, embed, allowed_mentions) -> Any:
             raise asyncio.CancelledError()
 
-    bot = _Bot(_CancelledChannel())
+    bot = await _bot(_CancelledChannel())
     event = _ended((_entry(1, "Ann", None),))
 
     with pytest.raises(asyncio.CancelledError):
         await on_season_ended(bot, event)
 
     # The consumer was stopped mid-post; the claim must not outlive it.
-    assert bot.container.ratings.claimed == set()
+    assert _posts(bot) == {}
 
 
 @pytest.mark.asyncio
 async def test_a_notice_that_is_due_again_after_an_extension_is_posted_again() -> None:
     channel = _Channel()
-    bot = _Bot(channel)
+    bot = await _bot(channel)
 
     def notice(ends_at: str) -> RatingSeasonEndingSoonV1:
         return RatingSeasonEndingSoonV1(
@@ -255,7 +246,7 @@ async def test_a_notice_that_is_due_again_after_an_extension_is_posted_again() -
 @pytest.mark.asyncio
 async def test_moving_the_end_back_to_where_it_was_is_announced_too() -> None:
     channel = _Channel()
-    bot = _Bot(channel)
+    bot = await _bot(channel)
 
     def moved(
         previous: str, ends_at: str, occurred_at: str
@@ -281,7 +272,7 @@ async def test_moving_the_end_back_to_where_it_was_is_announced_too() -> None:
 @pytest.mark.asyncio
 async def test_rescheduling_announces_each_move_once() -> None:
     channel = _Channel()
-    bot = _Bot(channel)
+    bot = await _bot(channel)
     event = RatingSeasonRescheduledV1(
         season=SEASON,
         previousEndsAt="2026-03-25T00:00:00Z",
@@ -304,7 +295,7 @@ async def test_rescheduling_announces_each_move_once() -> None:
 async def test_ended_consumer_dispatches_to_the_handler() -> None:
     channel = _Channel()
 
-    bot = _Bot(channel)
+    bot = await _bot(channel)
 
     async def consume(callback):
         await callback(_ended((_entry(1, "Ann", None),)))

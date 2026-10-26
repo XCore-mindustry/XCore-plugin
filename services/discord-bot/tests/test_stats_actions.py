@@ -1,16 +1,23 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from datetime import UTC, datetime
 from types import SimpleNamespace
 from typing import Any, cast
 
 import pytest
+from backends import real_bot
 from bot_fakes import make_bot, make_settings
+from mongo_fakes import Database
+from pymongo.errors import PyMongoError
 
+from xcore_discord_bot.bot import XCoreDiscordBot
 from xcore_discord_bot.dto import PlayerRecord
+from xcore_discord_bot.game_stats import GAMES
 from xcore_discord_bot.handlers_misc import cmd_stats, cmd_stats_audit
 from xcore_discord_bot.moderation_modals import StatsBanModal, StatsMuteModal
 from xcore_discord_bot.moderation_views import StatsActionsView
+from xcore_discord_bot.rating_store import SEASONS
 
 
 @dataclass
@@ -71,109 +78,82 @@ class _Interaction:
         return self._message
 
 
-class _Store:
-    async def find_player_by_username(self, username: str) -> PlayerRecord | None:
-        if username.casefold() == "br":
-            return await self.find_player_by_pid(123)
-        return None
+VORTEX = {
+    "pid": 123,
+    "nickname": "Vortex",
+    "username": "br",
+    "uuid": "uuid-123",
+    "discord_id": "discord-123",
+    "custom_nickname": "",
+    "description": "Profile text",
+    "local_language": "ru",
+    "translator_language": "uk",
+    "hexed_rank": 0,
+    "hexed_points": 0,
+    "total_play_time": 10,
+    "leaderboard": False,
+    "unlocked_badges": ["developer", "translator"],
+    "active_badge": "translator",
+    "is_admin": False,
+    "admin_source": "NONE",
+    "created_at": 0,
+    "updated_at": 0,
+}
+# Two accounts linked to Discord user 77.
+LINKED = [
+    {"pid": -4, "uuid": "uuid-alt", "nickname": "Alt", "total_play_time": 5},
+    {"pid": 9, "uuid": "uuid-main", "nickname": "Main", "total_play_time": 900},
+]
+OCCURRED = datetime(2026, 4, 11, 15, 30, tzinfo=UTC)
 
-    async def find_player_by_pid(self, pid: int) -> PlayerRecord | None:
-        if pid != 123:
-            return None
-        return PlayerRecord(
-            pid=123,
-            nickname="Vortex",
-            uuid="uuid-123",
-            discord_id="discord-123",
-            custom_nickname="",
-            description="Profile text",
-            language="ru",
-            translator_language="uk",
-            hexed_rank=0,
-            hexed_points=0,
-            total_play_time=10,
-            leaderboard=False,
-            unlocked_badges=("developer", "translator"),
-            active_badge="translator",
-            is_admin=False,
-            admin_source="NONE",
-            created_at=0,
-            updated_at=0,
-        )
 
-    async def find_players_by_discord_id(self, discord_id: str) -> list[PlayerRecord]:
-        if discord_id != "77":
-            return []
-        return [
-            PlayerRecord(pid=-4, nickname="Alt", total_play_time=5, discord_id="77"),
-            PlayerRecord(pid=9, nickname="Main", total_play_time=900, discord_id="77"),
-        ]
+async def _stats_bot() -> tuple[XCoreDiscordBot, Database]:
+    """A bot whose store holds Vortex (#123, @br), the accounts linked to user 77, a ban
+    an admin gave Vortex and a mute Vortex gave someone else."""
+    bot, db = await real_bot(settings=make_settings(discord_admin_role_id=5))
+    await db["players"].insert_one(dict(VORTEX))
+    for player in LINKED:
+        await db["players"].insert_one({**player, "discord_id": "77"})
+    audit = bot.container.audit
+    await audit.append_moderation_audit(
+        action="BAN",
+        target_uuid="uuid-123",
+        target_pid=123,
+        target_name="Vortex",
+        target_ip=None,
+        actor_discord_id="1",
+        actor_name="Admin",
+        reason="Rule 1",
+        occurred_at=OCCURRED,
+    )
+    await audit.append_moderation_audit(
+        action="MUTE",
+        target_uuid="uuid-target",
+        target_pid=50,
+        target_name="Target",
+        target_ip=None,
+        actor_discord_id="discord-123",
+        actor_name="Vortex",
+        reason="Flood",
+        occurred_at=OCCURRED,
+    )
+    return bot, db
 
-    async def find_ban(self, *, uuid: str, ip: str | None) -> None:
-        assert uuid == "uuid-123"
 
-    async def find_mute(self, *, uuid: str) -> None:
-        assert uuid == "uuid-123"
+def _break(db: Database, collection: str, method: str) -> None:
+    """Make every ``method`` call on ``collection`` fail, as when Mongo is unreachable."""
 
-    async def count_audit_for_player(self, *, uuid: str) -> int:
-        assert uuid == "uuid-123"
-        return 1
+    async def broken(*args: Any, **kwargs: Any) -> Any:
+        raise PyMongoError(f"{collection} is unreachable")
 
-    async def count_audit_for_actor(
-        self, *, actor_id: str, actor_discord_id: str | None
-    ) -> int:
-        assert actor_id == "Vortex"
-        assert actor_discord_id == "discord-123"
-        return 1
-
-    async def list_audit_for_player(self, *, uuid: str, limit: int, page: int):
-        assert uuid == "uuid-123"
-        assert limit == 6
-        assert page == 0
-        from xcore_discord_bot.dto import AuditRecordSummary
-
-        return [
-            AuditRecordSummary(
-                audit_id="audit-1",
-                action="BAN",
-                actor_name="Admin",
-                reason="Rule 1",
-                occurred_at="2026-04-11T15:30:00Z",
-            )
-        ]
-
-    async def list_audit_for_actor(
-        self,
-        *,
-        actor_id: str,
-        actor_discord_id: str | None,
-        limit: int,
-        page: int,
-    ):
-        assert actor_id == "Vortex"
-        assert actor_discord_id == "discord-123"
-        assert limit == 6
-        assert page == 0
-        from xcore_discord_bot.dto import AuditRecordSummary
-
-        return [
-            AuditRecordSummary(
-                audit_id="audit-2",
-                action="MUTE",
-                target_name="Target",
-                actor_name="Moderator",
-                reason="Flood",
-                occurred_at="2026-04-11T15:30:00Z",
-            )
-        ]
-
-    async def find_player_by_uuid(self, uuid):
-        return None
+    setattr(db[collection], method, broken)
 
 
 @pytest.mark.asyncio
 async def test_cmd_stats_attaches_actions_view() -> None:
-    bot = make_bot(store=_Store(), settings=make_settings(discord_admin_role_id=5))
+    bot, db = await _stats_bot()
+    _break(db, SEASONS, "distinct")
+    _break(db, GAMES, "aggregate")
 
     interaction = _Interaction(
         id=1,
@@ -207,7 +187,7 @@ async def test_cmd_stats_attaches_actions_view() -> None:
 
 @pytest.mark.asyncio
 async def test_cmd_stats_hides_actions_for_non_admin() -> None:
-    bot = make_bot(store=_Store(), settings=make_settings(discord_admin_role_id=5))
+    bot, _ = await _stats_bot()
 
     interaction = _Interaction(
         id=5,
@@ -225,7 +205,7 @@ async def test_cmd_stats_hides_actions_for_non_admin() -> None:
 
 @pytest.mark.asyncio
 async def test_cmd_stats_without_a_player_opens_the_linked_account() -> None:
-    bot = make_bot(store=_Store(), settings=make_settings(discord_admin_role_id=5))
+    bot, _ = await _stats_bot()
 
     interaction = _Interaction(
         id=6,
@@ -242,7 +222,7 @@ async def test_cmd_stats_without_a_player_opens_the_linked_account() -> None:
 
 @pytest.mark.asyncio
 async def test_cmd_stats_without_a_linked_account_says_how_to_link() -> None:
-    bot = make_bot(store=_Store(), settings=make_settings(discord_admin_role_id=5))
+    bot, _ = await _stats_bot()
 
     interaction = _Interaction(
         id=7,
@@ -259,7 +239,7 @@ async def test_cmd_stats_without_a_linked_account_says_how_to_link() -> None:
 
 @pytest.mark.asyncio
 async def test_cmd_stats_by_discord_user_is_for_admins() -> None:
-    bot = make_bot(store=_Store(), settings=make_settings(discord_admin_role_id=5))
+    bot, _ = await _stats_bot()
     linked = _User(id=77, display_name="linked", roles=[])
 
     guest = _Interaction(
@@ -282,7 +262,7 @@ async def test_cmd_stats_by_discord_user_is_for_admins() -> None:
 @pytest.mark.asyncio
 @pytest.mark.parametrize("reference", ["123", "#123", "@br", "@BR", "br"])
 async def test_stats_accepts_text_without_a_separate_search(reference: str) -> None:
-    bot = make_bot(store=_Store(), settings=make_settings(discord_admin_role_id=5))
+    bot, _ = await _stats_bot()
     interaction = _Interaction(
         id=10, user=_User(id=10, display_name="guest", roles=[]), client=bot
     )
@@ -295,7 +275,7 @@ async def test_stats_accepts_text_without_a_separate_search(reference: str) -> N
 
 @pytest.mark.asyncio
 async def test_stats_unknown_username_replies_without_an_embed() -> None:
-    bot = make_bot(store=_Store(), settings=make_settings(discord_admin_role_id=5))
+    bot, _ = await _stats_bot()
     interaction = _Interaction(
         id=11, user=_User(id=10, display_name="guest", roles=[]), client=bot
     )
@@ -405,7 +385,7 @@ async def test_stats_actions_view_ban_button_opens_modal() -> None:
 
 @pytest.mark.asyncio
 async def test_stats_actions_view_history_button_opens_paginated_audit() -> None:
-    bot = make_bot(store=_Store(), settings=make_settings(discord_admin_role_id=5))
+    bot, _ = await _stats_bot()
 
     async def _no_op_ban(
         _interaction: Any, _player_id: int, _period: str, _reason: str
@@ -449,12 +429,17 @@ async def test_stats_actions_view_history_button_opens_paginated_audit() -> None
     await callback(cast(Any, interaction))
 
     assert len(interaction.response.sent) == 1
-    assert interaction.response.sent[0]["embed"].title == "History • Vortex"
+    embed = interaction.response.sent[0]["embed"]
+    assert embed.title == "History • Vortex"
+    # the ban Vortex was given, not the mute Vortex gave
+    entries = " ".join(f"{field.name} {field.value}" for field in embed.fields)
+    assert "Rule 1" in entries
+    assert "Flood" not in entries
 
 
 @pytest.mark.asyncio
 async def test_stats_actions_view_actions_button_opens_actor_audit() -> None:
-    bot = make_bot(store=_Store(), settings=make_settings(discord_admin_role_id=5))
+    bot, _ = await _stats_bot()
 
     async def _no_op_ban(
         _interaction: Any, _player_id: int, _period: str, _reason: str
@@ -503,6 +488,10 @@ async def test_stats_actions_view_actions_button_opens_actor_audit() -> None:
     sent = interaction.response.sent[0]
     assert sent["embed"] is not None
     assert sent["embed"].title == "Actions • Vortex"
+    # the mute Vortex gave, not the ban Vortex was given
+    entries = " ".join(f"{field.name} {field.value}" for field in sent["embed"].fields)
+    assert "Flood" in entries
+    assert "Rule 1" not in entries
 
 
 @pytest.mark.asyncio
