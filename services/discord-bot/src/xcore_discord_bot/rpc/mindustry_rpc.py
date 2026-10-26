@@ -30,8 +30,9 @@ from xcore_protocol.generated.shared import SeasonPrizeV1
 from ..bus.cases import CasesBus
 from ..bus.maps import MapsBus
 from ..bus.rating import RatingBus
+from ..bus.security import SecurityBus
+from ..bus.sentinel import SentinelBus
 from ..bus.transport import RpcFailed
-from ..redis_bus import RedisBus
 from ..registry import server_registry
 from ..retry import TRANSIENT_EXCEPTIONS, retry_read_rpc
 
@@ -50,12 +51,19 @@ class MindustryRpcClient:
     """Which server answers, retries and request ids, over the per-family buses."""
 
     def __init__(
-        self, bus: RedisBus, *, cases: CasesBus, maps: MapsBus, rating: RatingBus
+        self,
+        *,
+        cases: CasesBus,
+        maps: MapsBus,
+        rating: RatingBus,
+        security: SecurityBus,
+        sentinel: SentinelBus,
     ) -> None:
-        self._bus = bus
         self._cases = cases
         self._maps = maps
         self._rating = rating
+        self._security = security
+        self._sentinel = sentinel
 
     async def _retry_staff(self, call: Callable[[], Awaitable[T]]) -> T:
         for attempt in range(2):
@@ -88,7 +96,7 @@ class MindustryRpcClient:
             complete=True,
         )
         return await self._retry_staff(
-            lambda: self._bus.rpc_staff_sync(request, timeout_ms=timeout_ms)
+            lambda: self._security.rpc_staff_sync(request, timeout_ms=timeout_ms)
         )
 
     async def reset_staff_password(
@@ -104,7 +112,9 @@ class MindustryRpcClient:
             playerUuid=player_uuid,
         )
         return await self._retry_staff(
-            lambda: self._bus.rpc_staff_reset_password(request, timeout_ms=timeout_ms)
+            lambda: self._security.rpc_staff_reset_password(
+                request, timeout_ms=timeout_ms
+            )
         )
 
     async def on_any_live_server(self, call: Callable[[str], Awaitable[T]]) -> T:
@@ -324,7 +334,7 @@ class MindustryRpcClient:
         expires_at: int | None = None,
         timeout_ms: int,
     ) -> SentinelSubnetRulesResponseV1:
-        return await self._bus.rpc_subnet_rules_command(
+        return await self._sentinel.rpc_subnet_rules_command(
             operation=operation,
             rules=rules,
             discord_id=discord_id,
@@ -340,12 +350,12 @@ class MindustryRpcClient:
         self, *, server: str, timeout_ms: int
     ) -> SentinelSubnetRulesListResponseV1:
         return await retry_read_rpc(
-            lambda: self._bus.rpc_subnet_rules_list(server, timeout_ms)
+            lambda: self._sentinel.rpc_subnet_rules_list(server, timeout_ms)
         )
 
     async def subnet_rules_check(
         self, *, server: str, ip: str, timeout_ms: int
     ) -> SentinelSubnetRulesCheckResponseV1:
         return await retry_read_rpc(
-            lambda: self._bus.rpc_subnet_rules_check(server, ip, timeout_ms)
+            lambda: self._sentinel.rpc_subnet_rules_check(server, ip, timeout_ms)
         )

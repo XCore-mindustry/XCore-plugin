@@ -7,6 +7,8 @@ from xcore_discord_bot.bot import XCoreDiscordBot
 from xcore_discord_bot.bus.cases import CasesBus
 from xcore_discord_bot.bus.maps import MapsBus
 from xcore_discord_bot.bus.rating import RatingBus
+from xcore_discord_bot.bus.security import SecurityBus
+from xcore_discord_bot.bus.sentinel import SentinelBus
 from xcore_discord_bot.bus.transport import RedisTransport
 from xcore_discord_bot.mongo_store import MongoStore
 from xcore_discord_bot.redis_bus import RedisBus
@@ -32,6 +34,8 @@ FAMILY_BUSES = (
     "maps_bus",
     "moderation_bus",
     "rating_bus",
+    "security_bus",
+    "sentinel_bus",
 )
 FAMILY_CLASSES = (
     "AccountsBus",
@@ -40,6 +44,8 @@ FAMILY_CLASSES = (
     "MapsBus",
     "ModerationBus",
     "RatingBus",
+    "SecurityBus",
+    "SentinelBus",
 )
 
 
@@ -83,10 +89,15 @@ def make_rpc(bus, **families) -> MindustryRpcClient:
 
     A hand-written fake bus stands in for the family buses itself, as in make_bot.
     """
-    defaults = {"cases": CasesBus, "maps": MapsBus, "rating": RatingBus}
+    defaults = {
+        "cases": CasesBus,
+        "maps": MapsBus,
+        "rating": RatingBus,
+        "security": SecurityBus,
+        "sentinel": SentinelBus,
+    }
     fake_bus = not isinstance(bus, RedisTransport)
     return MindustryRpcClient(
-        bus,
         **{
             name: families.get(name, bus if fake_bus else family(bus))
             for name, family in defaults.items()

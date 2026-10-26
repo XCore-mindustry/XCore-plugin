@@ -9,6 +9,8 @@ from .bus.chat import ChatBus
 from .bus.maps import MapsBus
 from .bus.moderation import ModerationBus
 from .bus.rating import RatingBus
+from .bus.security import SecurityBus
+from .bus.sentinel import SentinelBus
 from .cases import flows  # noqa: F401 -- importing modules registers flow definitions
 from .cases.notify import CaseNotifier
 from .cases.panel import CasePanel
@@ -46,6 +48,8 @@ class ServiceContainer:
     maps_bus: MapsBus
     moderation_bus: ModerationBus
     rating_bus: RatingBus
+    security_bus: SecurityBus
+    sentinel_bus: SentinelBus
     rpc: MindustryRpcClient
     players: PlayerService
     ratings: RatingStore
@@ -76,7 +80,15 @@ class ServiceContainer:
         maps_bus = MapsBus(bus)
         moderation_bus = ModerationBus(bus)
         rating_bus = RatingBus(bus)
-        rpc = MindustryRpcClient(bus, cases=cases_bus, maps=maps_bus, rating=rating_bus)
+        security_bus = SecurityBus(bus)
+        sentinel_bus = SentinelBus(bus)
+        rpc = MindustryRpcClient(
+            cases=cases_bus,
+            maps=maps_bus,
+            rating=rating_bus,
+            security=security_bus,
+            sentinel=sentinel_bus,
+        )
 
         ratings = RatingStore(store)
         rating_service = RatingService(
@@ -118,6 +130,8 @@ class ServiceContainer:
             maps_bus=maps_bus,
             moderation_bus=moderation_bus,
             rating_bus=rating_bus,
+            security_bus=security_bus,
+            sentinel_bus=sentinel_bus,
             rpc=rpc,
             players=players,
             ratings=ratings,
