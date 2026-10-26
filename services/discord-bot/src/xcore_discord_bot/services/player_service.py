@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import replace
 
+from ..bus.moderation import ModerationBus
 from ..dto import MERGE_KEEP_PID_TARGET, AccountMergeResult
 from ..mongo_store import MongoStore
 from ..redis_bus import RedisBus
@@ -18,9 +19,12 @@ class PlayerService:
         ratings: RatingService | None = None,
         settings: Settings | None = None,
         rpc: MindustryRpcClient | None = None,
+        *,
+        moderation: ModerationBus,
     ) -> None:
         self._store = store
         self._bus = bus
+        self._moderation = moderation
         self._ratings = ratings
         self._settings = settings
         self._rpc = rpc
@@ -46,7 +50,7 @@ class PlayerService:
         kick_error: Exception | None = None
         if result.success and result.source_before and result.source_before.uuid:
             try:
-                await self._bus.publish_kick_banned(
+                await self._moderation.publish_kick_banned(
                     uuid_value=result.source_before.uuid,
                     ip=None,
                 )

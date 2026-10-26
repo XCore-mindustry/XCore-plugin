@@ -699,7 +699,7 @@ async def test_unban_completion_is_written_before_pardon_and_audit_failure_stops
         raise RuntimeError("pardon unavailable")
 
     bot.store.delete_ban, bot.store.append_moderation_audit = deleted, audited
-    bot.bus.publish_pardon_player = pardoned
+    bot.container.moderation_bus.publish_pardon_player = pardoned
     with pytest.raises(RuntimeError):
         await perform_unban(bot, ban, ACTOR, 57, case_action_token="attempt")
     assert order == (

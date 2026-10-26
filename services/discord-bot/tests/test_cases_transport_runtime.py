@@ -15,6 +15,7 @@ from xcore_protocol.generated.shared import ActorRefV1, PlayerRefV1
 
 from xcore_discord_bot import runtime_consumers
 from xcore_discord_bot.bot import XCoreDiscordBot
+from xcore_discord_bot.bus.moderation import ModerationBus
 from xcore_discord_bot.cases.model import CaseKind
 from xcore_discord_bot.cases.notify import Outcome
 from xcore_discord_bot.cases.redis_transport import RedisCaseTransport
@@ -271,7 +272,7 @@ async def test_ban_consumer_old_and_new_signed_pid_and_ban_number(
 
     lookup = AsyncMock(return_value=SimpleNamespace(pid=-7))
     bot = make_bot(settings=make_settings(discord_bans_channel_id=777))
-    bot.bus.consume_bans = consume
+    bot.container.moderation_bus.consume_bans = consume
     bot.store.find_player_by_uuid = lookup
     bot.store.now_utc = lambda: datetime(2026, 10, 13, tzinfo=UTC)
     await runtime_consumers.consume_bans(bot)
@@ -298,7 +299,7 @@ async def test_ban_cases_dispatch_works_without_log_channel_and_propagates_error
         await callback(event)
 
     bot = bot_for(cases)
-    bot.bus.consume_bans = consume
+    bot.container.moderation_bus.consume_bans = consume
     monkeypatch.setattr(runtime_consumers, "run_consumer_forever", once)
     log = AsyncMock()
     monkeypatch.setattr(runtime_consumers, "post_ban_log", log)
@@ -335,7 +336,7 @@ async def test_direct_bans_without_stream_identity_do_not_share_log_checkpoint(
         await callback(event)
         await callback(event)
 
-    bot.bus.consume_bans = consume
+    bot.container.moderation_bus.consume_bans = consume
     try:
         await runtime_consumers.consume_bans(bot)
         assert log.await_count == 3 and hook.await_count == 3
@@ -353,10 +354,10 @@ async def test_failed_direct_ban_log_remains_retryable_without_checkpoint():
     callback = AsyncMock(side_effect=[RuntimeError("Discord failed"), None, None])
     try:
         with pytest.raises(RuntimeError, match="Discord failed"):
-            await bus.run_ban_log_once(ban_event(0, 57), callback)
+            await ModerationBus(bus).run_ban_log_once(ban_event(0, 57), callback)
         assert await redis.keys("xcore:idmp:ban-event-log:*") == []
-        await bus.run_ban_log_once(ban_event(0, 57), callback)
-        await bus.run_ban_log_once(ban_event(0, 57), callback)
+        await ModerationBus(bus).run_ban_log_once(ban_event(0, 57), callback)
+        await ModerationBus(bus).run_ban_log_once(ban_event(0, 57), callback)
         assert callback.await_count == 3
         assert await redis.keys("xcore:idmp:ban-event-log:*") == []
     finally:
@@ -376,7 +377,7 @@ async def test_received_ban_log_embed_preserves_old_fixture_and_shows_new_number
         await callback(event)
 
     bot = make_bot(settings=make_settings(discord_bans_channel_id=777))
-    bot.bus.consume_bans = consume
+    bot.container.moderation_bus.consume_bans = consume
     bot.store.find_player_by_uuid = AsyncMock(return_value=None)
     bot.store.now_utc = lambda: datetime(2026, 10, 13, tzinfo=UTC)
     bot.resolve_channel = AsyncMock(return_value=channel)

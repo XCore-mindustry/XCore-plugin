@@ -267,7 +267,8 @@ async def test_player_service_reports_the_rating_outcome_on_the_merge_result() -
             pass
 
     service, _, _ = _service(TimeoutError())
-    players = PlayerService(_PlayerStore(), _Bus(), ratings=service)
+    bus = _Bus()
+    players = PlayerService(_PlayerStore(), bus, ratings=service, moderation=bus)
 
     result = await players.merge_player_accounts(
         source_pid=1, target_pid=2, actor_name="a", actor_discord_id=None, reason="r"
@@ -289,7 +290,8 @@ async def test_a_kick_that_cannot_be_sent_does_not_skip_the_rating_merge() -> No
             raise ConnectionError("redis is down")
 
     service, store, _ = _service(TimeoutError())
-    players = PlayerService(_PlayerStore(), _Bus(), ratings=service)
+    bus = _Bus()
+    players = PlayerService(_PlayerStore(), bus, ratings=service, moderation=bus)
 
     with pytest.raises(ConnectionError):
         await players.merge_player_accounts(

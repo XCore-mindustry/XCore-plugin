@@ -233,7 +233,9 @@ async def perform_ban(
             ban_id=ban_id, case_number=case_number, case_action_token=case_action_token
         ),
     )
-    await bot.bus.publish_kick_banned(uuid_value=uuid_value or "", ip=ip_value)
+    await bot.container.moderation_bus.publish_kick_banned(
+        uuid_value=uuid_value or "", ip=ip_value
+    )
     await post_ban_log(
         bot,
         pid=player.pid,
@@ -311,7 +313,7 @@ async def perform_unban(
         ),
     )
     if uuid_value is not None:
-        await bot.bus.publish_pardon_player(uuid_value=uuid_value)
+        await bot.container.moderation_bus.publish_pardon_player(uuid_value=uuid_value)
     return BanResult(ban, audit_id, f"Unbanned `{_subject_name(subject)}`")
 
 

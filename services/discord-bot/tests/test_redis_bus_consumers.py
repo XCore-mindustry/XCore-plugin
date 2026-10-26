@@ -17,6 +17,7 @@ from xcore_protocol.generated.shared import (
 )
 
 from xcore_discord_bot.bus.chat import ChatBus
+from xcore_discord_bot.bus.moderation import ModerationBus
 from xcore_discord_bot.contracts import (
     ChatGlobalV1,
     ChatMessageV1,
@@ -264,7 +265,7 @@ async def test_consume_bans_dispatches_event(
 
     callback = AsyncMock()
     try:
-        await bus.consume_bans(callback)
+        await ModerationBus(bus).consume_bans(callback)
     except KeyboardInterrupt:
         pass
 
@@ -318,7 +319,7 @@ async def test_consume_mutes_dispatches_event(
 
     callback = AsyncMock()
     try:
-        await bus.consume_mutes(callback)
+        await ModerationBus(bus).consume_mutes(callback)
     except KeyboardInterrupt:
         pass
 
@@ -379,7 +380,7 @@ async def test_consume_vote_kicks_dispatches_event(
 
     callback = AsyncMock()
     try:
-        await bus.consume_vote_kicks(callback)
+        await ModerationBus(bus).consume_vote_kicks(callback)
     except KeyboardInterrupt:
         pass
 
@@ -508,7 +509,7 @@ async def test_consume_vote_kicks_dispatches_canonical_generated_payload(
 
     callback = AsyncMock()
     try:
-        await bus.consume_vote_kicks(callback)
+        await ModerationBus(bus).consume_vote_kicks(callback)
     except KeyboardInterrupt:
         pass
 

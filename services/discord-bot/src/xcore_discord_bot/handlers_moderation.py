@@ -336,7 +336,7 @@ async def cmd_pardon(
     if uuid_value is None:
         return
 
-    await bot.bus.publish_pardon_player(uuid_value=uuid_value)
+    await bot.container.moderation_bus.publish_pardon_player(uuid_value=uuid_value)
     await interaction.response.send_message(f"Pardoned `{player.nickname}`")
 
 

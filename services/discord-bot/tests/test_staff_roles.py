@@ -20,6 +20,7 @@ from xcore_protocol.generated.security import (
 )
 from xcore_protocol.generated.shared import DiscordIdentityRefV1, PlayerRefV1
 
+from xcore_discord_bot.bus.moderation import ModerationBus
 from xcore_discord_bot.bus.rating import RatingBus
 from xcore_discord_bot.bus.transport import RpcFailed
 from xcore_discord_bot.container import ServiceContainer
@@ -236,7 +237,9 @@ async def test_password_reset_both_modes(settings, mode):
     bus.publish_player_password_reset = AsyncMock()
     rpc = MagicMock()
     rpc.reset_staff_password = AsyncMock(return_value=SimpleNamespace(changed=True))
-    service = PlayerService(store, bus, settings=settings, rpc=rpc)
+    service = PlayerService(
+        store, bus, settings=settings, rpc=rpc, moderation=ModerationBus(bus)
+    )
     assert await service.reset_password(uuid="uuid-1")
     if mode == "legacy":
         store.reset_password.assert_awaited_once_with(uuid="uuid-1")
@@ -393,7 +396,9 @@ async def test_roles_password_command_uses_rpc_without_legacy_event(settings):
     rpc.reset_staff_password = AsyncMock(return_value=SimpleNamespace(changed=True))
     bot = make_bot(settings=settings, bus=bus, store=store)
     bot.container = SimpleNamespace(
-        players=PlayerService(store, bus, settings=settings, rpc=rpc)
+        players=PlayerService(
+            store, bus, settings=settings, rpc=rpc, moderation=ModerationBus(bus)
+        )
     )
     bot.store.find_player_by_pid = AsyncMock(
         return_value=PlayerRecord(pid=1, uuid="uuid-1", nickname="p")

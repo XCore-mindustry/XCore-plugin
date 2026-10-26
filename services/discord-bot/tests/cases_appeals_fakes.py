@@ -1,5 +1,6 @@
 """B6 fakes run real staff helpers and Mongo mutation guards; no external services."""
 
+from bot_fakes import FAMILY_BUSES
 from cases_action_fakes import Claims, Players, mirror_audits
 from cases_fakes import NOW, Interaction, core, member
 from test_staff_actions import _action_bot
@@ -65,6 +66,8 @@ async def appeal_core(*, players=None, bans=None, enabled=True, **settings):
     )
     bot.store = action_bot.store
     bot.bus = action_bot.bus
+    for family in FAMILY_BUSES:
+        setattr(bot.container, family, getattr(action_bot.container, family))
     bot.resolve_channel = action_bot.resolve_channel
 
     mirror_audits(bot, action_bot, database, mutations)

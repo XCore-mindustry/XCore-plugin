@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import asyncio
-import hashlib
 import json
 import logging
 from collections.abc import Awaitable, Callable
@@ -42,13 +40,7 @@ from xcore_protocol.generated.shared import (
 from .bus.transport import RedisTransport
 from .contracts import (
     DiscordLinkStatusChangedV1,
-    ModerationBanCreatedV1,
-    ModerationMuteCreatedV1,
-    ModerationVoteKickCreatedV1,
-    parse_ban_payload,
     parse_discord_link_status_payload,
-    parse_mute_payload,
-    parse_vote_kick_payload,
 )
 from .protocol_outbound import (
     build_case_evidence_request,
@@ -61,8 +53,6 @@ from .protocol_outbound import (
     build_maps_load_command,
     build_maps_remove_request,
     build_maps_upload_request,
-    build_moderation_kick_banned_command,
-    build_moderation_pardon_command,
     build_player_active_badge_changed_command,
     build_player_badge_inventory_changed_command,
     build_player_password_reset_command,
@@ -70,7 +60,6 @@ from .protocol_outbound import (
     build_sentinel_subnet_rules_command,
     build_sentinel_subnet_rules_list_request,
 )
-from .settings import Settings
 
 logger = logging.getLogger(__name__)
 
@@ -109,10 +98,6 @@ def parse_case_report_payload(payload: dict[str, Any]) -> CasesReportSubmittedV1
 class RedisBus(RedisTransport):
     """The typed streams, commands and RPC calls of every domain, on the transport."""
 
-    def __init__(self, settings: Settings) -> None:
-        super().__init__(settings)
-        self._ban_log_lock = asyncio.Lock()
-
     async def get_discord_link_code(self, code: str) -> dict[str, object] | None:
         normalized = code.strip().upper()
         if not normalized:
@@ -127,16 +112,6 @@ class RedisBus(RedisTransport):
             return None
         return cast(dict[str, object], payload)
 
-    async def consume_bans(
-        self, callback: Callable[[ModerationBanCreatedV1], Awaitable[None]]
-    ) -> None:
-        await self.consume(
-            stream="xcore:evt:moderation:ban",
-            group_suffix="discord-ban",
-            parse_payload=parse_ban_payload,
-            callback=callback,
-        )
-
     async def consume_case_reports(
         self,
         callback: Callable[[CasesReportSubmittedV1], Awaitable[None]],
@@ -149,26 +124,6 @@ class RedisBus(RedisTransport):
             parse_payload=parse_case_report_payload,
             callback=callback,
             is_active=is_active,
-        )
-
-    async def consume_mutes(
-        self, callback: Callable[[ModerationMuteCreatedV1], Awaitable[None]]
-    ) -> None:
-        await self.consume(
-            stream="xcore:evt:moderation:mute",
-            group_suffix="discord-mute",
-            parse_payload=parse_mute_payload,
-            callback=callback,
-        )
-
-    async def consume_vote_kicks(
-        self, callback: Callable[[ModerationVoteKickCreatedV1], Awaitable[None]]
-    ) -> None:
-        await self.consume(
-            stream="xcore:evt:moderation:votekick",
-            group_suffix="discord-votekick",
-            parse_payload=parse_vote_kick_payload,
-            callback=callback,
         )
 
     async def consume_discord_link_status_changed(
@@ -215,31 +170,6 @@ class RedisBus(RedisTransport):
                 actor_discord_id=actor_discord_id,
                 actor_type=actor_type,
                 reason=reason,
-                server=server,
-            ).to_payload(),
-        )
-
-    async def publish_kick_banned(self, uuid_value: str, ip: str | None) -> None:
-        await self.publish_to_all_servers(
-            stream_prefix="xcore:cmd:kick-banned",
-            event_type="moderation.kick-banned.command",
-            ttl_ms=120_000,
-            idempotency_prefix="moderation.kick_banned",
-            payload_builder=lambda server: build_moderation_kick_banned_command(
-                uuid_value=uuid_value,
-                ip=ip,
-                server=server,
-            ).to_payload(),
-        )
-
-    async def publish_pardon_player(self, uuid_value: str) -> None:
-        await self.publish_to_all_servers(
-            stream_prefix="xcore:cmd:pardon-player",
-            event_type="moderation.pardon.command",
-            ttl_ms=120_000,
-            idempotency_prefix="moderation.pardon",
-            payload_builder=lambda server: build_moderation_pardon_command(
-                uuid_value=uuid_value,
                 server=server,
             ).to_payload(),
         )
@@ -362,30 +292,6 @@ class RedisBus(RedisTransport):
                 server=server,
             ).to_payload(),
         )
-
-    async def run_ban_log_once(
-        self,
-        event: ModerationBanCreatedV1,
-        callback: Callable[[], Awaitable[None]],
-    ) -> None:
-        """Checkpoint only the log for this stream delivery, not the case callback.
-
-        Mark only after success so a failed Discord send is retryable. As with stream
-        ACKs, a process death between sending and recording completion can redeliver.
-        Direct calls without stream metadata have no checkpoint: payload equality
-        cannot distinguish redelivery from independent legacy bans.
-        """
-        delivery = self.current_delivery()
-        if delivery is None or delivery[0] is not event:
-            await callback()
-            return
-        digest = hashlib.sha256(delivery[1].encode()).hexdigest()
-        key = f"ban-event-log:{digest}"
-        async with self._ban_log_lock:
-            if await self.redis.exists(f"xcore:idmp:{key}"):
-                return
-            await callback()
-            await self.claim_idempotency(key, ttl_seconds=604_800)
 
     async def publish_case_notice(
         self, *, notice_id: str, player_uuid: str, server: str

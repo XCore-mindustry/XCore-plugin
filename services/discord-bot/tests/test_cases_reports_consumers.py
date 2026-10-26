@@ -18,7 +18,7 @@ def stream_bot(cases, verb, event, *, mutes_channel_id=0):
         await callback(event)
 
     bot = bot_for(cases)
-    setattr(bot.bus, f"consume_{verb}s", consume)
+    setattr(bot.container.moderation_bus, f"consume_{verb}s", consume)
     bot.settings = bot.settings.model_copy(
         update={"discord_mutes_channel_id": mutes_channel_id}
     )

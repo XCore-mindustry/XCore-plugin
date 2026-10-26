@@ -6,6 +6,7 @@ from datetime import timedelta
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
+from bot_fakes import FAMILY_BUSES
 from cases_action_fakes import Claims, mirror_audits
 from cases_action_fakes import Players as SharedPlayers
 from cases_fakes import NOW, Interaction, member
@@ -127,6 +128,8 @@ async def reports_core(*, enabled=True, guild=None, **settings):
     )
     bot.store = action_bot.store
     bot.bus = action_bot.bus
+    for family in FAMILY_BUSES:
+        setattr(bot.container, family, getattr(action_bot.container, family))
     bot.resolve_channel = action_bot.resolve_channel
 
     mirror_audits(bot, action_bot, db, mutations)

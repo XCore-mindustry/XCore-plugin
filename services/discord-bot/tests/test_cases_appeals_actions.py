@@ -28,14 +28,14 @@ async def test_unban_confirmation_real_helper_delete_audit_before_pardon_and_not
         case.number, "unban", member(), "en", interaction=interaction
     )
     confirmation = interaction.events[-1][2]["view"]
-    original = bot.bus.publish_pardon_player
+    original = bot.container.moderation_bus.publish_pardon_player
 
     async def pardon(**kwargs):
         assert not mutations["bans"].docs
         assert mutations["moderation_audit"].docs[-1]["action"] == "UNBAN"
         await original(**kwargs)
 
-    bot.bus.publish_pardon_player = pardon
+    bot.container.moderation_bus.publish_pardon_player = pardon
     await confirmation.children[0].callback(Interaction(bot))
     case = await service.get(case.number)
     assert case.status == CaseStatus.RESOLVED and case.resolution.code == "unbanned"
@@ -230,7 +230,7 @@ async def test_followup_failure_after_audit_recovery_does_not_replay_helper(
     service, db, bot, mutations, bus, _ = await appeal_core()
     case = await opened(service, bot)
     if verb == "unban":
-        bot.bus.publish_pardon_player = AsyncMock(
+        bot.container.moderation_bus.publish_pardon_player = AsyncMock(
             side_effect=RuntimeError("pardon failure")
         )
     else:
@@ -250,7 +250,10 @@ async def test_followup_failure_after_audit_recovery_does_not_replay_helper(
     assert wrapped.await_count == 1 and len(db["case_notices"].docs) == 1
     # Recovery follows durable audit, not successful network delivery.
     if verb == "unban":
-        assert bot.bus.publish_pardon_player.await_count == 1 and not bus.pardons
+        assert (
+            bot.container.moderation_bus.publish_pardon_player.await_count == 1
+            and not bus.pardons
+        )
 
 
 async def test_no_completion_audit_failure_keeps_case_open_no_invented_resolution():

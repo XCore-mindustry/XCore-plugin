@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from .bus.chat import ChatBus
+from .bus.moderation import ModerationBus
 from .bus.rating import RatingBus
 from .cases import flows  # noqa: F401 -- importing modules registers flow definitions
 from .cases.notify import CaseNotifier
@@ -37,6 +38,7 @@ class ServiceContainer:
 
     settings: Settings
     chat_bus: ChatBus
+    moderation_bus: ModerationBus
     rating_bus: RatingBus
     rpc: MindustryRpcClient
     players: PlayerService
@@ -63,6 +65,7 @@ class ServiceContainer:
         bus: RedisBus,
     ) -> ServiceContainer:
         chat_bus = ChatBus(bus)
+        moderation_bus = ModerationBus(bus)
         rating_bus = RatingBus(bus)
         rpc = MindustryRpcClient(bus, rating=rating_bus)
 
@@ -71,7 +74,12 @@ class ServiceContainer:
             store=ratings, rpc=rpc, timeout_ms=settings.rpc_timeout_ms
         )
         players = PlayerService(
-            store=store, bus=bus, ratings=rating_service, settings=settings, rpc=rpc
+            store=store,
+            bus=bus,
+            ratings=rating_service,
+            settings=settings,
+            rpc=rpc,
+            moderation=moderation_bus,
         )
 
         presence_daemon = PresenceDaemon(bot=bot)
@@ -96,6 +104,7 @@ class ServiceContainer:
         return cls(
             settings=settings,
             chat_bus=chat_bus,
+            moderation_bus=moderation_bus,
             rating_bus=rating_bus,
             rpc=rpc,
             players=players,

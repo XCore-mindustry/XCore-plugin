@@ -241,14 +241,16 @@ async def consume_bans(bot: XCoreDiscordBot) -> None:
                         f"{bot.settings.discord_bans_channel_id} is unresolved"
                     )
 
-            await bot.bus.run_ban_log_once(event, log)
+            await bot.container.moderation_bus.run_ban_log_once(event, log)
         service = bot.container.cases
         if service.settings.cases_enabled and service.storage_available:
             # A hook failure reaches Redis retry/DLQ. The completed log marker
             # survives that retry, so auto-resolution can finish without another log.
             await service.registry.dispatch_event(CASE_BAN_EVENT, service, event)
 
-    await run_consumer_forever(bot.bus, "Ban", bot.bus.consume_bans, dispatch)
+    await run_consumer_forever(
+        bot.bus, "Ban", bot.container.moderation_bus.consume_bans, dispatch
+    )
 
 
 async def consume_mutes(bot: XCoreDiscordBot) -> None:
@@ -276,7 +278,9 @@ async def consume_mutes(bot: XCoreDiscordBot) -> None:
                 # again. The mute is in the audit trail, where the repair task finds it.
                 logger.exception("Case hooks failed for a mute event")
 
-    await run_consumer_forever(bot.bus, "Mute", bot.bus.consume_mutes, dispatch)
+    await run_consumer_forever(
+        bot.bus, "Mute", bot.container.moderation_bus.consume_mutes, dispatch
+    )
 
 
 async def consume_vote_kicks(bot: XCoreDiscordBot) -> None:
@@ -297,7 +301,7 @@ async def consume_vote_kicks(bot: XCoreDiscordBot) -> None:
         )
 
     await run_consumer_forever(
-        bot.bus, "Vote-kick", bot.bus.consume_vote_kicks, dispatch
+        bot.bus, "Vote-kick", bot.container.moderation_bus.consume_vote_kicks, dispatch
     )
 
 

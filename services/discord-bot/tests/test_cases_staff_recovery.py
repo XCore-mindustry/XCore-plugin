@@ -107,7 +107,7 @@ async def test_real_helpers_recover_durable_completion_without_replaying(
     if action in {"ban", "mute", "shorten"}:
         channel.send = AsyncMock(side_effect=RuntimeError("log unavailable"))
     if action == "unban":
-        bot.bus.publish_pardon_player = AsyncMock(
+        bot.container.moderation_bus.publish_pardon_player = AsyncMock(
             side_effect=RuntimeError("pardon unavailable")
         )
     if action == "grant":
