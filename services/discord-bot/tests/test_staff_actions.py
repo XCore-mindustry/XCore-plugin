@@ -6,7 +6,7 @@ from datetime import timedelta
 from unittest.mock import AsyncMock
 
 import pytest
-from backends import GameServer, real_bot
+from backends import GameServer, maps_remembered, real_bot, remember_maps
 from bot_fakes import make_settings
 from test_ban_identity import NOW, _ban
 from xcore_protocol.generated.maps import MapsUploadResponseV1
@@ -68,7 +68,7 @@ async def _action_bot():
         }
     )
     channel = _Channel()
-    bot.map_cache = {"mini-pvp": (0, [])}
+    await remember_maps(bot)
     bot.resolve_channel = AsyncMock(return_value=channel)
     bot.container.cases.get = _case
     return bot, db, GameServer(bot), channel
@@ -536,7 +536,21 @@ async def test_perform_map_upload_attribution_and_all_file_statuses(
     }
     assert payload[1]["discordUpload"]["creator"]["discordId"] == "789"
     assert "creatorHandle" not in payload[1]["discordUpload"]
-    assert "mini-pvp" not in bot.map_cache
+    assert not await maps_remembered(bot)
+
+
+async def test_a_map_list_read_while_an_upload_runs_is_dropped_after_it() -> None:
+    bot, _, game, _ = await _action_bot()
+    upload = game.rpc_upload_maps
+
+    async def upload_while_autocompleting(**kwargs):
+        await bot.container.map_catalog.maps("mini-pvp")
+        return await upload(**kwargs)
+
+    game.rpc_upload_maps = upload_while_autocompleting  # type: ignore[method-assign]
+    await perform_map_upload(bot, "mini-pvp", [FILE], ACTOR)
+
+    assert not await maps_remembered(bot)
 
 
 async def test_perform_map_upload_filters_non_msav_and_omits_unknown_creator() -> None:
@@ -565,7 +579,7 @@ async def test_perform_map_upload_invalid_inputs_are_typed_and_do_not_send(
     bot, _, game, _ = await _action_bot()
     with pytest.raises(InvalidMapUpload):
         await perform_map_upload(bot, "mini-pvp", files, uploader)
-    assert not game.upload_calls and "mini-pvp" in bot.map_cache
+    assert not game.upload_calls and await maps_remembered(bot)
 
 
 @pytest.mark.parametrize(
@@ -586,7 +600,7 @@ async def test_perform_map_upload_errors_are_typed_without_retrying(
     with pytest.raises(expected) as caught:
         await perform_map_upload(bot, "mini-pvp", [FILE], ACTOR)
     assert caught.value.__cause__ is error
-    assert len(game.upload_calls) == 1 and "mini-pvp" not in bot.map_cache
+    assert len(game.upload_calls) == 1 and not await maps_remembered(bot)
 
 
 async def test_post_ban_log_lazily_assigns_game_ban_identity_and_case() -> None:
@@ -806,7 +820,7 @@ async def test_case_map_rejects_multiple_eligible_files_before_rpc():
             case_number=57,
         )
     assert not game.upload_calls and not db["moderation_audit"].docs
-    assert "mini-pvp" in bot.map_cache
+    assert await maps_remembered(bot)
 
 
 @pytest.mark.parametrize(

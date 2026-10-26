@@ -577,7 +577,7 @@ async def perform_map_upload(
     payload = prepare_map_upload(server, files, uploader, creator)
     if case_number is not None and len(payload) != 1:
         raise InvalidMapUpload("A map case must upload exactly one .msav file.")
-    bot.map_cache.pop(server, None)
+    bot.container.map_catalog.forget(server)
     try:
         response = await bot.container.rpc.upload_maps(
             server=server, files=payload, timeout_ms=120_000
@@ -596,7 +596,7 @@ async def perform_map_upload(
         raise MapUploadFailed(
             "Could not confirm the upload result. Check /map list before retrying."
         ) from error
-    bot.map_cache.pop(server, None)
+    bot.container.map_catalog.forget(server)
     audit_id = None
     if case_number is not None:
         result = response.results[0]

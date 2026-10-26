@@ -395,7 +395,7 @@ async def test_roles_command_link_does_not_write_admin(settings):
 
 
 async def test_roles_password_command_uses_rpc_without_legacy_event(settings):
-    from xcore_discord_bot.handlers_moderation import cmd_reset_password
+    from xcore_discord_bot.handlers_admin_access import cmd_reset_password
 
     bot, db = await real_bot(settings=settings)
     game = GameServer(bot)
@@ -620,7 +620,7 @@ async def test_expected_rpc_errors_summarized_and_legacy_stops_pass(
     ],
 )
 async def test_roles_deferred_command_reports_rpc_failure(command, error, expected):
-    from xcore_discord_bot.handlers_moderation import (
+    from xcore_discord_bot.handlers_admin_access import (
         cmd_add_admin,
         cmd_remove_admin,
         cmd_reset_password,
@@ -665,7 +665,7 @@ async def test_roles_deferred_command_reports_rpc_failure(command, error, expect
     "synced,skipped,errors", [(1, 0, []), (0, 1, []), (0, 1, ["UNAVAILABLE"])]
 )
 async def test_roles_commands_report_sync_outcome(command, synced, skipped, errors):
-    from xcore_discord_bot.handlers_moderation import (
+    from xcore_discord_bot.handlers_admin_access import (
         cmd_add_admin,
         cmd_remove_admin,
         cmd_sync_admins,

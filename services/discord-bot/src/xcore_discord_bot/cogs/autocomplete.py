@@ -5,7 +5,6 @@ from typing import TYPE_CHECKING, cast
 from discord import Interaction, app_commands
 
 from ..badges import badge_choice_label, grantable_badges
-from ..handlers_misc import get_cached_maps
 from ..player_pids import is_assigned
 from ..utils.mindustry_colors import strip_mindustry_colors
 
@@ -13,7 +12,7 @@ if TYPE_CHECKING:
     from ..bot import XCoreDiscordBot
 
 
-async def _autocomplete_player_id(
+async def autocomplete_player_id(
     interaction: Interaction,
     current: str,
 ) -> list[app_commands.Choice[int]]:
@@ -40,19 +39,19 @@ async def _autocomplete_player_id(
     return choices
 
 
-async def _autocomplete_stats_player(
+async def autocomplete_stats_player(
     interaction: Interaction,
     current: str,
 ) -> list[app_commands.Choice[str]]:
     """Stats accepts text so Discord can offer names without integer validation."""
-    choices = await _autocomplete_player_id(interaction, current)
+    choices = await autocomplete_player_id(interaction, current)
     return [
         app_commands.Choice(name=choice.name, value=str(choice.value))
         for choice in choices
     ]
 
 
-async def _autocomplete_map_file(
+async def autocomplete_map_file(
     interaction: Interaction,
     current: str,
 ) -> list[app_commands.Choice[str]]:
@@ -61,7 +60,7 @@ async def _autocomplete_map_file(
     if not server:
         return []
 
-    maps = await get_cached_maps(bot, server)
+    maps = await bot.container.map_catalog.maps(server)
     current_norm = current.strip().lower()
 
     choices: list[app_commands.Choice[str]] = []
@@ -84,7 +83,7 @@ async def _autocomplete_map_file(
     return choices
 
 
-async def _autocomplete_badge_id(
+async def autocomplete_badge_id(
     interaction: Interaction,
     current: str,
 ) -> list[app_commands.Choice[str]]:

@@ -33,6 +33,7 @@ from .punishment_store import PunishmentStore
 from .rating_store import RatingStore
 from .registry import LiveServerRegistry
 from .rpc.mindustry_rpc import MindustryRpcClient
+from .services.map_catalog import MapCatalog
 from .services.player_service import PlayerService
 from .services.rating_service import RatingService
 from .settings import Settings
@@ -57,6 +58,7 @@ class ServiceContainer:
     rpc: MindustryRpcClient
     # The live game servers, as their heartbeats report them.
     servers: LiveServerRegistry
+    map_catalog: MapCatalog
     players: PlayerService
     punishments: PunishmentStore
     audit: AuditStore
@@ -148,6 +150,7 @@ class ServiceContainer:
             sentinel_bus=sentinel_bus,
             rpc=rpc,
             servers=servers,
+            map_catalog=MapCatalog(rpc),
             players=players,
             punishments=punishments,
             audit=audit,

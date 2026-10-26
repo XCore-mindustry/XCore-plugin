@@ -48,7 +48,6 @@ class XCoreDiscordBot(commands.Bot):
             self.container.cases.set_transport(
                 RedisCaseTransport(self.container.cases_bus, self.container.rpc)
             )
-        self.map_cache: dict[str, tuple[float, list[dict[str, str]]]] = {}
 
     async def on_member_update(
         self, before: discord.Member, after: discord.Member

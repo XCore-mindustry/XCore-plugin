@@ -14,7 +14,7 @@ from xcore_discord_bot.daemons.admin_sync_daemon import (
     ReconciledAdmin,
     SkippedAdmin,
 )
-from xcore_discord_bot.handlers_moderation import (
+from xcore_discord_bot.handlers_admin_access import (
     cmd_add_admin,
     cmd_list_admins,
     cmd_remove_admin,

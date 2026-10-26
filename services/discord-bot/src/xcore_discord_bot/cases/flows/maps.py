@@ -41,7 +41,7 @@ from ..msav import InvalidMsav, data_patches, validate_msav
 from ..notify import Outcome
 from ..registry import Action, Flow, flow_registry
 from ..views import ActionContext
-from .badges import _linked, grant_map_maker
+from .badges import grant_map_maker, linked_players
 
 logger = logging.getLogger(__name__)
 
@@ -695,7 +695,7 @@ def outcomes(case):
 
 async def on_closed(service, case):
     if case.progress.get("map_outcome", {}).get("closed_at") != case.closed_at:
-        players = await _linked(service, case.opener.discord_id)
+        players = await linked_players(service, case.opener.discord_id)
         case = await service.checkpoint(
             case.number,
             set_fields={

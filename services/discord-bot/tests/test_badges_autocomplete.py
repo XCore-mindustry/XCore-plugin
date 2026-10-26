@@ -5,7 +5,7 @@ from typing import Any
 
 import pytest
 
-from xcore_discord_bot.cogs.autocomplete import _autocomplete_badge_id
+from xcore_discord_bot.cogs.autocomplete import autocomplete_badge_id
 
 
 @dataclass
@@ -15,7 +15,7 @@ class _Interaction:
 
 @pytest.mark.asyncio
 async def test_autocomplete_badge_id_filters_and_formats() -> None:
-    choices = await _autocomplete_badge_id(_Interaction(), "trans")
+    choices = await autocomplete_badge_id(_Interaction(), "trans")
 
     assert len(choices) == 1
     assert choices[0].name == "Translator (translator)"
@@ -24,7 +24,7 @@ async def test_autocomplete_badge_id_filters_and_formats() -> None:
 
 @pytest.mark.asyncio
 async def test_autocomplete_badge_id_excludes_system_badges() -> None:
-    choices = await _autocomplete_badge_id(_Interaction(), "admin")
+    choices = await autocomplete_badge_id(_Interaction(), "admin")
 
     assert choices == []
 
@@ -33,7 +33,7 @@ async def test_autocomplete_badge_id_excludes_system_badges() -> None:
 async def test_autocomplete_badge_id_returns_all_grantable_badges_for_empty_query() -> (
     None
 ):
-    choices = await _autocomplete_badge_id(_Interaction(), "")
+    choices = await autocomplete_badge_id(_Interaction(), "")
 
     values = [choice.value for choice in choices]
     assert values == [
@@ -50,7 +50,7 @@ async def test_autocomplete_badge_id_returns_all_grantable_badges_for_empty_quer
 
 @pytest.mark.asyncio
 async def test_autocomplete_badge_id_finds_bug_finder() -> None:
-    choices = await _autocomplete_badge_id(_Interaction(), "bug")
+    choices = await autocomplete_badge_id(_Interaction(), "bug")
 
     assert len(choices) == 1
     assert choices[0].name == "Bug Finder (bug-finder)"

@@ -14,7 +14,7 @@ from xcore_protocol.generated.maps import (
 )
 
 from xcore_discord_bot.bot import XCoreDiscordBot
-from xcore_discord_bot.handlers_misc import cmd_maps, perform_remove_map
+from xcore_discord_bot.handlers_maps import cmd_maps, perform_remove_map
 from xcore_discord_bot.server_views import MapsListView
 
 
@@ -253,7 +253,7 @@ async def test_maps_show_distinct_file_author_creator_and_submitter() -> None:
 
 
 def test_map_list_pages_respect_embed_limit_and_keep_every_map() -> None:
-    from xcore_discord_bot.handlers_misc import _map_list_pages
+    from xcore_discord_bot.map_list import map_list_pages
 
     maps = [
         {
@@ -268,16 +268,16 @@ def test_map_list_pages_respect_embed_limit_and_keep_every_map() -> None:
         }
         for _ in range(40)
     ]
-    pages = _map_list_pages(maps, "name")
+    pages = map_list_pages(maps, "name")
     assert sum(map(len, pages)) == 40
     assert len(pages) > 1
     assert all(len("\n".join(page)) <= 4096 for page in pages)
 
 
 def test_map_inline_code_preserves_filename_punctuation_without_color_markup() -> None:
-    from xcore_discord_bot.handlers_misc import _map_list_row
+    from xcore_discord_bot.map_list import map_list_row
 
-    row = _map_list_row(
+    row = map_list_row(
         {
             "name": "[green]Arena[]",
             "author": "[blue]Map_Maker[]",
@@ -293,9 +293,9 @@ def test_map_inline_code_preserves_filename_punctuation_without_color_markup() -
     "name", ["x](https://evil.example) [y", "[Name", "a\\](https://evil.example)"]
 )
 def test_contributor_name_cannot_escape_profile_link(name: str) -> None:
-    from xcore_discord_bot.handlers_misc import _map_contributor
+    from xcore_discord_bot.map_list import map_contributor
 
-    text = _map_contributor(
+    text = map_contributor(
         {"creator_discord_id": "123456789012345678", "creator_name": name}, "creator"
     )
     assert text.count("](https://discord.com/users/") == 1
@@ -335,7 +335,7 @@ async def test_creator_filter_only_keeps_maps_declared_by_selected_user() -> Non
 
 
 def test_map_pages_budget_astral_unicode_as_utf16_units() -> None:
-    from xcore_discord_bot.handlers_misc import _map_list_pages
+    from xcore_discord_bot.map_list import map_list_pages
 
     maps = [
         {
@@ -349,6 +349,6 @@ def test_map_pages_budget_astral_unicode_as_utf16_units() -> None:
         }
         for _ in range(40)
     ]
-    pages = _map_list_pages(maps, "name")
+    pages = map_list_pages(maps, "name")
     assert sum(map(len, pages)) == len(maps)
     assert all(len("\n".join(page).encode("utf-16-le")) // 2 <= 3800 for page in pages)

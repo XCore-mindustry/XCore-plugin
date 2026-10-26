@@ -6,13 +6,13 @@ import discord
 from discord import Interaction, app_commands
 from discord.ext import commands
 
-from .. import handlers_misc
+from .. import handlers_maps
 from ..cases.flows.maps import intake
 from ..cases.modals import error_text
 from ..cases.model import AccessDenied, ActionFailed, CaseKind
 from ..i18n import t
 from ..permissions import has_any_role, map_reviewer_role_ids
-from .autocomplete import _autocomplete_map_file
+from .autocomplete import autocomplete_map_file
 from .checks import map_reviewer_check
 
 if TYPE_CHECKING:
@@ -81,7 +81,7 @@ class MapsCog(commands.Cog):
     async def cmd_maps(
         self, interaction: Interaction, server: str, creator: discord.User | None = None
     ) -> None:
-        await handlers_misc.cmd_maps(self.bot, interaction, server, creator=creator)
+        await handlers_maps.cmd_maps(self.bot, interaction, server, creator=creator)
 
     @map_group.command(
         name="remove",
@@ -91,7 +91,7 @@ class MapsCog(commands.Cog):
         server="Server name", file_name="Map file name (.msav) to remove"
     )
     @app_commands.autocomplete(server=_autocomplete_server_for_command)
-    @app_commands.autocomplete(file_name=_autocomplete_map_file)
+    @app_commands.autocomplete(file_name=autocomplete_map_file)
     @map_reviewer_check()
     async def cmd_remove_map(
         self,
@@ -99,7 +99,7 @@ class MapsCog(commands.Cog):
         server: str,
         file_name: str,
     ) -> None:
-        await handlers_misc.cmd_remove_map(self.bot, interaction, server, file_name)
+        await handlers_maps.cmd_remove_map(self.bot, interaction, server, file_name)
 
     @map_group.command(
         name="upload",
@@ -129,7 +129,7 @@ class MapsCog(commands.Cog):
         creator2: discord.User | None = None,
         creator3: discord.User | None = None,
     ) -> None:
-        await handlers_misc.cmd_upload_map(
+        await handlers_maps.cmd_upload_map(
             self.bot,
             interaction,
             server,

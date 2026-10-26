@@ -8,8 +8,8 @@ from backends import real_bot
 from discord import AppCommandOptionType
 
 from xcore_discord_bot.cogs.autocomplete import (
-    _autocomplete_player_id,
-    _autocomplete_stats_player,
+    autocomplete_player_id,
+    autocomplete_stats_player,
 )
 from xcore_discord_bot.cogs.info import InfoCog
 from xcore_discord_bot.moderation_logs import format_vote_kick_party_value
@@ -55,8 +55,8 @@ async def test_autocomplete_offers_zero_and_negative_pids() -> None:
     interaction = await _interaction(EVENT, ZERO, NOBODY)
 
     # The reserved value also starts with "-", but it is never offered.
-    negative = await _autocomplete_player_id(interaction, "-")
-    zero = await _autocomplete_player_id(interaction, "#0")
+    negative = await autocomplete_player_id(interaction, "-")
+    zero = await autocomplete_player_id(interaction, "#0")
 
     assert [(choice.name, choice.value) for choice in negative] == [
         ("Event @br (#-12)", -12),
@@ -77,7 +77,7 @@ def test_stats_player_option_accepts_text_with_autocomplete() -> None:
 async def test_stats_suggestions_use_string_pids() -> None:
     interaction = await _interaction(EVENT, ZERO)
 
-    choices = await _autocomplete_stats_player(interaction, "@br")
+    choices = await autocomplete_stats_player(interaction, "@br")
 
     assert [(choice.name, choice.value) for choice in choices] == [
         ("Event @br (#-12)", "-12"),

@@ -44,7 +44,7 @@ def _name(player: PlayerRecord, locale: str) -> str:
     ) or t(locale, "cases-unknown")
 
 
-async def _linked(service, discord_id: str) -> list[PlayerRecord]:
+async def linked_players(service, discord_id: str) -> list[PlayerRecord]:
     # A list query is not a licence to trust stale or incorrectly scoped records.
     players = await service.player_store.find_players_by_discord_id(discord_id)
     unique = {}
@@ -87,7 +87,7 @@ async def _submit(
         raise ActionFailed(t(context.locale, "badges-unavailable"))
     if badge_id in _owned(player):
         raise ActionFailed(t(context.locale, "badges-already-owned"))
-    linked = await _linked(service, str(user.id))
+    linked = await linked_players(service, str(user.id))
     secrets = [p.uuid for p in linked if p.uuid]
     secrets.extend(value for p in linked for value in (p.ip, p.last_ip) if value)
     subject = _party_snapshot(player, user, context.locale)
@@ -176,7 +176,7 @@ async def _badges(context: PanelContext, player: PlayerRecord) -> None:
 
 
 async def panel_handler(context: PanelContext) -> None:
-    players = await _linked(context.service, str(context.interaction.user.id))
+    players = await linked_players(context.service, str(context.interaction.user.id))
     if not players:
         raise ActionFailed(t(context.locale, "badges-link-needed"))
     if len(players) == 1:
@@ -332,7 +332,7 @@ async def grant_map_maker(  # noqa: C901
     if badge is None or badge.system or not badge.grantable:
         raise ValueError("Map Maker is not grantable")
     role_id = service.settings.discord_map_maker_role_id
-    players = await _linked(service, discord_id)
+    players = await linked_players(service, discord_id)
     if not players:
         return "link_needed"
     pending = False
@@ -366,7 +366,7 @@ async def grant_map_maker(  # noqa: C901
     if pending:
         return "pending_accounts"
     # Include a final membership read: newly linked accounts must also be serviced on retry.
-    current = {p.uuid for p in await _linked(service, discord_id)}
+    current = {p.uuid for p in await linked_players(service, discord_id)}
     if current != {p.uuid for p in players}:
         return "pending_accounts" if current else "link_needed"
     if role_id:

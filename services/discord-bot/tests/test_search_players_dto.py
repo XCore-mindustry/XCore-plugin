@@ -6,7 +6,7 @@ from typing import Any
 import pytest
 from backends import real_bot
 
-from xcore_discord_bot.handlers_misc import cmd_search
+from xcore_discord_bot.handlers_stats import cmd_search
 
 
 @dataclass

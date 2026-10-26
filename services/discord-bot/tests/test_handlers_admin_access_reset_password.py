@@ -6,7 +6,7 @@ from typing import Any, cast
 import pytest
 from backends import published, real_bot
 
-from xcore_discord_bot.handlers_moderation import cmd_reset_password
+from xcore_discord_bot.handlers_admin_access import cmd_reset_password
 
 
 @dataclass

@@ -5,9 +5,15 @@ from typing import TYPE_CHECKING
 from discord import Interaction, app_commands
 from discord.ext import commands
 
-from .. import handlers_badges, handlers_misc, handlers_moderation
+from .. import (
+    handlers_account_merge,
+    handlers_admin_access,
+    handlers_badges,
+    handlers_moderation,
+    handlers_stats,
+)
 from ..dto import MERGE_KEEP_PID_SOURCE, MERGE_KEEP_PID_TARGET
-from .autocomplete import _autocomplete_badge_id, _autocomplete_player_id
+from .autocomplete import autocomplete_badge_id, autocomplete_player_id
 from .checks import admin_check, general_admin_check
 
 if TYPE_CHECKING:
@@ -65,7 +71,7 @@ class AdminCog(commands.Cog):
     @app_commands.describe(name="Player name to search for")
     @admin_check()
     async def cmd_search(self, interaction: Interaction, name: str) -> None:
-        await handlers_misc.cmd_search(self.bot, interaction, name)
+        await handlers_stats.cmd_search(self.bot, interaction, name)
 
     @app_commands.command(
         name="bans", description="List bans, optionally filtered by name (admin)"
@@ -73,7 +79,7 @@ class AdminCog(commands.Cog):
     @app_commands.describe(name="Optional name filter")
     @admin_check()
     async def cmd_bans(self, interaction: Interaction, name: str | None = None) -> None:
-        await handlers_misc.cmd_bans(self.bot, interaction, name)
+        await handlers_moderation.cmd_bans(self.bot, interaction, name)
 
     @app_commands.command(name="ban", description="Ban a player (admin)")
     @app_commands.describe(
@@ -81,7 +87,7 @@ class AdminCog(commands.Cog):
         period="Duration e.g. 1d, 2w, 1y",
         reason="Ban reason",
     )
-    @app_commands.autocomplete(player_id=_autocomplete_player_id)
+    @app_commands.autocomplete(player_id=autocomplete_player_id)
     @app_commands.autocomplete(period=_autocomplete_period)
     @admin_check()
     async def cmd_ban(
@@ -97,14 +103,14 @@ class AdminCog(commands.Cog):
 
     @app_commands.command(name="unban", description="Unban a player (admin)")
     @app_commands.describe(player_id="Numeric player ID")
-    @app_commands.autocomplete(player_id=_autocomplete_player_id)
+    @app_commands.autocomplete(player_id=autocomplete_player_id)
     @admin_check()
     async def cmd_unban(self, interaction: Interaction, player_id: int) -> None:
         await handlers_moderation.cmd_unban(self.bot, interaction, player_id)
 
     @app_commands.command(name="pardon", description="Pardon a player (admin)")
     @app_commands.describe(player_id="Numeric player ID")
-    @app_commands.autocomplete(player_id=_autocomplete_player_id)
+    @app_commands.autocomplete(player_id=autocomplete_player_id)
     @admin_check()
     async def cmd_pardon(self, interaction: Interaction, player_id: int) -> None:
         await handlers_moderation.cmd_pardon(self.bot, interaction, player_id)
@@ -115,7 +121,7 @@ class AdminCog(commands.Cog):
         period="Duration e.g. 10m, 1h",
         reason="Mute reason",
     )
-    @app_commands.autocomplete(player_id=_autocomplete_player_id)
+    @app_commands.autocomplete(player_id=autocomplete_player_id)
     @app_commands.autocomplete(period=_autocomplete_period)
     @admin_check()
     async def cmd_mute(
@@ -131,7 +137,7 @@ class AdminCog(commands.Cog):
 
     @app_commands.command(name="unmute", description="Unmute a player (admin)")
     @app_commands.describe(player_id="Numeric player ID")
-    @app_commands.autocomplete(player_id=_autocomplete_player_id)
+    @app_commands.autocomplete(player_id=autocomplete_player_id)
     @admin_check()
     async def cmd_unmute(self, interaction: Interaction, player_id: int) -> None:
         await handlers_moderation.cmd_unmute(self.bot, interaction, player_id)
@@ -146,8 +152,8 @@ class AdminCog(commands.Cog):
         keep_pid="Which PID the surviving account keeps (UUID always comes from the target)",
         reason="Reason for account merge",
     )
-    @app_commands.autocomplete(source_pid=_autocomplete_player_id)
-    @app_commands.autocomplete(target_pid=_autocomplete_player_id)
+    @app_commands.autocomplete(source_pid=autocomplete_player_id)
+    @app_commands.autocomplete(target_pid=autocomplete_player_id)
     @app_commands.choices(
         keep_pid=[
             app_commands.Choice(
@@ -165,7 +171,7 @@ class AdminCog(commands.Cog):
         keep_pid: str = MERGE_KEEP_PID_TARGET,
         reason: str = "Admin merge",
     ) -> None:
-        await handlers_moderation.cmd_merge_player(
+        await handlers_account_merge.cmd_merge_player(
             self.bot,
             interaction,
             source_pid,
@@ -178,26 +184,26 @@ class AdminCog(commands.Cog):
         name="add", description="Grant admin to a player (general admin)"
     )
     @app_commands.describe(player_id="Numeric player ID")
-    @app_commands.autocomplete(player_id=_autocomplete_player_id)
+    @app_commands.autocomplete(player_id=autocomplete_player_id)
     @general_admin_check()
     async def cmd_admin_add(self, interaction: Interaction, player_id: int) -> None:
-        await handlers_moderation.cmd_add_admin(self.bot, interaction, player_id)
+        await handlers_admin_access.cmd_add_admin(self.bot, interaction, player_id)
 
     @admin_group.command(
         name="remove", description="Revoke admin from a player (general admin)"
     )
     @app_commands.describe(player_id="Numeric player ID")
-    @app_commands.autocomplete(player_id=_autocomplete_player_id)
+    @app_commands.autocomplete(player_id=autocomplete_player_id)
     @general_admin_check()
     async def cmd_admin_remove(self, interaction: Interaction, player_id: int) -> None:
-        await handlers_moderation.cmd_remove_admin(self.bot, interaction, player_id)
+        await handlers_admin_access.cmd_remove_admin(self.bot, interaction, player_id)
 
     @admin_group.command(
         name="list", description="List Discord-linked admins (general admin)"
     )
     @general_admin_check()
     async def cmd_admin_list(self, interaction: Interaction) -> None:
-        await handlers_moderation.cmd_list_admins(self.bot, interaction)
+        await handlers_admin_access.cmd_list_admins(self.bot, interaction)
 
     @admin_group.command(
         name="sync",
@@ -205,27 +211,27 @@ class AdminCog(commands.Cog):
     )
     @general_admin_check()
     async def cmd_admin_sync(self, interaction: Interaction) -> None:
-        await handlers_moderation.cmd_sync_admins(self.bot, interaction)
+        await handlers_admin_access.cmd_sync_admins(self.bot, interaction)
 
     @app_commands.command(
         name="reset-password",
         description="Reset admin password for a player (general admin)",
     )
     @app_commands.describe(player_id="Numeric player ID")
-    @app_commands.autocomplete(player_id=_autocomplete_player_id)
+    @app_commands.autocomplete(player_id=autocomplete_player_id)
     @general_admin_check()
     async def cmd_reset_password(
         self, interaction: Interaction, player_id: int
     ) -> None:
-        await handlers_moderation.cmd_reset_password(self.bot, interaction, player_id)
+        await handlers_admin_access.cmd_reset_password(self.bot, interaction, player_id)
 
     @badge_group.command(
         name="grant",
         description="Grant a badge to a player (general admin)",
     )
     @app_commands.describe(player_id="Numeric player ID", badge_id="Badge ID")
-    @app_commands.autocomplete(player_id=_autocomplete_player_id)
-    @app_commands.autocomplete(badge_id=_autocomplete_badge_id)
+    @app_commands.autocomplete(player_id=autocomplete_player_id)
+    @app_commands.autocomplete(badge_id=autocomplete_badge_id)
     @general_admin_check()
     async def cmd_badge_grant(
         self,
@@ -245,8 +251,8 @@ class AdminCog(commands.Cog):
         description="Revoke a badge from a player (general admin)",
     )
     @app_commands.describe(player_id="Numeric player ID", badge_id="Badge ID")
-    @app_commands.autocomplete(player_id=_autocomplete_player_id)
-    @app_commands.autocomplete(badge_id=_autocomplete_badge_id)
+    @app_commands.autocomplete(player_id=autocomplete_player_id)
+    @app_commands.autocomplete(badge_id=autocomplete_badge_id)
     @general_admin_check()
     async def cmd_badge_revoke(
         self,

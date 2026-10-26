@@ -11,6 +11,7 @@ from xcore_discord_bot.cases.flows.maps import MAP_FLOW
 from xcore_discord_bot.cases.model import CaseKind
 from xcore_discord_bot.cases.msav import validate_msav
 from xcore_discord_bot.registry import LiveServerRegistry
+from xcore_discord_bot.services.map_catalog import MapCatalog
 
 
 class Attachment:
@@ -30,12 +31,12 @@ async def map_core(**kwargs):
     service.registry.disable(CaseKind.BADGE)
     service.registry.register(MAP_FLOW)
     service.registry.enable(CaseKind.MAP)
-    bot.map_cache = {}
     bot.bus.rpc_upload_maps = game.rpc_upload_maps
     # Tests swap the upload RPC on bot.bus while a case runs.
     bot.container.servers = LiveServerRegistry()
     bot.container.servers.update_server("mini-pvp", 1, 0, 20, "v1", mode="pvp")
     bot.container.rpc = make_rpc(bot.bus, maps=bot.bus, servers=bot.container.servers)
+    bot.container.map_catalog = MapCatalog(bot.container.rpc)
     author.bot = False
     author.name = "mapper"
     forum = bot.channels[400]

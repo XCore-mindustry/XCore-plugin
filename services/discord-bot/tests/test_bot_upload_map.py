@@ -5,11 +5,11 @@ from types import SimpleNamespace
 from typing import Any
 from unittest.mock import AsyncMock, create_autospec
 
-from backends import published, real_bot
+from backends import maps_remembered, published, real_bot, remember_maps
 from bot_fakes import make_settings
 from xcore_protocol.generated.maps import MapsUploadResponseV1
 
-from xcore_discord_bot.handlers_misc import cmd_upload_map
+from xcore_discord_bot.handlers_maps import cmd_upload_map
 
 CHAT = "xcore:cmd:discord-message:mini-pvp"
 
@@ -77,14 +77,13 @@ def _installed(*, server: str, files: list[dict[str, object]], timeout_ms: int):
     )
 
 
-async def _bot(*, map_cache=None, **answer: Any):
+async def _bot(**answer: Any):
     """A real bot whose game server answers the upload RPC with ``answer``."""
     bot, _ = await real_bot(settings=make_settings(discord_map_reviewer_role_id=200))
     maps_bus = bot.container.maps_bus
     maps_bus.rpc_upload_maps = create_autospec(
         maps_bus.rpc_upload_maps, **(answer or {"side_effect": _installed})
     )
-    bot.map_cache = {} if map_cache is None else map_cache
     return bot
 
 
@@ -210,7 +209,6 @@ async def test_upload_timeout_reports_uncertainty_without_claiming_failure_or_re
 
 async def test_upload_formats_partial_result_and_disables_mentions() -> None:
     bot = await _bot(
-        map_cache={"mini-pvp": (0, [])},
         return_value=MapsUploadResponseV1.from_payload(
             {
                 "messageType": "maps.upload.response",
@@ -223,6 +221,7 @@ async def test_upload_formats_partial_result_and_disables_mentions() -> None:
             }
         ),
     )
+    await remember_maps(bot)
     interaction = _Interaction(id=60, user=_Member(roles=[_Role(200)]))
     interaction.edit_original_response = AsyncMock()
     await cmd_upload_map(
@@ -237,16 +236,14 @@ async def test_upload_formats_partial_result_and_disables_mentions() -> None:
     call = interaction.edit_original_response.call_args.kwargs
     assert "✅ Installed" in call["content"] and "❌ Invalid map" in call["content"]
     assert not call["allowed_mentions"].everyone and not call["allowed_mentions"].users
-    assert "mini-pvp" not in bot.map_cache
+    assert not await maps_remembered(bot)
 
 
 async def test_malformed_response_invalidates_cached_map_list_and_finishes_message() -> (
     None
 ):
-    bot = await _bot(
-        map_cache={"mini-pvp": (0, [])},
-        side_effect=TypeError("results must be a list"),
-    )
+    bot = await _bot(side_effect=TypeError("results must be a list"))
+    await remember_maps(bot)
     interaction = _Interaction(id=70, user=_Member(roles=[_Role(200)]))
     await cmd_upload_map(
         bot,
@@ -255,7 +252,7 @@ async def test_malformed_response_invalidates_cached_map_list_and_finishes_messa
         [_Attachment("arena.msav", "https://example/arena")],
     )
     assert "Could not confirm" in interaction.replies[-1]
-    assert "mini-pvp" not in bot.map_cache
+    assert not await maps_remembered(bot)
 
 
 async def test_invalid_upload_is_rejected_before_rpc_or_uploading_message() -> None:

@@ -14,7 +14,7 @@ from pymongo.errors import PyMongoError
 from xcore_discord_bot.bot import XCoreDiscordBot
 from xcore_discord_bot.dto import PlayerRecord
 from xcore_discord_bot.game_stats import GAMES
-from xcore_discord_bot.handlers_misc import cmd_stats, cmd_stats_audit
+from xcore_discord_bot.handlers_stats import cmd_stats, cmd_stats_audit
 from xcore_discord_bot.moderation_modals import StatsBanModal, StatsMuteModal
 from xcore_discord_bot.moderation_views import StatsActionsView
 from xcore_discord_bot.rating_store import SEASONS
@@ -451,7 +451,7 @@ async def test_stats_actions_view_actions_button_opens_actor_audit() -> None:
     ) -> None:
         return None
 
-    from xcore_discord_bot.handlers_misc import cmd_stats_audit
+    from xcore_discord_bot.handlers_stats import cmd_stats_audit
 
     interaction = _Interaction(
         id=7,

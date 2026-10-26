@@ -21,7 +21,7 @@ from xcore_discord_bot.dto import (
     AccountMergeResult,
     PlayerRecord,
 )
-from xcore_discord_bot.handlers_moderation import cmd_merge_player
+from xcore_discord_bot.handlers_account_merge import cmd_merge_player
 from xcore_discord_bot.moderation_views import AccountMergeConfirmView
 from xcore_discord_bot.mongo_store import MongoStore
 from xcore_discord_bot.punishment_store import PunishmentStore

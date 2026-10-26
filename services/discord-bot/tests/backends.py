@@ -132,6 +132,24 @@ async def published(bus: RedisTransport, stream: str) -> list[dict[str, Any]]:
     return [json.loads(fields["payload_json"]) for _, fields in entries]
 
 
+async def remember_maps(bot: XCoreDiscordBot, server: str = "mini-pvp") -> None:
+    """Has the map catalog hold ``server``'s map list, as autocomplete leaves it."""
+    maps = bot.container.maps_bus
+    maps.rpc_maps_list = create_autospec(  # type: ignore[method-assign]
+        maps.rpc_maps_list, return_value=[]
+    )
+    await bot.container.map_catalog.maps(server)
+
+
+async def maps_remembered(bot: XCoreDiscordBot, server: str = "mini-pvp") -> bool:
+    """Whether the catalog still holds the list ``remember_maps`` left, rather than
+    asking ``server`` again."""
+    list_maps = bot.container.maps_bus.rpc_maps_list
+    asked = list_maps.await_count  # type: ignore[attr-defined]
+    await bot.container.map_catalog.maps(server)
+    return list_maps.await_count == asked  # type: ignore[attr-defined]
+
+
 async def emit(
     bus: RedisTransport, stream: str, event: Any, *, server: str = "mini-pvp"
 ) -> None:
