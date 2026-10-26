@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import replace
 from datetime import datetime, timedelta
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING
 
 import discord
 from discord import Interaction
@@ -44,6 +44,8 @@ from .staff_actions import (
 
 if TYPE_CHECKING:
     from .bot import XCoreDiscordBot
+    from .daemons.admin_sync_daemon import ReconciledAdmin, SkippedAdmin
+    from .daemons.staff_sync_daemon import StaffSyncResult
 
 
 MSG_NO_ACTIVE_BAN = "No active ban found"
@@ -64,11 +66,13 @@ def _staff_error_message(error: Exception) -> str:
     return "Could not connect to the game server. Try again later."
 
 
-def _staff_sync_message(result: dict[str, object]) -> str:
-    text = f"Game role sync: {result['synced']} synced, {result['skipped_count']} skipped or failed."
-    if result.get("reason"):
-        text += f" {result['reason']}"
-    for code in result.get("errors", []):
+def _staff_sync_message(result: StaffSyncResult) -> str:
+    text = (
+        f"Game role sync: {result.synced} synced, {result.skipped} skipped or failed."
+    )
+    if result.reason:
+        text += f" {result.reason}"
+    for code in result.errors:
         if code == "NOT_FOUND":
             text += " Some game accounts were not found or are no longer linked (NOT_FOUND)."
         elif code == "UNAVAILABLE":
@@ -77,11 +81,7 @@ def _staff_sync_message(result: dict[str, object]) -> str:
             text += " A game request timed out or could not connect; its outcome may be unknown."
         else:
             text += f" Game server error: {code}."
-    if (
-        result["skipped_count"]
-        and not result.get("errors")
-        and not result.get("reason")
-    ):
+    if result.skipped and not result.errors and not result.reason:
         text += (
             " A complete Discord snapshot or a valid linked account was unavailable."
         )
@@ -113,18 +113,15 @@ async def _set_role_and_sync(
     await interaction.followup.send(_staff_sync_message(result))
 
 
-def _format_reconcile_player_item(item: dict[str, object]) -> str:
-    return f"`{item['nickname']!s}` (pid={item['pid']!s}, <@{item['discord_id']!s}>)"
+def _format_reconcile_player_item(item: ReconciledAdmin) -> str:
+    return f"`{item.nickname}` (pid={item.pid}, <@{item.discord_id}>)"
 
 
-def _format_reconcile_skipped_item(item: dict[str, str]) -> str:
-    discord_id = str(item["discord_id"])
-    player = str(item["player"])
-    reason = str(item["reason"])
+def _format_reconcile_skipped_item(item: SkippedAdmin) -> str:
     return (
-        f"<@{discord_id}> — {player} ({reason})"
-        if discord_id
-        else f"{player} ({reason})"
+        f"<@{item.discord_id}> — {item.player} ({item.reason})"
+        if item.discord_id
+        else f"{item.player} ({item.reason})"
     )
 
 
@@ -705,41 +702,28 @@ async def cmd_sync_admins(bot: XCoreDiscordBot, interaction: Interaction) -> Non
         await interaction.followup.send(_staff_sync_message(result))
         return
     result = await bot.container.admin_sync_daemon.reconcile()
-    try:
-        applied_count = int(cast(int, result["applied"]))
-        revoked_count = int(cast(int, result["revoked"]))
-        discord_admin_count = int(cast(int, result["discord_admins"]))
-    except (ValueError, TypeError):
-        applied_count = 0
-        revoked_count = 0
-        discord_admin_count = 0
     embed = discord.Embed(
         title="Admin Reconcile Complete",
         color=discord.Color.blurple(),
         description=(
-            f"Applied: **{applied_count}**\n"
-            f"Revoked: **{revoked_count}**\n"
-            f"Discord role members: **{discord_admin_count}**"
+            f"Applied: **{len(result.applied)}**\n"
+            f"Revoked: **{len(result.revoked)}**\n"
+            f"Discord role members: **{result.discord_admins}**"
         ),
     )
 
-    applied_players = cast(list[dict[str, object]], result.get("applied_players", []))
-    if applied_players:
-        applied_items = [
-            _format_reconcile_player_item(item) for item in applied_players
-        ]
+    if result.applied:
+        applied_items = [_format_reconcile_player_item(item) for item in result.applied]
         add_embed_section(embed, name="Added", items=applied_items)
 
-    revoked_players = cast(list[dict[str, object]], result.get("revoked_players", []))
-    if revoked_players:
-        revoked_items = [
-            _format_reconcile_player_item(item) for item in revoked_players
-        ]
+    if result.revoked:
+        revoked_items = [_format_reconcile_player_item(item) for item in result.revoked]
         add_embed_section(embed, name="Revoked", items=revoked_items)
 
-    skipped = cast(list[dict[str, str]], result.get("skipped", []))
-    if skipped:
-        skipped_items = [_format_reconcile_skipped_item(item) for item in skipped]
+    if result.skipped:
+        skipped_items = [
+            _format_reconcile_skipped_item(item) for item in result.skipped
+        ]
         add_embed_section(embed, name="Skipped", items=skipped_items)
 
     await interaction.response.send_message(

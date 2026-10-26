@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from typing import TYPE_CHECKING, Any
+from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 import discord
 from xcore_protocol.generated.shared import ActorRefV1ActorType
@@ -13,6 +14,31 @@ if TYPE_CHECKING:
     from ..settings import Settings
 
 logger = logging.getLogger(__name__)
+
+
+# Field order is the order the reconcile report lists them in.
+@dataclass(frozen=True, order=True)
+class ReconciledAdmin:
+    discord_id: str
+    pid: int
+    nickname: str
+
+
+@dataclass(frozen=True, order=True)
+class SkippedAdmin:
+    discord_id: str
+    player: str
+    reason: str
+
+
+@dataclass(frozen=True)
+class AdminReconcileResult:
+    discord_admins: int
+    applied: tuple[ReconciledAdmin, ...] = ()
+    revoked: tuple[ReconciledAdmin, ...] = ()
+    skipped: tuple[SkippedAdmin, ...] = ()
+    # The Discord role looked empty while linked admins exist, so nothing was revoked.
+    skipped_empty_snapshot: bool = False
 
 
 class AdminSyncDaemon:
@@ -63,7 +89,7 @@ class AdminSyncDaemon:
             if getattr(member, "id", None) is not None
         }
 
-    async def reconcile(self) -> dict[str, Any]:
+    async def reconcile(self) -> AdminReconcileResult:
         discord_admin_ids = await self.get_discord_admin_member_ids()
         linked_admin_players = await self._store.find_discord_admin_players()
 
@@ -72,21 +98,11 @@ class AdminSyncDaemon:
                 "Skipping admin revoke because Discord admin snapshot is empty while %s linked admins exist; this is likely a cache/intents issue.",
                 len(linked_admin_players),
             )
-            return {
-                "applied": 0,
-                "revoked": 0,
-                "discord_admins": 0,
-                "skipped_empty_snapshot": 1,
-                "applied_players": [],
-                "revoked_players": [],
-                "skipped": [],
-            }
+            return AdminReconcileResult(discord_admins=0, skipped_empty_snapshot=True)
 
-        applied = 0
-        revoked = 0
-        applied_players: list[dict[str, object]] = []
-        revoked_players: list[dict[str, object]] = []
-        skipped: list[dict[str, str]] = []
+        applied: list[ReconciledAdmin] = []
+        revoked: list[ReconciledAdmin] = []
+        skipped: list[SkippedAdmin] = []
 
         processed_ids: set[str] = set()
         for player in linked_admin_players:
@@ -98,11 +114,11 @@ class AdminSyncDaemon:
             uuid_value = str(player.uuid or "").strip()
             if not uuid_value:
                 skipped.append(
-                    {
-                        "discord_id": discord_id,
-                        "player": player.nickname,
-                        "reason": "linked admin account is missing UUID",
-                    }
+                    SkippedAdmin(
+                        discord_id,
+                        player.nickname,
+                        "linked admin account is missing UUID",
+                    )
                 )
                 continue
 
@@ -132,14 +148,7 @@ class AdminSyncDaemon:
                 reason="discord role missing during reconcile",
             )
             if changed:
-                revoked += 1
-                revoked_players.append(
-                    {
-                        "discord_id": discord_id,
-                        "pid": player.pid,
-                        "nickname": player.nickname,
-                    }
-                )
+                revoked.append(ReconciledAdmin(discord_id, player.pid, player.nickname))
 
         for discord_id in discord_admin_ids:
             if discord_id in processed_ids:
@@ -152,11 +161,7 @@ class AdminSyncDaemon:
                     discord_id,
                 )
                 skipped.append(
-                    {
-                        "discord_id": discord_id,
-                        "player": "-",
-                        "reason": "no linked Mindustry accounts",
-                    }
+                    SkippedAdmin(discord_id, "-", "no linked Mindustry accounts")
                 )
                 continue
 
@@ -164,11 +169,11 @@ class AdminSyncDaemon:
                 uuid_value = str(player.uuid or "").strip()
                 if not uuid_value:
                     skipped.append(
-                        {
-                            "discord_id": discord_id,
-                            "player": player.nickname,
-                            "reason": "linked account is missing UUID",
-                        }
+                        SkippedAdmin(
+                            discord_id,
+                            player.nickname,
+                            "linked account is missing UUID",
+                        )
                     )
                     continue
 
@@ -194,46 +199,16 @@ class AdminSyncDaemon:
                     reason="discord role present during reconcile",
                 )
                 if changed:
-                    applied += 1
-                    applied_players.append(
-                        {
-                            "discord_id": discord_id,
-                            "pid": player.pid,
-                            "nickname": player.nickname,
-                        }
+                    applied.append(
+                        ReconciledAdmin(discord_id, player.pid, player.nickname)
                     )
 
-        applied_players.sort(
-            key=lambda item: (
-                str(item["discord_id"]),
-                int(item["pid"]),
-                str(item["nickname"]),
-            )
+        return AdminReconcileResult(
+            discord_admins=len(discord_admin_ids),
+            applied=tuple(sorted(applied)),
+            revoked=tuple(sorted(revoked)),
+            skipped=tuple(sorted(skipped)),
         )
-        revoked_players.sort(
-            key=lambda item: (
-                str(item["discord_id"]),
-                int(item["pid"]),
-                str(item["nickname"]),
-            )
-        )
-        skipped.sort(
-            key=lambda item: (
-                str(item["discord_id"]),
-                str(item["player"]),
-                str(item["reason"]),
-            )
-        )
-
-        return {
-            "applied": applied,
-            "revoked": revoked,
-            "discord_admins": len(discord_admin_ids),
-            "skipped_empty_snapshot": 0,
-            "applied_players": applied_players,
-            "revoked_players": revoked_players,
-            "skipped": skipped,
-        }
 
     async def _run_loop(self) -> None:
         await self._bot.wait_until_ready()

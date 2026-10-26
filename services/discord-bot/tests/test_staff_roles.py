@@ -21,7 +21,7 @@ from xcore_protocol.generated.security import (
 from xcore_protocol.generated.shared import DiscordIdentityRefV1, PlayerRefV1
 
 from xcore_discord_bot.container import ServiceContainer
-from xcore_discord_bot.daemons.staff_sync_daemon import StaffSyncDaemon
+from xcore_discord_bot.daemons.staff_sync_daemon import StaffSyncDaemon, StaffSyncResult
 from xcore_discord_bot.dto import PlayerRecord
 from xcore_discord_bot.mongo_store import MongoStore
 from xcore_discord_bot.redis_bus import RedisBus, RpcFailed
@@ -215,8 +215,8 @@ async def test_scheduled_check_every_linked_account_rate_limited(setup, monkeypa
     )
     daemon.MIN_REQUEST_INTERVAL_SECONDS = 0.25
     result = await daemon.reconcile()
-    assert result["synced"] == 3
-    assert result["skipped_count"] == 0
+    assert result.synced == 3
+    assert result.skipped == 0
     assert rpc.sync_staff.await_count == 3
     assert [call.args for call in sleeps.await_args_list if call.args != (0,)] == [
         (0.25,),
@@ -318,7 +318,7 @@ async def test_schedule_loop_starts_after_ready_and_continues(setup, monkeypatch
     daemon._bot.wait_until_ready = AsyncMock()
     daemon._bot.is_closed.side_effect = [False, False, True]
     daemon.reconcile = AsyncMock(
-        side_effect=[RuntimeError("db unavailable"), {"synced": 0}]
+        side_effect=[RuntimeError("db unavailable"), StaffSyncResult(0, 0)]
     )
     sleep = AsyncMock()
     monkeypatch.setattr(
@@ -491,7 +491,7 @@ async def test_scheduled_snapshot_once_and_absent_account_revoked(setup, caplog)
     )
     with caplog.at_level(logging.INFO):
         result = await daemon.reconcile()
-    assert result["synced"] == 3
+    assert result.synced == 3
     guild.fetch_roles.assert_awaited_once()
     guild.fetch_members.assert_called_once_with(limit=None)
     guild.fetch_member.assert_not_awaited()
@@ -538,9 +538,9 @@ async def test_incomplete_scheduled_snapshot_revokes_nothing(setup, failure):
     else:
         guild.fetch_members.side_effect = members
     result = await daemon.reconcile()
-    assert result["synced"] == 0
-    assert result["skipped_count"] == 1
-    assert result["reason"]
+    assert result.synced == 0
+    assert result.skipped == 1
+    assert result.reason
     rpc.sync_staff.assert_not_awaited()
 
 
@@ -566,14 +566,14 @@ async def test_pass_does_not_overlap_or_block_event_sync(setup):
     try:
         await entered.wait()
         result = await daemon.reconcile()
-        assert "already running" in result["reason"]
+        assert "already running" in result.reason
         guild.fetch_roles.assert_awaited_once()
         assert await daemon.sync_player("uuid-1", "456")
         release.set()
         result = await task
         # The old snapshot cannot undo the event that ran while it was fetched.
-        assert result["synced"] == 0
-        assert result["skipped_count"] == 1
+        assert result.synced == 0
+        assert result.skipped == 1
         rpc.sync_staff.assert_awaited_once()
     finally:
         task.cancel()
@@ -604,12 +604,12 @@ async def test_expected_rpc_errors_summarized_and_legacy_stops_pass(
     rpc.sync_staff.side_effect = errors if legacy else errors * 5
     with caplog.at_level(logging.INFO):
         result = await daemon.reconcile()
-    assert result["skipped_count"] == 10
+    assert result.skipped == 10
     assert rpc.sync_staff.await_count == (2 if legacy else 10)
     assert len([r for r in caplog.records if r.levelname == "WARNING"]) == 2
     assert all(r.exc_info is None for r in caplog.records)
     assert len([r for r in caplog.records if "Staff sync pass:" in r.message]) == 1
-    assert bool(result["reason"]) is legacy
+    assert bool(result.reason) is legacy
 
 
 @pytest.mark.parametrize("command", ["reset", "add", "remove", "sync"])
@@ -680,7 +680,7 @@ async def test_roles_commands_report_sync_outcome(command, synced, skipped, erro
     bot.bus.claim_idempotency = AsyncMock(return_value=True)
     bot.store.find_players_by_discord_id = AsyncMock(return_value=[player])
     bot.set_discord_admin_role = AsyncMock(return_value=True)
-    result = {"synced": synced, "skipped_count": skipped, "errors": errors}
+    result = StaffSyncResult(synced, skipped, tuple(errors))
     daemon = SimpleNamespace(
         sync_member=AsyncMock(return_value=result),
         reconcile=AsyncMock(return_value=result),
@@ -739,7 +739,7 @@ async def test_event_sync_runs_between_scheduled_requests(setup):
         await event_started.wait()
         release_first.set()
         assert await event
-        assert (await scheduled)["synced"] == 2
+        assert (await scheduled).synced == 2
         assert order == ["scheduled-1", "event-player", "scheduled-2"]
     finally:
         scheduled.cancel()
@@ -761,7 +761,7 @@ async def test_schedule_does_not_add_pass_duration_to_interval(setup, monkeypatc
 
     async def reconcile():
         clock[0] += 250
-        return {"synced": 1000}
+        return StaffSyncResult(1000, 0)
 
     sleeps = AsyncMock(side_effect=sleep)
     daemon.reconcile = AsyncMock(side_effect=reconcile)

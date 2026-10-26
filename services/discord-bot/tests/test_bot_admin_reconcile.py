@@ -3,6 +3,11 @@ from __future__ import annotations
 import pytest
 from bot_fakes import make_bot, make_settings
 
+from xcore_discord_bot.daemons.admin_sync_daemon import (
+    AdminReconcileResult,
+    ReconciledAdmin,
+    SkippedAdmin,
+)
 from xcore_discord_bot.dto import PlayerRecord
 
 
@@ -64,15 +69,11 @@ async def test_reconcile_discord_admin_access_revokes_missing_role_and_applies_p
 
     result = await bot.container.admin_sync_daemon.reconcile()
 
-    assert result == {
-        "applied": 1,
-        "revoked": 1,
-        "discord_admins": 1,
-        "skipped_empty_snapshot": 0,
-        "applied_players": [{"discord_id": "222", "pid": 8, "nickname": "TargetB"}],
-        "revoked_players": [{"discord_id": "111", "pid": 7, "nickname": "TargetA"}],
-        "skipped": [],
-    }
+    assert result == AdminReconcileResult(
+        discord_admins=1,
+        applied=(ReconciledAdmin("222", 8, "TargetB"),),
+        revoked=(ReconciledAdmin("111", 7, "TargetA"),),
+    )
     assert set_calls == [
         ("uuid-7", False, "NONE"),
         ("uuid-8", True, "DISCORD_ROLE"),
@@ -124,15 +125,7 @@ async def test_reconcile_discord_admin_access_skips_revoke_on_empty_snapshot_wit
 
     result = await bot.container.admin_sync_daemon.reconcile()
 
-    assert result == {
-        "applied": 0,
-        "revoked": 0,
-        "discord_admins": 0,
-        "skipped_empty_snapshot": 1,
-        "applied_players": [],
-        "revoked_players": [],
-        "skipped": [],
-    }
+    assert result == AdminReconcileResult(discord_admins=0, skipped_empty_snapshot=True)
     assert set_calls == []
     assert published == []
 
@@ -180,18 +173,13 @@ async def test_reconcile_discord_admin_access_applies_to_all_linked_accounts() -
 
     result = await bot.container.admin_sync_daemon.reconcile()
 
-    assert result == {
-        "applied": 2,
-        "revoked": 0,
-        "discord_admins": 1,
-        "skipped_empty_snapshot": 0,
-        "applied_players": [
-            {"discord_id": "222", "pid": 8, "nickname": "TargetB"},
-            {"discord_id": "222", "pid": 9, "nickname": "TargetC"},
-        ],
-        "revoked_players": [],
-        "skipped": [],
-    }
+    assert result == AdminReconcileResult(
+        discord_admins=1,
+        applied=(
+            ReconciledAdmin("222", 8, "TargetB"),
+            ReconciledAdmin("222", 9, "TargetC"),
+        ),
+    )
     assert set_calls == [
         ("uuid-8", True, "DISCORD_ROLE"),
         ("uuid-9", True, "DISCORD_ROLE"),
@@ -248,25 +236,12 @@ async def test_reconcile_discord_admin_access_reports_skipped_unlinked_and_missi
 
     result = await bot.container.admin_sync_daemon.reconcile()
 
-    assert result == {
-        "applied": 0,
-        "revoked": 0,
-        "discord_admins": 2,
-        "skipped_empty_snapshot": 0,
-        "applied_players": [],
-        "revoked_players": [],
-        "skipped": [
-            {
-                "discord_id": "222",
-                "player": "TargetB",
-                "reason": "linked account is missing UUID",
-            },
-            {
-                "discord_id": "333",
-                "player": "-",
-                "reason": "no linked Mindustry accounts",
-            },
-        ],
-    }
+    assert result == AdminReconcileResult(
+        discord_admins=2,
+        skipped=(
+            SkippedAdmin("222", "TargetB", "linked account is missing UUID"),
+            SkippedAdmin("333", "-", "no linked Mindustry accounts"),
+        ),
+    )
     assert set_calls == []
     assert published == []

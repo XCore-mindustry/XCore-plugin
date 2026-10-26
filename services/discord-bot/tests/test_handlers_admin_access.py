@@ -8,6 +8,11 @@ import pytest
 from bot_fakes import make_bot, make_settings
 from xcore_protocol.generated.shared import ActorRefV1ActorType
 
+from xcore_discord_bot.daemons.admin_sync_daemon import (
+    AdminReconcileResult,
+    ReconciledAdmin,
+    SkippedAdmin,
+)
 from xcore_discord_bot.dto import PlayerRecord
 from xcore_discord_bot.handlers_moderation import (
     cmd_add_admin,
@@ -76,14 +81,7 @@ class _Backend:
         self.set_admin_calls: list[tuple[str, bool, str]] = []
         self.published: list[dict[str, Any]] = []
         self.list_players: list[PlayerRecord] = []
-        self.reconcile_result = {
-            "applied": 0,
-            "revoked": 0,
-            "discord_admins": 0,
-            "applied_players": [],
-            "revoked_players": [],
-            "skipped": [],
-        }
+        self.reconcile_result = AdminReconcileResult(discord_admins=0)
 
     async def set_admin_access(
         self, *, uuid: str, is_admin: bool, admin_source: str
@@ -276,23 +274,15 @@ async def test_cmd_list_admins_returns_paginated_embed_with_mentions() -> None:
 @pytest.mark.asyncio
 async def test_cmd_sync_admins_reports_reconcile_summary() -> None:
     bot = _bot()
-    bot.store.reconcile_result = {
-        "applied": 2,
-        "revoked": 1,
-        "discord_admins": 4,
-        "applied_players": [
-            {"nickname": "Target", "pid": 7, "discord_id": "123"},
-            {"nickname": "Other", "pid": 9, "discord_id": "123"},
-        ],
-        "revoked_players": [{"nickname": "Former", "pid": 11, "discord_id": "555"}],
-        "skipped": [
-            {
-                "discord_id": "999",
-                "player": "-",
-                "reason": "no linked Mindustry accounts",
-            }
-        ],
-    }
+    bot.store.reconcile_result = AdminReconcileResult(
+        discord_admins=4,
+        applied=(
+            ReconciledAdmin("123", 7, "Target"),
+            ReconciledAdmin("123", 9, "Other"),
+        ),
+        revoked=(ReconciledAdmin("555", 11, "Former"),),
+        skipped=(SkippedAdmin("999", "-", "no linked Mindustry accounts"),),
+    )
     interaction = _Interaction(id=34)
 
     await cmd_sync_admins(cast(Any, bot), cast(Any, interaction))

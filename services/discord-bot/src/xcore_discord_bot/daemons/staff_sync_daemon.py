@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 import discord
@@ -24,6 +25,17 @@ if TYPE_CHECKING:
     from ..settings import Settings
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass(frozen=True)
+class StaffSyncResult:
+    synced: int
+    # Accounts skipped or failed.
+    skipped: int
+    # RPC error codes, sorted.
+    errors: tuple[str, ...] = ()
+    # Why the pass stopped early or did not run, empty when it ran to the end.
+    reason: str = ""
 
 
 class StaffSyncDaemon:
@@ -153,7 +165,7 @@ class StaffSyncDaemon:
 
     async def sync_member(
         self, discord_id: str, *, removed: bool = False
-    ) -> dict[str, object]:
+    ) -> StaffSyncResult:
         synced = 0
         skipped = 0
         errors: set[str] = set()
@@ -177,7 +189,7 @@ class StaffSyncDaemon:
                         "Staff sync failed for Discord member %s: %s", discord_id, error
                     )
                 errors.add(code)
-        return {"synced": synced, "skipped_count": skipped, "errors": sorted(errors)}
+        return StaffSyncResult(synced, skipped, tuple(sorted(errors)))
 
     async def on_link_status(self, event: DiscordLinkStatusChangedV1) -> None:
         # The event is emitted after the plugin persists the link, so the sync's
@@ -188,13 +200,11 @@ class StaffSyncDaemon:
             removed=event.action == DiscordLinkStatusChangedV1Action.UNLINKED,
         )
 
-    async def reconcile(self) -> dict[str, object]:
+    async def reconcile(self) -> StaffSyncResult:
         if self._pass_lock.locked():
-            return {
-                "synced": 0,
-                "skipped_count": 0,
-                "reason": "A game role sync pass is already running.",
-            }
+            return StaffSyncResult(
+                0, 0, reason="A game role sync pass is already running."
+            )
         async with self._pass_lock:
             synced = 0
             skipped = 0
@@ -208,11 +218,7 @@ class StaffSyncDaemon:
                     reason = (
                         "A configured Discord role is missing; no accounts were synced."
                     )
-                    return {
-                        "synced": 0,
-                        "skipped_count": len(players),
-                        "reason": reason,
-                    }
+                    return StaffSyncResult(0, len(players), reason=reason)
                 # Exhaust the REST iterator before sending anything. A failed page
                 # must not make absent members look like confirmed departures.
                 members = {
@@ -227,7 +233,7 @@ class StaffSyncDaemon:
                 *TRANSIENT_EXCEPTIONS,
             ) as error:
                 reason = f"Could not fetch a complete Discord member snapshot: {error}"
-                return {"synced": 0, "skipped_count": len(players), "reason": reason}
+                return StaffSyncResult(0, len(players), reason=reason)
             finally:
                 if reason:
                     logger.info(
@@ -274,12 +280,7 @@ class StaffSyncDaemon:
                             break
                     # Yield between accounts even when the RPC/mock finishes immediately.
                     await asyncio.sleep(0)
-                return {
-                    "synced": synced,
-                    "skipped_count": skipped,
-                    "errors": sorted(errors),
-                    "reason": reason,
-                }
+                return StaffSyncResult(synced, skipped, tuple(sorted(errors)), reason)
             finally:
                 logger.info(
                     "Staff sync pass: synced=%s skipped=%s errors=%s reason=%s",

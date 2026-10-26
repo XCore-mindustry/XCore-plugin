@@ -187,16 +187,18 @@ class XCoreDiscordBot(commands.Bot):
         logger.info("Discord bot connected as %s", self.user)
         await self.container.presence_daemon.update_presence_once()
         try:
-            daemon = (
-                self.container.staff_sync_daemon or self.container.admin_sync_daemon
-            )
-            result = await daemon.reconcile()
-            logger.info(
-                "Startup admin reconcile complete: applied=%s revoked=%s discord_admins=%s",
-                result.get("applied", result.get("synced", 0)),
-                result.get("revoked", 0),
-                result.get("discord_admins", 0),
-            )
+            staff_sync = self.container.staff_sync_daemon
+            if staff_sync is not None:
+                # The pass logs its own summary.
+                await staff_sync.reconcile()
+            else:
+                result = await self.container.admin_sync_daemon.reconcile()
+                logger.info(
+                    "Startup admin reconcile complete: applied=%s revoked=%s discord_admins=%s",
+                    len(result.applied),
+                    len(result.revoked),
+                    result.discord_admins,
+                )
         except Exception:
             logger.exception("Startup admin reconcile failed")
 
