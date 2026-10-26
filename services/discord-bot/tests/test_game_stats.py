@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from types import SimpleNamespace
 from typing import Any
 
 import pytest
+from backends import connected_store
 
 from xcore_discord_bot.game_stats import (
     GameStats,
@@ -48,38 +48,55 @@ def test_no_rows_is_a_player_without_games() -> None:
     assert GameStats().win_rate == 0
 
 
-class _Games:
-    def __init__(self, rows: list[dict[str, Any]]) -> None:
-        self.rows = rows
-        self.pipelines: list[list[dict[str, Any]]] = []
+def _game(category: str, *players: dict[str, Any], **game: Any) -> dict[str, Any]:
+    return {
+        "stats_category": category,
+        "counted_in_stats": True,
+        "player_stats": list(players),
+        **game,
+    }
 
-    async def aggregate(self, pipeline: list[dict[str, Any]]):
-        self.pipelines.append(pipeline)
 
-        async def generate():
-            for row in self.rows:
-                yield row
-
-        return generate()
+def _me(**stats: Any) -> dict[str, Any]:
+    return {"uuid": "uuid-1", **stats}
 
 
 @pytest.mark.asyncio
 async def test_overview_counts_only_the_games_that_count_for_this_player() -> None:
-    games = _Games([{"_id": "PVP", "games": 2, "wins": 1}])
-    store = GameStatsStore(SimpleNamespace(database={"games_v2": games}))
+    store, db = await connected_store()
+    other = {"uuid": "uuid-2", "isWinner": True, "blocks_built": 100, "placement": 1}
+    for game in [
+        _game("PVP", _me(isWinner=True, blocks_built=5), other),
+        _game("PVP", _me(isWinner=False, blocks_built=3)),
+        _game("SURVIVAL", _me(units_produced=4), waves_reached=10),
+        _game("SURVIVAL", _me(), waves_reached=20),
+        _game("HEXED", _me(placement=2), other),
+        _game("HEXED", _me(placement=5)),
+        # no placement is not a top-3 finish
+        _game("HEXED", _me()),
+        # neither a game that does not count nor someone else's game
+        _game("PVP", _me(isWinner=True), counted_in_stats=False),
+        _game("PVP", other),
+    ]:
+        await db["games_v2"].insert_one(game)
 
-    stats = await store.overview("uuid-1")
+    stats = await GameStatsStore(store).overview("uuid-1")
 
-    assert (stats.games, stats.pvp.wins) == (2, 1)
-    match, unwind, own, group = games.pipelines[0]
-    assert match == {
-        "$match": {"player_stats.uuid": "uuid-1", "counted_in_stats": True}
-    }
-    assert unwind == {"$unwind": "$player_stats"}
-    # the other players of the same games are dropped before anything is summed
-    assert own == {"$match": {"player_stats.uuid": "uuid-1"}}
-    assert group["$group"]["_id"] == "$stats_category"
+    assert (stats.games, stats.wins, stats.win_rate) == (7, 1, 14)
+    # the other players' stats in the same games are not summed in
+    assert (stats.blocks_built, stats.units_produced) == (8, 4)
+    assert (stats.pvp.games, stats.pvp.wins, stats.pvp.win_rate) == (2, 1, 50)
+    assert (stats.survival.best_wave, stats.survival.average_wave) == (20, 15)
+    assert (stats.hexed.games, stats.hexed.best_placement, stats.hexed.top3) == (
+        3,
+        2,
+        1,
+    )
 
-    # nothing is read for a player without a UUID
-    assert await store.overview("") == GameStats()
-    assert len(games.pipelines) == 1
+
+@pytest.mark.asyncio
+async def test_overview_of_a_player_without_a_uuid_is_empty() -> None:
+    store, db = await connected_store()
+    await db["games_v2"].insert_one(_game("PVP", {"uuid": "", "isWinner": True}))
+
+    assert await GameStatsStore(store).overview("") == GameStats()

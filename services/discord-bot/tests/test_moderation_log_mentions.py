@@ -3,9 +3,11 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any
+from unittest.mock import AsyncMock
 
 import pytest
-from bot_fakes import make_bot, make_settings
+from backends import real_bot
+from bot_fakes import make_settings
 from xcore_protocol.generated.shared import VoteKickParticipantV1
 
 from xcore_discord_bot.moderation_logs import (
@@ -23,55 +25,20 @@ class _Channel:
         self.sent.append({"embed": embed})
 
 
-class _Backend:
-    def __init__(
-        self,
-        *,
-        bans_channel_id: int = 0,
-        mutes_channel_id: int = 0,
-        votekicks_channel_id: int = 0,
-    ) -> None:
-        self.bans_channel_id = bans_channel_id
-        self.mutes_channel_id = mutes_channel_id
-        self.votekicks_channel_id = votekicks_channel_id
-        self.channel = _Channel()
-
-    async def resolve_channel(
-        self, channel_id: int, *, context: str
-    ) -> _Channel | None:
-        if context == "ban logs":
-            assert channel_id == self.bans_channel_id
-        if context == "mute logs":
-            assert channel_id == self.mutes_channel_id
-        if context == "vote-kick logs":
-            assert channel_id == self.votekicks_channel_id
-        return self.channel
-
-    async def find_player_by_pid(self, pid):
-        return None
-
-    async def find_player_by_uuid(self, uuid):
-        return None
-
-
-def _bot(*args, **kwargs):
-    backend = _Backend(*args, **kwargs)
-    bot = make_bot(
-        store=backend,
-        bus=backend,
+async def _bot(**channels: int):
+    bot, _ = await real_bot(
         settings=make_settings(
-            discord_bans_channel_id=backend.bans_channel_id,
-            discord_mutes_channel_id=backend.mutes_channel_id,
-            discord_votekicks_channel_id=backend.votekicks_channel_id,
-        ),
+            **{f"discord_{name}": channel for name, channel in channels.items()}
+        )
     )
-    bot.resolve_channel = backend.resolve_channel
-    return bot
+    channel = _Channel()
+    bot.resolve_channel = AsyncMock(return_value=channel)
+    return bot, channel
 
 
 @pytest.mark.asyncio
 async def test_post_ban_log_shows_admin_mention_when_discord_id_present() -> None:
-    bot = _bot(bans_channel_id=10)
+    bot, channel = await _bot(bans_channel_id=10)
 
     await post_ban_log(
         bot,
@@ -83,14 +50,52 @@ async def test_post_ban_log_shows_admin_mention_when_discord_id_present() -> Non
         expire=datetime(2026, 1, 1, tzinfo=UTC),
     )
 
-    embed = bot.store.channel.sent[0]["embed"]
+    bot.resolve_channel.assert_awaited_once_with(10, context="ban logs")
+    embed = channel.sent[0]["embed"]
     fields = {field.name: field.value for field in embed.fields}
     assert fields["Admin"] == "AdminNick (<@123456>)"
 
 
 @pytest.mark.asyncio
+async def test_post_ban_log_for_a_pid_only_event_numbers_the_players_ban() -> None:
+    # Old ban events carry only a pid. The log finds the player's ban by its UUID
+    # and IP, and a ban written before bans had ids is given one.
+    bot, channel = await _bot(bans_channel_id=10)
+    db = bot.store.database
+    await db["players"].insert_one(
+        {"pid": 42, "uuid": "uuid-42", "ip": "1.2.3.4", "nickname": "Target"}
+    )
+    await db["bans"].insert_one(
+        {
+            "uuid": "uuid-42",
+            "ip": "1.2.3.4",
+            "name": "Target",
+            "admin_name": "AdminNick",
+            "reason": "Rule 1",
+            "expire_date": datetime(2026, 1, 1, tzinfo=UTC),
+        }
+    )
+
+    await post_ban_log(
+        bot,
+        pid=42,
+        name="Target",
+        admin_name="AdminNick",
+        admin_discord_id=None,
+        reason="Rule 1",
+        expire=datetime(2026, 1, 1, tzinfo=UTC),
+    )
+
+    (ban,) = await db["bans"].find({}).to_list()
+    embed = channel.sent[0]["embed"]
+    fields = {field.name: field.value for field in embed.fields}
+    assert fields["Ban"] == f"B-{ban['ban_id']}"
+    assert fields["Violator"] == "Target (pid=42)"
+
+
+@pytest.mark.asyncio
 async def test_post_mute_log_uses_admin_name_without_mention_when_missing() -> None:
-    bot = _bot(mutes_channel_id=11)
+    bot, channel = await _bot(mutes_channel_id=11)
 
     await post_mute_log(
         bot,
@@ -102,14 +107,15 @@ async def test_post_mute_log_uses_admin_name_without_mention_when_missing() -> N
         expire=datetime(2026, 1, 1, tzinfo=UTC),
     )
 
-    embed = bot.store.channel.sent[0]["embed"]
+    bot.resolve_channel.assert_awaited_once_with(11, context="mute logs")
+    embed = channel.sent[0]["embed"]
     fields = {field.name: field.value for field in embed.fields}
     assert fields["Admin"] == "AdminNick"
 
 
 @pytest.mark.asyncio
 async def test_post_vote_kick_log_shows_initiator_reason_and_vote_lists() -> None:
-    bot = _bot(votekicks_channel_id=12)
+    bot, channel = await _bot(votekicks_channel_id=12)
 
     await post_vote_kick_log(
         bot,
@@ -140,7 +146,8 @@ async def test_post_vote_kick_log_shows_initiator_reason_and_vote_lists() -> Non
         ],
     )
 
-    embed = bot.store.channel.sent[0]["embed"]
+    bot.resolve_channel.assert_awaited_once_with(12, context="vote-kick logs")
+    embed = channel.sent[0]["embed"]
     assert embed.title == "Vote-kick Passed"
     fields = {field.name: field.value for field in embed.fields}
     assert fields["Target"] == "Target (pid=42)"
@@ -152,7 +159,7 @@ async def test_post_vote_kick_log_shows_initiator_reason_and_vote_lists() -> Non
 
 @pytest.mark.asyncio
 async def test_post_vote_kick_log_shows_none_when_against_list_is_empty() -> None:
-    bot = _bot(votekicks_channel_id=12)
+    bot, channel = await _bot(votekicks_channel_id=12)
 
     await post_vote_kick_log(
         bot,
@@ -172,6 +179,7 @@ async def test_post_vote_kick_log_shows_none_when_against_list_is_empty() -> Non
         votes_against=[],
     )
 
-    embed = bot.store.channel.sent[0]["embed"]
+    bot.resolve_channel.assert_awaited_once_with(12, context="vote-kick logs")
+    embed = channel.sent[0]["embed"]
     fields = {field.name: field.value for field in embed.fields}
     assert fields["Against (0)"] == "None"

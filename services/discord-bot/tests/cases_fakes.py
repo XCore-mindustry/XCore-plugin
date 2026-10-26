@@ -111,7 +111,7 @@ def evaluate(expr, doc, variables=None):
         return [
             item
             for item in evaluate(arg["input"], doc, variables)
-            if evaluate(arg["cond"], doc, {**variables, name: item})
+            if truthy(evaluate(arg["cond"], doc, {**variables, name: item}))
         ]
     if op == "$regexMatch":
         found = evaluate(arg["input"], doc, variables)
@@ -126,8 +126,77 @@ def evaluate(expr, doc, variables=None):
     if op == "$ne":
         return values[0] != values[1]
     if op == "$cond":
-        return values[1] if values[0] else values[2]
+        return values[1] if truthy(values[0]) else values[2]
+    if op == "$and":
+        return all(truthy(value) for value in values)
+    if op in COMPARISONS:
+        return COMPARISONS[op](order(values[0]), order(values[1]))
     raise AssertionError(f"Unsupported fake expression {op}")
+
+
+COMPARISONS = {
+    "$lt": lambda a, b: a < b,
+    "$lte": lambda a, b: a <= b,
+    "$gt": lambda a, b: a > b,
+    "$gte": lambda a, b: a >= b,
+}
+
+
+def truthy(value):
+    """Aggregation truth: only null, false and 0 are false; "" and [] are true."""
+    return value is not None and value is not False and value != 0
+
+
+def order(value):
+    """BSON order for the values the bot compares: null before every number."""
+    if value is None:
+        return (0, 0)
+    assert isinstance(value, int | float) and not isinstance(value, bool), value
+    return (1, value)
+
+
+def numbers(found):
+    return [v for v in found if isinstance(v, int | float) and not isinstance(v, bool)]
+
+
+def accumulate(op, found):
+    """A ``$group`` accumulator over one evaluated value per grouped document."""
+    if op == "$sum":
+        return sum(numbers(found))
+    if op == "$avg":
+        found = numbers(found)
+        return sum(found) / len(found) if found else None
+    if op in ("$max", "$min"):
+        found = [v for v in found if v is not None]
+        return (max if op == "$max" else min)(found, key=order) if found else None
+    raise AssertionError(f"Unsupported fake accumulator {op}")
+
+
+def unwind(docs, path):
+    """``$unwind`` without options: one document per array item; no item, no document."""
+    key = path.removeprefix("$")
+    for doc in docs:
+        items = get(doc, key)
+        for item in items if isinstance(items, list) else []:
+            copy = deepcopy(doc)
+            assign(copy, key, item)
+            yield copy
+
+
+def group(docs, spec):
+    groups: dict = {}
+    for doc in docs:
+        key = evaluate(spec["_id"], doc)
+        groups.setdefault(repr(key), (key, []))[1].append(doc)
+    rows = []
+    for key, members in groups.values():
+        row = {"_id": key}
+        for name, accumulator in spec.items():
+            if name != "_id":
+                ((op, expr),) = accumulator.items()
+                row[name] = accumulate(op, [evaluate(expr, doc) for doc in members])
+        rows.append(row)
+    return rows
 
 
 def assign(doc, key, value):
@@ -241,6 +310,10 @@ class Collection:
                 cursor.limit(arg)
             elif name == "$project":
                 cursor.docs = [project(doc, arg) for doc in cursor.docs]
+            elif name == "$unwind":
+                cursor.docs = list(unwind(cursor.docs, arg))
+            elif name == "$group":
+                cursor.docs = group(cursor.docs, arg)
             else:
                 raise AssertionError(f"Unsupported fake stage {name}")
         return cursor
