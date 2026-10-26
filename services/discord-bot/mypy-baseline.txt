@@ -14,7 +14,7 @@ src/xcore_discord_bot/moderation_modals.py:0: error: Need type annotation for "r
 src/xcore_discord_bot/moderation_modals.py:0: error: Need type annotation for "period"  [var-annotated]
 src/xcore_discord_bot/moderation_modals.py:0: error: Need type annotation for "reason"  [var-annotated]
 src/xcore_discord_bot/cases/notify.py:0: error: Need type annotation for "receipt"  [var-annotated]
-src/xcore_discord_bot/mongo_store.py:0: error: Value of type "Any | None" is not indexable  [index]
+src/xcore_discord_bot/punishment_store.py:0: error: Value of type "Any | None" is not indexable  [index]
 src/xcore_discord_bot/cases/store.py:0: error: List comprehension has incompatible type List[Case | None]; expected List[Case]  [misc]
 src/xcore_discord_bot/cases/store.py:0: error: Incompatible return value type (got "Case | None", expected "Case")  [return-value]
 src/xcore_discord_bot/cases/store.py:0: error: Incompatible types in assignment (expression has type "LocalePref | None", variable has type "LocalePref")  [assignment]

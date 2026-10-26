@@ -13,6 +13,7 @@ from pymongo.errors import DuplicateKeyError
 from test_rating_store import _Collection, _Database, _matches
 
 from xcore_discord_bot.mongo_store import MongoStore
+from xcore_discord_bot.punishment_store import PunishmentStore
 from xcore_discord_bot.store_mappers import ban_record_from_doc, mute_record_from_doc
 
 NOW = datetime(2026, 1, 1, tzinfo=UTC)
@@ -150,6 +151,11 @@ def _store() -> tuple[MongoStore, _IdentityDatabase]:
     return store, db
 
 
+def _punishments() -> tuple[PunishmentStore, _IdentityDatabase]:
+    store, db = _store()
+    return PunishmentStore(store), db
+
+
 def _ban(**extra) -> dict[str, Any]:
     return {
         "_id": 1,
@@ -166,7 +172,7 @@ def _ban(**extra) -> dict[str, Any]:
 
 
 async def test_concurrent_counter_allocations_are_unique_and_use_atomic_inc() -> None:
-    store, db = _store()
+    store, db = _punishments()
     ids = await asyncio.gather(*(store.next_ban_id() for _ in range(100)))
     assert sorted(ids) == list(range(1, 101))
     assert db["counters"].docs == [{"_id": "ban_id", "seq": 100}]
@@ -177,7 +183,7 @@ async def test_concurrent_counter_allocations_are_unique_and_use_atomic_inc() ->
 
 
 async def test_ensure_ban_id_is_idempotent_and_preserves_existing_id() -> None:
-    store, db = _store()
+    store, db = _punishments()
     db["bans"].docs = [_ban()]
     first = await store.ensure_ban_id(uuid="uuid-42", ip=None)
     second = await store.ensure_ban_id(uuid="uuid-42", ip=None)
@@ -198,7 +204,7 @@ async def test_ensure_ban_id_is_idempotent_and_preserves_existing_id() -> None:
 
 
 async def test_concurrent_lazy_assignment_returns_the_winning_id() -> None:
-    store, db = _store()
+    store, db = _punishments()
     bans = db["bans"]
     bans.docs = [_ban()]
     bans.read_gate = asyncio.Event()
@@ -214,7 +220,7 @@ async def test_concurrent_lazy_assignment_returns_the_winning_id() -> None:
 async def test_lazy_assignment_does_not_overwrite_an_id_written_during_allocation() -> (
     None
 ):
-    store, db = _store()
+    store, db = _punishments()
     db["bans"].docs = [_ban()]
 
     async def competing_writer():
@@ -227,7 +233,7 @@ async def test_lazy_assignment_does_not_overwrite_an_id_written_during_allocatio
 
 
 async def test_lazy_assignment_cannot_assign_to_a_replacement_row() -> None:
-    store, db = _store()
+    store, db = _punishments()
     db["bans"].docs = [_ban()]
 
     async def replace_during_allocation():
@@ -240,7 +246,7 @@ async def test_lazy_assignment_cannot_assign_to_a_replacement_row() -> None:
 
 
 async def test_identity_lookup_and_missing_lazy_assignment() -> None:
-    store, db = _store()
+    store, db = _punishments()
     db["bans"].docs = [_ban(ban_id=7, case_number=57)]
     record = await store.find_ban_by_id(7)
     assert record.ban_id == 7 and record.case_number == 57
@@ -251,7 +257,7 @@ async def test_identity_lookup_and_missing_lazy_assignment() -> None:
 
 
 async def test_update_ban_expiry_keeps_id_and_case_and_refuses_lengthening() -> None:
-    store, db = _store()
+    store, db = _punishments()
     db["bans"].docs = [_ban(ban_id=7, case_number=57)]
     earlier = NOW + timedelta(days=2)
     assert await store.update_ban_expiry(ban_id=7, new_expiry=earlier)
@@ -274,7 +280,7 @@ async def test_update_ban_expiry_keeps_id_and_case_and_refuses_lengthening() -> 
 async def test_update_permanent_ban_to_finite_keeps_identity_and_concurrent_guard(
     missing_expiry,
 ) -> None:
-    store, db = _store()
+    store, db = _punishments()
     row = _ban(ban_id=7, case_number=57, expire_date=None)
     if missing_expiry:
         row.pop("expire_date")
@@ -293,7 +299,7 @@ async def test_update_permanent_ban_to_finite_keeps_identity_and_concurrent_guar
 
 
 async def test_upserts_allocate_new_ids_and_preserve_supplied_identity() -> None:
-    store, db = _store()
+    store, db = _punishments()
     kwargs = {key: value for key, value in _ban().items() if key != "_id"}
     await store.upsert_ban(**kwargs, case_number=57)
     first = await store.find_ban(uuid="uuid-42", ip=None)
@@ -307,7 +313,7 @@ async def test_upserts_allocate_new_ids_and_preserve_supplied_identity() -> None
 
 
 async def test_unban_id_guard_preserves_a_replacement_ban() -> None:
-    store, db = _store()
+    store, db = _punishments()
     db["bans"].docs = [_ban(ban_id=2)]
     assert await store.delete_ban(uuid="uuid-42", ip=None, ban_id=1) == 0
     assert len(db["bans"].docs) == 1
@@ -315,7 +321,7 @@ async def test_unban_id_guard_preserves_a_replacement_ban() -> None:
 
 
 async def test_mute_upsert_carries_case_number() -> None:
-    store, db = _store()
+    store, db = _punishments()
     kwargs = {key: value for key, value in _ban().items() if key not in {"_id", "ip"}}
     await store.upsert_mute(**kwargs, case_number=57)
     assert (await store.find_mute(uuid="uuid-42")).case_number == 57
@@ -331,7 +337,18 @@ def test_mappers_carry_additive_identity_fields(value) -> None:
     assert mute.case_number == expected
 
 
-async def test_connect_creates_partial_unique_ban_and_sparse_audit_indexes() -> None:
+async def test_ensure_indexes_creates_the_partial_unique_ban_id_index() -> None:
+    store, db = _punishments()
+    await store.ensure_indexes()
+    assert db["bans"].indexes == [
+        (
+            "ban_id",
+            {"unique": True, "partialFilterExpression": {"ban_id": {"$type": "int"}}},
+        )
+    ]
+
+
+async def test_connect_creates_the_sparse_audit_index() -> None:
     store, db = _store()
     db.command = AsyncMock()
     store._settings = SimpleNamespace(
@@ -342,12 +359,7 @@ async def test_connect_creates_partial_unique_ban_and_sparse_audit_indexes() -> 
         client.return_value.__getitem__.return_value = db
         await store.connect()
         await store.connect()
-    assert db["bans"].indexes == [
-        (
-            "ban_id",
-            {"unique": True, "partialFilterExpression": {"ban_id": {"$type": "int"}}},
-        )
-    ]
+    assert db["bans"].indexes == []
     assert db["moderation_audit"].indexes == [
         ("details.extra.ban_id", {"sparse": True})
     ]
@@ -357,7 +369,7 @@ async def test_connect_creates_partial_unique_ban_and_sparse_audit_indexes() -> 
 async def test_ensure_ban_id_also_repairs_explicit_null_without_overwriting_ids() -> (
     None
 ):
-    store, db = _store()
+    store, db = _punishments()
     db["bans"].docs = [_ban(ban_id=None)]
     record = await store.ensure_ban_id(uuid="uuid-42", ip=None)
     assert record.ban_id == 1

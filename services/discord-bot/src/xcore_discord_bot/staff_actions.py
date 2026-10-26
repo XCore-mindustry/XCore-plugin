@@ -195,7 +195,7 @@ async def perform_ban(
         raise ActionAlreadyProcessed("This ban was already processed recently.")
 
     expire = bot.store.now_utc() + duration
-    ban_id = await bot.store.next_ban_id()
+    ban_id = await bot.container.punishments.next_ban_id()
     ban = BanRecord(
         uuid=uuid_value or "",
         ip=ip_value,
@@ -208,7 +208,7 @@ async def perform_ban(
         ban_id=ban_id,
         case_number=case_number,
     )
-    await bot.store.upsert_ban(
+    await bot.container.punishments.upsert_ban(
         uuid=uuid_value or "",
         ip=ip_value,
         pid=player.pid,
@@ -285,14 +285,16 @@ async def perform_unban(
             "Cannot unban player: both UUID and IP are missing in player data."
         )
     if ban.ban_id is None:
-        assigned = await bot.store.ensure_ban_id(uuid=uuid_value or "", ip=ip_value)
+        assigned = await bot.container.punishments.ensure_ban_id(
+            uuid=uuid_value or "", ip=ip_value
+        )
         if assigned is None:
             raise BanNotFound("No active ban found")
         ban = assigned
     if check is not None:
         await check(ban)
     if (
-        await bot.store.delete_ban(
+        await bot.container.punishments.delete_ban(
             uuid=uuid_value or "", ip=ip_value, ban_id=ban.ban_id
         )
         <= 0
@@ -328,7 +330,7 @@ async def perform_shorten_ban(
     case_action_token: str | None = None,
     check: BanCheck | None = None,
 ) -> BanResult:
-    ban = await bot.store.find_ban_by_id(ban_id)
+    ban = await bot.container.punishments.find_ban_by_id(ban_id)
     if ban is None:
         raise BanNotFound("No active ban found")
     if not isinstance(new_expiry, datetime):
@@ -344,7 +346,9 @@ async def perform_shorten_ban(
         raise InvalidBanExpiry("The new expiry must be in the future.")
     if check is not None:
         await check(ban)
-    if not await bot.store.update_ban_expiry(ban_id=ban_id, new_expiry=expire):
+    if not await bot.container.punishments.update_ban_expiry(
+        ban_id=ban_id, new_expiry=expire
+    ):
         raise InvalidBanExpiry(
             "The new expiry must be earlier than the current ban expiry."
         )
@@ -406,7 +410,7 @@ async def perform_mute(
     _require_duration(duration)
     expire = bot.store.now_utc() + duration
     player_name = player.nickname
-    await bot.store.upsert_mute(
+    await bot.container.punishments.upsert_mute(
         uuid=uuid_value,
         pid=player.pid,
         name=player_name,

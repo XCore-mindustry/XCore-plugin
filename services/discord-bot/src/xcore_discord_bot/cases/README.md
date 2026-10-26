@@ -307,7 +307,8 @@ fresh audit, or the report stays open.
 ## `CaseService`
 
 Attributes: `store`, `settings`, `registry`, `threads`, `notifier`, `claims` (the Redis bus:
-`claim_idempotency(key, ttl_seconds)`), `player_store` (`MongoStore`), `transport`, `bot`, `now()`.
+`claim_idempotency(key, ttl_seconds)`), `player_store` (`MongoStore`), `punishments`
+(`PunishmentStore`: bans and mutes), `transport`, `bot`, `now()`.
 
 | Method | Use |
 |---|---|

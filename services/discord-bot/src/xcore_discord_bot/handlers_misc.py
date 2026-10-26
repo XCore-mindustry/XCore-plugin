@@ -178,8 +178,10 @@ async def _staff_notes(bot: XCoreDiscordBot, player: PlayerRecord) -> StaffNotes
         return StaffNotes()
     try:
         return StaffNotes(
-            ban=await bot.store.find_ban(uuid=player.uuid, ip=player.ip),
-            mute=await bot.store.find_mute(uuid=player.uuid),
+            ban=await bot.container.punishments.find_ban(
+                uuid=player.uuid, ip=player.ip
+            ),
+            mute=await bot.container.punishments.find_mute(uuid=player.uuid),
         )
     except Exception:  # the rest of the stats still opens
         logger.exception("Cannot load punishments for player #%s", player.pid)
@@ -492,11 +494,11 @@ async def cmd_bans(
     name_filter: str | None,
 ) -> None:
     page_size = 6
-    total_bans = await bot.store.count_bans(name_filter=name_filter)
+    total_bans = await bot.container.punishments.count_bans(name_filter=name_filter)
     total_pages = max(1, (total_bans + page_size - 1) // page_size)
 
     async def fetch_page(page: int) -> tuple[discord.Embed, bool]:
-        bans = await bot.store.list_bans(
+        bans = await bot.container.punishments.list_bans(
             name_filter=name_filter, limit=page_size, page=page
         )
         embed = discord.Embed(

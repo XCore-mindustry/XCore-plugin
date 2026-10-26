@@ -48,6 +48,10 @@ FAMILY_CLASSES = (
 )
 
 
+def _itself(dependency):
+    return dependency
+
+
 def make_bot(
     *, settings: Settings | None = None, bus=None, store=None
 ) -> XCoreDiscordBot:
@@ -55,6 +59,7 @@ def make_bot(
         settings = make_settings()
     default_bus = bus is None
     fake_bus = not default_bus and not isinstance(bus, RedisTransport)
+    fake_store = store is not None and not isinstance(store, MongoStore)
     if bus is None:
         bus = MagicMock(spec=RedisTransport)
         bus.claim_idempotency = AsyncMock(return_value=True)
@@ -63,15 +68,15 @@ def make_bot(
         store.find_player_by_pid = AsyncMock(return_value=None)
     # A hand-written fake bus implements the family calls a test needs itself, so it
     # stands in for the family buses as well, also inside the services built on them.
-    families = (
-        patch.multiple(
-            "xcore_discord_bot.container",
-            **dict.fromkeys(FAMILY_CLASSES, lambda transport: transport),
-        )
-        if fake_bus
+    # A hand-written fake store stands in for the bans and mutes store the same way.
+    stand_ins = dict.fromkeys(FAMILY_CLASSES if fake_bus else (), _itself)
+    if fake_store:
+        stand_ins["PunishmentStore"] = _itself
+    with (
+        patch.multiple("xcore_discord_bot.container", **stand_ins)
+        if stand_ins
         else nullcontext()
-    )
-    with families:
+    ):
         bot = XCoreDiscordBot(settings=settings, bus=bus, store=store)
     # A test may replace ServiceContainer.create with a container of its own.
     if default_bus and hasattr(bot.container, "moderation_bus"):

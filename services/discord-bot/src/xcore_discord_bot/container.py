@@ -28,6 +28,7 @@ from .daemons.staff_sync_daemon import StaffSyncDaemon
 from .daemons.stream_supervisor import StreamSupervisor
 from .game_stats import GameStatsStore
 from .mongo_store import MongoStore
+from .punishment_store import PunishmentStore
 from .rating_store import RatingStore
 from .rpc.mindustry_rpc import MindustryRpcClient
 from .services.player_service import PlayerService
@@ -53,6 +54,7 @@ class ServiceContainer:
     sentinel_bus: SentinelBus
     rpc: MindustryRpcClient
     players: PlayerService
+    punishments: PunishmentStore
     ratings: RatingStore
     game_stats: GameStatsStore
     rating_service: RatingService
@@ -91,6 +93,7 @@ class ServiceContainer:
             sentinel=sentinel_bus,
         )
 
+        punishments = PunishmentStore(store)
         ratings = RatingStore(store)
         rating_service = RatingService(
             store=ratings, rpc=rpc, timeout_ms=settings.rpc_timeout_ms
@@ -102,7 +105,7 @@ class ServiceContainer:
             rpc=rpc,
             accounts=accounts_bus,
             moderation=moderation_bus,
-            merges=AccountMergeStore(store, settings),
+            merges=AccountMergeStore(store, punishments, settings),
         )
 
         presence_daemon = PresenceDaemon(bot=bot)
@@ -121,6 +124,7 @@ class ServiceContainer:
             notifier=CaseNotifier(bot, settings, find_player=store.find_player_by_uuid),
             claims=bus,
             player_store=store,
+            punishments=punishments,
         )
         case_panel = CasePanel(cases, bot)
 
@@ -136,6 +140,7 @@ class ServiceContainer:
             sentinel_bus=sentinel_bus,
             rpc=rpc,
             players=players,
+            punishments=punishments,
             ratings=ratings,
             game_stats=GameStatsStore(store),
             rating_service=rating_service,

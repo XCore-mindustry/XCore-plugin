@@ -23,6 +23,7 @@ from .dto import (
     PlayerRecord,
 )
 from .mongo_store import MongoStore, PlayerDoc, to_int
+from .punishment_store import PunishmentStore
 from .settings import Settings
 from .store_mappers import player_record_from_doc
 
@@ -59,8 +60,11 @@ class _MergePlan:
 
 
 class AccountMergeStore:
-    def __init__(self, store: MongoStore, settings: Settings) -> None:
+    def __init__(
+        self, store: MongoStore, punishments: PunishmentStore, settings: Settings
+    ) -> None:
         self._store = store
+        self._punishments = punishments
         self._settings = settings
 
     async def merge_player_accounts(
@@ -406,7 +410,7 @@ class AccountMergeStore:
         )
         if collection == "bans":
             # ban_id is unique and the closed account keeps its ban, so the copy needs its own.
-            transferred["ban_id"] = await self._store.next_ban_id(session=session)
+            transferred["ban_id"] = await self._punishments.next_ban_id(session=session)
         await db[collection].insert_one(transferred, session=session)
         return True
 

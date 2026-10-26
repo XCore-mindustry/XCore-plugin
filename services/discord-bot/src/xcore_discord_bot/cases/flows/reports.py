@@ -189,8 +189,8 @@ async def _sanctions(service, uuid: str) -> dict[str, Any]:
     result["last"] = [audit_entry(row, (uuid,)) for row in rows]
     now = service.now()
     for key, current in (
-        ("current_ban", await service.player_store.find_ban(uuid=uuid, ip=None)),
-        ("current_mute", await service.player_store.find_mute(uuid=uuid)),
+        ("current_ban", await service.punishments.find_ban(uuid=uuid, ip=None)),
+        ("current_mute", await service.punishments.find_mute(uuid=uuid)),
     ):
         if current is None:
             continue

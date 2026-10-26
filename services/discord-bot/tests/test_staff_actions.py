@@ -276,7 +276,7 @@ async def test_perform_ban_accepts_ip_only_and_normalizes_identifiers(player) ->
 async def test_perform_unban_removes_ban_pardons_and_audits_identity(legacy) -> None:
     bot, db, bus, channel = _action_bot()
     db["bans"].docs = [_ban()] if legacy else [_ban(ban_id=71)]
-    ban = await bot.store.find_ban(uuid=PLAYER.uuid, ip=None)
+    ban = await bot.container.punishments.find_ban(uuid=PLAYER.uuid, ip=None)
     result = await perform_unban(
         bot, ban, ACTOR, case_number=57, request_id="request-1"
     )
@@ -297,7 +297,7 @@ async def test_perform_unban_removes_ban_pardons_and_audits_identity(legacy) -> 
 async def test_perform_unban_ip_only_does_not_publish_pardon() -> None:
     bot, db, bus, _ = _action_bot()
     db["bans"].docs = [_ban(uuid="", ban_id=71)]
-    ban = await bot.store.find_ban(uuid="", ip="1.2.3.4")
+    ban = await bot.container.punishments.find_ban(uuid="", ip="1.2.3.4")
     await perform_unban(bot, ban, ACTOR)
     assert not bus.pardons and not db["bans"].docs
     assert db["moderation_audit"].docs[0]["details"]["extra"] == {"ban_id": "71"}
@@ -306,7 +306,7 @@ async def test_perform_unban_ip_only_does_not_publish_pardon() -> None:
 async def test_perform_unban_missing_identifiers_is_a_typed_error() -> None:
     bot, db, _, _ = _action_bot()
     db["bans"].docs = [_ban(ban_id=71)]
-    ban = await bot.store.find_ban_by_id(71)
+    ban = await bot.container.punishments.find_ban_by_id(71)
     with pytest.raises(MissingPlayerIdentifiers):
         await perform_unban(bot, replace(ban, uuid=None, ip=None), ACTOR)
     assert not db["moderation_audit"].docs
@@ -316,7 +316,7 @@ async def test_perform_unban_missing_identifiers_is_a_typed_error() -> None:
 async def test_perform_unban_missing_ban_is_a_typed_error(legacy) -> None:
     bot, db, bus, _ = _action_bot()
     db["bans"].docs = [_ban()] if legacy else [_ban(ban_id=71)]
-    ban = await bot.store.find_ban(uuid=PLAYER.uuid, ip=None)
+    ban = await bot.container.punishments.find_ban(uuid=PLAYER.uuid, ip=None)
     db["bans"].docs.clear()
     with pytest.raises(BanNotFound):
         await perform_unban(bot, ban, ACTOR)
@@ -326,7 +326,7 @@ async def test_perform_unban_missing_ban_is_a_typed_error(legacy) -> None:
 async def test_perform_unban_stale_identity_cannot_remove_replacement_ban() -> None:
     bot, db, bus, _ = _action_bot()
     db["bans"].docs = [_ban(ban_id=71)]
-    ban = await bot.store.find_ban_by_id(71)
+    ban = await bot.container.punishments.find_ban_by_id(71)
     db["bans"].docs[0]["ban_id"] = 72
     with pytest.raises(BanNotFound):
         await perform_unban(bot, ban, ACTOR, 57)
@@ -370,7 +370,7 @@ async def test_ban_check_sees_the_ban_right_before_the_write_and_can_stop_it(ver
 
     with pytest.raises(RuntimeError, match="stale"):
         if verb == "unban":
-            ban = await bot.store.find_ban(uuid=PLAYER.uuid, ip=None)
+            ban = await bot.container.punishments.find_ban(uuid=PLAYER.uuid, ip=None)
             await perform_unban(bot, ban, ACTOR, check=check)
         else:
             await perform_shorten_ban(
@@ -418,13 +418,13 @@ async def test_perform_shorten_normalizes_naive_expiry_to_utc() -> None:
 async def test_perform_shorten_cannot_lengthen_after_a_concurrent_shortening() -> None:
     bot, db, _, _ = _action_bot()
     db["bans"].docs = [_ban(ban_id=71)]
-    original_update = bot.store.update_ban_expiry
+    original_update = bot.container.punishments.update_ban_expiry
 
     async def shorter_wins(**kwargs):
         db["bans"].docs[0]["expire_date"] = NOW + timedelta(days=1)
         return await original_update(**kwargs)
 
-    bot.store.update_ban_expiry = shorter_wins
+    bot.container.punishments.update_ban_expiry = shorter_wins
     with pytest.raises(InvalidBanExpiry):
         await perform_shorten_ban(bot, 71, NOW + timedelta(days=2), ACTOR)
     assert db["bans"].docs[0]["expire_date"] == NOW + timedelta(days=1)
@@ -664,7 +664,7 @@ async def test_ban_actions_preserve_an_unknown_player_pid_in_the_audit(action) -
     bot, db, _, _ = _action_bot()
     db["bans"].docs = [_ban(ban_id=71, pid=None)]
     if action == "unban":
-        ban = await bot.store.find_ban_by_id(71)
+        ban = await bot.container.punishments.find_ban_by_id(71)
         await perform_unban(bot, ban, ACTOR)
     else:
         await perform_shorten_ban(bot, 71, NOW + timedelta(hours=1), ACTOR)
@@ -678,9 +678,12 @@ async def test_unban_completion_is_written_before_pardon_and_audit_failure_stops
 ):
     bot, db, bus, _ = _action_bot()
     db["bans"].docs = [_ban(ban_id=71)]
-    ban = await bot.store.find_ban_by_id(71)
+    ban = await bot.container.punishments.find_ban_by_id(71)
     order = []
-    delete, append = bot.store.delete_ban, bot.store.append_moderation_audit
+    delete, append = (
+        bot.container.punishments.delete_ban,
+        bot.store.append_moderation_audit,
+    )
 
     async def deleted(**kwargs):
         order.append("delete")
@@ -698,7 +701,10 @@ async def test_unban_completion_is_written_before_pardon_and_audit_failure_stops
         assert db["moderation_audit"].docs
         raise RuntimeError("pardon unavailable")
 
-    bot.store.delete_ban, bot.store.append_moderation_audit = deleted, audited
+    bot.container.punishments.delete_ban, bot.store.append_moderation_audit = (
+        deleted,
+        audited,
+    )
     bot.container.moderation_bus.publish_pardon_player = pardoned
     with pytest.raises(RuntimeError):
         await perform_unban(bot, ban, ACTOR, 57, case_action_token="attempt")

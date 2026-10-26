@@ -79,6 +79,7 @@ class CaseService:
         notifier,
         claims,
         player_store=None,
+        punishments=None,
         now: Callable[[], datetime] | None = None,
     ) -> None:
         self.store = store
@@ -88,6 +89,7 @@ class CaseService:
         self.notifier = notifier
         self.claims = claims
         self.player_store = player_store
+        self.punishments = punishments
         self.now = now or (lambda: datetime.now(UTC))
         self.started_at = self.now()
         self._locks: dict[str, tuple[asyncio.Lock, int]] = {}

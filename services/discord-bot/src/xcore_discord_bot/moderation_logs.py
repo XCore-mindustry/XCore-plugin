@@ -161,7 +161,9 @@ async def post_ban_log(
         if player is not None:
             uuid_value, ip_value = record_identifiers(player)
             if uuid_value is not None or ip_value is not None:
-                ban = await bot.store.ensure_ban_id(uuid=uuid_value or "", ip=ip_value)
+                ban = await bot.container.punishments.ensure_ban_id(
+                    uuid=uuid_value or "", ip=ip_value
+                )
                 if ban is not None:
                     ban_id = ban.ban_id
                     if case_number is None:

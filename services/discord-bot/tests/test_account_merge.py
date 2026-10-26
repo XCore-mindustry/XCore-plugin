@@ -21,6 +21,7 @@ from xcore_discord_bot.dto import (
 from xcore_discord_bot.handlers_moderation import cmd_merge_player
 from xcore_discord_bot.moderation_views import AccountMergeConfirmView
 from xcore_discord_bot.mongo_store import MongoStore
+from xcore_discord_bot.punishment_store import PunishmentStore
 
 
 @dataclass
@@ -372,9 +373,8 @@ async def _merge(store: MongoStore, **overrides: Any) -> AccountMergeResult:
         "reason": "Device migration",
     }
     kwargs.update(overrides)
-    return await AccountMergeStore(store, make_settings()).merge_player_accounts(
-        **kwargs
-    )
+    merges = AccountMergeStore(store, PunishmentStore(store), make_settings())
+    return await merges.merge_player_accounts(**kwargs)
 
 
 def _player(db: Database, doc_id: str) -> dict[str, Any]:
@@ -546,14 +546,15 @@ async def test_merge_gives_the_transferred_ban_its_own_id() -> None:
 async def test_merge_unban_of_the_surviving_account_lifts_the_ip_ban() -> None:
     store, _ = await _merge_store(bans=(SOURCE_BAN,))
     await _merge(store)
+    bans = PunishmentStore(store)
 
-    survivor_ban = await store.find_ban(uuid="target-uuid", ip="1.2.3.4")
+    survivor_ban = await bans.find_ban(uuid="target-uuid", ip="1.2.3.4")
     assert survivor_ban is not None and survivor_ban.ban_id == 8
-    await store.delete_ban(uuid="target-uuid", ip="1.2.3.4", ban_id=8)
+    await bans.delete_ban(uuid="target-uuid", ip="1.2.3.4", ban_id=8)
 
-    assert await store.find_ban(uuid="target-uuid", ip="1.2.3.4") is None
+    assert await bans.find_ban(uuid="target-uuid", ip="1.2.3.4") is None
     # The closed account's device stays banned.
-    assert await store.find_ban(uuid="source-uuid", ip=None) is not None
+    assert await bans.find_ban(uuid="source-uuid", ip=None) is not None
 
 
 @pytest.mark.asyncio

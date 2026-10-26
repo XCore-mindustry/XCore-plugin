@@ -121,6 +121,7 @@ async def reports_core(*, enabled=True, guild=None, **settings):
     db.collections["bans"] = database_bans
     db.collections["mutes"] = mutations["mutes"]
     service.player_store = Players(action_bot, mutations)
+    service.punishments = action_bot.container.punishments
     service.notifier.find_player = service.player_store.find_player_by_uuid
     service.claims = Claims()
     bot.settings = service.settings.model_copy(
@@ -130,6 +131,7 @@ async def reports_core(*, enabled=True, guild=None, **settings):
     bot.bus = action_bot.bus
     for family in FAMILY_BUSES:
         setattr(bot.container, family, getattr(action_bot.container, family))
+    bot.container.punishments = action_bot.container.punishments
     bot.resolve_channel = action_bot.resolve_channel
 
     mirror_audits(bot, action_bot, db, mutations)

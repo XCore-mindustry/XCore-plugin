@@ -138,7 +138,7 @@ async def test_real_helpers_recover_durable_completion_without_replaying(
             )
         elif action == "unban":
             await perform_unban(
-                bot, await bot.store.find_ban_by_id(71), actor, **kwargs
+                bot, await bot.container.punishments.find_ban_by_id(71), actor, **kwargs
             )
         elif action == "shorten":
             await perform_shorten_ban(bot, 71, NOW + timedelta(days=1), actor, **kwargs)
@@ -334,7 +334,7 @@ async def test_real_mutation_without_completion_audit_remains_uncertain(kind):
         if kind == "appeal":
             await perform_unban(
                 bot,
-                await bot.store.find_ban_by_id(71),
+                await bot.container.punishments.find_ban_by_id(71),
                 service.actor(member()),
                 **context(claimed),
             )

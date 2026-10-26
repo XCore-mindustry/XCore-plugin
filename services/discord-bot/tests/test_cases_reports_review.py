@@ -254,7 +254,7 @@ async def test_unknown_subject_claims_unique_key_in_guarded_checkpoint_before_mu
 ):
     service, db, bot = await reports_core()
     _, case = await panel(service, bot, {"who": "unknown", "what": "grief"})
-    original = bot.store.upsert_mute
+    original = bot.container.punishments.upsert_mute
 
     async def checked(**kwargs):
         current = await service.get(case.number)
@@ -266,7 +266,7 @@ async def test_unknown_subject_claims_unique_key_in_guarded_checkpoint_before_mu
         assert len(db["cases"].docs) == 1
         return await original(**kwargs)
 
-    monkeypatch.setattr(bot.store, "upsert_mute", checked)
+    monkeypatch.setattr(bot.container.punishments, "upsert_mute", checked)
     closed = await sanction(service, case, "mute")
     assert (
         closed.dedup_key == f"report:{TARGET_UUID}"
@@ -502,7 +502,7 @@ async def test_panel_reporter_merged_during_real_action_gets_thread_before_close
     service, _, bot = await reports_core()
     case = await open_report(service)
     started, proceed = asyncio.Event(), asyncio.Event()
-    upsert = bot.store.upsert_mute
+    upsert = bot.container.punishments.upsert_mute
 
     async def blocked(**kwargs):
         assert (await service.get(case.number)).pending_action
@@ -510,7 +510,7 @@ async def test_panel_reporter_merged_during_real_action_gets_thread_before_close
         await proceed.wait()
         return await upsert(**kwargs)
 
-    monkeypatch.setattr(bot.store, "upsert_mute", blocked)
+    monkeypatch.setattr(bot.container.punishments, "upsert_mute", blocked)
     task = asyncio.create_task(sanction(service, case, "mute"))
     await asyncio.wait_for(started.wait(), 2)
     try:

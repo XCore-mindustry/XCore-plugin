@@ -110,7 +110,7 @@ async def test_the_evidence_posts_chat_and_a_block_summary_without_a_configured_
 
 async def test_current_ban_and_mute_are_shown_as_in_force():
     service, _, bot = await reports_core()
-    await service.player_store.bot.store.upsert_mute(
+    await service.punishments.upsert_mute(
         uuid=TARGET_UUID,
         pid=-5,
         name="Target",

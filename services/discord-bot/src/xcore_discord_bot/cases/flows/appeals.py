@@ -156,7 +156,7 @@ async def _checked(service, ban) -> BanRecord | None:
     if not _active(current, service.now()) or not _same_subject(ban, current):
         return None
     if current.ban_id is None:
-        assigned = await service.player_store.ensure_ban_id(
+        assigned = await service.punishments.ensure_ban_id(
             uuid=current.uuid or "", ip=current.ip
         )
         if (
@@ -180,7 +180,7 @@ async def _checked(service, ban) -> BanRecord | None:
 async def _lookup(service, reference: str) -> tuple[BanRecord | None, str]:
     kind, number = parse_reference(reference)
     if kind == "ban_id":
-        ban = await service.player_store.find_ban_by_id(number)
+        ban = await service.punishments.find_ban_by_id(number)
         # An existing expired/malformed ban number must not silently become a PID.
         if ban is not None:
             return await _checked(service, ban), kind
@@ -189,7 +189,7 @@ async def _lookup(service, reference: str) -> tuple[BanRecord | None, str]:
     player = await service.player_store.find_player_by_pid(number)
     if not _player_valid(player, pid=number):
         return None, "pid"
-    ban = await service.player_store.find_ban(
+    ban = await service.punishments.find_ban(
         uuid=player.uuid, ip=player.ip or player.last_ip
     )
     return await _checked(service, ban), "pid"
@@ -278,7 +278,7 @@ async def _submit(
     linked = await _linked(service, str(user.id))
     if choice:
         ban = await _checked(
-            service, await service.player_store.find_ban_by_id(choice.ban_id)
+            service, await service.punishments.find_ban_by_id(choice.ban_id)
         )
         lookup = "link"
         if ban is None or ban.ban_id != choice.ban_id or not _same_subject(choice, ban):
@@ -447,7 +447,7 @@ async def panel_handler(context: PanelContext):
     for player in await _linked(context.service, str(context.interaction.user.id)):
         ban = await _checked(
             context.service,
-            await context.service.player_store.find_ban(
+            await context.service.punishments.find_ban(
                 uuid=player.uuid, ip=player.ip or player.last_ip
             ),
         )
@@ -537,7 +537,7 @@ async def _current(context, claimed):
         or claimed.dedup_key != f"appeal:{ban_id}"
     ):
         raise ActionFailed(t(context.locale, "appeals-stale"))
-    ban = await _checked(service, await service.player_store.find_ban_by_id(ban_id))
+    ban = await _checked(service, await service.punishments.find_ban_by_id(ban_id))
     reference = claimed.payload.get("ban_reference", {})
     if (
         ban is None
@@ -660,7 +660,7 @@ async def shorten(context):
 
 async def history(context):
     # Stored issuer conflict already checked by core; current issuer is checked when present.
-    current = await context.service.player_store.find_ban_by_id(
+    current = await context.service.punishments.find_ban_by_id(
         context.case.payload["ban_id"]
     )
     if current is not None:

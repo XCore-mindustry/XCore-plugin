@@ -262,7 +262,9 @@ async def cmd_unban(
     ):
         return
 
-    ban_doc = await bot.store.find_ban(uuid=uuid_value or "", ip=ip_value)
+    ban_doc = await bot.container.punishments.find_ban(
+        uuid=uuid_value or "", ip=ip_value
+    )
     # Keep the command's player snapshot for its audit and reply.
     action_ban = (
         replace(ban_doc, uuid=uuid_value, ip=ip_value)
@@ -384,7 +386,7 @@ async def cmd_mute(
         requester_id=interaction.user.id,
         uuid=uuid_value,
         player_name=player_name,
-        delete_mute=bot.store.delete_mute,
+        delete_mute=bot.container.punishments.delete_mute,
     )
     await interaction.response.send_message(
         result.message,
@@ -418,8 +420,8 @@ async def cmd_unmute(
     ):
         return
 
-    mute_doc = await bot.store.find_mute(uuid=uuid_value)
-    deleted = await bot.store.delete_mute(uuid=uuid_value)
+    mute_doc = await bot.container.punishments.find_mute(uuid=uuid_value)
+    deleted = await bot.container.punishments.delete_mute(uuid=uuid_value)
     if deleted == 0:
         await interaction.response.send_message(MSG_NO_ACTIVE_MUTE, ephemeral=True)
         return
