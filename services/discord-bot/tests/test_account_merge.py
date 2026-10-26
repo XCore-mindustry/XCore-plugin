@@ -9,7 +9,7 @@ import discord
 import pytest
 from backends import GameServer, connected_store, real_bot
 from bot_fakes import make_settings
-from cases_fakes import Collection, Database
+from mongo_fakes import Collection, Database
 from pymongo.errors import OperationFailure, PyMongoError
 
 from xcore_discord_bot.account_merge_store import AccountMergeStore

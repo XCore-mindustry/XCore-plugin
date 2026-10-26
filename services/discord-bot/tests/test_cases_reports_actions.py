@@ -63,7 +63,7 @@ async def test_ban_from_the_card_bans_with_the_case_and_tells_every_reporter():
     closed = await sanction(service, case, "ban")
     assert closed.status == CaseStatus.RESOLVED
     resolution = closed.resolution
-    [ban] = bot.mutations["bans"].docs
+    [ban] = db["bans"].docs
     assert ban["uuid"] == TARGET_UUID and ban["case_number"] == case.number
     assert resolution.code == "banned" and resolution.ban_id == ban["ban_id"]
     assert resolution.duration_ms == 86_400_000
@@ -92,7 +92,7 @@ async def test_mute_from_the_card_mutes_with_the_case_in_its_own_log_field():
     closed = await sanction(service, case, "mute", duration="2h")
     assert closed.resolution.code == "muted"
     assert closed.resolution.duration_ms == 7_200_000
-    [mute] = bot.mutations["mutes"].docs
+    [mute] = db["mutes"].docs
     assert mute["case_number"] == case.number
     [audit] = [row for row in db["moderation_audit"].docs if row["action"] == "MUTE"]
     assert audit["details"]["extra"]["case"] == str(case.number)
@@ -135,14 +135,14 @@ async def test_a_rejection_tells_every_reporter_why_by_its_code(code):
     key = "reports-outcome-" + code.replace("_", "-")
     assert bot.users[201].messages == [t("uk", key, number=case.number)]
     assert "Staff 101" not in bot.users[201].messages[0]
-    assert not bot.mutations["bans"].docs and not bot.mutations["mutes"].docs
+    assert not db["bans"].docs and not db["mutes"].docs
 
 
 @pytest.mark.parametrize(
     "staff", [201, 203, 202], ids=["opener", "co_opener", "subject"]
 )
 async def test_a_staff_member_cannot_act_on_a_report_by_or_about_them(staff):
-    service, _, bot = await reports_core()
+    service, db, _ = await reports_core()
     move(service, SECOND_UUID, discord_id="203")
     case = await two_reporters(service)
     assert case.co_openers[0]["discord_id"] == "203"
@@ -150,21 +150,21 @@ async def test_a_staff_member_cannot_act_on_a_report_by_or_about_them(staff):
     for verb in ("take", "ban", "mute", "history", "reject"):
         with pytest.raises(AccessDenied):
             await act(service, case, verb, user=member(staff, (10,)), values=values)
-    assert not bot.mutations["bans"].docs and not bot.mutations["mutes"].docs
+    assert not db["bans"].docs and not db["mutes"].docs
     assert (await service.get(case.number)).status == CaseStatus.OPEN
 
 
 async def test_another_player_id_in_the_form_is_refused_for_a_known_subject():
-    service, _, bot = await reports_core()
+    service, db, _ = await reports_core()
     case = await open_report(service)
     with pytest.raises(ActionFailed) as refused:
         await sanction(service, case, "ban", pid="7")
     assert refused.value.text == t("en", "reports-error-other-player")
-    assert not bot.mutations["bans"].docs
+    assert not db["bans"].docs
 
 
 async def test_an_unresolved_subject_is_set_by_the_player_id_of_the_ban_form():
-    service, _, bot = await reports_core()
+    service, db, bot = await reports_core()
     _, case = await panel(service, bot, {"who": "Nobody Known", "what": "grief"})
     assert reports.UNRESOLVED in case.flags and case.subject is None
     assert [
@@ -177,15 +177,15 @@ async def test_an_unresolved_subject_is_set_by_the_player_id_of_the_ban_form():
     assert closed.resolution.code == "banned"
     assert closed.subject.player_uuid == TARGET_UUID
     assert reports.UNRESOLVED not in closed.flags
-    assert bot.mutations["bans"].docs[0]["case_number"] == case.number
+    assert db["bans"].docs[0]["case_number"] == case.number
 
 
 async def test_an_unresolved_subject_that_is_the_staff_member_is_refused():
-    service, _, bot = await reports_core()
+    service, db, bot = await reports_core()
     _, case = await panel(service, bot, {"who": "Nobody Known", "what": "grief"})
     with pytest.raises(AccessDenied):
         await sanction(service, case, "ban", pid="-5", user=member(202, (10,)))
-    assert not bot.mutations["bans"].docs
+    assert not db["bans"].docs
     current = await service.get(case.number)
     assert current.actionable and current.pending_action is None
 
@@ -193,7 +193,7 @@ async def test_an_unresolved_subject_that_is_the_staff_member_is_refused():
 async def test_a_crash_after_the_ban_is_finished_from_the_audit_without_a_second_ban(
     monkeypatch,
 ):
-    service, db, bot = await reports_core()
+    service, db, _ = await reports_core()
     case = await open_report(service)
     finish = service.actions._finish
     calls = []
@@ -212,9 +212,9 @@ async def test_a_crash_after_the_ban_is_finished_from_the_audit_without_a_second
     await reconcile_cases(service)
     closed = await service.get(case.number)
     assert closed.status == CaseStatus.RESOLVED and closed.resolution.code == "banned"
-    assert len(bot.mutations["bans"].docs) == 1
+    assert len(db["bans"].docs) == 1
     assert len([r for r in db["moderation_audit"].docs if r["action"] == "BAN"]) == 1
-    assert closed.resolution.ban_id == bot.mutations["bans"].docs[0]["ban_id"]
+    assert closed.resolution.ban_id == db["bans"].docs[0]["ban_id"]
     assert set(notices(db, "report_resolved")) == {REPORTER_UUID}
 
 

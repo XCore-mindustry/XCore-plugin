@@ -112,14 +112,15 @@ async def test_no_available_badges_explained(allowlist, owned):
 
 async def test_explicit_multiple_accounts_signed_zero_pid_and_bounded_pages():
     rows = [player_row(i + 1, pid=i - 1) for i in range(28)]
-    service, _, bot, mutations, *_ = await badge_core(rows=rows)
+    service, db, bot, *_ = await badge_core(rows=rows)
     click = Interaction(bot, user=member(42, ()))
     await PanelButton(CaseKind.BADGE).callback(click)
     view = last_view(click)
+    # The store lists the newest account (the highest pid) first.
     assert len(view.select.options) == 25
     assert (
-        "ID -1" in view.select.options[0].label
-        and "ID 0" in view.select.options[1].label
+        "ID 26" in view.select.options[0].label
+        and "ID 25" in view.select.options[1].label
     )
     assert all(
         p["uuid"] not in str([(o.label, o.value) for o in view.options]) for p in rows
@@ -128,13 +129,18 @@ async def test_explicit_multiple_accounts_signed_zero_pid_and_bounded_pages():
     forged = await choose(view, bot, "27")
     assert forged.events[0][1] == t("en", "cases-form-invalid") and not view.used
     await view.next.callback(Interaction(bot, user=member(42, ())))
-    assert len(view.select.options) == 3 and view.next.disabled
+    assert view.next.disabled
+    assert [option.label.rsplit(" · ", 1)[1] for option in view.select.options] == [
+        "ID 1",
+        "ID 0",
+        "ID -1",
+    ]
     selected = await choose(view, bot, "27")
     form_click = await choose(last_view(selected), bot, "map-maker")
     await submit_form(bot, form_click.events[0][1])
     case = await service.store.by_submission("discord:700")
-    assert case.subject.player_uuid == mutations["players"].docs[27]["uuid"]
-    assert case.subject.player_pid == 26 and case.opener.discord_id == "42"
+    assert case.subject.player_uuid == db["players"].docs[0]["uuid"]
+    assert case.subject.player_pid == -1 and case.opener.discord_id == "42"
 
 
 @pytest.mark.parametrize("kind", [CaseKind.BADGE, CaseKind.APPEAL])
@@ -234,14 +240,14 @@ async def test_private_choice_and_modal_reject_forgery_stale_disabled_blackliste
     ],
 )
 async def test_submit_revalidates_current_state(change, key):
-    service, db, bot, mutations, *_ = await badge_core(cases_blacklist_role_id=90)
+    service, db, bot, *_ = await badge_core(cases_blacklist_role_id=90)
     form = await badge_form(bot)
     user = member(42, ())
-    row = mutations["players"].docs[0]
+    row = db["players"].docs[0]
     if change == "unlink":
         row["discord_id"] = "43"
     elif change == "disappear":
-        mutations["players"].docs.clear()
+        db["players"].docs.clear()
     elif change == "owned":
         row["unlocked_badges"] = ["map-maker"]
     elif change == "allowlist":
@@ -258,15 +264,15 @@ async def test_submit_revalidates_current_state(change, key):
 
 
 async def test_submit_refuses_stale_link_list_and_other_account_uuid():
-    service, db, bot, mutations, *_ = await badge_core(
+    service, db, bot, *_ = await badge_core(
         rows=[player_row(), player_row(2, discord_id="43")]
     )
     form = await badge_form(bot)
     snapshot = await service.player_store.find_player_by_uuid(
-        mutations["players"].docs[0]["uuid"]
+        db["players"].docs[0]["uuid"]
     )
     service.player_store.find_players_by_discord_id = AsyncMock(return_value=[snapshot])
-    mutations["players"].docs[0]["discord_id"] = "43"
+    db["players"].docs[0]["discord_id"] = "43"
     refused = await submit_form(bot, form)
     assert (
         refused.events[-1][1] == t("en", "badges-link-needed")
@@ -275,7 +281,7 @@ async def test_submit_refuses_stale_link_list_and_other_account_uuid():
 
 
 async def test_duplicate_open_cooldown_cap_and_same_interaction_redelivery():
-    service, db, bot, mutations, *_ = await badge_core(cases_open_cooldown_seconds=0)
+    service, db, bot, *_ = await badge_core(cases_open_cooldown_seconds=0)
     form = await badge_form(bot)
     await submit_form(bot, form)
     duplicate = await submit_form(bot, form, id=701)
@@ -284,7 +290,7 @@ async def test_duplicate_open_cooldown_cap_and_same_interaction_redelivery():
     service.settings = service.settings.model_copy(
         update={"cases_open_cooldown_seconds": 60, "cases_max_open_per_user": 1}
     )
-    mutations["players"].docs[0]["unlocked_badges"] = ["map-maker"]
+    db["players"].docs[0]["unlocked_badges"] = ["map-maker"]
     retry = await submit_form(bot, form)
     assert retry.events[-1][1].startswith(
         t("en", "cases-registered", number=db["cases"].docs[0]["_id"])
@@ -303,12 +309,10 @@ async def test_duplicate_open_cooldown_cap_and_same_interaction_redelivery():
 
 
 async def test_case_snapshot_card_sanitized_and_core_owns_tags_and_user_thread():
-    service, _, bot, mutations, *_ = await badge_core(
-        rows=[player_row(owned=("veteran",))]
-    )
+    service, db, bot, *_ = await badge_core(rows=[player_row(owned=("veteran",))])
     form = await badge_form(bot)
-    uuid = mutations["players"].docs[0]["uuid"]
-    mutations["players"].docs[0]["nickname"] = "New name"
+    uuid = db["players"].docs[0]["uuid"]
+    db["players"].docs[0]["nickname"] = "New name"
     text = f"{uuid} 203.0.113.9 2001:db8::1 @everyone [red]maps"
     await submit_form(bot, form, statement=text)
     case = await service.store.by_submission("discord:700")
@@ -343,9 +347,9 @@ async def test_case_snapshot_card_sanitized_and_core_owns_tags_and_user_thread()
 async def test_persistent_grant_real_helper_confirmed_audit_and_inventory_recovery(
     already_owned, inventory_failure
 ):
-    service, db, bot, mutations, bus, *_ = await badge_core()
+    service, db, bot, bus, *_ = await badge_core()
     case = await opened_badge(service, bot)
-    row = mutations["players"].docs[0]
+    row = db["players"].docs[0]
     if already_owned:
         row["unlocked_badges"] = ["map-maker"]
     if inventory_failure:
@@ -387,10 +391,10 @@ async def test_persistent_grant_real_helper_confirmed_audit_and_inventory_recove
     "failure", ["missing", "changed_subject", "unconfirmed", "audit", "allowlist"]
 )
 async def test_grant_failure_never_false_closes(failure):
-    service, db, bot, mutations, *_ = await badge_core()
+    service, db, bot, *_ = await badge_core()
     case = await opened_badge(service, bot)
     if failure == "missing":
-        mutations["players"].docs.clear()
+        db["players"].docs.clear()
     elif failure == "changed_subject":
         case = await service.store.cas(
             case, set_fields={"subject.player_uuid": "other-player"}

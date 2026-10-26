@@ -162,7 +162,7 @@ RAW = "RAW SENSITIVE COMPLAINT 203.0.113.9 private-1="
 async def test_raw_complaint_exception_text_never_enters_logs_or_public_channels(
     stage, caplog
 ):
-    service, _, bot = await complaint_core()
+    service, db, bot = await complaint_core()
     caplog.set_level(logging.ERROR)
     fail = AsyncMock(side_effect=RuntimeError(RAW))
     if stage == "submit":
@@ -213,7 +213,9 @@ async def test_raw_complaint_exception_text_never_enters_logs_or_public_channels
             )
         elif stage == "wakeup":
             service.transport.publish_case_notice = fail
-            service.player_store.by_uuid["private-1="].online_server = "test"
+            await db["players"].update_one(
+                {"uuid": "private-1="}, {"$set": {"online_server": "test"}}
+            )
             await act(service, case, "resolve", values={"note": RAW})
     assert caplog.records, stage
     assert RAW not in caplog.text and "private-1=" not in caplog.text

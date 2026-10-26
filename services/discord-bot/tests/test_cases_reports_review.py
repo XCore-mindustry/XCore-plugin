@@ -139,7 +139,7 @@ async def test_case_sanction_log_redacts_raw_nickname_reason_and_actor_once(verb
         },
     )
     assert closed.resolution.audit_id
-    rows = bot.mutations["bans" if verb == "ban" else "mutes"].docs
+    rows = db["bans" if verb == "ban" else "mutes"].docs
     assert (
         len(rows) == 1
         and rows[0]["name"] == raw_name
@@ -210,7 +210,7 @@ async def test_legacy_noncase_log_preserves_existing_presentation(verb):
 
 @pytest.mark.parametrize("verb", ["ban", "mute"])
 async def test_unresolved_subject_cannot_sanction_an_already_active_report(verb):
-    service, _, bot = await reports_core()
+    service, db, bot = await reports_core()
     known = await open_report(service)
     _, unknown = await panel(service, bot, {"who": "unknown", "what": "grief"})
     with pytest.raises(ActionFailed) as refused:
@@ -224,11 +224,11 @@ async def test_unresolved_subject_cannot_sanction_an_already_active_report(verb)
     assert (
         await service.store.by_dedup(CaseKind.REPORT, f"report:{TARGET_UUID}")
     ).number == known.number
-    assert not bot.mutations["bans"].docs and not bot.mutations["mutes"].docs
+    assert not db["bans"].docs and not db["mutes"].docs
 
 
 async def test_report_opened_on_the_player_during_a_ban_is_named(monkeypatch):
-    service, _, bot = await reports_core()
+    service, db, bot = await reports_core()
     _, unknown = await panel(service, bot, {"who": "unknown", "what": "grief"})
     other = await open_report(service)
     lookup = service.store.by_dedup
@@ -246,7 +246,7 @@ async def test_report_opened_on_the_player_during_a_ban_is_named(monkeypatch):
     assert refused.value.text == t(
         "en", "reports-error-open-report", number=other.number
     )
-    assert not bot.mutations["bans"].docs
+    assert not db["bans"].docs
 
 
 async def test_unknown_subject_claims_unique_key_in_guarded_checkpoint_before_mutation(
@@ -268,10 +268,7 @@ async def test_unknown_subject_claims_unique_key_in_guarded_checkpoint_before_mu
 
     monkeypatch.setattr(bot.container.punishments, "upsert_mute", checked)
     closed = await sanction(service, case, "mute")
-    assert (
-        closed.dedup_key == f"report:{TARGET_UUID}"
-        and len(bot.mutations["mutes"].docs) == 1
-    )
+    assert closed.dedup_key == f"report:{TARGET_UUID}" and len(db["mutes"].docs) == 1
 
 
 async def test_subject_command_refuses_active_dedup_collision():
@@ -307,7 +304,7 @@ async def test_subject_command_refuses_active_dedup_collision():
 async def test_current_actor_links_block_every_report_verb_even_for_headstaff(
     uuid, verb
 ):
-    service, _, bot = await reports_core()
+    service, db, _ = await reports_core()
     for involved in (REPORTER_UUID, SECOND_UUID, TARGET_UUID):
         move(service, involved, discord_id=None)
     case = await open_report(service)
@@ -334,12 +331,12 @@ async def test_current_actor_links_block_every_report_verb_even_for_headstaff(
             )
         else:
             await act(service, case, verb, user=staff, values=values)
-    assert not bot.mutations["bans"].docs and not bot.mutations["mutes"].docs
+    assert not db["bans"].docs and not db["mutes"].docs
 
 
 @pytest.mark.parametrize("verb", ["ban", "mute", "reject"])
 async def test_link_after_io_free_precheck_is_refused_on_real_modal_submit(verb):
-    service, _, bot = await reports_core()
+    service, db, bot = await reports_core()
     move(service, TARGET_UUID, discord_id=None)
     case = await open_report(service)
     staff = member(STAFF, (10, 20))
@@ -363,14 +360,14 @@ async def test_link_after_io_free_precheck_is_refused_on_real_modal_submit(verb)
     await modal.on_submit(interaction)
     assert interaction.followup.texts() == [t("en", "error-not-allowed")]
     assert (await service.get(case.number)).status == CaseStatus.OPEN
-    assert not bot.mutations["bans"].docs and not bot.mutations["mutes"].docs
+    assert not db["bans"].docs and not db["mutes"].docs
 
 
 @pytest.mark.parametrize("verb", ["ban", "mute"])
 async def test_link_between_modal_and_requester_bound_confirmation_blocks_mutation(
     verb,
 ):
-    service, _, bot = await reports_core()
+    service, db, bot = await reports_core()
     move(service, TARGET_UUID, discord_id=None)
     case = await open_report(service)
     _, interaction = await act(
@@ -381,14 +378,14 @@ async def test_link_between_modal_and_requester_bound_confirmation_blocks_mutati
     confirmation = Interaction(bot)
     await view.children[0].callback(confirmation)
     assert confirmation.followup.texts() == [t("en", "error-not-allowed")]
-    assert not bot.mutations["bans"].docs and not bot.mutations["mutes"].docs
+    assert not db["bans"].docs and not db["mutes"].docs
 
 
 @pytest.mark.parametrize("known", [False, True])
 async def test_current_link_is_checked_after_fresh_subject_under_guard(
     monkeypatch, known
 ):
-    service, _, bot = await reports_core()
+    service, db, bot = await reports_core()
     move(service, TARGET_UUID, discord_id=None)
     if known:
         case = await open_report(service)
@@ -404,7 +401,7 @@ async def test_current_link_is_checked_after_fresh_subject_under_guard(
     monkeypatch.setattr(service.player_store, "find_player_by_pid", linking)
     with pytest.raises(AccessDenied):
         await sanction(service, case, "mute")
-    assert not bot.mutations["mutes"].docs
+    assert not db["mutes"].docs
     assert (await service.get(case.number)).pending_action is None
 
 

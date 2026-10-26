@@ -77,7 +77,7 @@ async def test_disabled_flow_import_startup_panel_and_no_io():
 
 
 async def test_one_linked_modal_first_response_no_io_and_registered_threads():
-    service, _db, bot, mutations, *_ = await appeal_core()
+    service, db, bot, *_ = await appeal_core()
     interaction = Interaction(bot, user=member(42, ()))
     original = service.player_store.find_players_by_discord_id
 
@@ -109,7 +109,7 @@ async def test_one_linked_modal_first_response_no_io_and_registered_threads():
         child.verb for child in case_view(service.registry, case, "en").children
     } == {"take", "unban", "shorten", "history", "reject"}
     assert "issued_at" not in case.payload["ban_snapshot"]
-    assert len(mutations["bans"].docs) == 1
+    assert len(db["bans"].docs) == 1
 
 
 async def test_paginated_all_linked_bans_dedup_and_private_selection():
@@ -136,12 +136,13 @@ async def test_paginated_all_linked_bans_dedup_and_private_selection():
         "private-" not in str(o.to_dict()) and "203.0.113" not in str(o.to_dict())
         for o in view.select.options
     )
+    # The store lists the newest account first, so the last page holds the three oldest.
     await view._next(Interaction(bot, user=member(42, ())))
     assert len(view.select.options) == 3
     view.select._values = ["25"]
     selected = Interaction(bot, user=member(42, ()))
     await view._chosen(selected)
-    assert selected.events[0][0] == "modal" and "B-126" in selected.events[0][1].title
+    assert selected.events[0][0] == "modal" and "B-103" in selected.events[0][1].title
 
 
 @pytest.mark.parametrize(
@@ -201,39 +202,41 @@ async def test_bad_or_expired_records_do_not_create_or_leak(change):
 
 
 async def test_lazy_id_assignment_is_idempotent():
-    service, _, bot, mutations, *_ = await appeal_core(bans=[ban_row(ban_id=None)])
+    service, db, bot, *_ = await appeal_core(bans=[ban_row(ban_id=None)])
     first = await form(bot)
     second = await form(bot)
-    assert first.title == second.title and mutations["bans"].docs[0]["ban_id"] == 1
+    assert first.title == second.title and db["bans"].docs[0]["ban_id"] == 1
     case = await opened(service, bot)
-    assert case.payload["ban_id"] == 1 and mutations["counters"].docs == [
-        {"_id": "ban_id", "seq": 1}
-    ]
+    assert case.payload["ban_id"] == 1
+    assert await db["counters"].find_one({"_id": "ban_id"}) == {
+        "_id": "ban_id",
+        "seq": 1,
+    }
 
 
 async def test_cached_choice_does_not_appeal_replacement_or_changed_subject():
-    _service, db, bot, mutations, *_ = await appeal_core()
+    _service, db, bot, *_ = await appeal_core()
     modal = await form(bot)
-    mutations["bans"].docs[0]["ban_id"] = 999
+    db["bans"].docs[0]["ban_id"] = 999
     result = await submit(bot, modal)
     assert not db["cases"].docs and result.events[-1][1] == t("en", "appeals-no-active")
-    mutations["bans"].docs[0]["ban_id"] = 101
-    mutations["bans"].docs[0]["uuid"] = "replacement"
+    db["bans"].docs[0]["ban_id"] = 101
+    db["bans"].docs[0]["uuid"] = "replacement"
     await submit(bot, modal, id=701)
     assert not db["cases"].docs
 
 
 async def test_unlink_during_form_changes_to_generic_unverified_submission():
-    service, _, bot, mutations, *_ = await appeal_core()
+    service, db, bot, *_ = await appeal_core()
     modal = await form(bot)
-    mutations["players"].docs[0]["discord_id"] = "43"
+    db["players"].docs[0]["discord_id"] = "43"
     await submit(bot, modal)
     case = await service.store.by_submission("discord:700")
     assert case.opener.player_uuid is None and "unverified_identity" in case.flags
 
 
 async def test_dedup_existing_number_and_same_submission_before_cooldown():
-    service, _, bot, mutations, *_ = await appeal_core()
+    service, db, bot, *_ = await appeal_core()
     modal = await form(bot)
     await submit(bot, modal)
     result = await submit(bot, modal, id=701)
@@ -245,7 +248,7 @@ async def test_dedup_existing_number_and_same_submission_before_cooldown():
     service.settings = service.settings.model_copy(
         update={"cases_open_cooldown_seconds": 600}
     )
-    mutations["bans"].docs.clear()
+    db["bans"].docs.clear()
     retry = await submit(bot, modal)
     assert (
         f"#{(await service.store.by_submission('discord:700')).number}"
@@ -301,9 +304,7 @@ async def test_rejection_cooldown_only_same_ban_recent_closed_date(
 async def test_unverified_privacy_modal_result_threads_dm_outcomes(
     locale, code, resolution
 ):
-    service, db, bot, _mutations, _bus, _ = await appeal_core(
-        players=[player_row(discord_id=None)]
-    )
+    service, db, bot, _bus, _ = await appeal_core(players=[player_row(discord_id=None)])
     modal = await form(bot, locale=locale)
     interaction = await submit(bot, modal, locale=locale)
     case = await service.store.by_submission("discord:700")
@@ -359,7 +360,7 @@ async def test_unverified_privacy_modal_result_threads_dm_outcomes(
 async def test_issuer_blocked_every_action_head_admin_no_override(issuer_mode, verb):
     players = [player_row(), player_row(2, discord_id="99")]
     players[1]["nickname"] = "Issuer"
-    service, db, bot, mutations, *_ = await appeal_core(
+    service, db, bot, *_ = await appeal_core(
         players=players,
         bans=[ban_row(admin_discord_id="99" if issuer_mode == "id" else None)],
     )
@@ -373,19 +374,19 @@ async def test_issuer_blocked_every_action_head_admin_no_override(issuer_mode, v
             values={"confirmed": "yes", "duration": "1h", "reason_text": "No"},
         )
     assert (await service.get(case.number)).status == CaseStatus.OPEN
-    assert not db["moderation_audit"].docs and len(mutations["bans"].docs) == 1
+    assert not db["moderation_audit"].docs and len(db["bans"].docs) == 1
 
 
 @pytest.mark.parametrize("verb", ["shorten", "reject"])
 @pytest.mark.parametrize("issuer_mode", ["id", "name"])
 async def test_issuer_blocked_modal_submission_after_role_recheck(verb, issuer_mode):
-    service, db, bot, mutations, *_ = await appeal_core(
+    service, db, bot, *_ = await appeal_core(
         players=[player_row(), {**player_row(2, discord_id="99"), "nickname": "Issuer"}]
     )
     case = await opened(service, bot)
     interaction = Interaction(bot, user=member(99, (10, 20)))
     # Open form before a change of issuer; submission must use the current case snapshot.
-    mutations["bans"].docs[0]["admin_discord_id"] = "88"
+    db["bans"].docs[0]["admin_discord_id"] = "88"
     await service.checkpoint(
         case.number, set_fields={"payload.ban_snapshot.admin_discord_id": "88"}
     )
@@ -411,7 +412,7 @@ async def test_issuer_blocked_modal_submission_after_role_recheck(verb, issuer_m
 
 
 async def test_unknown_issuer_keeps_name_conflict_and_staff_card_actual_dates_sanitized():
-    service, _, bot, _mutations, *_ = await appeal_core(
+    service, _, bot, *_ = await appeal_core(
         bans=[ban_row(admin_discord_id=None, issued_at=NOW - timedelta(days=1))]
     )
     case = await opened(

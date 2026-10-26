@@ -16,8 +16,9 @@ flow per `CaseKind`. A flow is switched on by its setting (`CASES_REPORTS_ENABLE
 if the start-up checks pass; until then none of its hooks, buttons or events run.
 
 A flow also adds `i18n/locales/{en,ru,uk}/<flow>.ftl` (ids are global within a locale, so prefix
-them: `reports-...`) and its own tests. `tests/cases_fakes.py` has the fakes (`core(flow=...)`),
-`tests/cases_dummy_flow.py` a complete flow used by the core's tests.
+them: `reports-...`) and its own tests. `core(flow=...)` in `tests/cases_fakes.py` runs the case
+service on the real `MongoStore` and `RedisTransport` over in-memory backends, with a fake Discord;
+`tests/cases_dummy_flow.py` is a complete flow used by the core's tests.
 
 ```python
 Flow(

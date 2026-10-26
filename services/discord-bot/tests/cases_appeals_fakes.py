@@ -1,9 +1,7 @@
-"""B6 fakes run real staff helpers and Mongo mutation guards; no external services."""
+"""B6 fakes: the appeal flow on the real staff helpers, store and bus; no external services."""
 
-from bot_fakes import FAMILY_BUSES
-from cases_action_fakes import Claims, Players, mirror_audits
-from cases_fakes import NOW, Interaction, core, member
-from test_staff_actions import _action_bot
+from cases_action_fakes import staff_core
+from cases_fakes import NOW, Interaction, member
 
 from xcore_discord_bot.cases.flows.appeals import APPEAL_FLOW
 from xcore_discord_bot.cases.model import CaseKind
@@ -44,7 +42,7 @@ def ban_row(index=1, *, pid=_DEFAULT_PID, **kwargs):
 
 
 async def appeal_core(*, players=None, bans=None, enabled=True, **settings):
-    service, database, bot = await core(
+    service, db, bot, game, log = await staff_core(
         flow=APPEAL_FLOW,
         cases_appeals_enabled=enabled,
         cases_open_cooldown_seconds=0,
@@ -52,29 +50,9 @@ async def appeal_core(*, players=None, bans=None, enabled=True, **settings):
     )
     if not enabled:
         service.registry.disable(CaseKind.APPEAL)
-    action_bot, mutations, bus, log = await _action_bot()
-    mutations["players"].docs = [player_row()] if players is None else players
-    mutations["bans"].docs = [ban_row()] if bans is None else bans
-    action_bot.store.now_utc = lambda: NOW
-    # Same raw bans as the real Mongo helper. Core cases/audits retain their richer fakes.
-    database.collections["bans"] = mutations["bans"]
-    service.player_store = Players(action_bot, mutations)
-    service.punishments = action_bot.container.punishments
-    service.notifier.find_player = service.player_store.find_player_by_uuid
-    service.claims = Claims()
-    bot.settings = service.settings.model_copy(
-        update={"discord_bans_channel_id": 10, "discord_mutes_channel_id": 20}
-    )
-    bot.store = action_bot.store
-    bot.bus = action_bot.bus
-    for family in FAMILY_BUSES:
-        setattr(bot.container, family, getattr(action_bot.container, family))
-    bot.container.punishments = action_bot.container.punishments
-    bot.container.audit = action_bot.container.audit
-    bot.resolve_channel = action_bot.resolve_channel
-
-    mirror_audits(bot, action_bot, database, mutations)
-    return service, database, bot, mutations, bus, log
+    db["players"].docs = [player_row()] if players is None else players
+    db["bans"].docs = [ban_row()] if bans is None else bans
+    return service, db, bot, game, log
 
 
 async def form(bot, *, choice=None, user=None, locale=None):

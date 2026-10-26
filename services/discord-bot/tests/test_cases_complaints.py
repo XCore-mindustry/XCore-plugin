@@ -74,7 +74,7 @@ async def test_complainant_history_multiple_accounts_and_safe_card():
     p1, p2 = player(1), player(2)
     rows = [
         audit(action="BAN"),
-        audit(index=2, action="MUTE", target=p2.uuid),
+        audit(index=2, action="MUTE", target=p2["uuid"]),
         audit(index=3, action="KICK", actor="88"),
         audit(action="WARN", target="unrelated"),
     ]
@@ -82,7 +82,7 @@ async def test_complainant_history_multiple_accounts_and_safe_card():
     case = await opened(
         service,
         bot,
-        statement=f"Text {p1.uuid} {p2.uuid} 203.0.113.8 2001:db8::1 91da46c5-89a4-45d8-828b-e258d211dc2f",
+        statement=f"Text {p1['uuid']} {p2['uuid']} 203.0.113.8 2001:db8::1 91da46c5-89a4-45d8-828b-e258d211dc2f",
     )
     assert case.opener.player_uuid is None
     assert case.evidence["sanctions"]["bans"] == 1
@@ -97,8 +97,8 @@ async def test_complainant_history_multiple_accounts_and_safe_card():
     )
     assert "Staff member" in text and "Sanction history" in text
     for secret in (
-        p1.uuid,
-        p2.uuid,
+        p1["uuid"],
+        p2["uuid"],
         "203.0.113.8",
         "2001:db8::1",
         "91da46c5-89a4-45d8-828b-e258d211dc2f",

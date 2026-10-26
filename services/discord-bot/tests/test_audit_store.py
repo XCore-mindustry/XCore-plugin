@@ -1,7 +1,7 @@
 from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 
-from cases_fakes import Database
+from mongo_fakes import Database
 
 from xcore_discord_bot.audit_store import AuditStore
 

@@ -8,7 +8,7 @@ from unittest.mock import AsyncMock
 import pytest
 from backends import GameServer, RpcError, fail, real_bot, refuse, unplug
 from bot_fakes import make_rpc, make_settings
-from cases_fakes import Database
+from mongo_fakes import Database
 from redis.exceptions import ConnectionError as RedisConnectionError
 from test_account_merge import SOURCE_DOC, TARGET_DOC
 from xcore_protocol.generated.rating import RatingSeasonRescheduleRequestV1Operation

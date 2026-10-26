@@ -140,7 +140,7 @@ async def test_an_audit_naming_this_case_is_left_to_the_core_not_taken_as_extern
 
 
 async def test_a_sanction_during_a_card_action_is_retried_not_dropped(monkeypatch):
-    service, _, bot = await reports_core()
+    service, db, _ = await reports_core()
     case = await open_report(service)
 
     async def crash(*args, **kwargs):
@@ -161,7 +161,7 @@ async def test_a_sanction_during_a_card_action_is_retried_not_dropped(monkeypatc
     closed = await service.get(case.number)
     # The card's mute is what closed it, from the audit trail, without a second mute.
     assert closed.resolution.code == "muted" and closed.resolution.reason_code is None
-    assert len(bot.mutations["mutes"].docs) == 1
+    assert len(db["mutes"].docs) == 1
 
 
 async def test_a_closed_report_ignores_later_sanctions():

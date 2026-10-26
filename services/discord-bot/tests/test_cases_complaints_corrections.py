@@ -65,13 +65,13 @@ async def test_projection_redacts_actual_title_stale_reply_and_private_message_a
     accounts,
 ):
     linked = [player(n) for n in range(1, accounts + 1)]
-    linked[0].uuid = OPAQUE
+    linked[0]["uuid"] = OPAQUE
     for p in linked:
-        p.nickname = f"Player {p.uuid} {IP4} {IP6} {HEX_UUID}"
+        p["nickname"] = f"Player {p['uuid']} {IP4} {IP6} {HEX_UUID}"
     service, _, bot = await complaint_core(players=linked)
     author = member(42, ())
     author.display_name = (
-        "Complainant " + " ".join(p.uuid for p in linked) + f" {IP4} {IP6}"
+        "Complainant " + " ".join(p["uuid"] for p in linked) + f" {IP4} {IP6}"
     )
     await submit(
         bot,
@@ -80,7 +80,7 @@ async def test_projection_redacts_actual_title_stale_reply_and_private_message_a
         statement=f"Details {OPAQUE} {IP4} {IP6} {HEX_UUID}",
     )
     case = await service.store.by_submission("discord:700")
-    assert_private(visible(post_of(bot, case)), *[p.uuid for p in linked])
+    assert_private(visible(post_of(bot, case)), *[p["uuid"] for p in linked])
     thread = bot.channels[int(case.discord["user_thread_id"])]
     message = SimpleNamespace(
         author=author,
@@ -92,7 +92,9 @@ async def test_projection_redacts_actual_title_stale_reply_and_private_message_a
         "https://discord.com/channels/123/456/789"
         in post_of(bot, case).messages[-1].content
     )
-    assert_private(post_of(bot, case).messages[-1].content, *[p.uuid for p in linked])
+    assert_private(
+        post_of(bot, case).messages[-1].content, *[p["uuid"] for p in linked]
+    )
     senior = member(101, (20,))
     senior.display_name = f"Senior {OPAQUE} {IP4} {IP6} {HEX_UUID}"
     case = await act(service, case, "take", user=senior)
@@ -115,8 +117,7 @@ async def test_projection_redacts_actual_title_stale_reply_and_private_message_a
 async def test_projection_redacts_available_audit_actor_uuid_in_all_rows_and_followups(
     caplog,
 ):
-    linked = player()
-    linked.uuid = OPAQUE
+    linked = player(uuid=OPAQUE)
     row = audit(
         target=OPAQUE,
         reason=RAW,
@@ -532,13 +533,11 @@ async def test_latest_failed_history_survives_case_close_and_terminal_repair(out
 
 async def test_stable_actor_uuid_or_discord_history_is_bounded_unique_and_supports_later_links():
     targets = [player(1), player(2)]
-    actor1, actor2 = player(8), player(9)
-    actor1.uuid, actor2.uuid = ACTOR_UUID, OPAQUE
     rows = [
         audit(
             index=n,
             action="WARN",
-            target=targets[n % 2].uuid,
+            target=targets[n % 2]["uuid"],
             reason=f"entry {n} {ACTOR_UUID} {OPAQUE}",
             actor={
                 "discord_id": None,
@@ -578,7 +577,12 @@ async def test_stable_actor_uuid_or_discord_history_is_bounded_unique_and_suppor
         case.number, member(101, (20,)), Party(discord_id="99")
     )
     assert case.evidence["subject_actions"]["total"] == 2
-    service.player_store.by_discord["99"] = [actor1, actor2]
+    # The subject links two game accounts after the case is opened.
+    for actor in (
+        player(8, uuid=ACTOR_UUID, discord_id="99"),
+        player(9, uuid=OPAQUE, discord_id="99"),
+    ):
+        await db["players"].insert_one(actor)
     collection = db["moderation_audit"]
     original_find, original_count = collection.find, collection.count_documents
     queries, limits = [], []
@@ -608,15 +612,11 @@ async def test_stable_actor_uuid_or_discord_history_is_bounded_unique_and_suppor
     assert history["last"][1]["reason"] == "matched both"
     assert history["last"][-1]["reason"].startswith("entry 6 ")
     assert limits == [10]
-    assert all(q["target.uuid"] == {"$in": [p.uuid for p in targets]} for q in queries)
-    assert all(
-        q["$or"]
-        == [
-            {"actor.discord_id": "99"},
-            {"actor.player_uuid": {"$in": [ACTOR_UUID, OPAQUE]}},
-        ]
-        for q in queries
-    )
+    for query in queries:
+        assert set(query["target.uuid"]["$in"]) == {p["uuid"] for p in targets}
+        by_discord, by_account = query["$or"]
+        assert by_discord == {"actor.discord_id": "99"}
+        assert set(by_account["actor.player_uuid"]["$in"]) == {ACTOR_UUID, OPAQUE}
     assert_private(visible(post_of(bot, case)))
     assert_private(json.dumps(history["last"], default=str))
     assert db["moderation_audit"].docs == rows
@@ -643,8 +643,7 @@ async def test_subject_cleanup_precedes_linked_actor_lookup_even_on_link_lookup_
 async def test_full_statement_reprojected_per_deleted_replacement_post_with_no_other_copies(
     offline,
 ):
-    linked = player()
-    linked.uuid = OPAQUE
+    linked = player(uuid=OPAQUE)
     service, _, bot = await complaint_core(players=[linked])
     suffix = OPAQUE + f" {IP4} {IP6} {HEX_UUID} end"
     statement = ("long statement " * 220)[: 3000 - len(suffix)] + suffix

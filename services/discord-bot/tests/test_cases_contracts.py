@@ -88,7 +88,7 @@ async def test_merged_hook_retries_and_co_reporter_cooldown_is_enforced():
 
 async def test_issuer_linked_names_are_loaded_by_service_without_senior_override():
     flow = replace(DUMMY_FLOW, kind=CaseKind.APPEAL)
-    service, _, _ = await core(flow=flow)
+    service, db, _ = await core(flow=flow)
     case = await service.open(
         kind=CaseKind.APPEAL,
         origin=Origin("game", "appeal"),
@@ -96,12 +96,10 @@ async def test_issuer_linked_names_are_loaded_by_service_without_senior_override
         subject=SUBJECT,
         payload={"ban_snapshot": {"admin_name": "Issuer"}},
     )
-
-    async def players(discord_id):
-        assert discord_id == "101"
-        return [SimpleNamespace(nickname="Issuer", username="admin")]
-
-    service.player_store = SimpleNamespace(find_players_by_discord_id=players)
+    # Staff member 101 plays as the admin who issued the appealed ban.
+    await db["players"].insert_one(
+        {"uuid": "issuer", "pid": 3, "nickname": "Issuer", "discord_id": "101"}
+    )
     with pytest.raises(AccessDenied):
         await service.take(case.number, member(101, (10, 20)))
 
@@ -372,10 +370,9 @@ async def test_the_example_flow_of_the_contract_document_works(monkeypatch, tmp_
     spec = spec_from_file_location("xcore_discord_bot.cases.flows.example", source)
     spec.loader.exec_module(module_from_spec(spec))
     registered.enable(CaseKind.REPORT)
-    service, _, bot = await core(flow=registered.require(CaseKind.REPORT))
-    player = SimpleNamespace(uuid="subject-secret", pid=7, nickname="Griefer")
-    service.player_store.by_pid[7] = service.player_store.by_uuid["subject-secret"] = (
-        player
+    service, db, bot = await core(flow=registered.require(CaseKind.REPORT))
+    await db["players"].insert_one(
+        {"uuid": "subject-secret", "pid": 7, "nickname": "Griefer"}
     )
 
     click = Interaction(bot, user=member(42, ()))

@@ -24,14 +24,14 @@ class Attachment:
 
 
 async def map_core(**kwargs):
-    service, db, bot, mutations, bus, guild, author = await badge_core(
+    service, db, bot, game, guild, author = await badge_core(
         cases_maps_enabled=True, **kwargs
     )
     service.registry.disable(CaseKind.BADGE)
     service.registry.register(MAP_FLOW)
     service.registry.enable(CaseKind.MAP)
     bot.map_cache = {}
-    bot.bus.rpc_upload_maps = bus.rpc_upload_maps
+    bot.bus.rpc_upload_maps = game.rpc_upload_maps
     # Tests swap the upload RPC on bot.bus while a case runs.
     bot.container.servers = LiveServerRegistry()
     bot.container.servers.update_server("mini-pvp", 1, 0, 20, "v1", mode="pvp")
@@ -62,7 +62,7 @@ async def map_core(**kwargs):
     forum.all_threads.append(thread)
     bot.channels[thread.id] = thread
     starter = authored_message(bot, thread, author, attachment, id=thread.id)
-    return service, db, bot, mutations, bus, guild, author, thread, starter, attachment
+    return service, db, bot, game, guild, author, thread, starter, attachment
 
 
 def authored_message(bot, thread, author, attachment=None, *, id=None):

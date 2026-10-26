@@ -18,6 +18,19 @@ from xcore_discord_bot.cases.transport import NoCaseTransport
 from xcore_discord_bot.i18n import LocalePref, t
 
 
+async def _opener_account(db, *, language, online_server=None):
+    """The game account of the case's opener, as the plugin last saved it."""
+    await db["players"].insert_one(
+        {
+            "uuid": "opener-secret",
+            "pid": 1,
+            "nickname": "Opener",
+            "local_language": language,
+            "online_server": online_server,
+        }
+    )
+
+
 async def test_auto_preference_follows_latest_interaction_and_never_overwrites_manual():
     service, db, bot = await core(flow=DUMMY_FLOW)
     interaction = Interaction(bot, locale=discord.Locale.russian)
@@ -59,9 +72,7 @@ async def test_notice_is_durable_idempotent_and_dm_locale_is_resolved(
     if pref:
         await service.store.set_locale_pref(42, pref.locale, source=pref.source)
     if player_present:
-        service.player_store.by_uuid["opener-secret"] = SimpleNamespace(
-            language=current_language, online_server=None
-        )
+        await _opener_account(db, language=current_language)
     calls = []
 
     async def wakeup(**kwargs):
@@ -180,9 +191,7 @@ async def test_wakeup_goes_where_the_player_is_and_nowhere_when_unknown(
 ):
     service, db, _ = await core(flow=replace(DUMMY_FLOW, outcomes=None))
     case = await opened(service, source=origin)
-    service.player_store.by_uuid["opener-secret"] = SimpleNamespace(
-        language="ru", online_server=online_server
-    )
+    await _opener_account(db, language="ru", online_server=online_server)
     calls = []
 
     async def wakeup(**kwargs):

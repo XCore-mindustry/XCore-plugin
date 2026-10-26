@@ -1,8 +1,8 @@
 """The bot's real MongoStore and RedisTransport, connected to in-memory backends.
 
 Tests that need a store or a bus use these instead of a class of their own, so a method
-renamed or removed in ``src`` fails here too (#32). The store runs over the fake database in
-``cases_fakes``; the bus over fakeredis. Both go through their own ``connect()``.
+renamed or removed in ``src`` fails here too (#32). The store runs over the in-memory
+database in ``mongo_fakes``; the bus over fakeredis. Both go through their own ``connect()``.
 """
 
 from __future__ import annotations
@@ -18,9 +18,9 @@ from typing import Any, cast
 from unittest.mock import create_autospec, patch
 
 from bot_fakes import make_bot, make_settings
-from cases_fakes import Database
 from fakeredis import FakeServer
 from fakeredis.aioredis import FakeRedis
+from mongo_fakes import Database
 from xcore_protocol.generated.maps import MapsUploadResponseV1
 
 from xcore_discord_bot.bot import XCoreDiscordBot

@@ -8,7 +8,6 @@ from unittest.mock import AsyncMock
 
 import discord
 import pytest
-from cases_action_fakes import mirror_audits
 from cases_dummy_flow import DUMMY_FLOW
 from cases_fakes import NOW, core, member
 from test_ban_identity import _ban
@@ -44,7 +43,9 @@ async def setup_action(kind, *, payload=None):
     flow = replace(
         DUMMY_FLOW, kind=CaseKind(kind), panel=None, outcomes=None, on_closed=on_closed
     )
-    service, db, discord_bot = await core(flow=flow)
+    bot, db, bus, channel = await _action_bot()
+    bot.store.now_utc = lambda: NOW
+    service, _, discord_bot = await core(flow=flow, players=bot.store, bus=bot.bus)
     discord_fields = None
     if kind == "map":
         created = await discord_bot.channels[400].create_thread(
@@ -61,10 +62,7 @@ async def setup_action(kind, *, payload=None):
         payload=payload or {},
         discord=discord_fields,
     )
-    bot, mutation_db, bus, channel = await _action_bot()
-    bot.store.now_utc = lambda: NOW
-    mirror_audits(bot, bot, db, mutation_db)
-    return service, db, case, bot, mutation_db, bus, channel, closed
+    return service, db, case, bot, bus, channel, closed
 
 
 def context(claimed):
@@ -98,10 +96,10 @@ async def test_real_helpers_recover_durable_completion_without_replaying(
         if kind == "map"
         else {}
     )
-    service, db, case, bot, mutation_db, bus, channel, closed = await setup_action(
+    service, db, case, bot, bus, channel, closed = await setup_action(
         kind, payload=payload
     )
-    mutation_db["bans"].docs = [_ban(ban_id=71, expire_date=NOW + timedelta(days=7))]
+    db["bans"].docs = [_ban(ban_id=71, expire_date=NOW + timedelta(days=7))]
     actor = service.actor(member())
     calls = []
     if action in {"ban", "mute", "shorten"}:
@@ -186,11 +184,9 @@ async def test_real_completion_survives_failed_case_cas_or_post_grant_lookup(mod
         if kind == "map"
         else {"badge": "map-maker"}
     )
-    service, db, case, bot, mutation_db, bus, _, closed = await setup_action(
-        kind, payload=payload
-    )
+    service, db, case, bot, bus, _, closed = await setup_action(kind, payload=payload)
     if mode == "badge_owned":
-        mutation_db["players"].docs[0]["unlocked_badges"] = ["map-maker"]
+        db["players"].docs[0]["unlocked_badges"] = ["map-maker"]
     if mode == "badge_lookup":
         bot.store.find_player_by_uuid = AsyncMock(
             side_effect=RuntimeError("fresh lookup failed")
@@ -262,7 +258,7 @@ async def test_real_completion_survives_failed_case_cas_or_post_grant_lookup(mod
     ],
 )
 async def test_real_map_unconfirmed_results_stay_open_and_never_retry(status):
-    service, db, case, bot, _, bus, _, closed = await setup_action(
+    service, db, case, bot, bus, _, closed = await setup_action(
         "map", payload={"file_name": FILE.filename, "sha256": "reviewed"}
     )
     if status == "timeout":
@@ -320,10 +316,10 @@ async def test_real_map_unconfirmed_results_stay_open_and_never_retry(status):
 
 @pytest.mark.parametrize("kind", ["appeal", "badge"])
 async def test_real_mutation_without_completion_audit_remains_uncertain(kind):
-    service, db, case, bot, mutation_db, bus, _, closed = await setup_action(
+    service, db, case, bot, bus, _, closed = await setup_action(
         kind, payload={"ban_id": 71} if kind == "appeal" else {"badge": "map-maker"}
     )
-    mutation_db["bans"].docs = [_ban(ban_id=71, expire_date=NOW + timedelta(days=7))]
+    db["bans"].docs = [_ban(ban_id=71, expire_date=NOW + timedelta(days=7))]
     bot.container.audit.append_moderation_audit = AsyncMock(
         side_effect=RuntimeError("audit unavailable")
     )
@@ -357,16 +353,16 @@ async def test_real_mutation_without_completion_audit_remains_uncertain(kind):
     assert calls == [case.number] and not db["moderation_audit"].docs and not closed
     assert not await bus.pardons() and not await bus.inventory_events()
     if kind == "appeal":
-        assert not mutation_db["bans"].docs
+        assert not db["bans"].docs
     else:
-        assert mutation_db["players"].docs[0]["unlocked_badges"] == ["map-maker"]
+        assert db["players"].docs[0]["unlocked_badges"] == ["map-maker"]
 
 
 async def test_real_false_badge_grant_missing_player_does_not_close():
-    service, db, case, bot, mutation_db, _, _, closed = await setup_action(
+    service, db, case, bot, _, _, closed = await setup_action(
         "badge", payload={"badge": "map-maker"}
     )
-    mutation_db["players"].docs.clear()
+    db["players"].docs.clear()
 
     async def callback(claimed):
         await perform_badge_grant(
@@ -511,7 +507,7 @@ def _map_recovery(id_, *, extra, payload=None):
 async def test_recovery_refuses_other_attempts_verbs_targets_and_nonterminal_maps(
     kind, verb, action, extra, payload, change
 ):
-    service, db, case, _, _, _, _, closed = await setup_action(kind, payload=payload)
+    service, db, case, _, _, _, closed = await setup_action(kind, payload=payload)
     row = {
         "_id": "completion",
         "audit_id": "completion",

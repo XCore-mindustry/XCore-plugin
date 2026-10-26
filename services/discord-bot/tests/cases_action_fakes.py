@@ -1,39 +1,27 @@
-"""Shared adapters for real staff helpers over the cases test databases."""
+"""The case core on a bot that runs the real staff helpers."""
 
-import fakeredis.aioredis
-
-
-class Players:
-    def __init__(self, bot, db):
-        self.bot, self.database = bot, db
-
-    def __getattr__(self, name):
-        return getattr(self.bot.store, name)
-
-    async def find_players_by_discord_id(self, discord_id):
-        return [
-            await self.bot.store.find_player_by_uuid(row["uuid"])
-            for row in self.database["players"].docs
-            if row.get("discord_id") == discord_id
-        ]
+from bot_fakes import FAMILY_BUSES
+from cases_fakes import core
+from test_staff_actions import _action_bot
 
 
-class Claims:
-    def __init__(self):
-        self.redis = fakeredis.aioredis.FakeRedis()
-
-    async def claim_idempotency(self, key, ttl_seconds=600):
-        return bool(await self.redis.set(key, "1", nx=True, ex=ttl_seconds))
-
-
-def mirror_audits(bot, action_bot, database, mutations):
-    append = action_bot.container.audit.append_moderation_audit
-
-    async def audit(**kwargs):
-        audit_id = await append(**kwargs)
-        await database["moderation_audit"].insert_one(
-            mutations["moderation_audit"].docs[-1]
-        )
-        return audit_id
-
-    bot.container.audit.append_moderation_audit = audit
+async def staff_core(**kwargs):
+    """The case service and its bot, sharing one MongoStore and one RedisTransport with the
+    staff helpers as the container does. Returns the service, the database, the bot, the
+    game server on the bus and the moderation log channel."""
+    action_bot, db, game, log = await _action_bot()
+    service, _, bot = await core(players=action_bot.store, bus=action_bot.bus, **kwargs)
+    # Audits and sanctions are dated by the case clock, which recovery compares them with.
+    action_bot.store.now_utc = lambda: service.now()
+    service.punishments = action_bot.container.punishments
+    bot.settings = service.settings.model_copy(
+        update={"discord_bans_channel_id": 10, "discord_mutes_channel_id": 20}
+    )
+    bot.store = action_bot.store
+    bot.bus = action_bot.bus
+    for family in FAMILY_BUSES:
+        setattr(bot.container, family, getattr(action_bot.container, family))
+    bot.container.punishments = action_bot.container.punishments
+    bot.container.audit = action_bot.container.audit
+    bot.resolve_channel = action_bot.resolve_channel
+    return service, db, bot, game, log

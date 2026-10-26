@@ -11,14 +11,17 @@ from xcore_discord_bot.cases.model import CaseKind
 from xcore_discord_bot.cases.views import PanelButton
 
 
-def player(index=1):
-    return SimpleNamespace(
-        uuid=f"private-{index}=",
-        pid=index,
-        nickname=f"Player {index}",
-        language="uk",
-        online_server=None,
-    )
+def player(index=1, **fields):
+    """A player linked to the complainant's Discord account unless ``fields`` say not."""
+    return {
+        "_id": index,
+        "uuid": f"private-{index}=",
+        "pid": index,
+        "nickname": f"Player {index}",
+        "discord_id": "42",
+        "local_language": "uk",
+        **fields,
+    }
 
 
 def audit(*, index=1, action="BAN", target="private-1=", actor="99", **extra):
@@ -44,9 +47,7 @@ async def complaint_core(*, players=None, audits=(), enabled=True, **settings):
     )
     if not enabled:
         service.registry.disable(CaseKind.COMPLAINT)
-    linked = [player()] if players is None else players
-    service.player_store.by_discord["42"] = linked
-    service.player_store.by_uuid = {p.uuid: p for p in linked}
+    db["players"].docs = [player()] if players is None else list(players)
     db["moderation_audit"].docs = list(audits)
     # Ordinary members see an otherwise empty parent. Staff deny view; seniors allow it.
     for role_id in (10, 30):

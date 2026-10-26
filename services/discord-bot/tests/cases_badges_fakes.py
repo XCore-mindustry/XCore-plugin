@@ -1,12 +1,10 @@
-"""B7 fixture: real staff/Mongo grant helpers, fake Discord, in-memory audit recovery."""
+"""B7 fixture: the badge flow on the real staff helpers, store and bus; fake Discord."""
 
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
-from bot_fakes import FAMILY_BUSES
-from cases_action_fakes import Players, mirror_audits
-from cases_fakes import NOW, Interaction, core, member
-from test_staff_actions import _action_bot
+from cases_action_fakes import staff_core
+from cases_fakes import Interaction, member
 
 from xcore_discord_bot.cases.flows.badges import BADGE_FLOW
 from xcore_discord_bot.cases.model import CaseKind
@@ -28,26 +26,12 @@ def player_row(index=1, *, pid=None, discord_id="42", owned=()):
 
 
 async def badge_core(*, rows=None, enabled=True, **settings):
-    service, database, bot = await core(
+    service, db, bot, game, _ = await staff_core(
         flow=BADGE_FLOW, cases_badges_enabled=enabled, **settings
     )
     if not enabled:
         service.registry.disable(CaseKind.BADGE)
-    action_bot, mutations, bus, _ = await _action_bot()
-    mutations["players"].docs = [player_row()] if rows is None else rows
-    action_bot.store.now_utc = lambda: NOW
-    service.player_store = Players(action_bot, mutations)
-    service.punishments = action_bot.container.punishments
-    service.notifier.find_player = service.player_store.find_player_by_uuid
-    bot.store = action_bot.store
-    bot.bus = action_bot.bus
-    for family in FAMILY_BUSES:
-        setattr(bot.container, family, getattr(action_bot.container, family))
-    bot.container.punishments = action_bot.container.punishments
-    bot.container.audit = action_bot.container.audit
-    bot.resolve_channel = action_bot.resolve_channel
-
-    mirror_audits(bot, action_bot, database, mutations)
+    db["players"].docs = [player_row()] if rows is None else rows
     role = SimpleNamespace(id=70)
     author = member(42, ())
 
@@ -62,7 +46,7 @@ async def badge_core(*, rows=None, enabled=True, **settings):
         fetch_member=AsyncMock(return_value=author),
     )
     bot.get_guild = lambda id: guild if id == 123 else None
-    return service, database, bot, mutations, bus, guild, author
+    return service, db, bot, game, guild, author
 
 
 def last_view(interaction):

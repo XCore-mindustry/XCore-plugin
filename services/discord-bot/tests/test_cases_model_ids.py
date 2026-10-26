@@ -4,7 +4,8 @@ from dataclasses import replace
 from itertools import product
 
 import pytest
-from cases_fakes import NOW, Database
+from cases_fakes import NOW
+from mongo_fakes import Database
 
 from xcore_discord_bot.cases.ids import (
     MAX_NUMBER,

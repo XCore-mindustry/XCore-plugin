@@ -1,4 +1,4 @@
-"""B5 fakes: the report flow over the core fakes, with the real staff helpers and MongoStore."""
+"""B5 fakes: the report flow on the real staff helpers, store and bus."""
 
 from __future__ import annotations
 
@@ -6,12 +6,8 @@ from datetime import timedelta
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
-from bot_fakes import FAMILY_BUSES
-from cases_action_fakes import Claims, mirror_audits
-from cases_action_fakes import Players as SharedPlayers
+from cases_action_fakes import staff_core
 from cases_fakes import NOW, Interaction, member
-from cases_fakes import core as cases_core
-from test_staff_actions import _action_bot
 from xcore_protocol.generated.cases import CasesReportSubmittedV1
 from xcore_protocol.generated.moderation import (
     ModerationBanCreatedV1,
@@ -29,7 +25,6 @@ from xcore_protocol.generated.shared import (
 from xcore_discord_bot.cases.flows import reports
 from xcore_discord_bot.cases.model import CaseKind
 from xcore_discord_bot.cases.registry import PanelContext
-from xcore_discord_bot.utils.mindustry_colors import strip_mindustry_colors
 
 # Opaque values that must never reach a card, a thread or a reporter.
 REPORTER_UUID = "reporter-uuid-secret="
@@ -72,21 +67,6 @@ def player_rows():
     ]
 
 
-class Players(SharedPlayers):
-    async def find_players_by_exact_name(self, name):
-        # The real query (a case-insensitive match that ignores colour tags) has its own test.
-        found = [
-            row
-            for row in self.database["players"].docs
-            if name.strip().casefold()
-            in {
-                strip_mindustry_colors(str(row.get(key) or "")).casefold()
-                for key in ("nickname", "custom_nickname", "username")
-            }
-        ][:2]
-        return [await self.bot.store.find_player_by_uuid(row["uuid"]) for row in found]
-
-
 class Guild:
     def __init__(self, roles_by_member=None):
         self.roles_by_member = (
@@ -109,33 +89,12 @@ class Guild:
 
 async def reports_core(*, enabled=True, guild=None, **settings):
     settings.setdefault("cases_open_cooldown_seconds", 0)
-    service, db, bot = await cases_core(
+    service, db, bot, game, log = await staff_core(
         flow=reports.REPORT_FLOW, cases_reports_enabled=enabled, **settings
     )
     if not enabled:
         service.registry.disable(CaseKind.REPORT)
-    action_bot, mutations, bus, log = await _action_bot()
-    mutations["players"].docs = player_rows()
-    action_bot.store.now_utc = lambda: service.now()
-    database_bans = mutations["bans"]
-    db.collections["bans"] = database_bans
-    db.collections["mutes"] = mutations["mutes"]
-    service.player_store = Players(action_bot, mutations)
-    service.punishments = action_bot.container.punishments
-    service.notifier.find_player = service.player_store.find_player_by_uuid
-    service.claims = Claims()
-    bot.settings = service.settings.model_copy(
-        update={"discord_bans_channel_id": 10, "discord_mutes_channel_id": 20}
-    )
-    bot.store = action_bot.store
-    bot.bus = action_bot.bus
-    for family in FAMILY_BUSES:
-        setattr(bot.container, family, getattr(action_bot.container, family))
-    bot.container.punishments = action_bot.container.punishments
-    bot.container.audit = action_bot.container.audit
-    bot.resolve_channel = action_bot.resolve_channel
-
-    mirror_audits(bot, action_bot, db, mutations)
+    db["players"].docs = player_rows()
     bot.guild = guild or Guild()
     bot.get_guild = lambda guild_id: bot.guild if guild_id == 123 else None
     transport = SimpleNamespace(
@@ -144,7 +103,7 @@ async def reports_core(*, enabled=True, guild=None, **settings):
         rpc_inspect_map=AsyncMock(return_value=None),
     )
     service.set_transport(transport)
-    bot.mutations, bot.game, bot.log = mutations, bus, log
+    bot.game, bot.log = game, log
     return service, db, bot
 
 

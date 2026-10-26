@@ -8,7 +8,7 @@ from unittest.mock import AsyncMock, patch
 import pytest
 from backends import connected_store
 from bot_fakes import make_settings
-from cases_fakes import Database
+from mongo_fakes import Database
 from pymongo.errors import DuplicateKeyError
 
 from xcore_discord_bot.audit_store import AuditStore
