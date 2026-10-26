@@ -10,8 +10,8 @@ import pytest
 from bot_fakes import make_bot, make_settings
 from fakeredis.aioredis import FakeRedis
 
-from xcore_discord_bot import redis_bus as bus_module
 from xcore_discord_bot import runtime_consumers
+from xcore_discord_bot.bus import transport as bus_module
 from xcore_discord_bot.contracts import ModerationBanCreatedV1, parse_ban_payload
 from xcore_discord_bot.moderation_logs import post_ban_log
 from xcore_discord_bot.player_pids import NO_PID

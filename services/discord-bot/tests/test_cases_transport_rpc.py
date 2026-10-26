@@ -9,14 +9,15 @@ from fakeredis.aioredis import FakeRedis
 from xcore_protocol.generated.cases import CasesNoticeCommandV1
 from xcore_protocol.generated.maps import MapsInspectResponseV1
 
-from xcore_discord_bot import redis_bus as bus_module
+from xcore_discord_bot.bus import transport as bus_module
+from xcore_discord_bot.bus.transport import RpcFailed, RpcRejected
 from xcore_discord_bot.cases.redis_transport import RedisCaseTransport
 from xcore_discord_bot.protocol_outbound import (
     build_case_evidence_request,
     build_case_notice_command,
     build_maps_inspect_request,
 )
-from xcore_discord_bot.redis_bus import RedisBus, RpcFailed, RpcRejected
+from xcore_discord_bot.redis_bus import RedisBus
 from xcore_discord_bot.registry import server_registry
 from xcore_discord_bot.rpc.mindustry_rpc import MindustryRpcClient, NoLiveServerError
 
@@ -277,7 +278,7 @@ async def test_rpc_decoder_rejects_mismatched_and_unknown_response(bus, kind, in
         payload["messageType"] = "maps.list.response"
     else:
         payload["playerUuid"] = "private"
-    bus._rpc_request = AsyncMock(return_value={"payload_json": json.dumps(payload)})
+    bus.rpc_request = AsyncMock(return_value={"payload_json": json.dumps(payload)})
     with pytest.raises(ValueError):
         if kind == "evidence":
             await bus.rpc_case_evidence(server="mini-pvp", player_uuid="target")
@@ -293,20 +294,20 @@ async def test_rpc_decoder_rejects_mismatched_and_unknown_response(bus, kind, in
 async def test_evidence_chat_cannot_leak_private_fields(bus, field):
     payload = evidence()
     payload["chat"][0][field] = "private"
-    bus._rpc_request = AsyncMock(return_value={"payload_json": json.dumps(payload)})
+    bus.rpc_request = AsyncMock(return_value={"payload_json": json.dumps(payload)})
     with pytest.raises(ValueError):
         await bus.rpc_case_evidence(server="mini-pvp", player_uuid="target")
 
 
 async def test_offline_evidence_response_is_valid_and_never_falls_back(bus):
-    bus._rpc_request = AsyncMock(
+    bus.rpc_request = AsyncMock(
         return_value={"payload_json": json.dumps(evidence(online=False))}
     )
     result = await RedisCaseTransport(bus, MindustryRpcClient(bus)).rpc_case_evidence(
         server="mini-pvp", player_uuid="target"
     )
     assert result["targetOnline"] is False
-    assert bus._rpc_request.await_count == 1
+    assert bus.rpc_request.await_count == 1
 
 
 @pytest.mark.parametrize(
@@ -360,7 +361,7 @@ async def test_inspection_refusal_is_final_and_no_live_server_is_explicit(bus):
 
 @pytest.mark.parametrize("status", ["download_failed", "invalid_map"])
 async def test_inspection_business_failure_is_a_typed_result(bus, status):
-    bus._rpc_request = AsyncMock(
+    bus.rpc_request = AsyncMock(
         return_value={"payload_json": json.dumps(inspected(status=status))}
     )
     result = await RedisCaseTransport(bus, MindustryRpcClient(bus)).rpc_inspect_map(

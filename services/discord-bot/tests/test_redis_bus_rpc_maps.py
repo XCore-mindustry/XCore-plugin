@@ -29,7 +29,7 @@ async def test_publish_maps_load_uses_expected_event_metadata() -> None:
     async def fake_publish_event(self, **kwargs):
         captured.update(kwargs)
 
-    bus._publish_event = MethodType(fake_publish_event, bus)
+    bus.publish = MethodType(fake_publish_event, bus)
 
     files = [{"url": "https://example/maps/one.msav", "filename": "one.msav"}]
     await bus.publish_maps_load(server="mini-pvp", files=files)
@@ -88,7 +88,7 @@ async def test_rpc_maps_list_parses_canonical_response() -> None:
         assert payload["server"] == "mini-pvp"
         return {"payload_json": json.dumps(response_payload)}
 
-    bus._rpc_request = MethodType(fake_rpc_request, bus)
+    bus.rpc_request = MethodType(fake_rpc_request, bus)
 
     result = await bus.rpc_maps_list("mini-pvp", 5000)
 
@@ -145,7 +145,7 @@ async def test_rpc_remove_map_uses_canonical_payload() -> None:
         response = MapsRemoveResponseV1(server="mini-pvp", result="ok")
         return {"payload_json": json.dumps(response.to_payload())}
 
-    bus._rpc_request = MethodType(fake_rpc_request, bus)
+    bus.rpc_request = MethodType(fake_rpc_request, bus)
 
     result = await bus.rpc_remove_map("mini-pvp", "map-a.msav", 5000)
     assert result == "ok"
@@ -206,7 +206,7 @@ async def test_upload_rpc_uses_canonical_request_and_matches_result_files() -> N
         "server": "mini-pvp",
         "results": [{"fileName": "arena.msav", "status": "installed"}],
     }
-    bus._rpc_request = AsyncMock(return_value={"payload_json": json.dumps(response)})
+    bus.rpc_request = AsyncMock(return_value={"payload_json": json.dumps(response)})
     files = [
         {
             "filename": "arena.msav",
@@ -222,11 +222,11 @@ async def test_upload_rpc_uses_canonical_request_and_matches_result_files() -> N
         server="mini-pvp", files=files, timeout_ms=120000
     )
     assert result.results[0].status.value == "installed"
-    payload = bus._rpc_request.call_args.kwargs["payload"]
+    payload = bus.rpc_request.call_args.kwargs["payload"]
     assert payload["messageType"] == "maps.upload.request"
     assert payload["files"][0]["discordUpload"]["uploadedByHandle"] == "reviewer"
     response["results"][0]["fileName"] = "other.msav"
-    bus._rpc_request.return_value = {"payload_json": json.dumps(response)}
+    bus.rpc_request.return_value = {"payload_json": json.dumps(response)}
     with pytest.raises(ValueError, match="does not match"):
         await bus.rpc_upload_maps(server="mini-pvp", files=files, timeout_ms=120000)
 
@@ -247,7 +247,7 @@ async def test_upload_response_cannot_add_or_omit_requested_files() -> None:
         "server": "mini-pvp",
         "results": [{"fileName": "arena.msav", "status": "installed"}],
     }
-    bus._rpc_request = AsyncMock(return_value={"payload_json": json.dumps(response)})
+    bus.rpc_request = AsyncMock(return_value={"payload_json": json.dumps(response)})
     files = [
         {"filename": "arena.msav", "url": "https://example/arena"},
         {"filename": "second.msav", "url": "https://example/second"},
@@ -255,6 +255,6 @@ async def test_upload_response_cannot_add_or_omit_requested_files() -> None:
     with pytest.raises(ValueError, match="does not match"):
         await bus.rpc_upload_maps(server="mini-pvp", files=files, timeout_ms=120000)
     response["results"].append({"fileName": "arena.msav", "status": "installed"})
-    bus._rpc_request.return_value = {"payload_json": json.dumps(response)}
+    bus.rpc_request.return_value = {"payload_json": json.dumps(response)}
     with pytest.raises(ValueError, match="does not match"):
         await bus.rpc_upload_maps(server="mini-pvp", files=files[:1], timeout_ms=120000)

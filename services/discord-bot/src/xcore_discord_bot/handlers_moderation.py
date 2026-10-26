@@ -8,6 +8,7 @@ import discord
 from discord import Interaction
 from xcore_protocol.generated.shared import ActorRefV1ActorType
 
+from .bus.transport import RpcFailed
 from .command_helpers import (
     claim_mutation,
     get_player_or_reply,
@@ -30,7 +31,6 @@ from .presentation import (
     build_moderation_reversal_embed,
     format_ban_expire_date,
 )
-from .redis_bus import RpcFailed
 from .retry import TRANSIENT_EXCEPTIONS
 from .staff_actions import (
     BanNotFound,

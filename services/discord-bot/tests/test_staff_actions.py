@@ -9,10 +9,10 @@ from bot_fakes import make_bot, make_settings
 from test_ban_identity import NOW, _ban, _store
 from xcore_protocol.generated.maps import MapsUploadResponseV1
 
+from xcore_discord_bot.bus.transport import RpcError
 from xcore_discord_bot.cases.model import Case, CaseKind, CaseStatus, Origin, Party
 from xcore_discord_bot.dto import PlayerRecord
 from xcore_discord_bot.moderation_logs import post_ban_log
-from xcore_discord_bot.redis_bus import RpcError
 from xcore_discord_bot.staff_actions import (
     ActionAlreadyProcessed,
     Actor,

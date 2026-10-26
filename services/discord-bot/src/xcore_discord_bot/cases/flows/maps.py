@@ -14,8 +14,8 @@ from uuid import uuid4
 import discord
 from xcore_protocol.generated.maps import MapsInspectResponseV1
 
+from ...bus.transport import RpcError
 from ...i18n import resolve_dm_locale, t
-from ...redis_bus import RpcError
 from ...registry import server_registry
 from ...retry import TRANSIENT_EXCEPTIONS
 from ...rpc.mindustry_rpc import NoLiveServerError

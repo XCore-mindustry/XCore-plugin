@@ -20,11 +20,12 @@ from xcore_protocol.generated.security import (
 )
 from xcore_protocol.generated.shared import DiscordIdentityRefV1, PlayerRefV1
 
+from xcore_discord_bot.bus.transport import RpcFailed
 from xcore_discord_bot.container import ServiceContainer
 from xcore_discord_bot.daemons.staff_sync_daemon import StaffSyncDaemon, StaffSyncResult
 from xcore_discord_bot.dto import PlayerRecord
 from xcore_discord_bot.mongo_store import MongoStore
-from xcore_discord_bot.redis_bus import RedisBus, RpcFailed
+from xcore_discord_bot.redis_bus import RedisBus
 from xcore_discord_bot.rpc.mindustry_rpc import MindustryRpcClient
 from xcore_discord_bot.services.player_service import PlayerService
 from xcore_discord_bot.settings import Settings
@@ -305,7 +306,7 @@ async def test_generated_rpc_wire_payload_and_response(settings):
         )
         return {"payload_json": json.dumps(response.to_payload())}
 
-    bus._rpc_request = AsyncMock(side_effect=respond)
+    bus.rpc_request = AsyncMock(side_effect=respond)
     response = await MindustryRpcClient(bus).sync_staff(
         server="mini-pvp",
         player_uuid="uuid-1",
@@ -423,7 +424,7 @@ async def test_reset_password_generated_wire_payload(settings):
         )
         return {"payload_json": json.dumps(response.to_payload())}
 
-    bus._rpc_request = AsyncMock(side_effect=respond)
+    bus.rpc_request = AsyncMock(side_effect=respond)
     assert (
         await MindustryRpcClient(bus).reset_staff_password(
             server="mini-pvp", player_uuid="uuid-1", timeout_ms=100

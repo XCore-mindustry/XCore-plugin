@@ -27,7 +27,8 @@ from xcore_protocol.generated.sentinel import (
 )
 from xcore_protocol.generated.shared import SeasonPrizeV1
 
-from ..redis_bus import RedisBus, RpcFailed
+from ..bus.transport import RpcFailed
+from ..redis_bus import RedisBus
 from ..registry import server_registry
 from ..retry import TRANSIENT_EXCEPTIONS, retry_read_rpc
 

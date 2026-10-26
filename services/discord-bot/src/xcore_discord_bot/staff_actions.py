@@ -11,10 +11,10 @@ from xcore_protocol.generated.maps import MapsUploadResponseV1
 from xcore_protocol.generated.shared import MapUploadResultV1
 
 from .badges import get_badge
+from .bus.transport import RpcError
 from .dto import Actor, BanRecord, PlayerRecord, record_identifiers
 from .moderation_logs import post_ban_log, post_mute_log
 from .protocol_outbound import build_maps_upload_request
-from .redis_bus import RpcError
 from .retry import TRANSIENT_EXCEPTIONS
 
 if TYPE_CHECKING:

@@ -10,7 +10,7 @@ from discord.ext import commands
 from xcore_protocol.generated.shared import SeasonPrizeV1Kind
 
 from ..badges import badge_choice_label, grantable_badges
-from ..redis_bus import RpcFailed, RpcRejected
+from ..bus.transport import RpcFailed, RpcRejected
 from ..rpc.mindustry_rpc import NoLiveServerError
 from ..season_embeds import (
     LADDER_NAMES,

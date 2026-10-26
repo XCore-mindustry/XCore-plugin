@@ -20,6 +20,7 @@ from xcore_protocol.generated.shared import (
 )
 
 from xcore_discord_bot.badges import BADGE_BY_ID, get_badge
+from xcore_discord_bot.bus.transport import RpcRejected
 from xcore_discord_bot.cogs.seasons import SeasonsCog, parse_places
 from xcore_discord_bot.handlers_seasons import (
     on_season_ended,
@@ -33,7 +34,7 @@ from xcore_discord_bot.rating_store import (
     Season,
     season_from_doc,
 )
-from xcore_discord_bot.redis_bus import RedisBus, RpcRejected
+from xcore_discord_bot.redis_bus import RedisBus
 from xcore_discord_bot.registry import server_registry
 from xcore_discord_bot.rpc.mindustry_rpc import MindustryRpcClient
 from xcore_discord_bot.season_embeds import (
@@ -516,7 +517,7 @@ async def test_the_bus_sends_the_canonical_prize_requests() -> None:
             }
         return {"payload_json": json.dumps(body)}
 
-    bus._rpc_request = MethodType(fake_rpc_request, bus)
+    bus.rpc_request = MethodType(fake_rpc_request, bus)
 
     added = await bus.rpc_season_prize_add(
         server="mini-pvp",

@@ -36,7 +36,7 @@ async def test_publish_discord_admin_access_changed_publishes_for_all_servers(
     async def fake_publish_for_all_servers(**kwargs):
         captured.update(kwargs)
 
-    monkeypatch.setattr(bus, "_publish_for_all_servers", fake_publish_for_all_servers)
+    monkeypatch.setattr(bus, "publish_to_all_servers", fake_publish_for_all_servers)
 
     await bus.publish_discord_admin_access_changed(
         player_uuid="uuid-7",
@@ -68,7 +68,7 @@ async def test_publish_discord_admin_access_changed_produces_valid_canonical_pay
     async def fake_publish_for_all_servers(**kwargs):
         captured_payload["payload_builder"] = kwargs["payload_builder"]
 
-    monkeypatch.setattr(bus, "_publish_for_all_servers", fake_publish_for_all_servers)
+    monkeypatch.setattr(bus, "publish_to_all_servers", fake_publish_for_all_servers)
 
     await bus.publish_discord_admin_access_changed(
         player_uuid="uuid-7",

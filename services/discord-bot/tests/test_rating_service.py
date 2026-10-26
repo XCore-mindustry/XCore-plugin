@@ -8,9 +8,10 @@ from typing import Any
 import pytest
 from xcore_protocol.generated.rating import RatingSeasonRescheduleRequestV1Operation
 
+from xcore_discord_bot.bus.transport import RpcFailed, RpcRejected
 from xcore_discord_bot.daemons.rating_merge_daemon import RatingMergeDaemon
 from xcore_discord_bot.dto import AccountMergeResult, PlayerRecord
-from xcore_discord_bot.redis_bus import RedisBus, RpcFailed, RpcRejected
+from xcore_discord_bot.redis_bus import RedisBus
 from xcore_discord_bot.registry import server_registry
 from xcore_discord_bot.rpc.mindustry_rpc import (
     MAX_SERVERS_TRIED,
@@ -486,7 +487,7 @@ async def test_bus_tells_a_refusal_from_a_failure(error_code, expected) -> None:
     bus._redis = _ReplyingRedis(error_code)
 
     with pytest.raises(expected) as raised:
-        await bus._rpc_request(
+        await bus.rpc_request(
             server="mini-pvp",
             rpc_type="rating.accounts.merge.request",
             payload={},
@@ -556,7 +557,7 @@ async def test_bus_sends_the_canonical_season_and_merge_requests() -> None:
 
         return {"payload_json": json.dumps(body)}
 
-    bus._rpc_request = MethodType(fake_rpc_request, bus)
+    bus.rpc_request = MethodType(fake_rpc_request, bus)
 
     merged = await bus.rpc_ratings_merge(
         server="mini-pvp", source_uuid="s", target_uuid="t", timeout_ms=100

@@ -13,8 +13,8 @@ from xcore_protocol.generated.discord import (
     DiscordLinkStatusChangedV1Action,
 )
 
+from ..bus.transport import RpcFailed
 from ..permissions_config import load_discord_permissions
-from ..redis_bus import RpcFailed
 from ..retry import TRANSIENT_EXCEPTIONS
 from ..runtime_consumers import run_consumer_forever
 

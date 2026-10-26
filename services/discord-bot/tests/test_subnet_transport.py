@@ -90,7 +90,7 @@ async def test_subnet_rpc_methods_parse_typed_responses() -> None:
         assert payload["messageVersion"] == 1
         return {"payload_json": json.dumps(responses[rpc_type].to_payload())}
 
-    bus._rpc_request = MethodType(fake_rpc_request, bus)
+    bus.rpc_request = MethodType(fake_rpc_request, bus)
     command = await bus.rpc_subnet_rules_command(
         operation="DENY",
         rules=["1.2.3.0/24"],

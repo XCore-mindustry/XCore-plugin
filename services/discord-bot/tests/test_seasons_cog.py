@@ -10,10 +10,10 @@ from discord import app_commands
 from xcore_protocol.generated.rating import RatingSeasonRescheduleResponseV1
 from xcore_protocol.generated.shared import SeasonRefV1
 
+from xcore_discord_bot.bus.transport import RpcFailed, RpcRejected
 from xcore_discord_bot.cogs.checks import head_admin_check
 from xcore_discord_bot.cogs.seasons import SeasonsCog, parse_end_at
 from xcore_discord_bot.permissions import head_admin_role_ids
-from xcore_discord_bot.redis_bus import RpcFailed, RpcRejected
 from xcore_discord_bot.rpc.mindustry_rpc import NoLiveServerError
 
 ADMIN, HEAD = 10, 20

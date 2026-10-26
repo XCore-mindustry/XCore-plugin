@@ -12,9 +12,9 @@ from xcore_protocol.generated.rating import (
 )
 from xcore_protocol.generated.shared import SeasonPrizeV1, SeasonPrizeV1Kind
 
+from ..bus.transport import RpcFailed, RpcRejected
 from ..dto import AccountMergeResult
 from ..rating_store import RatingStore
-from ..redis_bus import RpcFailed, RpcRejected
 from ..retry import TRANSIENT_EXCEPTIONS
 from ..rpc.mindustry_rpc import MindustryRpcClient, NoLiveServerError
 

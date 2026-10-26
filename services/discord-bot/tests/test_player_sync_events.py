@@ -31,7 +31,7 @@ async def test_publish_player_active_badge_changed_canonical_payload() -> None:
     async def fake_publish_for_all_servers(self, **kwargs):
         captured.update(kwargs)
 
-    bus._publish_for_all_servers = MethodType(fake_publish_for_all_servers, bus)
+    bus.publish_to_all_servers = MethodType(fake_publish_for_all_servers, bus)
 
     await bus.publish_player_active_badge_changed(
         uuid_value="uuid-7",
@@ -56,7 +56,7 @@ async def test_publish_player_badge_inventory_changed_canonical_payload() -> Non
     async def fake_publish_for_all_servers(self, **kwargs):
         captured.update(kwargs)
 
-    bus._publish_for_all_servers = MethodType(fake_publish_for_all_servers, bus)
+    bus.publish_to_all_servers = MethodType(fake_publish_for_all_servers, bus)
 
     await bus.publish_player_badge_inventory_changed(
         uuid_value="uuid-7",
@@ -83,7 +83,7 @@ async def test_publish_player_password_reset_canonical_payload() -> None:
     async def fake_publish_for_all_servers(self, **kwargs):
         captured.update(kwargs)
 
-    bus._publish_for_all_servers = MethodType(fake_publish_for_all_servers, bus)
+    bus.publish_to_all_servers = MethodType(fake_publish_for_all_servers, bus)
 
     await bus.publish_player_password_reset(uuid_value="uuid-7")
 

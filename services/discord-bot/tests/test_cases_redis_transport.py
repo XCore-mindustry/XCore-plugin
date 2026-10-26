@@ -10,7 +10,7 @@ import pytest
 from fakeredis.aioredis import FakeRedis
 from xcore_protocol.generated.cases import CasesReportSubmittedV1
 
-from xcore_discord_bot import redis_bus as bus_module
+from xcore_discord_bot.bus import transport as bus_module
 from xcore_discord_bot.redis_bus import (
     CASE_REPORT_GROUP_SUFFIX,
     CASE_REPORT_STREAM,
