@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 from backends import GameServer, RpcError, fail, real_bot, refuse, unplug
-from bot_fakes import make_rpc, make_settings
+from bot_fakes import make_settings
 from mongo_fakes import Database
 from redis.exceptions import ConnectionError as RedisConnectionError
 from test_account_merge import SOURCE_DOC, TARGET_DOC
@@ -18,9 +18,9 @@ from xcore_discord_bot.bot import XCoreDiscordBot
 from xcore_discord_bot.bus.transport import RpcFailed, RpcRejected
 from xcore_discord_bot.dto import AccountMergeResult, PlayerRecord
 from xcore_discord_bot.rating_store import PENDING_MERGES
-from xcore_discord_bot.registry import LiveServerRegistry
 from xcore_discord_bot.rpc.mindustry_rpc import (
     MAX_SERVERS_TRIED,
+    MindustryRpcClient,
     NoLiveServerError,
 )
 
@@ -342,18 +342,19 @@ def _prizes_set(payload: dict[str, Any]) -> dict[str, Any]:
 # ------------------------------------------------------------- server fallback
 
 
-def _live(*names: str) -> LiveServerRegistry:
-    servers = LiveServerRegistry()
+async def _live(*names: str) -> MindustryRpcClient:
+    """The bot's RPC client, with ``names`` the live servers."""
+    bot, _ = await real_bot()
     for name in names:
-        servers.update_server(
+        bot.container.servers.update_server(
             name=name, channel_id=1, players=0, max_players=10, version="1"
         )
-    return servers
+    return bot.container.rpc
 
 
 @pytest.mark.asyncio
 async def test_rpc_client_tries_the_next_server_when_one_stays_silent() -> None:
-    servers = _live("b-server", "a-server")
+    client = await _live("b-server", "a-server")
     tried: list[str] = []
 
     async def call(server: str) -> str:
@@ -362,9 +363,7 @@ async def test_rpc_client_tries_the_next_server_when_one_stays_silent() -> None:
             raise TimeoutError()
         return server
 
-    result = await make_rpc(
-        SimpleNamespace(), rating=SimpleNamespace(), servers=servers
-    ).on_any_live_server(call)
+    result = await client.on_any_live_server(call)
 
     assert result == "b-server"
     assert tried == ["a-server", "b-server"]
@@ -372,7 +371,7 @@ async def test_rpc_client_tries_the_next_server_when_one_stays_silent() -> None:
 
 @pytest.mark.asyncio
 async def test_rpc_client_gives_up_after_a_few_silent_servers() -> None:
-    servers = _live("a", "b", "c", "d", "e")
+    client = await _live("a", "b", "c", "d", "e")
     tried: list[str] = []
 
     async def call(server: str) -> str:
@@ -380,16 +379,14 @@ async def test_rpc_client_gives_up_after_a_few_silent_servers() -> None:
         raise TimeoutError()
 
     with pytest.raises(TimeoutError):
-        await make_rpc(
-            SimpleNamespace(), rating=SimpleNamespace(), servers=servers
-        ).on_any_live_server(call)
+        await client.on_any_live_server(call)
 
     assert len(tried) == MAX_SERVERS_TRIED
 
 
 @pytest.mark.asyncio
 async def test_rpc_client_does_not_ask_another_server_after_a_refusal() -> None:
-    servers = _live("a", "b")
+    client = await _live("a", "b")
     tried: list[str] = []
 
     async def call(server: str) -> str:
@@ -397,9 +394,7 @@ async def test_rpc_client_does_not_ask_another_server_after_a_refusal() -> None:
         raise RpcRejected("x", "REJECTED", "no")
 
     with pytest.raises(RpcRejected):
-        await make_rpc(
-            SimpleNamespace(), rating=SimpleNamespace(), servers=servers
-        ).on_any_live_server(call)
+        await client.on_any_live_server(call)
 
     assert tried == ["a"]
 
@@ -408,7 +403,7 @@ async def test_rpc_client_does_not_ask_another_server_after_a_refusal() -> None:
 async def test_rpc_client_tries_the_next_server_when_one_could_not_carry_it_out() -> (
     None
 ):
-    servers = _live("a", "b")
+    client = await _live("a", "b")
     tried: list[str] = []
 
     async def call(server: str) -> str:
@@ -417,12 +412,7 @@ async def test_rpc_client_tries_the_next_server_when_one_could_not_carry_it_out(
             raise RpcFailed("x", "FAILED", "see the server log")
         return server
 
-    assert (
-        await make_rpc(
-            SimpleNamespace(), rating=SimpleNamespace(), servers=servers
-        ).on_any_live_server(call)
-        == "b"
-    )
+    assert await client.on_any_live_server(call) == "b"
     assert tried == ["a", "b"]
 
 
@@ -501,12 +491,10 @@ async def test_bus_tells_a_refusal_from_a_failure(answer, expected) -> None:
 
 
 async def test_rpc_client_needs_a_live_server() -> None:
-    servers = _live()
+    client = await _live()
 
     with pytest.raises(NoLiveServerError):
-        await make_rpc(
-            SimpleNamespace(), rating=SimpleNamespace(), servers=servers
-        ).on_any_live_server(lambda server: None)
+        await client.on_any_live_server(lambda server: None)
 
 
 # --------------------------------------------------------------------- the bus

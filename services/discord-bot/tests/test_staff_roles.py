@@ -2,12 +2,14 @@ from __future__ import annotations
 
 import asyncio
 from types import SimpleNamespace
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
 import discord
 import pytest
 from aiohttp import ClientConnectionError
-from bot_fakes import make_bot, make_rpc
+from backends import GameServer, RpcAnswer, RpcError, real_bot
+from bot_fakes import make_bot
 from pydantic import ValidationError
 from redis.exceptions import RedisError
 from xcore_protocol.generated.discord import (
@@ -15,20 +17,53 @@ from xcore_protocol.generated.discord import (
     DiscordLinkStatusChangedV1Action,
 )
 from xcore_protocol.generated.security import (
+    SecurityStaffResetPasswordRequestV1,
     SecurityStaffResetPasswordResponseV1,
+    SecurityStaffSyncRequestV1,
     SecurityStaffSyncResponseV1,
 )
 from xcore_protocol.generated.shared import DiscordIdentityRefV1, PlayerRefV1
 
-from xcore_discord_bot.bus.moderation import ModerationBus
 from xcore_discord_bot.bus.transport import RedisTransport, RpcFailed
 from xcore_discord_bot.container import ServiceContainer
 from xcore_discord_bot.daemons.staff_sync_daemon import StaffSyncDaemon, StaffSyncResult
 from xcore_discord_bot.dto import PlayerRecord
 from xcore_discord_bot.mongo_store import MongoStore
-from xcore_discord_bot.registry import LiveServerRegistry
-from xcore_discord_bot.services.player_service import PlayerService
+from xcore_discord_bot.rpc.mindustry_rpc import MindustryRpcClient
 from xcore_discord_bot.settings import Settings
+
+SYNC = SecurityStaffSyncRequestV1.MESSAGE_TYPE
+RESET = SecurityStaffResetPasswordRequestV1.MESSAGE_TYPE
+PLAYER_DOC = {"pid": 1, "uuid": "uuid-1", "nickname": "p", "password_hash": "hash"}
+
+
+def sync_answer(payload: dict[str, Any]) -> dict[str, Any]:
+    return SecurityStaffSyncResponseV1(
+        payload["server"], payload["operationId"], 5, True
+    ).to_payload()
+
+
+def reset_answer(payload: dict[str, Any]) -> dict[str, Any]:
+    return SecurityStaffResetPasswordResponseV1(
+        payload["server"], payload["operationId"], True
+    ).to_payload()
+
+
+def after(first_answers: list[Any], answer: RpcAnswer) -> RpcAnswer:
+    """Gives ``first_answers`` to the first requests, then ``answer``."""
+    queue = list(first_answers)
+    return lambda payload: queue.pop(0) if queue else answer(payload)
+
+
+async def staff_server(
+    settings: Settings, *first_answers: dict[str, Any] | RpcError | None
+) -> tuple[MindustryRpcClient, GameServer]:
+    """A game server that gives ``first_answers`` to the first staff syncs, then
+    accepts them."""
+    bot, _ = await real_bot(settings=settings)
+    game = GameServer(bot)
+    game.answers[SYNC] = after(list(first_answers), sync_answer)
+    return bot.container.rpc, game
 
 
 @pytest.fixture
@@ -120,21 +155,12 @@ async def test_discord_failure_sends_nothing(setup, failure):
 
 
 @pytest.mark.parametrize(
-    "error",
-    [TimeoutError(), RpcFailed("security.staff.sync.request", "UNAVAILABLE", "legacy")],
+    "first_answer", [None, RpcError("UNAVAILABLE", "legacy")], ids=["silent", "legacy"]
 )
-async def test_retry_reuses_operation_id_and_new_attempt_changes_it(error):
-    bus = MagicMock()
-    requests = []
-
-    async def sync(request, **kwargs):
-        requests.append(request)
-        if len(requests) == 1:
-            raise error
-        return SecurityStaffSyncResponseV1(request.server, request.operationId, 1, True)
-
-    bus.rpc_staff_sync = AsyncMock(side_effect=sync)
-    rpc = make_rpc(bus)
+async def test_retry_reuses_operation_id_and_new_attempt_changes_it(
+    settings, first_answer
+):
+    rpc, game = await staff_server(settings, first_answer)
     kwargs = {
         "server": "mini-pvp",
         "player_uuid": "uuid-1",
@@ -144,10 +170,10 @@ async def test_retry_reuses_operation_id_and_new_attempt_changes_it(error):
     }
     await rpc.sync_staff(**kwargs)
     await rpc.sync_staff(**kwargs)
-    assert requests[0] is requests[1]
-    assert requests[0].operationId != requests[2].operationId
-    assert requests[0].complete is True
-    assert requests[0].roleIds == ("10",)
+    requests = game.sent(SYNC)
+    assert len(requests) == 3
+    assert requests[0] == requests[1]
+    assert requests[0]["operationId"] != requests[2]["operationId"]
 
 
 def test_guild_mismatch_at_startup(settings):
@@ -229,52 +255,40 @@ async def test_scheduled_check_every_linked_account_rate_limited(setup, monkeypa
 @pytest.mark.parametrize("mode", ["legacy", "roles"])
 async def test_password_reset_both_modes(settings, mode):
     settings = settings.model_copy(update={"permissions_mode": mode})
-    store = MagicMock()
-    store.reset_password = AsyncMock(return_value=True)
-    bus = MagicMock()
-    bus.publish_player_password_reset = AsyncMock()
-    rpc = MagicMock()
-    rpc.reset_staff_password = AsyncMock(return_value=SimpleNamespace(changed=True))
-    service = PlayerService(
-        store,
-        settings=settings,
-        rpc=rpc,
-        accounts=bus,
-        moderation=ModerationBus(bus, LiveServerRegistry()),
-        merges=MagicMock(),
-    )
-    assert await service.reset_password(uuid="uuid-1")
+    bot, db = await real_bot(settings=settings)
+    game = GameServer(bot)
+    game.answers[RESET] = reset_answer
+    await db["players"].insert_one(dict(PLAYER_DOC))
+
+    assert await bot.container.players.reset_password(uuid="uuid-1")
+
+    player = await db["players"].find_one({"uuid": "uuid-1"})
     if mode == "legacy":
-        store.reset_password.assert_awaited_once_with(uuid="uuid-1")
-        bus.publish_player_password_reset.assert_awaited_once()
-        rpc.reset_staff_password.assert_not_awaited()
+        assert player["password_hash"] == ""
+        assert [
+            command["playerUuid"]
+            for command in await game.commands("player-password-reset")
+        ] == ["uuid-1"]
+        assert game.sent(RESET) == []
     else:
-        store.reset_password.assert_not_awaited()
-        bus.publish_player_password_reset.assert_not_awaited()
-        rpc.reset_staff_password.assert_awaited_once_with(
-            server="mini-pvp",
-            player_uuid="uuid-1",
-            timeout_ms=5000,
-        )
+        assert player["password_hash"] == "hash"
+        assert await game.commands("player-password-reset") == []
+        [request] = game.sent(RESET)
+        assert (request["server"], request["playerUuid"]) == ("mini-pvp", "uuid-1")
+        assert game.requests[0]["timeout_ms"] == "5000"
 
 
-async def test_password_reset_retry_reuses_request():
-    bus = MagicMock()
-    requests = []
+async def test_password_reset_retry_reuses_request(settings):
+    bot, _ = await real_bot(settings=settings)
+    game = GameServer(bot)
+    game.answers[RESET] = after([None], reset_answer)
 
-    async def reset(request, **kwargs):
-        requests.append(request)
-        if len(requests) == 1:
-            raise TimeoutError()
-        return SecurityStaffResetPasswordResponseV1(
-            request.server, request.operationId, True
-        )
-
-    bus.rpc_staff_reset_password = AsyncMock(side_effect=reset)
-    await make_rpc(bus).reset_staff_password(
+    await bot.container.rpc.reset_staff_password(
         server="mini-pvp", player_uuid="uuid-1", timeout_ms=100
     )
-    assert requests[0] is requests[1]
+
+    first, second = game.sent(RESET)
+    assert first == second
 
 
 async def test_roles_direct_mongo_writes_forbidden(settings):
@@ -298,30 +312,20 @@ def test_legacy_container_does_not_load_roles_config(settings):
 
 
 async def test_generated_rpc_wire_payload_and_response(settings):
-    import json
-
-    bus = RedisTransport(settings)
-
-    async def respond(**kwargs):
-        payload = kwargs["payload"]
-        assert kwargs["server"] == "mini-pvp"
-        assert payload["complete"] is True
-        assert payload["roleIds"] == ["10"]
-        assert kwargs["rpc_type"] == "security.staff.sync.request"
-        response = SecurityStaffSyncResponseV1(
-            payload["server"], payload["operationId"], 5, True
-        )
-        return {"payload_json": json.dumps(response.to_payload())}
-
-    bus.rpc_request = AsyncMock(side_effect=respond)
-    response = await make_rpc(bus).sync_staff(
+    rpc, game = await staff_server(settings)
+    response = await rpc.sync_staff(
         server="mini-pvp",
         player_uuid="uuid-1",
         discord_id="456",
-        role_ids=("10",),
+        role_ids=("20", "10", "20"),
         timeout_ms=100,
     )
     assert response.revision == 5
+    [request] = game.sent(SYNC)
+    assert request["server"] == "mini-pvp"
+    assert request["playerUuid"] == "uuid-1"
+    assert request["complete"] is True
+    assert request["roleIds"] == ["10", "20"]
 
 
 async def test_schedule_loop_starts_after_ready_and_continues(setup, monkeypatch):
@@ -393,75 +397,49 @@ async def test_roles_command_link_does_not_write_admin(settings):
 async def test_roles_password_command_uses_rpc_without_legacy_event(settings):
     from xcore_discord_bot.handlers_moderation import cmd_reset_password
 
-    bus = MagicMock()
-    bus.publish_player_password_reset = AsyncMock()
-    store = MagicMock()
-    store.reset_password = AsyncMock()
-    rpc = MagicMock()
-    rpc.reset_staff_password = AsyncMock(return_value=SimpleNamespace(changed=True))
-    bot = make_bot(settings=settings, bus=bus, store=store)
-    bot.container = SimpleNamespace(
-        players=PlayerService(
-            store,
-            settings=settings,
-            rpc=rpc,
-            accounts=bus,
-            moderation=ModerationBus(bus, LiveServerRegistry()),
-            merges=MagicMock(),
-        )
-    )
-    bot.store.find_player_by_pid = AsyncMock(
-        return_value=PlayerRecord(pid=1, uuid="uuid-1", nickname="p")
-    )
-    bot.bus.claim_idempotency = AsyncMock(return_value=True)
+    bot, db = await real_bot(settings=settings)
+    game = GameServer(bot)
+    game.answers[RESET] = reset_answer
+    await db["players"].insert_one(dict(PLAYER_DOC))
     interaction = SimpleNamespace(
         id=99,
         response=SimpleNamespace(send_message=AsyncMock(), defer=AsyncMock()),
         followup=SimpleNamespace(send=AsyncMock()),
     )
+
     await cmd_reset_password(bot, interaction, 1)
-    rpc.reset_staff_password.assert_awaited_once()
-    store.reset_password.assert_not_awaited()
-    bus.publish_player_password_reset.assert_not_awaited()
+
+    assert len(game.sent(RESET)) == 1
+    assert (await db["players"].find_one({"pid": 1}))["password_hash"] == "hash"
+    assert await game.commands("player-password-reset") == []
+    interaction.followup.send.assert_awaited_once_with("Password reset for `p`")
 
 
 async def test_reset_password_generated_wire_payload(settings):
-    import json
+    bot, _ = await real_bot(settings=settings)
+    game = GameServer(bot)
+    game.answers[RESET] = reset_answer
 
-    bus = RedisTransport(settings)
-
-    async def respond(**kwargs):
-        payload = kwargs["payload"]
-        assert kwargs["rpc_type"] == "security.staff.reset-password.request"
-        assert payload["playerUuid"] == "uuid-1"
-        assert payload["server"] == "mini-pvp"
-        response = SecurityStaffResetPasswordResponseV1(
-            payload["server"], payload["operationId"], True
-        )
-        return {"payload_json": json.dumps(response.to_payload())}
-
-    bus.rpc_request = AsyncMock(side_effect=respond)
-    assert (
-        await make_rpc(bus).reset_staff_password(
-            server="mini-pvp", player_uuid="uuid-1", timeout_ms=100
-        )
-    ).changed
-
-
-async def test_not_found_is_not_retried():
-    bus = MagicMock()
-    bus.rpc_staff_sync = AsyncMock(
-        side_effect=RpcFailed("security.staff.sync.request", "NOT_FOUND", "not linked")
+    response = await bot.container.rpc.reset_staff_password(
+        server="mini-pvp", player_uuid="uuid-1", timeout_ms=100
     )
+
+    assert response.changed
+    [request] = game.sent(RESET)
+    assert (request["server"], request["playerUuid"]) == ("mini-pvp", "uuid-1")
+
+
+async def test_not_found_is_not_retried(settings):
+    rpc, game = await staff_server(settings, RpcError("NOT_FOUND", "not linked"))
     with pytest.raises(RpcFailed, match="NOT_FOUND"):
-        await make_rpc(bus).sync_staff(
+        await rpc.sync_staff(
             server="mini-pvp",
             player_uuid="uuid-1",
             discord_id="456",
             role_ids=("10",),
             timeout_ms=100,
         )
-    assert bus.rpc_staff_sync.await_count == 1
+    assert len(game.sent(SYNC)) == 1
 
 
 def _discord_not_found(code):

@@ -161,24 +161,36 @@ async def _handled(bus: RedisTransport, stream: str) -> bool:
     )
 
 
-async def consumed(
-    bus: RedisTransport, consumer: Awaitable[None], *streams: str, timeout: float = 5
+async def run_until(
+    consumer: Awaitable[None],
+    done: Callable[[], Awaitable[bool]],
+    *,
+    timeout: float = 5,
 ) -> None:
-    """Run ``consumer`` until it has read and acknowledged everything on ``streams``."""
+    """Run ``consumer`` until ``done()`` holds, then stop it."""
     task = asyncio.ensure_future(consumer)
     try:
         async with asyncio.timeout(timeout):
-            while not all([await _handled(bus, stream) for stream in streams]):
+            while not await done():
                 if task.done():
                     task.result()
-                    raise AssertionError(
-                        "The consumer stopped before reading its stream"
-                    )
+                    raise AssertionError("The consumer stopped before it was done")
                 await asyncio.sleep(0.01)
     finally:
         task.cancel()
         with suppress(asyncio.CancelledError):
             await task
+
+
+async def consumed(
+    bus: RedisTransport, consumer: Awaitable[None], *streams: str, timeout: float = 5
+) -> None:
+    """Run ``consumer`` until it has read and acknowledged everything on ``streams``."""
+
+    async def handled() -> bool:
+        return all([await _handled(bus, stream) for stream in streams])
+
+    await run_until(consumer, handled, timeout=timeout)
 
 
 @dataclass(frozen=True)

@@ -4,8 +4,16 @@ from dataclasses import dataclass, field
 from typing import Any
 
 import pytest
-from bot_fakes import make_bot, make_settings
+from backends import GameServer, real_bot
+from bot_fakes import make_settings
+from xcore_protocol.generated.maps import (
+    MapsListRequestV1,
+    MapsListResponseV1,
+    MapsRemoveRequestV1,
+    MapsRemoveResponseV1,
+)
 
+from xcore_discord_bot.bot import XCoreDiscordBot
 from xcore_discord_bot.handlers_misc import cmd_maps, perform_remove_map
 from xcore_discord_bot.server_views import MapsListView
 
@@ -36,73 +44,53 @@ class _Interaction:
     followup: _Followup = field(default_factory=_Followup)
 
 
-class _MapsBackend:
-    def __init__(
-        self, maps: list[dict[str, str]] | None = None, *, fail: bool = False
-    ) -> None:
-        self.maps = maps or []
-        self.fail = fail
-        self.rpc_timeout_ms = 4321
-
-    async def rpc_maps_list(
-        self, *, server: str, timeout_ms: int
-    ) -> list[dict[str, str]]:
-        assert server == "mini-pvp"
-        assert timeout_ms == 4321
-        if self.fail:
-            raise TimeoutError
-        return self.maps
-
-    async def find_player_by_uuid(self, uuid):
-        return None
+LIST = MapsListRequestV1.MESSAGE_TYPE
+REMOVE = MapsRemoveRequestV1.MESSAGE_TYPE
 
 
-def _Mapsbot(*args, **kwargs):
-    backend = _MapsBackend(*args, **kwargs)
-    bot = make_bot(
-        store=backend,
-        bus=backend,
-        settings=make_settings(rpc_timeout_ms=backend.rpc_timeout_ms),
+async def _maps_bot(
+    maps: list[dict[str, Any]] | None = None, *, silent: bool = False
+) -> tuple[XCoreDiscordBot, GameServer]:
+    """A bot with ``mini-pvp`` online: it lists ``maps`` as the plugin sends them, removes
+    any map it is asked to, or answers nothing while ``silent``."""
+    bot, _ = await real_bot(settings=make_settings(rpc_timeout_ms=50))
+    game = GameServer(bot)
+    game.answers[LIST] = lambda payload: (
+        None
+        if silent
+        else {
+            "messageType": MapsListResponseV1.MESSAGE_TYPE,
+            "messageVersion": 1,
+            "server": payload["server"],
+            "maps": maps or [],
+        }
     )
-    return bot
-
-
-class _RemoveMapBackend:
-    def __init__(self, *, claim: bool = True, fail: bool = False) -> None:
-        self.claim = claim
-        self.fail = fail
-        self.rpc_timeout_ms = 9876
-        self.claim_keys: list[tuple[str, int]] = []
-        self.remove_calls: list[tuple[str, str, int]] = []
-
-    async def claim_idempotency(self, key: str, *, ttl_seconds: int = 600) -> bool:
-        self.claim_keys.append((key, ttl_seconds))
-        return self.claim
-
-    async def rpc_remove_map(
-        self, *, server: str, file_name: str, timeout_ms: int
-    ) -> str:
-        self.remove_calls.append((server, file_name, timeout_ms))
-        if self.fail:
-            raise TimeoutError
-        return "removed"
-
-    async def find_player_by_uuid(self, uuid):
-        return None
-
-
-def _RemoveMapbot(*args, **kwargs):
-    backend = _RemoveMapBackend(*args, **kwargs)
-    bot = make_bot(
-        store=backend,
-        bus=backend,
-        settings=make_settings(rpc_timeout_ms=backend.rpc_timeout_ms),
+    game.answers[REMOVE] = lambda payload: (
+        None
+        if silent
+        else {
+            "messageType": MapsRemoveResponseV1.MESSAGE_TYPE,
+            "messageVersion": 1,
+            "server": payload["server"],
+            "result": f"removed {payload['fileName']}",
+        }
     )
-    return bot
+    return bot, game
+
+
+def _upload(uploader: str, creator: str | None = None) -> dict[str, Any]:
+    """The ``discordUpload`` of a map uploaded through Discord."""
+    upload: dict[str, Any] = {
+        "uploadedBy": {"discordId": uploader, "discordUsername": "Reviewer"},
+        "uploadedAt": 1791806400000,
+    }
+    if creator is not None:
+        upload["creator"] = {"discordId": creator, "discordUsername": "Creator"}
+    return upload
 
 
 async def test_cmd_maps_reports_timeout() -> None:
-    bot = _Mapsbot(fail=True)
+    bot, game = await _maps_bot(silent=True)
     interaction = _Interaction()
 
     await cmd_maps(bot, interaction, "mini-pvp")
@@ -115,10 +103,12 @@ async def test_cmd_maps_reports_timeout() -> None:
             "view": None,
         }
     ]
+    # A list is a read, so it is asked for once more before giving up.
+    assert [request["timeout_ms"] for request in game.requests] == ["50", "50"]
 
 
 async def test_cmd_maps_reports_empty_server_map_list() -> None:
-    bot = _Mapsbot(maps=[])
+    bot, game = await _maps_bot([])
     interaction = _Interaction()
 
     await cmd_maps(bot, interaction, "mini-pvp")
@@ -127,23 +117,26 @@ async def test_cmd_maps_reports_empty_server_map_list() -> None:
     assert interaction.followup.messages == [
         {"content": "No maps found on server `mini-pvp`", "embed": None, "view": None}
     ]
+    assert game.sent(LIST) == [
+        {"messageType": LIST, "messageVersion": 1, "server": "mini-pvp"}
+    ]
 
 
 async def test_cmd_maps_renders_rating_metadata() -> None:
-    bot = _Mapsbot(
-        maps=[
+    bot, _ = await _maps_bot(
+        [
             {
                 "name": "Arena",
-                "file_name": "arena.msav",
+                "fileName": "arena.msav",
                 "author": "Alice",
-                "width": "120",
-                "height": "80",
-                "file_size_bytes": "2048",
-                "like": "5",
-                "dislike": "2",
-                "reputation": "3",
-                "popularity": "7.5",
-                "game_mode": "pvp",
+                "width": 120,
+                "height": 80,
+                "fileSizeBytes": 2048,
+                "like": 5,
+                "dislike": 2,
+                "reputation": 3,
+                "popularity": 7.5,
+                "gameMode": "pvp",
             }
         ]
     )
@@ -167,21 +160,21 @@ async def test_cmd_maps_renders_rating_metadata() -> None:
 
 
 async def test_cmd_maps_defaults_to_reputation_sort() -> None:
-    bot = _Mapsbot(
-        maps=[
+    bot, _ = await _maps_bot(
+        [
             {
                 "name": "LowRep",
-                "file_name": "low.msav",
+                "fileName": "low.msav",
                 "author": "A",
-                "reputation": "1",
-                "like": "1",
+                "reputation": 1,
+                "like": 1,
             },
             {
                 "name": "HighRep",
-                "file_name": "high.msav",
+                "fileName": "high.msav",
                 "author": "B",
-                "reputation": "5",
-                "like": "2",
+                "reputation": 5,
+                "like": 2,
             },
         ]
     )
@@ -195,23 +188,37 @@ async def test_cmd_maps_defaults_to_reputation_sort() -> None:
     assert embed.description.splitlines()[0].startswith("• HighRep")
 
 
-async def test_perform_remove_map_returns_duplicate_message() -> None:
-    bot = _RemoveMapbot(claim=False)
+async def test_perform_remove_map_runs_once_per_request() -> None:
+    bot, game = await _maps_bot()
 
-    result = await perform_remove_map(
-        bot,
-        server="mini-pvp",
-        file_name="arena.msav",
-        request_nonce="nonce-1",
+    async def remove(nonce: str) -> str:
+        return await perform_remove_map(
+            bot, server="mini-pvp", file_name="arena.msav", request_nonce=nonce
+        )
+
+    assert await remove("nonce-1") == (
+        "🗑️ `mini-pvp` remove-map `arena.msav`: removed arena.msav"
     )
-
-    assert result == "This map removal was already processed."
-    assert bot.store.claim_keys == [("remove-map:mini-pvp:arena.msav:nonce-1", 600)]
-    assert bot.store.remove_calls == []
+    assert await remove("nonce-1") == "This map removal was already processed."
+    assert (
+        590
+        < await bot.bus.redis.ttl("xcore:idmp:remove-map:mini-pvp:arena.msav:nonce-1")
+        <= 600
+    )
+    # Another confirmation of the same map is another request.
+    await remove("nonce-2")
+    assert game.sent(REMOVE) == 2 * [
+        {
+            "messageType": REMOVE,
+            "messageVersion": 1,
+            "server": "mini-pvp",
+            "fileName": "arena.msav",
+        }
+    ]
 
 
 async def test_perform_remove_map_returns_timeout_message() -> None:
-    bot = _RemoveMapbot(claim=True, fail=True)
+    bot, game = await _maps_bot(silent=True)
 
     result = await perform_remove_map(
         bot,
@@ -221,21 +228,18 @@ async def test_perform_remove_map_returns_timeout_message() -> None:
     )
 
     assert result == "No response from target server (timeout)."
-    assert bot.store.remove_calls == [("mini-pvp", "arena.msav", 9876)]
+    # A removal is a write: it may have been applied, so it is not sent again.
+    assert [request["timeout_ms"] for request in game.requests] == ["50"]
 
 
 async def test_maps_show_distinct_file_author_creator_and_submitter() -> None:
-    bot = _Mapsbot(
-        maps=[
+    bot, _ = await _maps_bot(
+        [
             {
                 "name": "Arena",
-                "file_name": "arena.msav",
+                "fileName": "arena.msav",
                 "author": "[blue]File Mapper[]",
-                "uploaded_by_discord_id": "123456789012345678",
-                "uploaded_by_name": "Reviewer",
-                "creator_discord_id": "234567890123456789",
-                "creator_name": "Creator",
-                "uploaded_at": "1791806400000",
+                "discordUpload": _upload("123456789012345678", "234567890123456789"),
             }
         ]
     )
@@ -302,21 +306,22 @@ def test_contributor_name_cannot_escape_profile_link(name: str) -> None:
 async def test_creator_filter_only_keeps_maps_declared_by_selected_user() -> None:
     from types import SimpleNamespace
 
-    bot = _Mapsbot(
-        maps=[
+    bot, _ = await _maps_bot(
+        [
             {
                 "name": "Matching",
-                "file_name": "one.msav",
+                "fileName": "one.msav",
                 "author": "A",
-                "creator_discord_id": "111",
+                "discordUpload": _upload("111", "111"),
             },
             {
+                # Uploaded by the selected user, but declared as someone else's.
                 "name": "Other",
-                "file_name": "two.msav",
+                "fileName": "two.msav",
                 "author": "A",
-                "creator_discord_id": "222",
+                "discordUpload": _upload("111", "222"),
             },
-            {"name": "Legacy", "file_name": "three.msav", "author": "A"},
+            {"name": "Legacy", "fileName": "three.msav", "author": "A"},
         ]
     )
     interaction = _Interaction()
