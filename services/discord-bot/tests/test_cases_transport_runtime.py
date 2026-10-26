@@ -17,6 +17,7 @@ from xcore_discord_bot import runtime_consumers
 from xcore_discord_bot.bot import XCoreDiscordBot
 from xcore_discord_bot.bus.cases import parse_case_report_payload
 from xcore_discord_bot.bus.moderation import ModerationBus
+from xcore_discord_bot.bus.transport import RedisTransport
 from xcore_discord_bot.cases.model import CaseKind
 from xcore_discord_bot.cases.notify import Outcome
 from xcore_discord_bot.cases.redis_transport import RedisCaseTransport
@@ -24,7 +25,6 @@ from xcore_discord_bot.cases.registry import Flow, FlowRegistry
 from xcore_discord_bot.cases.transport import NoCaseTransport
 from xcore_discord_bot.daemons.stream_supervisor import StreamSupervisor
 from xcore_discord_bot.player_pids import NO_PID
-from xcore_discord_bot.redis_bus import RedisBus
 from xcore_discord_bot.settings import Settings
 
 
@@ -136,7 +136,7 @@ async def test_report_hook_failure_propagates_to_stream_handler(monkeypatch):
 
 async def test_report_runtime_waits_for_startup_before_creating_group(monkeypatch):
     redis = FakeRedis(decode_responses=True)
-    bus = RedisBus(
+    bus = RedisTransport(
         SimpleNamespace(redis_group_prefix="xcore:cg", redis_consumer_name="bot")
     )
     bus._redis = redis
@@ -316,7 +316,7 @@ async def test_direct_bans_without_stream_identity_do_not_share_log_checkpoint(
     monkeypatch,
 ):
     redis = FakeRedis(decode_responses=True)
-    bus = RedisBus(
+    bus = RedisTransport(
         SimpleNamespace(redis_group_prefix="xcore:cg", redis_consumer_name="bot")
     )
     bus._redis = redis
@@ -350,7 +350,7 @@ async def test_direct_bans_without_stream_identity_do_not_share_log_checkpoint(
 
 async def test_failed_direct_ban_log_remains_retryable_without_checkpoint():
     redis = FakeRedis(decode_responses=True)
-    bus = RedisBus(
+    bus = RedisTransport(
         SimpleNamespace(redis_group_prefix="xcore:cg", redis_consumer_name="bot")
     )
     bus._redis = redis

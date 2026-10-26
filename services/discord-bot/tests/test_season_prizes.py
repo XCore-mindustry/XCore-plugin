@@ -22,7 +22,7 @@ from xcore_protocol.generated.shared import (
 
 from xcore_discord_bot.badges import BADGE_BY_ID, get_badge
 from xcore_discord_bot.bus.rating import RatingBus
-from xcore_discord_bot.bus.transport import RpcRejected
+from xcore_discord_bot.bus.transport import RedisTransport, RpcRejected
 from xcore_discord_bot.cogs.seasons import SeasonsCog, parse_places
 from xcore_discord_bot.handlers_seasons import (
     on_season_ended,
@@ -36,7 +36,6 @@ from xcore_discord_bot.rating_store import (
     Season,
     season_from_doc,
 )
-from xcore_discord_bot.redis_bus import RedisBus
 from xcore_discord_bot.registry import server_registry
 from xcore_discord_bot.season_embeds import (
     build_season_ended_embed,
@@ -479,7 +478,7 @@ async def test_prize_rpcs_go_to_a_live_server() -> None:
 
 @pytest.mark.asyncio
 async def test_the_bus_sends_the_canonical_prize_requests() -> None:
-    bus = RedisBus(
+    bus = RedisTransport(
         SimpleNamespace(
             redis_url="redis://127.0.0.1:6379",
             redis_group_prefix="xcore:cg",

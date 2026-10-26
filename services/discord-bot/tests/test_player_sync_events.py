@@ -11,16 +11,16 @@ from xcore_protocol.generated.security import (
 )
 
 from xcore_discord_bot.bus.accounts import AccountsBus
-from xcore_discord_bot.redis_bus import RedisBus
+from xcore_discord_bot.bus.transport import RedisTransport
 
 
-def _bus() -> RedisBus:
+def _bus() -> RedisTransport:
     settings = SimpleNamespace(
         redis_url="redis://127.0.0.1:6379",
         redis_group_prefix="xcore:cg",
         redis_consumer_name="discord-bot",
     )
-    return RedisBus(settings)
+    return RedisTransport(settings)
 
 
 @pytest.mark.asyncio

@@ -33,6 +33,7 @@ from .utils.mindustry_colors import strip_mindustry_colors
 
 if TYPE_CHECKING:
     from .bot import XCoreDiscordBot
+    from .bus.transport import RedisTransport
     from .contracts import (
         ModerationBanCreatedV1,
         ModerationMuteCreatedV1,
@@ -41,7 +42,6 @@ if TYPE_CHECKING:
         ServerActionV1,
     )
     from .mongo_store import MongoStore
-    from .redis_bus import RedisBus
 
 
 logger = logging.getLogger(__name__)
@@ -351,7 +351,7 @@ async def consume_season_rescheduled(bot: XCoreDiscordBot) -> None:
 
 
 async def run_consumer_forever(
-    bus: RedisBus,
+    bus: RedisTransport,
     label: str,
     consume: Callable[[Callable[..., Awaitable[None]]], Awaitable[None]],
     callback: Callable[..., Awaitable[None]],

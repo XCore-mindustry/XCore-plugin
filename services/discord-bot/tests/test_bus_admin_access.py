@@ -5,7 +5,7 @@ from xcore_protocol.generated.discord import DiscordAdminAccessChangedCommandV1
 from xcore_protocol.generated.shared import ActorRefV1ActorType
 
 from xcore_discord_bot.bus.accounts import AccountsBus
-from xcore_discord_bot.redis_bus import RedisBus
+from xcore_discord_bot.bus.transport import RedisTransport
 from xcore_discord_bot.settings import Settings
 
 
@@ -31,7 +31,7 @@ async def test_publish_discord_admin_access_changed_publishes_for_all_servers(
     settings: Settings,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    bus = RedisBus(settings)
+    bus = RedisTransport(settings)
     captured: dict[str, object] = {}
 
     async def fake_publish_for_all_servers(**kwargs):
@@ -63,7 +63,7 @@ async def test_publish_discord_admin_access_changed_produces_valid_canonical_pay
     settings: Settings,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    bus = RedisBus(settings)
+    bus = RedisTransport(settings)
     captured_payload: dict[str, object] = {}
 
     async def fake_publish_for_all_servers(**kwargs):

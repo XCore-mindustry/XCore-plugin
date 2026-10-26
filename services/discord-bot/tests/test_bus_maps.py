@@ -13,7 +13,7 @@ from xcore_protocol.generated.maps import (
 from xcore_protocol.generated.shared import MapEntryV1
 
 from xcore_discord_bot.bus.maps import MapsBus
-from xcore_discord_bot.redis_bus import RedisBus
+from xcore_discord_bot.bus.transport import RedisTransport
 
 
 @pytest.mark.asyncio
@@ -23,7 +23,7 @@ async def test_rpc_maps_list_parses_canonical_response() -> None:
         redis_group_prefix="xcore:cg",
         redis_consumer_name="discord-bot",
     )
-    bus = RedisBus(settings)
+    bus = RedisTransport(settings)
 
     response_payload = MapsListResponseV1(
         server="mini-pvp",
@@ -99,7 +99,7 @@ async def test_rpc_remove_map_uses_canonical_payload() -> None:
         redis_group_prefix="xcore:cg",
         redis_consumer_name="discord-bot",
     )
-    bus = RedisBus(settings)
+    bus = RedisTransport(settings)
 
     async def fake_rpc_request(
         self, server: str, rpc_type: str, payload: dict, timeout_ms: int
@@ -167,7 +167,7 @@ async def test_upload_rpc_uses_canonical_request_and_matches_result_files() -> N
         redis_group_prefix="xcore:cg",
         redis_consumer_name="discord-bot",
     )
-    bus = RedisBus(settings)
+    bus = RedisTransport(settings)
     response = {
         "messageType": "maps.upload.response",
         "messageVersion": 1,
@@ -210,7 +210,7 @@ async def test_upload_response_cannot_add_or_omit_requested_files() -> None:
         redis_group_prefix="xcore:cg",
         redis_consumer_name="discord-bot",
     )
-    bus = RedisBus(settings)
+    bus = RedisTransport(settings)
     response = {
         "messageType": "maps.upload.response",
         "messageVersion": 1,

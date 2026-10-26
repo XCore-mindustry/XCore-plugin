@@ -11,7 +11,6 @@ from xcore_discord_bot.bus.security import SecurityBus
 from xcore_discord_bot.bus.sentinel import SentinelBus
 from xcore_discord_bot.bus.transport import RedisTransport
 from xcore_discord_bot.mongo_store import MongoStore
-from xcore_discord_bot.redis_bus import RedisBus
 from xcore_discord_bot.rpc.mindustry_rpc import MindustryRpcClient
 from xcore_discord_bot.settings import Settings
 
@@ -57,7 +56,7 @@ def make_bot(
     default_bus = bus is None
     fake_bus = not default_bus and not isinstance(bus, RedisTransport)
     if bus is None:
-        bus = MagicMock(spec=RedisBus)
+        bus = MagicMock(spec=RedisTransport)
         bus.claim_idempotency = AsyncMock(return_value=True)
     if store is None:
         store = MagicMock(spec=MongoStore)

@@ -15,12 +15,12 @@ from xcore_protocol.generated.sentinel import (
 from xcore_protocol.generated.shared import ActorRefV1ActorType
 
 from xcore_discord_bot.bus.sentinel import SentinelBus
+from xcore_discord_bot.bus.transport import RedisTransport
 from xcore_discord_bot.protocol_outbound import (
     build_sentinel_subnet_rules_check_request,
     build_sentinel_subnet_rules_command,
     build_sentinel_subnet_rules_list_request,
 )
-from xcore_discord_bot.redis_bus import RedisBus
 
 
 def _settings() -> SimpleNamespace:
@@ -72,7 +72,7 @@ def test_subnet_request_builders_round_trip(builder, model, expected) -> None:
 
 @pytest.mark.asyncio
 async def test_subnet_rpc_methods_parse_typed_responses() -> None:
-    bus = RedisBus(_settings())
+    bus = RedisTransport(_settings())
     responses = {
         SentinelSubnetRulesCommandV1.MESSAGE_TYPE: SentinelSubnetRulesResponseV1(
             request="req", success=True, targetServer="s"

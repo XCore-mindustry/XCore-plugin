@@ -19,6 +19,7 @@ from xcore_protocol.generated.shared import (
 from xcore_discord_bot.bus.accounts import AccountsBus
 from xcore_discord_bot.bus.chat import ChatBus
 from xcore_discord_bot.bus.moderation import ModerationBus
+from xcore_discord_bot.bus.transport import RedisTransport
 from xcore_discord_bot.contracts import (
     ChatGlobalV1,
     ChatMessageV1,
@@ -29,7 +30,6 @@ from xcore_discord_bot.contracts import (
     ServerActionV1,
     ServerHeartbeatV1,
 )
-from xcore_discord_bot.redis_bus import RedisBus
 from xcore_discord_bot.registry import server_registry
 from xcore_discord_bot.settings import Settings
 
@@ -63,11 +63,11 @@ def clear_registry() -> None:
 
 
 def test_stream_maxlen_policy() -> None:
-    assert RedisBus._stream_maxlen("xcore:evt:chat:message") == 50_000
-    assert RedisBus._stream_maxlen("xcore:cmd:remove-admin:mini-pvp") == 10_000
-    assert RedisBus._stream_maxlen("xcore:rpc:req:mini-pvp") == 5_000
-    assert RedisBus._stream_maxlen("xcore:rpc:resp:discord") == 20_000
-    assert RedisBus._stream_maxlen("xcore:dlq:evt") == 100_000
+    assert RedisTransport._stream_maxlen("xcore:evt:chat:message") == 50_000
+    assert RedisTransport._stream_maxlen("xcore:cmd:remove-admin:mini-pvp") == 10_000
+    assert RedisTransport._stream_maxlen("xcore:rpc:req:mini-pvp") == 5_000
+    assert RedisTransport._stream_maxlen("xcore:rpc:resp:discord") == 20_000
+    assert RedisTransport._stream_maxlen("xcore:dlq:evt") == 100_000
 
 
 # --- consume_player_join_leave ---
@@ -99,7 +99,7 @@ async def test_consume_player_join_leave_dispatches_join_event(
         KeyboardInterrupt("stop"),
     ]
 
-    bus = RedisBus(settings)
+    bus = RedisTransport(settings)
     bus._redis = mock_redis
 
     callback = AsyncMock()
@@ -144,7 +144,7 @@ async def test_consume_player_join_leave_dispatches_leave_event(
         KeyboardInterrupt("stop"),
     ]
 
-    bus = RedisBus(settings)
+    bus = RedisTransport(settings)
     bus._redis = mock_redis
 
     callback = AsyncMock()
@@ -183,7 +183,7 @@ async def test_consume_server_actions_dispatches_event(
         KeyboardInterrupt("stop"),
     ]
 
-    bus = RedisBus(settings)
+    bus = RedisTransport(settings)
     bus._redis = mock_redis
 
     callback = AsyncMock()
@@ -221,7 +221,7 @@ async def test_consume_server_actions_skips_malformed_payload(
         KeyboardInterrupt("stop"),
     ]
 
-    bus = RedisBus(settings)
+    bus = RedisTransport(settings)
     bus._redis = mock_redis
 
     callback = AsyncMock()
@@ -261,7 +261,7 @@ async def test_consume_bans_dispatches_event(
         KeyboardInterrupt("stop"),
     ]
 
-    bus = RedisBus(settings)
+    bus = RedisTransport(settings)
     bus._redis = mock_redis
 
     callback = AsyncMock()
@@ -315,7 +315,7 @@ async def test_consume_mutes_dispatches_event(
         KeyboardInterrupt("stop"),
     ]
 
-    bus = RedisBus(settings)
+    bus = RedisTransport(settings)
     bus._redis = mock_redis
 
     callback = AsyncMock()
@@ -376,7 +376,7 @@ async def test_consume_vote_kicks_dispatches_event(
         KeyboardInterrupt("stop"),
     ]
 
-    bus = RedisBus(settings)
+    bus = RedisTransport(settings)
     bus._redis = mock_redis
 
     callback = AsyncMock()
@@ -443,7 +443,7 @@ async def test_consume_discord_link_status_changed_dispatches_generated_event(
         KeyboardInterrupt("stop"),
     ]
 
-    bus = RedisBus(settings)
+    bus = RedisTransport(settings)
     bus._redis = mock_redis
 
     callback = AsyncMock()
@@ -505,7 +505,7 @@ async def test_consume_vote_kicks_dispatches_canonical_generated_payload(
         KeyboardInterrupt("stop"),
     ]
 
-    bus = RedisBus(settings)
+    bus = RedisTransport(settings)
     bus._redis = mock_redis
 
     callback = AsyncMock()
@@ -567,7 +567,7 @@ async def test_consume_global_chat_dispatches_event(
         KeyboardInterrupt("stop"),
     ]
 
-    bus = RedisBus(settings)
+    bus = RedisTransport(settings)
     bus._redis = mock_redis
 
     callback = AsyncMock()
@@ -612,7 +612,7 @@ async def test_consume_global_chat_callback_failure_not_acked(
         KeyboardInterrupt("stop"),
     ]
 
-    bus = RedisBus(settings)
+    bus = RedisTransport(settings)
     bus._redis = mock_redis
 
     callback = AsyncMock(side_effect=RuntimeError("discord down"))
@@ -653,7 +653,7 @@ async def test_consume_server_heartbeats_dispatches_and_updates_registry(
         KeyboardInterrupt("stop"),
     ]
 
-    bus = RedisBus(settings)
+    bus = RedisTransport(settings)
     bus._redis = mock_redis
 
     callback = AsyncMock()
@@ -701,7 +701,7 @@ async def test_consume_game_chat_dispatches_generated_event(
         KeyboardInterrupt("stop"),
     ]
 
-    bus = RedisBus(settings)
+    bus = RedisTransport(settings)
     bus._redis = mock_redis
 
     callback = AsyncMock()

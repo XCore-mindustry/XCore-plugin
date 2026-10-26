@@ -9,6 +9,7 @@ from discord import Interaction, app_commands
 from discord.abc import Messageable
 from discord.ext import commands
 
+from .bus.transport import RedisTransport
 from .cases._privacy import private_case_command
 from .cases.redis_transport import RedisCaseTransport
 from .cases.views import CaseActionButton, PanelButton
@@ -17,7 +18,6 @@ from .cogs.cases import CasesCog
 from .container import ServiceContainer
 from .i18n import XCoreTranslator
 from .mongo_store import MongoStore
-from .redis_bus import RedisBus
 from .registry import server_registry
 from .settings import Settings
 
@@ -25,7 +25,9 @@ logger = logging.getLogger(__name__)
 
 
 class XCoreDiscordBot(commands.Bot):
-    def __init__(self, settings: Settings, bus: RedisBus, store: MongoStore) -> None:
+    def __init__(
+        self, settings: Settings, bus: RedisTransport, store: MongoStore
+    ) -> None:
         intents = discord.Intents.default()
         intents.message_content = True
         intents.members = True

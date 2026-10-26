@@ -13,10 +13,10 @@ from fakeredis.aioredis import FakeRedis
 from xcore_discord_bot import runtime_consumers
 from xcore_discord_bot.bus import transport as bus_module
 from xcore_discord_bot.bus.moderation import ModerationBus
+from xcore_discord_bot.bus.transport import RedisTransport
 from xcore_discord_bot.contracts import ModerationBanCreatedV1, parse_ban_payload
 from xcore_discord_bot.moderation_logs import post_ban_log
 from xcore_discord_bot.player_pids import NO_PID
-from xcore_discord_bot.redis_bus import RedisBus
 
 STREAM = "xcore:evt:moderation:ban"
 GROUP = "xcore:cg:discord-ban"
@@ -42,7 +42,7 @@ def legacy_payload(pid=-5, ban_id=None):
 @pytest.fixture
 async def bus():
     redis = FakeRedis(decode_responses=True)
-    bus = RedisBus(
+    bus = RedisTransport(
         SimpleNamespace(redis_group_prefix="xcore:cg", redis_consumer_name="bot")
     )
     bus._redis = redis
@@ -148,7 +148,7 @@ async def test_distinct_legacy_bans_log_and_reclaim_retries_hooks_after_restart(
         assert call.args[2].to_payload() == payload
 
     # The marker belongs to the envelope delivery, and survives a new bus instance.
-    restarted = RedisBus(bus._settings)
+    restarted = RedisTransport(bus._settings)
     restarted._redis = bus._redis
     bot.bus = restarted
     bot.container.moderation_bus = ModerationBus(restarted)
@@ -234,7 +234,7 @@ async def test_unresolved_channel_retries_send_then_retries_case_hook(bus, monke
     assert hook.await_count == 1
     assert (await bus._redis.xpending(STREAM, GROUP))["pending"] == 1
 
-    restarted = RedisBus(bus._settings)
+    restarted = RedisTransport(bus._settings)
     restarted._redis = bus._redis
     bot.bus = restarted
     bot.container.moderation_bus = ModerationBus(restarted)

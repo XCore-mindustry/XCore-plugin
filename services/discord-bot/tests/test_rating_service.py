@@ -10,10 +10,9 @@ from bot_fakes import make_rpc
 from xcore_protocol.generated.rating import RatingSeasonRescheduleRequestV1Operation
 
 from xcore_discord_bot.bus.rating import RatingBus
-from xcore_discord_bot.bus.transport import RpcFailed, RpcRejected
+from xcore_discord_bot.bus.transport import RedisTransport, RpcFailed, RpcRejected
 from xcore_discord_bot.daemons.rating_merge_daemon import RatingMergeDaemon
 from xcore_discord_bot.dto import AccountMergeResult, PlayerRecord
-from xcore_discord_bot.redis_bus import RedisBus
 from xcore_discord_bot.registry import server_registry
 from xcore_discord_bot.rpc.mindustry_rpc import (
     MAX_SERVERS_TRIED,
@@ -495,7 +494,7 @@ class _ReplyingRedis:
     [("REJECTED", RpcRejected), ("FAILED", RpcFailed), (None, RpcFailed)],
 )
 async def test_bus_tells_a_refusal_from_a_failure(error_code, expected) -> None:
-    bus = RedisBus(
+    bus = RedisTransport(
         SimpleNamespace(
             redis_url="redis://127.0.0.1:6379",
             redis_group_prefix="xcore:cg",
@@ -538,7 +537,7 @@ class _Captured:
 
 @pytest.mark.asyncio
 async def test_bus_sends_the_canonical_season_and_merge_requests() -> None:
-    bus = RedisBus(
+    bus = RedisTransport(
         SimpleNamespace(
             redis_url="redis://127.0.0.1:6379",
             redis_group_prefix="xcore:cg",

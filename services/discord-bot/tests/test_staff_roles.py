@@ -21,12 +21,11 @@ from xcore_protocol.generated.security import (
 from xcore_protocol.generated.shared import DiscordIdentityRefV1, PlayerRefV1
 
 from xcore_discord_bot.bus.moderation import ModerationBus
-from xcore_discord_bot.bus.transport import RpcFailed
+from xcore_discord_bot.bus.transport import RedisTransport, RpcFailed
 from xcore_discord_bot.container import ServiceContainer
 from xcore_discord_bot.daemons.staff_sync_daemon import StaffSyncDaemon, StaffSyncResult
 from xcore_discord_bot.dto import PlayerRecord
 from xcore_discord_bot.mongo_store import MongoStore
-from xcore_discord_bot.redis_bus import RedisBus
 from xcore_discord_bot.services.player_service import PlayerService
 from xcore_discord_bot.settings import Settings
 
@@ -291,7 +290,7 @@ def test_legacy_container_does_not_load_roles_config(settings):
         update={"permissions_mode": "legacy", "permissions_config_path": "/missing"}
     )
     container = ServiceContainer.create(
-        legacy, MagicMock(), store=MongoStore(legacy), bus=RedisBus(legacy)
+        legacy, MagicMock(), store=MongoStore(legacy), bus=RedisTransport(legacy)
     )
     assert container.staff_sync_daemon is None
 
@@ -299,7 +298,7 @@ def test_legacy_container_does_not_load_roles_config(settings):
 async def test_generated_rpc_wire_payload_and_response(settings):
     import json
 
-    bus = RedisBus(settings)
+    bus = RedisTransport(settings)
 
     async def respond(**kwargs):
         payload = kwargs["payload"]
@@ -426,7 +425,7 @@ async def test_roles_password_command_uses_rpc_without_legacy_event(settings):
 async def test_reset_password_generated_wire_payload(settings):
     import json
 
-    bus = RedisBus(settings)
+    bus = RedisTransport(settings)
 
     async def respond(**kwargs):
         payload = kwargs["payload"]

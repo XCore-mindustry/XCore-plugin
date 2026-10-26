@@ -6,8 +6,8 @@ import logging
 from dotenv import load_dotenv
 
 from .bot import XCoreDiscordBot
+from .bus.transport import RedisTransport
 from .mongo_store import MongoStore
-from .redis_bus import RedisBus
 from .settings import Settings
 
 
@@ -20,7 +20,7 @@ def setup_logging() -> None:
 
 async def run() -> None:
     settings = Settings.from_env()
-    bus = RedisBus(settings)
+    bus = RedisTransport(settings)
     store = MongoStore(settings)
     bot = XCoreDiscordBot(settings=settings, bus=bus, store=store)
     await bot.start(settings.discord_bot_token)

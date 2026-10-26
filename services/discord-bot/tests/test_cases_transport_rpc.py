@@ -13,14 +13,13 @@ from xcore_protocol.generated.maps import MapsInspectResponseV1
 from xcore_discord_bot.bus import transport as bus_module
 from xcore_discord_bot.bus.cases import CasesBus
 from xcore_discord_bot.bus.maps import MapsBus
-from xcore_discord_bot.bus.transport import RpcFailed, RpcRejected
+from xcore_discord_bot.bus.transport import RedisTransport, RpcFailed, RpcRejected
 from xcore_discord_bot.cases.redis_transport import RedisCaseTransport
 from xcore_discord_bot.protocol_outbound import (
     build_case_evidence_request,
     build_case_notice_command,
     build_maps_inspect_request,
 )
-from xcore_discord_bot.redis_bus import RedisBus
 from xcore_discord_bot.registry import server_registry
 from xcore_discord_bot.rpc.mindustry_rpc import NoLiveServerError
 
@@ -28,7 +27,7 @@ from xcore_discord_bot.rpc.mindustry_rpc import NoLiveServerError
 @pytest.fixture
 async def bus():
     redis = FakeRedis(decode_responses=True)
-    bus = RedisBus(
+    bus = RedisTransport(
         SimpleNamespace(redis_group_prefix="xcore:cg", redis_consumer_name="bot")
     )
     bus._redis = redis

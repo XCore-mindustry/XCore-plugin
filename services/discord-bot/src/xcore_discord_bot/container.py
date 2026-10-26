@@ -11,6 +11,7 @@ from .bus.moderation import ModerationBus
 from .bus.rating import RatingBus
 from .bus.security import SecurityBus
 from .bus.sentinel import SentinelBus
+from .bus.transport import RedisTransport
 from .cases import flows  # noqa: F401 -- importing modules registers flow definitions
 from .cases.notify import CaseNotifier
 from .cases.panel import CasePanel
@@ -27,7 +28,6 @@ from .daemons.stream_supervisor import StreamSupervisor
 from .game_stats import GameStatsStore
 from .mongo_store import MongoStore
 from .rating_store import RatingStore
-from .redis_bus import RedisBus
 from .rpc.mindustry_rpc import MindustryRpcClient
 from .services.player_service import PlayerService
 from .services.rating_service import RatingService
@@ -72,7 +72,7 @@ class ServiceContainer:
         bot: XCoreDiscordBot,
         *,
         store: MongoStore,
-        bus: RedisBus,
+        bus: RedisTransport,
     ) -> ServiceContainer:
         accounts_bus = AccountsBus(bus)
         cases_bus = CasesBus(bus)

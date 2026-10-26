@@ -17,7 +17,7 @@ from xcore_discord_bot.bus.cases import (
     CasesBus,
     parse_case_report_payload,
 )
-from xcore_discord_bot.redis_bus import RedisBus
+from xcore_discord_bot.bus.transport import RedisTransport
 
 GROUP = f"xcore:cg:{CASE_REPORT_GROUP_SUFFIX}"
 
@@ -54,7 +54,7 @@ def report_payload():
 @pytest.fixture
 async def bus():
     redis = FakeRedis(decode_responses=True)
-    bus = RedisBus(
+    bus = RedisTransport(
         SimpleNamespace(redis_group_prefix="xcore:cg", redis_consumer_name="bot")
     )
     bus._redis = redis
@@ -204,7 +204,7 @@ async def test_failed_handler_redelivers_after_restart_and_then_acks(bus, monkey
     assert await bus._redis.xlen("xcore:dlq:evt") == 0
     monkeypatch.setattr(bus_module, "RECLAIM_MIN_IDLE_MS", 0)
     delivered = AsyncMock()
-    restarted = RedisBus(bus._settings)
+    restarted = RedisTransport(bus._settings)
     restarted._redis = bus._redis
     await reclaim(restarted, delivered)
     delivered.assert_awaited_once_with(parse_case_report_payload(report_payload()))
