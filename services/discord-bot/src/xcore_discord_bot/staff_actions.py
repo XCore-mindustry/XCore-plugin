@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import time
-from collections.abc import Sequence
+from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import dataclass, replace
 from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
@@ -260,6 +260,11 @@ async def perform_ban(
     )
 
 
+# Awaited with the ban right before it is deleted or its expiry changes; raising stops
+# the write. Lets a caller such as an appeal confirm the ban is still the one it acts on.
+BanCheck = Callable[[BanRecord], Awaitable[None]]
+
+
 async def perform_unban(
     bot: XCoreDiscordBot,
     ban: BanRecord,
@@ -269,6 +274,7 @@ async def perform_unban(
     player: PlayerRecord | None = None,
     request_id: str | None = None,
     case_action_token: str | None = None,
+    check: BanCheck | None = None,
 ) -> BanResult:
     uuid_value = str(ban.uuid or "").strip() or None
     ip_value = str(ban.ip or "").strip() or None
@@ -281,6 +287,8 @@ async def perform_unban(
         if assigned is None:
             raise BanNotFound("No active ban found")
         ban = assigned
+    if check is not None:
+        await check(ban)
     if (
         await bot.store.delete_ban(
             uuid=uuid_value or "", ip=ip_value, ban_id=ban.ban_id
@@ -316,6 +324,7 @@ async def perform_shorten_ban(
     *,
     request_id: str | None = None,
     case_action_token: str | None = None,
+    check: BanCheck | None = None,
 ) -> BanResult:
     ban = await bot.store.find_ban_by_id(ban_id)
     if ban is None:
@@ -331,6 +340,8 @@ async def perform_shorten_ban(
     now = now.replace(tzinfo=UTC) if now.tzinfo is None else now.astimezone(UTC)
     if expire <= now:
         raise InvalidBanExpiry("The new expiry must be in the future.")
+    if check is not None:
+        await check(ban)
     if not await bot.store.update_ban_expiry(ban_id=ban_id, new_expiry=expire):
         raise InvalidBanExpiry(
             "The new expiry must be earlier than the current ban expiry."

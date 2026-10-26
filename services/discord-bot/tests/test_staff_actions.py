@@ -357,6 +357,28 @@ async def test_perform_shorten_ban_keeps_identity_audits_note_and_logs() -> None
     assert not db["counters"].docs
 
 
+@pytest.mark.parametrize("verb", ["unban", "shorten"])
+async def test_ban_check_sees_the_ban_right_before_the_write_and_can_stop_it(verb):
+    bot, db, bus, channel = _action_bot()
+    db["bans"].docs = [_ban(ban_id=71)]
+    checked = []
+
+    async def check(ban):
+        # The ban is still untouched when the check runs.
+        checked.append((ban.ban_id, db["bans"].docs[0]["expire_date"]))
+        raise RuntimeError("stale")
+
+    with pytest.raises(RuntimeError, match="stale"):
+        if verb == "unban":
+            ban = await bot.store.find_ban(uuid=PLAYER.uuid, ip=None)
+            await perform_unban(bot, ban, ACTOR, check=check)
+        else:
+            await perform_shorten_ban(bot, 71, NOW + timedelta(days=2), ACTOR, check=check)
+    assert checked == [(71, NOW + timedelta(days=7))]
+    assert db["bans"].docs[0]["expire_date"] == NOW + timedelta(days=7)
+    assert not db["moderation_audit"].docs and not bus.pardons and not channel.embeds
+
+
 async def test_perform_shorten_ban_missing_identity_is_a_typed_error() -> None:
     bot, db, _, channel = _action_bot()
     with pytest.raises(BanNotFound):

@@ -376,6 +376,25 @@ async def test_history_bounded_latest_subject_sanctions_appeals_and_restrictions
         await act(service, case, "history")
 
 
+async def test_shorten_rechecks_the_expiry_right_before_the_write(monkeypatch):
+    service, db, bot, mutations, _, log = await appeal_core()
+    case = await opened(service, bot)
+    helper = appeals.perform_shorten_ban
+    shortened = NOW + timedelta(minutes=30)
+
+    async def shortened_meanwhile(*args, **kwargs):
+        # Another moderator shortens the ban below the requested hour in the meantime.
+        mutations["bans"].docs[0]["expire_date"] = shortened
+        return await helper(*args, **kwargs)
+
+    monkeypatch.setattr(appeals, "perform_shorten_ban", shortened_meanwhile)
+    with pytest.raises(ActionFailed, match="before the current expiry"):
+        await act(service, case, "shorten", values={"duration": "1h"})
+    assert mutations["bans"].docs[0]["expire_date"] == shortened
+    assert not db["moderation_audit"].docs and not log.embeds
+    assert (await service.get(case.number)).status == CaseStatus.OPEN
+
+
 @pytest.mark.parametrize("verb", ["unban", "shorten"])
 @pytest.mark.parametrize("change", ["issuer", "subject", "replacement"])
 async def test_helper_fresh_read_reauthorizes_after_flow_lookup(
