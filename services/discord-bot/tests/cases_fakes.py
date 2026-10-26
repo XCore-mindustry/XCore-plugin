@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from copy import deepcopy
 from datetime import UTC, datetime
 from types import SimpleNamespace
@@ -60,6 +61,13 @@ def matches(doc, query):
                     ok = all(v != target for v in have)
                 elif op == "$in":
                     ok = any(v in target for v in have)
+                elif op == "$regex":
+                    flags = re.IGNORECASE if "i" in want.get("$options", "") else 0
+                    ok = any(
+                        isinstance(v, str) and re.search(target, v, flags) for v in have
+                    )
+                elif op == "$options":
+                    continue
                 elif op in {"$gt", "$gte", "$lt", "$lte"}:
 
                     def compare(v, op=op, target=target):
@@ -80,6 +88,37 @@ def matches(doc, query):
         elif not any(v == want or v is MISSING and want is None for v in have):
             return False
     return True
+
+
+def evaluate(expr, doc, variables=None):
+    """An aggregation expression, for the operators of the bot's pipeline updates."""
+    variables = variables or {}
+    if isinstance(expr, str) and expr.startswith("$$"):
+        return variables[expr[2:]]
+    if isinstance(expr, str) and expr.startswith("$"):
+        return get(doc, expr[1:])
+    if isinstance(expr, list):
+        return [evaluate(item, doc, variables) for item in expr]
+    if not isinstance(expr, dict):
+        return expr
+    ((op, arg),) = expr.items()
+    if op == "$filter":
+        name = arg["as"]
+        return [
+            item
+            for item in evaluate(arg["input"], doc, variables)
+            if evaluate(arg["cond"], doc, {**variables, name: item})
+        ]
+    values = evaluate(arg, doc, variables)
+    if op == "$ifNull":
+        return values[0] if values[0] is not None else values[1]
+    if op == "$eq":
+        return values[0] == values[1]
+    if op == "$ne":
+        return values[0] != values[1]
+    if op == "$cond":
+        return values[1] if values[0] else values[2]
+    raise AssertionError(f"Unsupported fake expression {op}")
 
 
 def assign(doc, key, value):
@@ -241,10 +280,23 @@ class Collection:
                     assign(candidate, key, value)
             for key, value in update.get("$setOnInsert", {}).items():
                 assign(candidate, key, value)
+        if isinstance(update, list):
+            # An update pipeline; each stage sees the document the previous one left.
+            for stage in update:
+                assert set(stage) == {"$set"}, f"Unsupported fake stage {stage}"
+                values = {k: evaluate(v, candidate) for k, v in stage["$set"].items()}
+                for key, value in values.items():
+                    assign(candidate, key, value)
+            update = {}
         for key, value in update.get("$set", {}).items():
             assign(candidate, key, value)
         for key, value in update.get("$inc", {}).items():
             assign(candidate, key, get(candidate, key, 0) + value)
+        for key, value in update.get("$addToSet", {}).items():
+            items = deepcopy(get(candidate, key, []))
+            if value not in items:
+                items.append(value)
+            assign(candidate, key, items)
         for key in update.get("$unset", {}):
             unset(candidate, key)
         for key, value in update.get("$push", {}).items():
@@ -334,6 +386,10 @@ class Database:
 
     def __getitem__(self, name):
         return self.collections.setdefault(name, Collection(self))
+
+    async def command(self, name):
+        assert name == "ping"
+        return {"ok": 1}
 
 
 class Failures:

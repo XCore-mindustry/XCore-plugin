@@ -2,10 +2,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from typing import Any, cast
+from unittest.mock import AsyncMock
 
 import discord
 import pytest
-from bot_fakes import make_bot, make_settings
+from backends import published, real_bot
 from xcore_protocol.generated.shared import ActorRefV1ActorType
 
 from xcore_discord_bot.daemons.admin_sync_daemon import (
@@ -13,7 +14,6 @@ from xcore_discord_bot.daemons.admin_sync_daemon import (
     ReconciledAdmin,
     SkippedAdmin,
 )
-from xcore_discord_bot.dto import PlayerRecord
 from xcore_discord_bot.handlers_moderation import (
     cmd_add_admin,
     cmd_list_admins,
@@ -62,94 +62,58 @@ class _Interaction:
         return object()
 
 
-class _Backend:
-    def __init__(
-        self, *, changed: bool = True, player: PlayerRecord | None = None
-    ) -> None:
-        self.changed = changed
-        self.player = player or PlayerRecord(
-            pid=7,
-            uuid="uuid-7",
-            nickname="Target",
-            discord_id="123",
-            discord_username="discord-user",
-            is_admin=False,
-            admin_source="NONE",
-        )
-        self.claims: list[tuple[str, str]] = []
-        self.role_calls: list[tuple[str, bool, str]] = []
-        self.set_admin_calls: list[tuple[str, bool, str]] = []
-        self.published: list[dict[str, Any]] = []
-        self.list_players: list[PlayerRecord] = []
-        self.reconcile_result = AdminReconcileResult(discord_admins=0)
-
-    async def set_admin_access(
-        self, *, uuid: str, is_admin: bool, admin_source: str
-    ) -> tuple[bool, bool]:
-        self.set_admin_calls.append((uuid, is_admin, admin_source))
-        return True, self.changed
-
-    async def set_discord_admin_role(
-        self,
-        *,
-        discord_id: str,
-        should_have_role: bool,
-        reason: str,
-    ) -> bool:
-        self.role_calls.append((discord_id, should_have_role, reason))
-        return True
-
-    async def publish_discord_admin_access_changed(self, **payload: Any) -> None:
-        self.published.append(payload)
-
-    async def find_discord_admin_players(self) -> list[PlayerRecord]:
-        return self.list_players
-
-    async def find_players_by_discord_id(self, discord_id: str) -> list[PlayerRecord]:
-        if self.player.discord_id == discord_id:
-            return [self.player]
-        return []
-
-    async def reconcile_discord_admin_access(self) -> dict[str, int]:
-        return self.reconcile_result
-
-    async def find_player_by_pid(self, player_id):
-        assert player_id == 7
-        return self.player
-
-    async def claim_idempotency(self, key, *, ttl_seconds=600):
-        _, operation, _, scope = key.split(":", 3)
-        self.claims.append((operation, scope))
-        return True
-
-    async def find_player_by_uuid(self, uuid):
-        return None
+TARGET = {
+    "_id": 1,
+    "pid": 7,
+    "uuid": "uuid-7",
+    "nickname": "Target",
+    "discord_id": "123",
+    "discord_username": "discord-user",
+    "is_admin": False,
+    "admin_source": "NONE",
+}
+OTHER = {"_id": 2, "pid": 9, "uuid": "uuid-9", "nickname": "Other", "discord_id": "123"}
+ACCESS = "xcore:cmd:discord-admin-access:mini-pvp"
 
 
-def _bot(*args, **kwargs):
-    backend = _Backend(*args, **kwargs)
-    bot = make_bot(store=backend, bus=backend, settings=make_settings())
-    bot.set_discord_admin_role = backend.set_discord_admin_role
-    bot.container.admin_sync_daemon.reconcile = backend.reconcile_discord_admin_access
+async def _bot(*players: dict[str, Any]):
+    bot, db = await real_bot()
+    bot.container.servers.update_server("mini-pvp", 1, 0, 10, "v1")
+    for player in players or (TARGET,):
+        await db["players"].insert_one(dict(player))
+    # Discord itself: the guild role and the role members the reconcile reads.
+    bot.set_discord_admin_role = AsyncMock(return_value=True)
+    bot.container.admin_sync_daemon.reconcile = AsyncMock(
+        return_value=AdminReconcileResult(discord_admins=0)
+    )
     return bot
+
+
+async def _admins(bot) -> list[tuple[str, bool, str]]:
+    return [
+        (player["uuid"], player.get("is_admin"), player.get("admin_source"))
+        for player in await bot.store.database["players"].find({}).to_list()
+    ]
 
 
 @pytest.mark.asyncio
 async def test_cmd_add_admin_sets_admin_access_and_publishes_event() -> None:
-    bot = _bot(changed=True)
+    bot = await _bot()
     interaction = _Interaction(id=30)
 
     await cmd_add_admin(cast(Any, bot), cast(Any, interaction), 7)
 
-    assert bot.store.claims == [("add-admin", "7")]
-    assert bot.store.role_calls == [("123", True, "/admin add by boss")]
-    assert bot.store.set_admin_calls == [("uuid-7", True, "DISCORD_ROLE")]
-    call = bot.store.published[0]
-    assert call["player_uuid"] == "uuid-7"
-    assert call["admin"] is True
-    assert call["source_type"] == ActorRefV1ActorType.SYSTEM
-    assert call["source_name"] == "DISCORD_ROLE"
-    assert call["actor_type"] == ActorRefV1ActorType.DISCORD
+    assert await bot.bus.redis.exists("xcore:idmp:cmd:add-admin:30:7")
+    bot.set_discord_admin_role.assert_awaited_once_with(
+        discord_id="123", should_have_role=True, reason="/admin add by boss"
+    )
+    assert await _admins(bot) == [("uuid-7", True, "DISCORD_ROLE")]
+    (event,) = await published(bot.bus, ACCESS)
+    assert event["player"]["playerUuid"] == "uuid-7"
+    assert event["admin"] is True
+    assert event["source"]["actorType"] == ActorRefV1ActorType.SYSTEM.value
+    assert event["source"]["actorName"] == "DISCORD_ROLE"
+    assert event["actor"]["actorType"] == ActorRefV1ActorType.DISCORD.value
     assert interaction.response.sent == [
         {
             "text": "Granted admin for `Target`",
@@ -163,19 +127,21 @@ async def test_cmd_add_admin_sets_admin_access_and_publishes_event() -> None:
 
 @pytest.mark.asyncio
 async def test_cmd_remove_admin_clears_admin_access_and_publishes_event() -> None:
-    bot = _bot(changed=True)
+    bot = await _bot(dict(TARGET, is_admin=True, admin_source="DISCORD_ROLE"))
     interaction = _Interaction(id=31)
 
     await cmd_remove_admin(cast(Any, bot), cast(Any, interaction), 7)
 
-    assert bot.store.claims == [("remove-admin", "7")]
-    assert bot.store.role_calls == [("123", False, "/admin remove by boss")]
-    assert bot.store.set_admin_calls == [("uuid-7", False, "NONE")]
-    call = bot.store.published[0]
-    assert call["admin"] is False
-    assert call["source_type"] == ActorRefV1ActorType.SYSTEM
-    assert call["source_name"] == "NONE"
-    assert call["actor_type"] == ActorRefV1ActorType.DISCORD
+    assert await bot.bus.redis.exists("xcore:idmp:cmd:remove-admin:31:7")
+    bot.set_discord_admin_role.assert_awaited_once_with(
+        discord_id="123", should_have_role=False, reason="/admin remove by boss"
+    )
+    assert await _admins(bot) == [("uuid-7", False, "NONE")]
+    (event,) = await published(bot.bus, ACCESS)
+    assert event["admin"] is False
+    assert event["source"]["actorType"] == ActorRefV1ActorType.SYSTEM.value
+    assert event["source"]["actorName"] == "NONE"
+    assert event["actor"]["actorType"] == ActorRefV1ActorType.DISCORD.value
     assert interaction.response.sent == [
         {
             "text": "Removed admin for `Target`",
@@ -189,15 +155,13 @@ async def test_cmd_remove_admin_clears_admin_access_and_publishes_event() -> Non
 
 @pytest.mark.asyncio
 async def test_cmd_add_admin_requires_discord_link() -> None:
-    bot = _bot(
-        player=PlayerRecord(pid=7, uuid="uuid-7", nickname="Target", discord_id=None)
-    )
+    bot = await _bot(dict(TARGET, discord_id=None))
     interaction = _Interaction(id=32)
 
     await cmd_add_admin(cast(Any, bot), cast(Any, interaction), 7)
 
-    assert bot.store.set_admin_calls == []
-    assert bot.store.published == []
+    assert await _admins(bot) == [("uuid-7", False, "NONE")]
+    assert await published(bot.bus, ACCESS) == []
     assert interaction.response.sent == [
         {
             "text": "Cannot grant admin: Discord account is not linked.",
@@ -211,26 +175,19 @@ async def test_cmd_add_admin_requires_discord_link() -> None:
 
 @pytest.mark.asyncio
 async def test_cmd_add_admin_grants_all_linked_accounts_for_same_discord() -> None:
-    bot = _bot()
-    other = PlayerRecord(pid=9, uuid="uuid-9", nickname="Other", discord_id="123")
-
-    async def duplicate_find(discord_id: str) -> list[PlayerRecord]:
-        assert discord_id == "123"
-        return [bot.store.player, other]
-
-    bot.store.find_players_by_discord_id = duplicate_find  # type: ignore[attr-defined]
+    bot = await _bot(TARGET, OTHER)
     interaction = _Interaction(id=35)
 
     await cmd_add_admin(cast(Any, bot), cast(Any, interaction), 7)
 
-    assert bot.store.set_admin_calls == [
+    assert await _admins(bot) == [
         ("uuid-7", True, "DISCORD_ROLE"),
         ("uuid-9", True, "DISCORD_ROLE"),
     ]
-    assert len(bot.store.published) == 2
+    assert len(await published(bot.bus, ACCESS)) == 2
     assert interaction.response.sent == [
         {
-            "text": "Granted admin for `Target`, `Other`",
+            "text": "Granted admin for `Other`, `Target`",
             "ephemeral": False,
             "embed": None,
             "view": None,
@@ -241,18 +198,11 @@ async def test_cmd_add_admin_grants_all_linked_accounts_for_same_discord() -> No
 
 @pytest.mark.asyncio
 async def test_cmd_list_admins_returns_paginated_embed_with_mentions() -> None:
-    bot = _bot()
-    bot.store.list_players = [
-        PlayerRecord(
-            pid=7,
-            uuid="uuid-7",
-            nickname="Target",
-            is_admin=True,
-            admin_source="DISCORD_ROLE",
-            discord_id="123",
-            discord_username="discord-user",
-        )
-    ]
+    # Only admins granted through the Discord role are listed.
+    bot = await _bot(
+        dict(TARGET, is_admin=True, admin_source="DISCORD_ROLE"),
+        dict(OTHER, is_admin=True, admin_source="CONSOLE"),
+    )
     interaction = _Interaction(id=33)
 
     await cmd_list_admins(cast(Any, bot), cast(Any, interaction))
@@ -263,7 +213,7 @@ async def test_cmd_list_admins_returns_paginated_embed_with_mentions() -> None:
     assert sent["ephemeral"] is False
     assert isinstance(sent["embed"], discord.Embed)
     assert sent["embed"].title == "Discord Admin Access"
-    assert sent["embed"].fields[0].name == "Target"
+    assert [field.name for field in sent["embed"].fields] == ["Target"]
     field_value = sent["embed"].fields[0].value or ""
     assert "PID: `7`" in field_value
     assert "Source: `DISCORD_ROLE`" in field_value
@@ -273,8 +223,8 @@ async def test_cmd_list_admins_returns_paginated_embed_with_mentions() -> None:
 
 @pytest.mark.asyncio
 async def test_cmd_sync_admins_reports_reconcile_summary() -> None:
-    bot = _bot()
-    bot.store.reconcile_result = AdminReconcileResult(
+    bot = await _bot()
+    bot.container.admin_sync_daemon.reconcile.return_value = AdminReconcileResult(
         discord_admins=4,
         applied=(
             ReconciledAdmin("123", 7, "Target"),
@@ -320,26 +270,17 @@ def test_add_embed_section_splits_long_values() -> None:
 
 @pytest.mark.asyncio
 async def test_cmd_remove_admin_clears_all_linked_accounts_for_same_discord() -> None:
-    bot = _bot()
-    other = PlayerRecord(pid=9, uuid="uuid-9", nickname="Other", discord_id="123")
-
-    async def duplicate_find(discord_id: str) -> list[PlayerRecord]:
-        assert discord_id == "123"
-        return [bot.store.player, other]
-
-    bot.store.find_players_by_discord_id = duplicate_find  # type: ignore[attr-defined]
+    admin = {"is_admin": True, "admin_source": "DISCORD_ROLE"}
+    bot = await _bot(dict(TARGET, **admin), dict(OTHER, **admin))
     interaction = _Interaction(id=36)
 
     await cmd_remove_admin(cast(Any, bot), cast(Any, interaction), 7)
 
-    assert bot.store.set_admin_calls == [
-        ("uuid-7", False, "NONE"),
-        ("uuid-9", False, "NONE"),
-    ]
-    assert len(bot.store.published) == 2
+    assert await _admins(bot) == [("uuid-7", False, "NONE"), ("uuid-9", False, "NONE")]
+    assert len(await published(bot.bus, ACCESS)) == 2
     assert interaction.response.sent == [
         {
-            "text": "Removed admin for `Target`, `Other`",
+            "text": "Removed admin for `Other`, `Target`",
             "ephemeral": False,
             "embed": None,
             "view": None,

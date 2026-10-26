@@ -3,9 +3,11 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from types import SimpleNamespace
 from typing import Any, cast
+from unittest.mock import create_autospec
 
 import pytest
-from bot_fakes import make_bot, make_settings
+from backends import real_bot
+from bot_fakes import make_settings
 
 from xcore_discord_bot.handlers_subnets import (
     cmd_subnet_import,
@@ -51,29 +53,19 @@ class _Interaction:
         return self._Followup(self)
 
 
-class _Backend:
-    settings = SimpleNamespace(rpc_timeout_ms=1234)
-
-    def __init__(self, response: Any = None) -> None:
-        self.calls: list[dict[str, Any]] = []
-        self.response = response or SimpleNamespace(success=True, rules=("10.0.0.0/8",))
-
-    async def rpc_subnet_rules_command(self, **kwargs: Any) -> Any:
-        self.calls.append(kwargs)
-        return self.response
-
-    async def rpc_subnet_rules_list(self, server: str, timeout: int) -> Any:
-        self.calls.append({"server": server, "timeout": timeout})
-        return SimpleNamespace(rules=("10.0.0.0/8", "::/0"))
-
-    async def find_player_by_uuid(self, uuid):
-        return None
-
-
-def _bot(*args, **kwargs):
-    backend = _Backend(*args, **kwargs)
-    bot = make_bot(
-        store=backend, bus=backend, settings=make_settings(rpc_timeout_ms=1234)
+async def _bot():
+    bot, _ = await real_bot(settings=make_settings(rpc_timeout_ms=1234))
+    bot.container.servers.update_server("prod", 1, 0, 10, "test")
+    # The game server's answers; everything up to the RPC is the bot's own code.
+    sentinel = bot.container.sentinel_bus
+    # autospec keeps the stubs to the real signatures.
+    sentinel.rpc_subnet_rules_command = create_autospec(
+        sentinel.rpc_subnet_rules_command,
+        return_value=SimpleNamespace(success=True, rules=("10.0.0.0/8",)),
+    )
+    sentinel.rpc_subnet_rules_list = create_autospec(
+        sentinel.rpc_subnet_rules_list,
+        return_value=SimpleNamespace(rules=("10.0.0.0/8", "::/0")),
     )
     return bot
 
@@ -87,23 +79,26 @@ def test_parse_import_normalizes_and_deduplicates() -> None:
 
 @pytest.mark.asyncio
 async def test_import_uses_one_rpc_and_ephemeral_followup() -> None:
-    bot = _bot()
+    bot = await _bot()
     interaction = _Interaction()
-    bot.container.servers.update_server("prod", 1, 0, 10, "test")
     await cmd_subnet_import(
         cast(Any, bot), cast(Any, interaction), "10.0.0.1/8,10.0.0.0/8"
     )
-    assert len(bot.store.calls) == 1
-    assert bot.store.calls[0]["operation"] == "IMPORT"
-    assert bot.store.calls[0]["rules"] == ["10.0.0.0/8"]
+    command = bot.container.sentinel_bus.rpc_subnet_rules_command
+    command.assert_awaited_once()
+    assert command.await_args.kwargs["operation"] == "IMPORT"
+    assert command.await_args.kwargs["rules"] == ["10.0.0.0/8"]
+    assert command.await_args.kwargs["target_server"] == "prod"
     assert interaction.followups[0][1] is True
 
 
 @pytest.mark.asyncio
 async def test_list_is_compact_and_ephemeral() -> None:
-    bot = _bot()
+    bot = await _bot()
     interaction = _Interaction()
-    bot.container.servers.update_server("prod", 1, 0, 10, "test")
     await cmd_subnet_list(cast(Any, bot), cast(Any, interaction))
+    bot.container.sentinel_bus.rpc_subnet_rules_list.assert_awaited_once_with(
+        "prod", 1234
+    )
     assert interaction.followups[0][1] is True
     assert "10.0.0.0/8" in interaction.followups[0][0]

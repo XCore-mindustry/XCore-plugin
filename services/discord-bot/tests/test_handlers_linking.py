@@ -1,15 +1,15 @@
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass, field
 from typing import Any, cast
 from unittest.mock import AsyncMock, MagicMock
 
 import discord
 import pytest
-from bot_fakes import make_bot, make_settings
+from backends import published, real_bot
 
 from xcore_discord_bot.bot import XCoreDiscordBot
-from xcore_discord_bot.dto import PlayerRecord
 from xcore_discord_bot.handlers_linking import cmd_link, cmd_link_status
 from xcore_discord_bot.i18n import LocalePref
 
@@ -42,75 +42,48 @@ class _Interaction:
     locale: object = None
 
 
-class _Backend:
-    def __init__(self) -> None:
-        self.published: list[dict[str, object]] = []
-
-    async def get_discord_link_code(self, code: str) -> dict[str, object] | None:
-        assert code == "ABC123"
-        return {
-            "code": code,
-            "playerUuid": "uuid-7",
-            "playerPid": 7,
-            "server": "mini-pvp",
-            "expires_at": 9999999999999,
-        }
-
-    def now_utc(self):
-        class _Now:
-            def timestamp(self) -> float:
-                return 1.0
-
-        return _Now()
-
-    async def find_player_by_uuid(self, uuid: str) -> PlayerRecord | None:
-        assert uuid == "uuid-7"
-        return PlayerRecord(pid=7, uuid="uuid-7", nickname="Target")
-
-    async def publish_discord_link_confirm(self, **kwargs) -> None:
-        self.published.append(kwargs)
-
-    async def publish_discord_unlink(self, **kwargs) -> None:
-        self.published.append(kwargs)
-
-    async def find_players_by_discord_id(self, discord_id: str) -> list[PlayerRecord]:
-        assert discord_id == "555"
-        return [
-            PlayerRecord(pid=7, uuid="uuid-7", nickname="Target"),
-            PlayerRecord(pid=9, uuid="uuid-9", nickname="Alt"),
-        ]
-
-    async def find_player_by_pid(self, player_id):
-        assert player_id == 7
-        return PlayerRecord(pid=7, uuid="uuid-7", nickname="Target", discord_id="555")
-
-    async def claim_idempotency(self, key, *, ttl_seconds=600):
-        return True
+TARGET = {
+    "_id": 1,
+    "pid": 7,
+    "uuid": "uuid-7",
+    "nickname": "Target",
+    "discord_id": "555",
+}
+ALT = {"_id": 2, "pid": 9, "uuid": "uuid-9", "nickname": "Alt", "discord_id": "555"}
+CODE = {
+    "code": "ABC123",
+    "playerUuid": "uuid-7",
+    "playerPid": 7,
+    "server": "mini-pvp",
+    "expires_at": 9999999999999,
+}
+CONFIRMS = "xcore:cmd:discord-link-confirm:mini-pvp"
 
 
-def _bot(*args, **kwargs):
-    backend = _Backend(*args, **kwargs)
-    bot = make_bot(store=backend, bus=backend, settings=make_settings())
+async def _bot(*players: dict[str, Any]):
+    bot, db = await real_bot()
+    bot.container.servers.update_server("mini-pvp", 1, 0, 10, "v1")
+    for player in players or (TARGET, ALT):
+        await db["players"].insert_one(dict(player))
+    await bot.bus.redis.set("xcore:discord-link:code:ABC123", json.dumps(CODE))
     return bot
 
 
 @pytest.mark.asyncio
 async def test_cmd_link_publishes_confirm_event() -> None:
-    bot = _bot()
+    bot = await _bot()
     interaction = _Interaction()
 
     await cmd_link(cast(Any, bot), cast(Any, interaction), "abc123")
 
-    assert bot.store.published == [
-        {
-            "code": "ABC123",
-            "player_uuid": "uuid-7",
-            "player_pid": 7,
-            "player_name": "Target",
-            "discord_id": "555",
-            "discord_username": "discord-user",
-        }
-    ]
+    (confirm,) = await published(bot.bus, CONFIRMS)
+    assert confirm["code"] == "ABC123"
+    assert confirm["player"] == {
+        "playerUuid": "uuid-7",
+        "playerPid": 7,
+        "playerName": "Target",
+    }
+    assert confirm["discord"] == {"discordId": "555", "discordUsername": "discord-user"}
     assert interaction.response.sent == [
         ("Account linked to `Target` (`pid=7`). Return in-game in a moment.", True)
     ]
@@ -118,37 +91,18 @@ async def test_cmd_link_publishes_confirm_event() -> None:
 
 @pytest.mark.asyncio
 async def test_cmd_link_instantly_grants_admin_if_user_has_role() -> None:
-    bot = _bot()
-    bot.admin_calls = []
-    bot.access_changed_calls = []
-
-    async def _get_admin_ids():
-        return {"555"}
-
-    async def _set_admin_access(**kwargs):
-        bot.admin_calls.append(kwargs)
-        return True, True
-
-    async def _publish_admin_access(**kwargs):
-        bot.access_changed_calls.append(kwargs)
-
-    bot.container.admin_sync_daemon.get_discord_admin_member_ids = _get_admin_ids
-    bot.store.set_admin_access = _set_admin_access
-    bot.container.accounts_bus.publish_discord_admin_access_changed = (
-        _publish_admin_access
+    bot = await _bot()
+    bot.container.admin_sync_daemon.get_discord_admin_member_ids = AsyncMock(
+        return_value={"555"}
     )
 
     interaction = _Interaction()
     await cmd_link(cast(Any, bot), cast(Any, interaction), "abc123")
 
-    assert len(bot.admin_calls) == 1
-    assert bot.admin_calls[0] == {
-        "uuid": "uuid-7",
-        "is_admin": True,
-        "admin_source": "DISCORD_ROLE",
-    }
-    assert len(bot.access_changed_calls) == 1
-    assert bot.access_changed_calls[0]["admin"] is True
+    player = await bot.store.find_player_by_uuid("uuid-7")
+    assert player.is_admin and player.admin_source == "DISCORD_ROLE"
+    (changed,) = await published(bot.bus, "xcore:cmd:discord-admin-access:mini-pvp")
+    assert changed["admin"] is True
     assert (
         interaction.response.sent[0][0]
         == "Account linked to `Target` (`pid=7`). Admin access granted!"
@@ -157,16 +111,11 @@ async def test_cmd_link_instantly_grants_admin_if_user_has_role() -> None:
 
 @pytest.mark.asyncio
 async def test_cmd_link_does_not_claim_admin_access_it_could_not_grant() -> None:
-    bot = _bot()
-
-    async def _get_admin_ids():
-        return {"555"}
-
-    async def _set_admin_access(**kwargs):
-        raise RuntimeError("mongo down")
-
-    bot.container.admin_sync_daemon.get_discord_admin_member_ids = _get_admin_ids
-    bot.store.set_admin_access = _set_admin_access
+    bot = await _bot()
+    bot.container.admin_sync_daemon.get_discord_admin_member_ids = AsyncMock(
+        return_value={"555"}
+    )
+    bot.store.set_admin_access = AsyncMock(side_effect=RuntimeError("mongo down"))
 
     interaction = _Interaction()
     await cmd_link(cast(Any, bot), cast(Any, interaction), "abc123")
@@ -178,22 +127,21 @@ async def test_cmd_link_does_not_claim_admin_access_it_could_not_grant() -> None
 
 @pytest.mark.asyncio
 async def test_cmd_unlink_publishes_with_display_name() -> None:
-    bot = _bot()
+    bot = await _bot()
     interaction = _Interaction()
 
     from xcore_discord_bot.handlers_linking import cmd_unlink
 
     await cmd_unlink(cast(Any, bot), cast(Any, interaction), 7)
 
-    assert len(bot.store.published) == 1
-    unlink_call = bot.store.published[0]
-    assert unlink_call["actor_name"] == "discord-user"
-    assert unlink_call["actor_name"] != "discord"
+    (unlink,) = await published(bot.bus, "xcore:cmd:discord-unlink:mini-pvp")
+    assert unlink["actor"]["actorName"] == "discord-user"
+    assert unlink["player"]["playerPid"] == 7
 
 
 @pytest.mark.asyncio
 async def test_cmd_link_status_renders_same_linked_account_output() -> None:
-    bot = _bot()
+    bot = await _bot()
     interaction = _Interaction()
 
     await cmd_link_status(cast(Any, bot), cast(Any, interaction))
@@ -203,12 +151,13 @@ async def test_cmd_link_status_renders_same_linked_account_output() -> None:
     embed, ephemeral = interaction.response.embeds[0]
     assert ephemeral is True
     assert embed.title == "Linked Mindustry accounts"
-    assert embed.description == "`7` — Target\n`9` — Alt"
+    # Newest account first.
+    assert embed.description == "`9` — Alt\n`7` — Target"
 
 
 @pytest.mark.asyncio
 async def test_link_answers_in_the_users_discord_language() -> None:
-    bot = _bot()
+    bot = await _bot()
     interaction = _Interaction(locale=discord.Locale.russian)
 
     await cmd_link(cast(Any, bot), cast(Any, interaction), "abc123")
@@ -220,7 +169,7 @@ async def test_link_answers_in_the_users_discord_language() -> None:
 
 @pytest.mark.asyncio
 async def test_a_language_chosen_with_the_language_command_wins() -> None:
-    bot = _bot()
+    bot = await _bot()
     bot.container.cases.store.cached_locale_pref = lambda discord_id: LocalePref(
         "uk", "manual"
     )
@@ -233,7 +182,7 @@ async def test_a_language_chosen_with_the_language_command_wins() -> None:
 
 @pytest.mark.asyncio
 async def test_unlink_refuses_someone_elses_player_in_the_users_language() -> None:
-    bot = _bot()
+    bot = await _bot()
     interaction = _Interaction(user=_User(id=556), locale=discord.Locale.ukrainian)
 
     from xcore_discord_bot.handlers_linking import cmd_unlink
@@ -243,7 +192,7 @@ async def test_unlink_refuses_someone_elses_player_in_the_users_language() -> No
     assert interaction.response.sent == [
         ("Цей гравець не прив'язаний до вашого акаунта Discord.", True)
     ]
-    assert bot.store.published == []
+    assert await published(bot.bus, "xcore:cmd:discord-unlink:mini-pvp") == []
 
 
 def _dm(content: str, author_id: int = 555) -> Any:
@@ -253,9 +202,8 @@ def _dm(content: str, author_id: int = 555) -> Any:
     return MagicMock(content=content, channel=channel, author=author)
 
 
-async def _send_dm(player: PlayerRecord, *, pref: LocalePref | None = None) -> Any:
-    bot = _bot()
-    bot.store.find_player_by_uuid = AsyncMock(return_value=player)
+async def _send_dm(player: dict[str, Any], *, pref: LocalePref | None = None) -> Any:
+    bot = await _bot(player)
     bot.container.cases.store.get_locale_pref = AsyncMock(return_value=pref)
     message = _dm("abc123")
     await XCoreDiscordBot.on_message(bot, message)
@@ -264,11 +212,13 @@ async def _send_dm(player: PlayerRecord, *, pref: LocalePref | None = None) -> A
 
 @pytest.mark.asyncio
 async def test_a_code_sent_in_a_dm_links_and_answers_in_the_players_language() -> None:
-    player = PlayerRecord(pid=7, uuid="uuid-7", nickname="Target", language="ru")
+    player = dict(TARGET, discord_id="", local_language="ru")
 
     bot, message = await _send_dm(player)
 
-    assert bot.store.published[0]["code"] == "ABC123"
+    assert [confirm["code"] for confirm in await published(bot.bus, CONFIRMS)] == [
+        "ABC123"
+    ]
     message.channel.send.assert_awaited_once_with(
         "Запрос на привязку `Target` (`pid=7`) отправлен."
     )
@@ -276,7 +226,7 @@ async def test_a_code_sent_in_a_dm_links_and_answers_in_the_players_language() -
 
 @pytest.mark.asyncio
 async def test_a_dm_follows_a_stored_language_choice_over_the_game_language() -> None:
-    player = PlayerRecord(pid=7, uuid="uuid-7", nickname="Target", language="ru")
+    player = dict(TARGET, discord_id="", local_language="ru")
 
     _, message = await _send_dm(player, pref=LocalePref("uk", "manual"))
 
@@ -287,11 +237,9 @@ async def test_a_dm_follows_a_stored_language_choice_over_the_game_language() ->
 
 @pytest.mark.asyncio
 async def test_a_dm_code_for_an_account_linked_elsewhere_is_refused() -> None:
-    player = PlayerRecord(pid=7, uuid="uuid-7", nickname="Target", discord_id="999")
+    bot, message = await _send_dm(dict(TARGET, discord_id="999"))
 
-    bot, message = await _send_dm(player)
-
-    assert bot.store.published == []
+    assert await published(bot.bus, CONFIRMS) == []
     message.channel.send.assert_awaited_once_with(
         "This Mindustry account is already linked to another Discord account."
     )

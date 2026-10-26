@@ -5,9 +5,8 @@ from datetime import UTC, datetime
 from typing import Any
 
 import pytest
-from bot_fakes import make_bot, make_settings
+from backends import real_bot
 
-from xcore_discord_bot.dto import BanRecord
 from xcore_discord_bot.handlers_misc import cmd_bans
 
 
@@ -41,47 +40,26 @@ class _Interaction:
         return None
 
 
-class _Backend:
-    async def count_bans(self, *, name_filter: str | None) -> int:
-        assert name_filter == "tar"
-        return 1
-
-    async def list_bans(
-        self,
-        *,
-        name_filter: str | None,
-        limit: int,
-        page: int,
-    ) -> list[BanRecord]:
-        assert name_filter == "tar"
-        assert limit == 6
-        assert page == 0
-        return [
-            BanRecord(
-                name="Target",
-                pid=42,
-                admin_name="Admin",
-                admin_discord_id="123456",
-                reason="griefing",
-                expire_date=datetime(2026, 1, 2, tzinfo=UTC),
-            )
-        ]
-
-    async def find_player_by_uuid(self, uuid):
-        return None
-
-
-def _bot(*args, **kwargs):
-    backend = _Backend(*args, **kwargs)
-    bot = make_bot(store=backend, bus=backend, settings=make_settings())
-    return bot
-
-
 @pytest.mark.asyncio
 async def test_cmd_bans_renders_ban_record_rows() -> None:
+    bot, db = await real_bot()
+    for index, name in enumerate(("Target", "Someone")):
+        await db["bans"].insert_one(
+            {
+                "_id": index,
+                "ban_id": index + 1,
+                "uuid": f"uuid-{index}",
+                "pid": 42 + index,
+                "name": name,
+                "admin_name": "Admin",
+                "admin_discord_id": "123456",
+                "reason": "griefing",
+                "expire_date": datetime(2026, 1, 2, tzinfo=UTC),
+            }
+        )
     interaction = _Interaction()
 
-    await cmd_bans(_bot(), interaction, "tar")
+    await cmd_bans(bot, interaction, "tar")
 
     assert len(interaction.response.sent) == 1
     embed = interaction.response.sent[0]["embed"]
