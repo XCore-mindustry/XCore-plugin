@@ -11,6 +11,8 @@ from xcore_protocol.generated.shared import SeasonPrizeV1Kind
 
 from ..badges import badge_choice_label, grantable_badges
 from ..bus.transport import RpcFailed, RpcRejected
+from ..command_helpers import reply_locale
+from ..i18n import t
 from ..rpc.mindustry_rpc import NoLiveServerError
 from ..season_embeds import (
     LADDER_NAMES,
@@ -181,6 +183,7 @@ class SeasonsCog(commands.Cog):
     async def cmd_info(
         self, interaction: Interaction, ladder: str | None = None
     ) -> None:
+        locale = reply_locale(self.bot, interaction)
         # The reads below can outlast Discord's three seconds for a first answer.
         await interaction.response.defer(thinking=True)
         ratings = self.bot.container.ratings
@@ -196,10 +199,11 @@ class SeasonsCog(commands.Cog):
                     season,
                     participants=await ratings.count(ladder_id, season.number),
                     now=now,
+                    locale=locale,
                 )
             )
         if not embeds:
-            await interaction.followup.send("No rating seasons yet.")
+            await interaction.followup.send(t(locale, "season-none"))
             return
         await interaction.followup.send(embeds=embeds[:10])
 
@@ -214,6 +218,7 @@ class SeasonsCog(commands.Cog):
         ladder: str,
         season: app_commands.Range[int, 1] | None = None,
     ) -> None:
+        locale = reply_locale(self.bot, interaction)
         await interaction.response.defer(thinking=True)
         ratings = self.bot.container.ratings
         found = (
@@ -223,7 +228,7 @@ class SeasonsCog(commands.Cog):
         )
         if found is None:
             await interaction.followup.send(
-                f"No such season for {ladder_name(ladder)}."
+                t(locale, "season-not-found", ladder=ladder_name(ladder))
             )
             return
         standings = await ratings.top(ladder, found.number, TOP_SIZE)
@@ -231,6 +236,7 @@ class SeasonsCog(commands.Cog):
             found,
             standings,
             participants=await ratings.count(ladder, found.number),
+            locale=locale,
         )
         await interaction.followup.send(embed=embed)
 

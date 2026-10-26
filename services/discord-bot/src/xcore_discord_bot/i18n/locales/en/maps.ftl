@@ -71,3 +71,19 @@ maps-finding-data-patches = The map changes gameplay with data patches; the othe
 maps-patches-attached = Data patches in this map ({ $count }), file { $sha }:
 maps-finding-unknown-content = The map uses content unknown to this server
 maps-badge-link-needed = The map's author has no linked game account, so the Map maker badge is not granted yet. The bot grants it on its own once the account is linked (within 30 days).
+
+# /map list
+
+maps-list-timeout = No response from target server (timeout).
+maps-list-empty = No maps found on server `{ $server }`
+maps-list-empty-creator = No maps found on server `{ $server }` for this creator.
+maps-list-title = Maps on `{ $server }`
+maps-list-footer = Sort: { $sort } • Page { $page }/{ $pages } • total maps: { $total } • entries on page: { $shown }
+maps-list-legend = 🎨 declared creator • ⬆ added via Discord
+maps-list-sort-reputation = reputation
+maps-list-sort-popularity = popularity
+maps-list-sort-name = name
+maps-list-unknown = Unknown
+maps-list-by = by `{ $author }`
+maps-list-file-author = file author `{ $author }`
+maps-list-reputation = rep { NUMBER($reputation, useGrouping: 1) }

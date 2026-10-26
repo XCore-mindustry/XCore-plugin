@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from types import SimpleNamespace
 from typing import Any
 
+import discord
 import pytest
 from discord import app_commands
 
@@ -11,6 +13,7 @@ from xcore_discord_bot.cogs.checks import (
     general_admin_check,
     map_reviewer_check,
 )
+from xcore_discord_bot.i18n import LocalePref
 from xcore_discord_bot.permissions import (
     ensure_any_role,
     general_admin_role_ids,
@@ -28,6 +31,7 @@ class _Role:
 @dataclass
 class _User:
     roles: list[_Role]
+    id: int = 1
 
 
 @dataclass
@@ -39,8 +43,11 @@ class _Response:
 
 
 class _ClientWithSettings:
-    def __init__(self, settings: object) -> None:
+    def __init__(self, settings: object, prefs: dict[int, Any] | None = None) -> None:
         self.settings = settings
+        # The /language choices the bot keeps warm; nobody has picked one by default.
+        store = SimpleNamespace(cached_locale_pref=(prefs or {}).get)
+        self.container = SimpleNamespace(cases=SimpleNamespace(store=store))
 
 
 @dataclass
@@ -48,6 +55,7 @@ class _Interaction:
     user: _User
     client: Any
     response: _Response = field(default_factory=_Response)
+    locale: Any = None
 
 
 @dataclass
@@ -131,3 +139,37 @@ async def test_map_reviewer_check_uses_configured_role_fallback_text() -> None:
         await _predicate(map_reviewer_check())(interaction)
 
     assert str(error.value) == "Missing permissions: required role <@&20>"
+
+
+@pytest.mark.asyncio
+async def test_a_refusal_follows_the_users_discord_language() -> None:
+    settings = _Settings(discord_admin_role_id=20, discord_general_admin_role_id=10)
+    interaction = _Interaction(
+        user=_User(roles=[_Role(99)]),
+        client=_ClientWithSettings(settings),
+        locale=discord.Locale.russian,
+    )
+
+    with pytest.raises(app_commands.CheckFailure) as error:
+        await _predicate(general_admin_check())(interaction)
+
+    assert str(error.value) == (
+        "Недостаточно прав: нужна одна из ролей <@&10> или <@&20>"
+    )
+
+
+@pytest.mark.asyncio
+async def test_a_refusal_follows_the_language_chosen_with_the_language_command() -> (
+    None
+):
+    settings = _Settings(discord_admin_role_id=20)
+    interaction = _Interaction(
+        user=_User(roles=[_Role(99)], id=7),
+        client=_ClientWithSettings(settings, {7: LocalePref("uk", "manual")}),
+        locale=discord.Locale.russian,
+    )
+
+    with pytest.raises(app_commands.CheckFailure) as error:
+        await _predicate(admin_check())(interaction)
+
+    assert str(error.value) == "Бракує прав: потрібна роль <@&20>"

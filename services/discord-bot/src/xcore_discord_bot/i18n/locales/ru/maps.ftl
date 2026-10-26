@@ -71,3 +71,19 @@ maps-finding-data-patches = Карта меняет геймплей дата-п
 maps-patches-attached = Дата-патчи этой карты ({ $count }), файл { $sha }:
 maps-finding-unknown-content = Карта использует неизвестный этому серверу контент
 maps-badge-link-needed = У автора карты не привязан игровой аккаунт, поэтому значок Map maker пока не выдан. Бот выдаст его сам, когда аккаунт привяжут (в течение 30 дней).
+
+# /map list
+
+maps-list-timeout = Сервер не ответил (тайм-аут).
+maps-list-empty = На сервере `{ $server }` нет карт
+maps-list-empty-creator = На сервере `{ $server }` нет карт этого автора.
+maps-list-title = Карты на `{ $server }`
+maps-list-footer = Сортировка: { $sort } • Страница { $page }/{ $pages } • всего карт: { $total } • на странице: { $shown }
+maps-list-legend = 🎨 заявленный автор • ⬆ добавлена через Discord
+maps-list-sort-reputation = по репутации
+maps-list-sort-popularity = по популярности
+maps-list-sort-name = по названию
+maps-list-unknown = Неизвестно
+maps-list-by = автор `{ $author }`
+maps-list-file-author = автор в файле `{ $author }`
+maps-list-reputation = реп. { NUMBER($reputation, useGrouping: 1) }

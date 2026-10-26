@@ -7,18 +7,20 @@ import discord
 from bson.datetime_ms import DatetimeMS
 
 from .dto import MERGE_KEEP_PID_SOURCE, AccountMergeResult, PlayerRecord
+from .i18n import DEFAULT, t
 from .utils.mindustry_colors import strip_mindustry_colors
 
 DISCORD_EMBED_TITLE_MAX = 256
 
 # The rank tags are glyphs of the game font, which Discord cannot draw: names only.
+# (id of the name in stats.ftl, wins needed)
 HEXED_RANKS: list[tuple[str, int]] = [
-    ("Newbie", 0),
-    ("Regular", 3),
-    ("Advanced", 10),
-    ("Veteran", 20),
-    ("Devastator", 25),
-    ("The Legend", 30),
+    ("newbie", 0),
+    ("regular", 3),
+    ("advanced", 10),
+    ("veteran", 20),
+    ("devastator", 25),
+    ("legend", 30),
 ]
 
 
@@ -30,16 +32,22 @@ def format_size(size_bytes: int) -> str:
     return f"{size_bytes / (1024 * 1024):.1f} MB"
 
 
-def format_minutes(total_minutes: int) -> str:
+def format_minutes(total_minutes: int, locale: str = DEFAULT) -> str:
     if total_minutes < 60:
-        return f"{total_minutes}m"
+        return t(locale, "command-duration-minutes", minutes=total_minutes)
     hours = total_minutes // 60
     minutes = total_minutes % 60
     if hours < 24:
-        return f"{hours}h {minutes}m"
+        return t(locale, "command-duration-hours", hours=hours, minutes=minutes)
     days = hours // 24
     rem_hours = hours % 24
-    return f"{days}d {rem_hours}h {minutes}m"
+    return t(
+        locale,
+        "command-duration-days",
+        days=days,
+        hours=rem_hours,
+        minutes=minutes,
+    )
 
 
 def format_epoch_millis(value: object) -> str:
@@ -52,17 +60,25 @@ def format_epoch_millis(value: object) -> str:
     return "n/a"
 
 
-def format_hexed_rank_block(rank_value: int, points: int) -> tuple[str, str]:
+def format_hexed_rank_block(
+    rank_value: int, points: int, locale: str = DEFAULT
+) -> tuple[str, str]:
     safe_rank = max(0, min(rank_value, len(HEXED_RANKS) - 1))
-    rank_label, _ = HEXED_RANKS[safe_rank]
+    rank_id, _ = HEXED_RANKS[safe_rank]
 
     if safe_rank + 1 < len(HEXED_RANKS):
-        next_name, next_required = HEXED_RANKS[safe_rank + 1]
-        rank_progress = f"{points}/{next_required} wins to {next_name}"
+        next_id, next_required = HEXED_RANKS[safe_rank + 1]
+        rank_progress = t(
+            locale,
+            "stats-hexed-progress",
+            points=points,
+            required=next_required,
+            next=t(locale, f"stats-hexed-rank-{next_id}"),
+        )
     else:
-        rank_progress = f"{points} wins (max rank)"
+        rank_progress = t(locale, "stats-hexed-max", points=points)
 
-    return rank_label, rank_progress
+    return t(locale, f"stats-hexed-rank-{rank_id}"), rank_progress
 
 
 def format_ban_expire_date(expire_value: object) -> str:
@@ -263,11 +279,11 @@ def build_merge_result_embed(result: AccountMergeResult) -> discord.Embed:  # no
 
 
 def build_servers_embed(  # noqa: C901
-    servers, *, sort_mode: Literal["players", "name"]
+    servers, *, sort_mode: Literal["players", "name"], locale: str = DEFAULT
 ) -> discord.Embed:
-    embed = discord.Embed(title="Live Servers", color=0x00FF00)
+    embed = discord.Embed(title=t(locale, "servers-title"), color=0x00FF00)
     if not servers:
-        embed.description = "No live servers connected right now."
+        embed.description = t(locale, "servers-none")
     for srv in servers:
         lines: list[str] = []
 
@@ -298,7 +314,7 @@ def build_servers_embed(  # noqa: C901
             clean_map = strip_mindustry_colors(srv.map_name).strip()
             game_info.append(f"🗺 `{clean_map}`")
         if isinstance(srv.wave, int) and srv.wave > 0:
-            game_info.append(f"🌊 Wave `{srv.wave}`")
+            game_info.append(t(locale, "servers-wave", wave=srv.wave))
         if srv.mode and srv.mode.lower() not in ("survival", ""):
             clean_mode = strip_mindustry_colors(srv.mode).strip()
             game_info.append(f"⚔ `{clean_mode}`")
@@ -312,7 +328,7 @@ def build_servers_embed(  # noqa: C901
         if srv.version:
             tech.append(f"📦 `{srv.version}`")
         if srv.host and isinstance(srv.port, int) and srv.port > 0:
-            tech.append(f"🔌 Address: `{srv.host}:{srv.port}`")
+            tech.append(t(locale, "servers-address", address=f"{srv.host}:{srv.port}"))
         if tech:
             lines.append(" • ".join(tech))
 
@@ -320,9 +336,12 @@ def build_servers_embed(  # noqa: C901
 
     total_players = sum(srv.players for srv in servers)
     embed.set_footer(
-        text=(
-            f"Sort: {sort_mode} • Servers: {len(servers)} "
-            f"• Players online: {total_players}"
+        text=t(
+            locale,
+            "servers-footer",
+            sort=t(locale, f"servers-sort-{sort_mode}"),
+            servers=len(servers),
+            players=total_players,
         )
     )
     return embed

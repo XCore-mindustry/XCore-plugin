@@ -12,6 +12,7 @@ from .dto import (
     AccountMergeResult,
     PlayerRecord,
 )
+from .i18n import DEFAULT, t
 from .permissions import admin_role_ids, ensure_any_role
 from .presentation import build_merge_preview_embed, build_merge_result_embed
 from .settings import Settings
@@ -330,6 +331,7 @@ class StatsActionsView(discord.ui.View):
         create_mute_modal: CreateModalFn,
         open_target_audit: OpenAuditFn,
         open_actor_audit: OpenAuditFn,
+        locale: str = DEFAULT,
     ) -> None:
         super().__init__(timeout=180)
         self._settings = settings
@@ -340,6 +342,11 @@ class StatsActionsView(discord.ui.View):
         self._open_target_audit = open_target_audit
         self._open_actor_audit = open_actor_audit
         self.message: discord.Message | None = None
+        # The buttons sit under the profile, so they follow its language.
+        self._ban_btn.label = t(locale, "stats-button-ban")
+        self._mute_btn.label = t(locale, "stats-button-mute")
+        self._history_btn.label = t(locale, "stats-button-history")
+        self._actions_btn.label = t(locale, "stats-button-actions")
 
     async def interaction_check(self, interaction: Interaction) -> bool:
         return await ensure_any_role(

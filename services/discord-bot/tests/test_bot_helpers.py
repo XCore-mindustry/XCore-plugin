@@ -6,6 +6,7 @@ from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 from typing import Any
 
+import discord
 import pytest
 from backends import GameServer, connected_bus, published, real_bot, redis_connections
 from bot_fakes import make_bot, make_settings
@@ -354,6 +355,7 @@ class _ErrorInteraction:
     user: Any = field(default_factory=lambda: SimpleNamespace(id=1, display_name="mod"))
     command: Any = field(default_factory=lambda: SimpleNamespace(name="ban"))
     namespace: Any = field(default_factory=lambda: SimpleNamespace(player_id=1))
+    locale: Any = None
 
 
 @pytest.mark.asyncio
@@ -393,6 +395,27 @@ async def testhandle_app_command_error_sends_generic_message_on_unexpected_error
     assert is_ephemeral is True
     assert sent_text.startswith("Command failed (ref: ")
     assert sent_text.endswith("). Report this to an admin if the issue persists.")
+
+
+@pytest.mark.asyncio
+async def test_a_failed_command_is_reported_in_the_users_language() -> None:
+    bot = make_bot(settings=make_settings(discord_error_log_channel_id=None))
+    interaction = _ErrorInteraction(locale=discord.Locale.russian)
+
+    class _UnexpectedError(app_commands.AppCommandError):
+        pass
+
+    await XCoreDiscordBot.handle_app_command_error(
+        bot, interaction, _UnexpectedError("boom")
+    )
+    await XCoreDiscordBot.handle_app_command_error(
+        bot, interaction, app_commands.CheckFailure()
+    )
+
+    (failed, _), (refused, _) = interaction.response.sent
+    assert failed.startswith("Команда не выполнена (код: ")
+    assert failed.endswith("). Если ошибка повторяется, сообщите администратору.")
+    assert refused == "Недостаточно прав"
 
 
 @pytest.mark.asyncio

@@ -15,6 +15,7 @@ from .cases.redis_transport import RedisCaseTransport
 from .cases.views import CaseActionButton, PanelButton
 from .cogs import AdminCog, InfoCog, LinkingCog, MapsCog, SeasonsCog, SubnetCog
 from .cogs.cases import CasesCog
+from .command_helpers import reply_locale
 from .container import ServiceContainer
 from .i18n import XCoreTranslator, resolve_dm_locale, t
 from .mongo_store import MongoStore
@@ -339,7 +340,7 @@ class XCoreDiscordBot(commands.Bot):
             # a complaint/unknown cases command. The reference is the entire diagnostic.
             error_id = secrets.token_hex(4)
             logger.error("Private cases command failed [ref=%s]", error_id)
-            message = f"Command failed (ref: {error_id}). Report this to an admin if the issue persists."
+            message = t(reply_locale(self, interaction), "command-failed", ref=error_id)
             try:
                 if interaction.response.is_done():
                     await interaction.followup.send(message, ephemeral=True)
@@ -362,7 +363,9 @@ class XCoreDiscordBot(commands.Bot):
                 logger.error("Private cases error delivery failed [ref=%s]", error_id)
             return
         if isinstance(error, app_commands.CheckFailure):
-            message = str(error) or "Missing permissions"
+            message = str(error) or t(
+                reply_locale(self, interaction), "command-missing-permissions"
+            )
             if interaction.response.is_done():
                 await interaction.followup.send(message, ephemeral=True)
             else:
@@ -371,10 +374,7 @@ class XCoreDiscordBot(commands.Bot):
 
         error_id = secrets.token_hex(4)
         logger.exception("Unhandled app command error [ref=%s]: %s", error_id, error)
-        message = (
-            f"Command failed (ref: {error_id}). "
-            "Report this to an admin if the issue persists."
-        )
+        message = t(reply_locale(self, interaction), "command-failed", ref=error_id)
         try:
             if interaction.response.is_done():
                 await interaction.followup.send(message, ephemeral=True)

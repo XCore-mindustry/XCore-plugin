@@ -8,9 +8,10 @@ from typing import TYPE_CHECKING, TypeVar
 import discord
 from discord import Interaction
 
-from .command_helpers import get_player_or_reply, send_paginated
+from .command_helpers import get_player_or_reply, reply_locale, send_paginated
 from .dto import PlayerRecord
 from .game_stats import GameStats
+from .i18n import t
 from .modal_factories import create_stats_ban_modal, create_stats_mute_modal
 from .moderation_views import StatsActionsView
 from .permissions import admin_role_ids, has_any_role, settings_from_interaction
@@ -66,7 +67,7 @@ def _avatar_url(
 
 
 async def _linked_accounts(
-    bot: XCoreDiscordBot, interaction: Interaction, member: object
+    bot: XCoreDiscordBot, interaction: Interaction, member: object, locale: str
 ) -> list[PlayerRecord] | None:
     """The game accounts of a Discord user, most played first; replies when there are none."""
     players = await bot.store.find_players_by_discord_id(str(getattr(member, "id", "")))
@@ -74,33 +75,26 @@ async def _linked_accounts(
         return sorted(players, key=lambda row: row.total_play_time, reverse=True)
     own = getattr(member, "id", None) == interaction.user.id
     await interaction.response.send_message(
-        (
-            "You have no linked game account. Get a code in the game and use `/link`, "
-            "or pass a player ID."
-            if own
-            else "That user has no linked game account."
-        ),
+        t(locale, "stats-no-linked-account" if own else "stats-user-not-linked"),
         ephemeral=True,
     )
     return None
 
 
 async def _stats_player(
-    bot: XCoreDiscordBot, interaction: Interaction, reference: str | int
+    bot: XCoreDiscordBot, interaction: Interaction, reference: str | int, locale: str
 ) -> PlayerRecord | None:
     text = str(reference).strip()
     pid = text.removeprefix("#")
     if re.fullmatch(r"-?\d+", pid):
-        return await get_player_or_reply(bot, interaction, int(pid))
+        return await get_player_or_reply(bot, interaction, int(pid), locale=locale)
     username = text.removeprefix("@").strip()
     if username:
         player = await bot.store.find_player_by_username(username)
         if player is not None:
             return player
     await interaction.response.send_message(
-        "Player not found. Enter a player ID or @username, "
-        "or type a nickname and select a player from the suggestions.",
-        ephemeral=True,
+        t(locale, "stats-player-not-found"), ephemeral=True
     )
     return None
 
@@ -111,6 +105,7 @@ async def cmd_stats(
     player_id: str | int | None = None,
     user: discord.abc.User | None = None,
 ) -> None:
+    locale = reply_locale(bot, interaction)
     settings = settings_from_interaction(interaction)
     is_admin_viewer = settings is not None and has_any_role(
         interaction.user,
@@ -120,19 +115,17 @@ async def cmd_stats(
     member: discord.abc.User | None = None
     other_accounts: list[PlayerRecord] = []
     if player_id is not None:
-        player = await _stats_player(bot, interaction, player_id)
+        player = await _stats_player(bot, interaction, player_id, locale)
         if player is None:
             return
     else:
         member = user or interaction.user
         if member.id != interaction.user.id and not is_admin_viewer:
             await interaction.response.send_message(
-                "Only admins can look a player up by their Discord account. "
-                "Pass a player ID instead.",
-                ephemeral=True,
+                t(locale, "stats-lookup-by-user-admin-only"), ephemeral=True
             )
             return
-        accounts = await _linked_accounts(bot, interaction, member)
+        accounts = await _linked_accounts(bot, interaction, member, locale)
         if accounts is None:
             return
         player, other_accounts = accounts[0], accounts[1:]
@@ -152,6 +145,7 @@ async def cmd_stats(
             or str(player.discord_id or "") == str(interaction.user.id),
             avatar_url=_avatar_url(interaction, player, member),
             other_accounts=other_accounts,
+            locale=locale,
         )
     )
 
@@ -171,6 +165,7 @@ async def cmd_stats(
         open_actor_audit=lambda interaction, pid, player: cmd_stats_audit(
             bot, interaction, pid, player, mode="actor"
         ),
+        locale=locale,
     )
     await interaction.response.send_message(embed=embed, view=view)
     view.message = await interaction.original_response()

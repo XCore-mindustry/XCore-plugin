@@ -6,11 +6,12 @@ import re
 
 import discord
 
+from .i18n import DEFAULT, t
 from .presentation import format_size
 from .utils.mindustry_colors import strip_mindustry_colors
 
 
-def _map_rating_part(item: dict[str, str]) -> str:
+def _map_rating_part(item: dict[str, str], locale: str) -> str:
     like = str(item.get("like", "")).strip()
     dislike = str(item.get("dislike", "")).strip()
     reputation = str(item.get("reputation", "")).strip()
@@ -23,7 +24,7 @@ def _map_rating_part(item: dict[str, str]) -> str:
         parts.append(f"👎 {dislike_value}")
 
     if reputation.lstrip("-").isdigit():
-        parts.append(f"rep {reputation}")
+        parts.append(t(locale, "maps-list-reputation", reputation=int(reputation)))
 
     return f" • {' • '.join(parts)}" if parts else ""
 
@@ -80,11 +81,12 @@ def map_contributor(item: dict[str, str], prefix: str) -> str:
     return name
 
 
-def map_list_row(item: dict[str, str]) -> str:
-    name = map_text(strip_mindustry_colors(item.get("name", "Unknown")))
+def map_list_row(item: dict[str, str], locale: str = DEFAULT) -> str:
+    unknown = t(locale, "maps-list-unknown")
+    name = map_text(strip_mindustry_colors(item.get("name", unknown)))
     file_name = map_text(item.get("file_name", ""), 100, inline_code=True)
     author = map_text(
-        strip_mindustry_colors(item.get("author", "Unknown")), inline_code=True
+        strip_mindustry_colors(item.get("author", unknown)), inline_code=True
     )
     width = str(item.get("width", "")).strip()
     height = str(item.get("height", "")).strip()
@@ -92,10 +94,14 @@ def map_list_row(item: dict[str, str]) -> str:
     details = f" • {width}x{height}" if width.isdigit() and height.isdigit() else ""
     if file_size.isdigit():
         details += f" • {format_size(int(file_size))}"
-    details += _map_rating_part(item)
+    details += _map_rating_part(item, locale)
     uploaded = bool(item.get("uploaded_by_discord_id"))
-    author_label = "file author" if uploaded else "by"
-    row = f"• {name} — {author_label} `{author}`"
+    by = t(
+        locale,
+        "maps-list-file-author" if uploaded else "maps-list-by",
+        author=author,
+    )
+    row = f"• {name} — {by}"
     row += f"\n  `{file_name}`{details}" if file_name else details
     if uploaded:
         credits = []
@@ -109,11 +115,13 @@ def map_list_row(item: dict[str, str]) -> str:
     return row
 
 
-def map_list_pages(maps: list[dict[str, str]], sort_mode: str) -> list[list[str]]:
+def map_list_pages(
+    maps: list[dict[str, str]], sort_mode: str, locale: str = DEFAULT
+) -> list[list[str]]:
     pages: list[list[str]] = [[]]
     length = 0
     for item in _sort_maps(maps, sort_mode):
-        row = map_list_row(item)
+        row = map_list_row(item, locale)
         row_length = len(row.encode("utf-16-le")) // 2
         if pages[-1] and (len(pages[-1]) >= 15 or length + row_length + 1 > 3800):
             pages.append([])

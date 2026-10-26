@@ -8,7 +8,8 @@ from datetime import datetime
 import discord
 
 from .badges import get_badge
-from .leagues import league_for, next_league
+from .i18n import DEFAULT, t
+from .leagues import League, league_for, next_league
 from .rating_store import (
     Placing,
     PodiumEntry,
@@ -36,8 +37,15 @@ def ladder_name(ladder: str) -> str:
     return LADDER_NAMES.get(ladder, ladder)
 
 
-def season_title(ladder: str, name: str | None, number: int) -> str:
-    return f"{ladder_name(ladder)} · {name or f'Season {number}'}"
+def season_title(
+    ladder: str, name: str | None, number: int, locale: str = DEFAULT
+) -> str:
+    title = name or t(locale, "season-default-name", number=number)
+    return f"{ladder_name(ladder)} · {title}"
+
+
+def league_name(league: League, locale: str = DEFAULT) -> str:
+    return t(locale, f"league-{league.id}")
 
 
 def timestamp(value: datetime, style: str = "f") -> str:
@@ -52,18 +60,19 @@ def _escape(text: str) -> str:
     return discord.utils.escape_markdown(text)
 
 
-def prize_text(prize: Prize) -> str:
+def prize_text(prize: Prize, locale: str = DEFAULT) -> str:
     """One prize as players read it: a badge by its name, anything else as written."""
     if prize.kind == "badge":
         badge = get_badge(prize.value)
-        return f"🎖️ {badge.label if badge else _escape(prize.value)} badge"
+        name = t(locale, f"badges-name-{badge.id}") if badge else _escape(prize.value)
+        return t(locale, "season-prize-badge", badge=name)
     return f"🎁 {_escape(prize.label)}"
 
 
-def prize_lines(prizes: Sequence[Prize]) -> str:
+def prize_lines(prizes: Sequence[Prize], locale: str = DEFAULT) -> str:
     """The prizes of a season, one line per place or range, cut to fit an embed field."""
     ordered = sorted(prizes, key=lambda prize: (prize.place_from, prize.place_to))
-    lines = [f"{_place_range(prize)} {prize_text(prize)}" for prize in ordered]
+    lines = [f"{_place_range(prize)} {prize_text(prize, locale)}" for prize in ordered]
     text = "\n".join(lines)
     if len(text) <= FIELD_LIMIT:
         return text
@@ -213,27 +222,45 @@ def build_season_rescheduled_embed(
 
 
 def build_season_info_embed(
-    season: Season, *, participants: int, now: datetime
+    season: Season, *, participants: int, now: datetime, locale: str = DEFAULT
 ) -> discord.Embed:
-    embed = discord.Embed(
-        title=f"📊 {season_title(season.ladder, season.name, season.number)}",
-        color=discord.Color.blurple(),
+    title = season_title(season.ladder, season.name, season.number, locale)
+    embed = discord.Embed(title=f"📊 {title}", color=discord.Color.blurple())
+    embed.add_field(
+        name=t(locale, "season-started"), value=timestamp(season.starts_at), inline=True
     )
-    embed.add_field(name="Started", value=timestamp(season.starts_at), inline=True)
     if season.running and season.ends_at > now:
         embed.add_field(
-            name="Ends",
+            name=t(locale, "season-ends"),
             value=f"{timestamp(season.ends_at)} ({timestamp(season.ends_at, 'R')})",
             inline=True,
         )
     elif season.running:
-        embed.add_field(name="Ends", value="Wrapping up…", inline=True)
+        embed.add_field(
+            name=t(locale, "season-ends"),
+            value=t(locale, "season-wrapping-up"),
+            inline=True,
+        )
     else:
-        embed.add_field(name="Ended", value=timestamp(season.ends_at), inline=True)
-    embed.add_field(name="Players", value=f"`{participants}`", inline=True)
-    embed.add_field(name="Matches", value=f"`{season.matches}`", inline=True)
+        embed.add_field(
+            name=t(locale, "season-ended"), value=timestamp(season.ends_at), inline=True
+        )
+    embed.add_field(
+        name=t(locale, "season-players"),
+        value=t(locale, "season-count", count=participants),
+        inline=True,
+    )
+    embed.add_field(
+        name=t(locale, "season-matches"),
+        value=t(locale, "season-count", count=season.matches),
+        inline=True,
+    )
     if season.prizes and season.running:
-        embed.add_field(name="Prizes", value=prize_lines(season.prizes), inline=False)
+        embed.add_field(
+            name=t(locale, "season-prizes"),
+            value=prize_lines(season.prizes, locale),
+            inline=False,
+        )
     return embed
 
 
@@ -274,58 +301,87 @@ def build_season_prizes_embed(
 
 
 def build_season_top_embed(
-    season: Season, standings: Sequence[RankedStanding], *, participants: int
+    season: Season,
+    standings: Sequence[RankedStanding],
+    *,
+    participants: int,
+    locale: str = DEFAULT,
 ) -> discord.Embed:
+    title = season_title(season.ladder, season.name, season.number, locale)
     embed = discord.Embed(
-        title=f"🏅 {season_title(season.ladder, season.name, season.number)} · Top",
+        title=f"🏅 {t(locale, 'season-top-title', season=title)}",
         color=discord.Color.gold(),
     )
     if not standings:
-        embed.description = "Nobody has played this season yet."
+        embed.description = t(locale, "season-top-empty")
         return embed
     embed.description = "\n".join(
         f"{_place(row.rank)} **{_escape(row.nickname)}**"
         f"{f' (#{row.pid})' if row.pid is not None else ''} · `{row.rating}` · "
-        f"{row.wins}/{row.matches} wins"
+        + t(locale, "season-top-wins", wins=row.wins, matches=row.matches)
         for row in standings
     )
-    embed.set_footer(text=f"{participants} players this season")
+    embed.set_footer(text=t(locale, "season-top-footer", players=participants))
     return embed
 
 
-def league_progress(rating: int, cells: int = 8) -> str:
+def league_progress(rating: int, cells: int = 8, locale: str = DEFAULT) -> str:
     """The way from the rating's league to the next one, as a bar and what is left."""
     league = league_for(rating)
     following = next_league(league)
     if following is None:
-        return "top league"
+        return t(locale, "season-top-league")
     span = max(following.minimum_rating - league.minimum_rating, 1)
     done = min(max(rating - league.minimum_rating, 0), span)
     filled = done * cells // span
     bar = "▰" * filled + "▱" * (cells - filled)
-    return f"{bar} `{following.minimum_rating - rating}` to {following.name}"
-
-
-def _ratings_block(placing: Placing) -> str:
-    season = placing.season
-    head = f"**{ladder_name(season.ladder)}** · {_escape(season.title)}"
-    if season.running:
-        head += f" · ends {timestamp(season.ends_at, 'R')}"
-    games = f"{placing.wins}/{placing.matches} wins"
-    if placing.matches > 0:
-        games += f" ({round(placing.wins * 100 / placing.matches)}%)"
-    standing = (
-        f"{league_for(placing.rating).name} `{placing.rating}` "
-        f"· #{placing.rank} of {placing.participants} · {games}"
+    left = t(
+        locale,
+        "season-next-league",
+        left=following.minimum_rating - rating,
+        league=league_name(following, locale),
     )
-    progress = league_progress(placing.rating)
+    return f"{bar} {left}"
+
+
+def _ratings_block(placing: Placing, locale: str) -> str:
+    season = placing.season
+    title = (
+        _escape(season.name)
+        if season.name
+        else t(locale, "season-default-name", number=season.number)
+    )
+    head = f"**{ladder_name(season.ladder)}** · {title}"
+    if season.running:
+        ends = t(locale, "season-ends-in", when=timestamp(season.ends_at, "R"))
+        head += f" · {ends}"
+    if placing.matches > 0:
+        games = t(
+            locale,
+            "season-wins-rate",
+            wins=placing.wins,
+            matches=placing.matches,
+            rate=round(placing.wins * 100 / placing.matches),
+        )
+    else:
+        games = t(locale, "season-wins", wins=placing.wins, matches=placing.matches)
+    standing = t(
+        locale,
+        "season-standing",
+        league=league_name(league_for(placing.rating), locale),
+        rating=placing.rating,
+        rank=placing.rank,
+        participants=placing.participants,
+        games=games,
+    )
+    progress = league_progress(placing.rating, locale=locale)
     if placing.peak_rating > placing.rating:
-        progress += f" · peak `{placing.peak_rating}`"
+        progress += " · " + t(locale, "season-peak", rating=placing.peak_rating)
     return f"{head}\n{standing}\n{progress}"
 
 
-def build_ratings_field(placings: Sequence[Placing]) -> str:
+def build_ratings_field(placings: Sequence[Placing], locale: str = DEFAULT) -> str:
     """The `/stats` lines: a block per ladder the player has taken part in."""
     if not placings:
-        return "No rated matches this season"
-    return "\n\n".join(_ratings_block(placing) for placing in placings)
+        return t(locale, "season-no-rated-matches")
+    return "\n\n".join(_ratings_block(placing, locale) for placing in placings)

@@ -67,7 +67,11 @@ def test_head_admin_role_is_the_general_role_and_falls_back_to_admin() -> None:
 
 @pytest.mark.asyncio
 async def test_head_admin_check_rejects_plain_admins() -> None:
-    client = SimpleNamespace(settings=_settings())
+    no_prefs = SimpleNamespace(cached_locale_pref=lambda _id: None)
+    client = SimpleNamespace(
+        settings=_settings(),
+        container=SimpleNamespace(cases=SimpleNamespace(store=no_prefs)),
+    )
     check = head_admin_check()
     predicate = check.__closure__[0].cell_contents
 

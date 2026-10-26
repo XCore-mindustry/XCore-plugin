@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 
-from discord import Interaction, app_commands
+from discord import Interaction
 
 from .settings import Settings
 
@@ -67,17 +67,6 @@ def map_reviewer_role_ids(settings: Settings) -> tuple[int, ...]:
         else settings.discord_admin_role_id
     )
     return (reviewer_role,)
-
-
-def require_any_role(
-    interaction: Interaction,
-    *,
-    role_ids: Iterable[int | None],
-    message: str,
-) -> bool:
-    if has_any_role(interaction.user, role_ids):
-        return True
-    raise app_commands.CheckFailure(message)
 
 
 async def ensure_any_role(

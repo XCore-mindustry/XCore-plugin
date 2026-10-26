@@ -5,6 +5,7 @@ from datetime import UTC, datetime
 from types import SimpleNamespace
 from typing import Any, cast
 
+import discord
 import pytest
 from backends import real_bot
 from bot_fakes import make_bot, make_settings
@@ -15,6 +16,7 @@ from xcore_discord_bot.bot import XCoreDiscordBot
 from xcore_discord_bot.dto import PlayerRecord
 from xcore_discord_bot.game_stats import GAMES
 from xcore_discord_bot.handlers_stats import cmd_stats, cmd_stats_audit
+from xcore_discord_bot.i18n import LocalePref
 from xcore_discord_bot.moderation_modals import StatsBanModal, StatsMuteModal
 from xcore_discord_bot.moderation_views import StatsActionsView
 from xcore_discord_bot.rating_store import SEASONS
@@ -73,6 +75,7 @@ class _Interaction:
     client: Any | None = None
     response: _Response = field(default_factory=_Response)
     _message: _Message = field(default_factory=_Message)
+    locale: Any = None
 
     async def original_response(self) -> _Message:
         return self._message
@@ -235,6 +238,53 @@ async def test_cmd_stats_without_a_linked_account_says_how_to_link() -> None:
     assert sent["embed"] is None
     assert sent["ephemeral"] is True
     assert "/link" in sent["content"]
+
+
+@pytest.mark.asyncio
+async def test_cmd_stats_answers_in_the_viewers_language() -> None:
+    bot, _ = await _stats_bot()
+
+    interaction = _Interaction(
+        id=12,
+        user=_User(id=9, display_name="admin", roles=[_Role(5)]),
+        client=bot,
+        locale=discord.Locale.russian,
+    )
+    await cmd_stats(bot, cast(Any, interaction), 123)
+
+    sent = interaction.response.sent[0]
+    fields = {field.name: field.value for field in sent["embed"].fields}
+    assert fields["⏱️ Время в игре"] == "`10 мин`"
+    assert fields["🎖️ Значки"] == "Разработчик · **Переводчик** (показан)"
+    assert "🔒 Заметки для персонала" in fields
+    # the admin's buttons under the profile are in the same language
+    assert [item.label for item in sent["view"].children] == [
+        "Бан",
+        "Мут",
+        "История",
+        "Действия",
+    ]
+
+
+@pytest.mark.asyncio
+async def test_cmd_stats_without_a_linked_account_in_the_chosen_language() -> None:
+    bot, _ = await _stats_bot()
+    bot.container.cases.store.cached_locale_pref = lambda discord_id: LocalePref(
+        "uk", "manual"
+    )
+
+    interaction = _Interaction(
+        id=13,
+        user=_User(id=10, display_name="guest", roles=[_Role(2)]),
+        client=bot,
+        locale=discord.Locale.russian,
+    )
+    await cmd_stats(bot, cast(Any, interaction))
+
+    assert interaction.response.sent[0]["content"] == (
+        "У вас немає прив’язаного ігрового акаунта. "
+        "Отримайте код у грі та скористайтеся `/link` або вкажіть ID гравця."
+    )
 
 
 @pytest.mark.asyncio

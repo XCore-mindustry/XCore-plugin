@@ -7,7 +7,7 @@ from discord import Interaction, app_commands
 from discord.ext import commands
 
 from .. import handlers_stats
-from ..command_helpers import get_player_or_reply
+from ..command_helpers import get_player_or_reply, reply_locale
 from ..server_views import ServersView
 from .autocomplete import autocomplete_player_id, autocomplete_stats_player
 from .checks import admin_check
@@ -44,7 +44,11 @@ class InfoCog(commands.Cog):
 
     @app_commands.command(name="servers", description="Show all live Mindustry servers")
     async def cmd_servers(self, interaction: Interaction) -> None:
-        view = ServersView(self.bot.container.servers, sort_mode="players")
+        view = ServersView(
+            self.bot.container.servers,
+            sort_mode="players",
+            locale=reply_locale(self.bot, interaction),
+        )
         await interaction.response.send_message(embed=view.build_embed(), view=view)
         view.bot_message = await interaction.original_response()
 

@@ -7,7 +7,8 @@ from typing import TYPE_CHECKING
 import discord
 from discord import Interaction
 
-from .command_helpers import claim_mutation
+from .command_helpers import claim_mutation, reply_locale
+from .i18n import t
 from .map_list import map_list_pages, map_text
 from .moderation_views import MapRemoveConfirmView
 from .server_views import MapsListView
@@ -34,13 +35,14 @@ async def cmd_maps(
     server: str,
     creator: discord.abc.User | None = None,
 ) -> None:
+    locale = reply_locale(bot, interaction)
     await interaction.response.defer()
     try:
         maps = await bot.container.rpc.list_maps(
             server=server, timeout_ms=bot.settings.rpc_timeout_ms
         )
     except TimeoutError:
-        await interaction.followup.send("No response from target server (timeout).")
+        await interaction.followup.send(t(locale, "maps-list-timeout"))
         return
 
     if creator is not None:
@@ -49,32 +51,36 @@ async def cmd_maps(
         ]
     if not maps:
         await interaction.followup.send(
-            f"No maps found on server `{server}`"
-            + (" for this creator." if creator else "")
+            t(
+                locale,
+                "maps-list-empty-creator" if creator else "maps-list-empty",
+                server=server,
+            )
         )
         return
 
     default_sort_mode = "reputation"
 
     async def fetch_page(page: int, sort_mode: str) -> tuple[discord.Embed, bool]:
-        pages = map_list_pages(maps, sort_mode)
+        pages = map_list_pages(maps, sort_mode, locale)
         chunk = pages[page]
         embed = discord.Embed(
-            title=f"Maps on `{server}`",
+            title=t(locale, "maps-list-title", server=server),
             description="\n".join(chunk),
             color=discord.Color.green(),
         )
-        embed.set_footer(
-            text=(
-                f"Sort: {sort_mode} • Page {page + 1}/{len(pages)} "
-                f"• total maps: {len(maps)} • entries on page: {len(chunk)}"
-                + (
-                    " • 🎨 declared creator • ⬆ added via Discord"
-                    if any(item.get("uploaded_by_discord_id") for item in maps)
-                    else ""
-                )
-            )
+        footer = t(
+            locale,
+            "maps-list-footer",
+            sort=t(locale, f"maps-list-sort-{sort_mode}"),
+            page=page + 1,
+            pages=len(pages),
+            total=len(maps),
+            shown=len(chunk),
         )
+        if any(item.get("uploaded_by_discord_id") for item in maps):
+            footer += " • " + t(locale, "maps-list-legend")
+        embed.set_footer(text=footer)
         return embed, page + 1 < len(pages)
 
     first_embed, has_next = await fetch_page(0, default_sort_mode)
@@ -84,6 +90,7 @@ async def cmd_maps(
         has_next=has_next,
         sort_mode=default_sort_mode,
         fetch_page=fetch_page,
+        locale=locale,
     )
     sent = await interaction.followup.send(embed=first_embed, view=view)
     view.bot_message = sent

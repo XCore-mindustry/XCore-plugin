@@ -118,10 +118,6 @@ class Season:
         return f"{self.ladder}:{self.number}"
 
     @property
-    def title(self) -> str:
-        return self.name or f"Season {self.number}"
-
-    @property
     def running(self) -> bool:
         return self.status == ACTIVE
 

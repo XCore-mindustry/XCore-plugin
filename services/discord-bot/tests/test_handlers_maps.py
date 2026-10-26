@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from types import SimpleNamespace
 from typing import Any
 
+import discord
 import pytest
 from backends import GameServer, real_bot
 from bot_fakes import make_settings
@@ -42,6 +44,8 @@ class _Followup:
 class _Interaction:
     response: _DeferredResponse = field(default_factory=_DeferredResponse)
     followup: _Followup = field(default_factory=_Followup)
+    user: Any = field(default_factory=lambda: SimpleNamespace(id=1))
+    locale: discord.Locale | None = None
 
 
 LIST = MapsListRequestV1.MESSAGE_TYPE
@@ -352,3 +356,44 @@ def test_map_pages_budget_astral_unicode_as_utf16_units() -> None:
     pages = map_list_pages(maps, "name")
     assert sum(map(len, pages)) == len(maps)
     assert all(len("\n".join(page).encode("utf-16-le")) // 2 <= 3800 for page in pages)
+
+
+async def test_cmd_maps_answers_in_the_users_language() -> None:
+    bot, _ = await _maps_bot(
+        [
+            {
+                "name": "Arena",
+                "fileName": "arena.msav",
+                "author": "Alice",
+                "reputation": 1500,
+            }
+        ]
+    )
+    interaction = _Interaction(locale=discord.Locale.russian)
+
+    await cmd_maps(bot, interaction, "mini-pvp")
+
+    sent = interaction.followup.messages[0]
+    assert sent["embed"].title == "Карты на `mini-pvp`"
+    assert sent["embed"].description == (
+        "• Arena — автор `Alice`\n  `arena.msav` • реп. 1\xa0500"
+    )
+    assert sent["embed"].footer.text == (
+        "Сортировка: по репутации • Страница 1/1 • всего карт: 1 • на странице: 1"
+    )
+    assert [item.label for item in sent["view"].children] == [
+        "◀ Назад",
+        "Вперёд ▶",
+        "Сортировка: по репутации",
+    ]
+
+
+async def test_cmd_maps_reports_an_empty_list_in_ukrainian() -> None:
+    bot, _ = await _maps_bot([])
+    interaction = _Interaction(locale=discord.Locale.ukrainian)
+
+    await cmd_maps(bot, interaction, "mini-pvp")
+
+    assert interaction.followup.messages[0]["content"] == (
+        "На сервері `mini-pvp` немає карт"
+    )
