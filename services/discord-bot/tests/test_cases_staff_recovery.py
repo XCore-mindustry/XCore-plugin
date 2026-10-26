@@ -268,7 +268,7 @@ async def test_real_map_unconfirmed_results_stay_open_and_never_retry(status):
     if status == "timeout":
         bus.upload_error = TimeoutError("installed remotely but no receipt")
     elif status == "audit_failed":
-        bot.store.append_moderation_audit = AsyncMock(
+        bot.container.audit.append_moderation_audit = AsyncMock(
             side_effect=ValueError("audit unavailable")
         )
     else:
@@ -324,7 +324,7 @@ async def test_real_mutation_without_completion_audit_remains_uncertain(kind):
         kind, payload={"ban_id": 71} if kind == "appeal" else {"badge": "map-maker"}
     )
     mutation_db["bans"].docs = [_ban(ban_id=71, expire_date=NOW + timedelta(days=7))]
-    bot.store.append_moderation_audit = AsyncMock(
+    bot.container.audit.append_moderation_audit = AsyncMock(
         side_effect=RuntimeError("audit unavailable")
     )
     calls = []

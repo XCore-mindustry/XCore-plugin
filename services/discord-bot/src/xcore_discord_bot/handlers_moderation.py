@@ -152,7 +152,7 @@ async def _append_discord_moderation_audit(
     except (ValueError, TypeError, OverflowError):
         duration_ms = None
     uuid_value, ip_value = record_identifiers(player)
-    return await bot.store.append_moderation_audit(
+    return await bot.container.audit.append_moderation_audit(
         action=action,
         target_uuid=uuid_value or "",
         target_pid=player.pid,

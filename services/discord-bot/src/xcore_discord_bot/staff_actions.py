@@ -147,7 +147,7 @@ async def _append_audit(
     extra: dict[str, str] | None = None,
 ) -> str:
     uuid_value, ip_value = record_identifiers(player)
-    return await bot.store.append_moderation_audit(
+    return await bot.container.audit.append_moderation_audit(
         action=action,
         target_uuid=uuid_value or "",
         target_pid=player.pid,
@@ -629,7 +629,7 @@ async def _append_map_upload_audit(
     *,
     request_id: str | None,
 ) -> str:
-    return await bot.store.append_moderation_audit(
+    return await bot.container.audit.append_moderation_audit(
         action="NOTE",
         target_uuid="",
         target_pid=None,

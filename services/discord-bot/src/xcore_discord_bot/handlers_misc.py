@@ -348,7 +348,7 @@ async def cmd_stats_audit(
     if mode == "actor":
         actor_discord_id = str(player.get("discord_id") or "").strip() or None
         actor_id = nickname
-        total_entries = await bot.store.count_audit_for_actor(
+        total_entries = await bot.container.audit.count_audit_for_actor(
             actor_id=actor_id,
             actor_discord_id=actor_discord_id,
         )
@@ -360,19 +360,21 @@ async def cmd_stats_audit(
                 ephemeral=True,
             )
             return
-        total_entries = await bot.store.count_audit_for_player(uuid=uuid_value)
+        total_entries = await bot.container.audit.count_audit_for_player(
+            uuid=uuid_value
+        )
     total_pages = max(1, (total_entries + page_size - 1) // page_size)
 
     async def fetch_page(page: int) -> tuple[discord.Embed, bool]:
         if mode == "actor":
-            rows = await bot.store.list_audit_for_actor(
+            rows = await bot.container.audit.list_audit_for_actor(
                 actor_id=actor_id,
                 actor_discord_id=actor_discord_id,
                 limit=page_size,
                 page=page,
             )
         else:
-            rows = await bot.store.list_audit_for_player(
+            rows = await bot.container.audit.list_audit_for_player(
                 uuid=uuid_value, limit=page_size, page=page
             )
         embed = discord.Embed(

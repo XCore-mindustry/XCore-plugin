@@ -68,10 +68,10 @@ def make_bot(
         store.find_player_by_pid = AsyncMock(return_value=None)
     # A hand-written fake bus implements the family calls a test needs itself, so it
     # stands in for the family buses as well, also inside the services built on them.
-    # A hand-written fake store stands in for the bans and mutes store the same way.
+    # A hand-written fake store stands in for the punishment and audit stores the same way.
     stand_ins = dict.fromkeys(FAMILY_CLASSES if fake_bus else (), _itself)
     if fake_store:
-        stand_ins["PunishmentStore"] = _itself
+        stand_ins.update(AuditStore=_itself, PunishmentStore=_itself)
     with (
         patch.multiple("xcore_discord_bot.container", **stand_ins)
         if stand_ins

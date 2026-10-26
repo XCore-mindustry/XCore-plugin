@@ -15,6 +15,7 @@ from pymongo.asynchronous.client_session import AsyncClientSession
 from pymongo.asynchronous.database import AsyncDatabase
 from pymongo.errors import OperationFailure
 
+from .audit_store import AuditStore
 from .dto import (
     MERGE_KEEP_PID_CHOICES,
     MERGE_KEEP_PID_SOURCE,
@@ -61,10 +62,15 @@ class _MergePlan:
 
 class AccountMergeStore:
     def __init__(
-        self, store: MongoStore, punishments: PunishmentStore, settings: Settings
+        self,
+        store: MongoStore,
+        punishments: PunishmentStore,
+        audit: AuditStore,
+        settings: Settings,
     ) -> None:
         self._store = store
         self._punishments = punishments
+        self._audit = audit
         self._settings = settings
 
     async def merge_player_accounts(
@@ -314,7 +320,7 @@ class AccountMergeStore:
                     db, session, plan, collection
                 )
 
-        audit_id = await self._store.append_moderation_audit(
+        audit_id = await self._audit.append_moderation_audit(
             action="MERGE",
             target_uuid=plan.target_uuid,
             target_pid=plan.surviving_pid,

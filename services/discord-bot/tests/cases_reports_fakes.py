@@ -132,6 +132,7 @@ async def reports_core(*, enabled=True, guild=None, **settings):
     for family in FAMILY_BUSES:
         setattr(bot.container, family, getattr(action_bot.container, family))
     bot.container.punishments = action_bot.container.punishments
+    bot.container.audit = action_bot.container.audit
     bot.resolve_channel = action_bot.resolve_channel
 
     mirror_audits(bot, action_bot, db, mutations)

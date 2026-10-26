@@ -12,6 +12,7 @@ from pymongo import ReturnDocument
 from pymongo.errors import DuplicateKeyError
 from test_rating_store import _Collection, _Database, _matches
 
+from xcore_discord_bot.audit_store import AuditStore
 from xcore_discord_bot.mongo_store import MongoStore
 from xcore_discord_bot.punishment_store import PunishmentStore
 from xcore_discord_bot.store_mappers import ban_record_from_doc, mute_record_from_doc
@@ -348,7 +349,15 @@ async def test_ensure_indexes_creates_the_partial_unique_ban_id_index() -> None:
     ]
 
 
-async def test_connect_creates_the_sparse_audit_index() -> None:
+async def test_audit_ensure_indexes_creates_the_sparse_ban_id_index() -> None:
+    store, db = _store()
+    await AuditStore(store).ensure_indexes()
+    assert db["moderation_audit"].indexes == [
+        ("details.extra.ban_id", {"sparse": True})
+    ]
+
+
+async def test_connect_pings_once_and_leaves_the_indexes_to_the_stores() -> None:
     store, db = _store()
     db.command = AsyncMock()
     store._settings = SimpleNamespace(
@@ -360,9 +369,7 @@ async def test_connect_creates_the_sparse_audit_index() -> None:
         await store.connect()
         await store.connect()
     assert db["bans"].indexes == []
-    assert db["moderation_audit"].indexes == [
-        ("details.extra.ban_id", {"sparse": True})
-    ]
+    assert db["moderation_audit"].indexes == []
     db.command.assert_awaited_once_with("ping")
 
 

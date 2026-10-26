@@ -5,6 +5,7 @@ from datetime import UTC, datetime
 from types import SimpleNamespace
 
 import discord
+from bson import ObjectId
 from pymongo import ReturnDocument
 from pymongo.errors import DuplicateKeyError
 
@@ -130,10 +131,17 @@ class Cursor:
             )
         return self
 
+    def skip(self, count):
+        self.docs = self.docs[count:]
+        return self
+
     def limit(self, count):
         if count:
             self.docs = self.docs[:count]
         return self
+
+    async def to_list(self, length=None):
+        return deepcopy(self.docs[:length] if length is not None else self.docs)
 
     def __aiter__(self):
         async def generate():
@@ -156,8 +164,15 @@ class Collection:
         if open_transaction is not None and session is not open_transaction:
             raise AssertionError("Call outside the open transaction")
 
-    def find(self, query):
-        return Cursor([doc for doc in self.docs if matches(doc, query)])
+    def find(self, query, projection=None):
+        found = [doc for doc in self.docs if matches(doc, query)]
+        if projection:
+            # Inclusion projections only, which is what the bot sends.
+            kept = {key for key, include in projection.items() if include}
+            if projection.get("_id", 1):
+                kept.add("_id")
+            found = [{k: v for k, v in doc.items() if k in kept} for doc in found]
+        return Cursor(found)
 
     async def find_one(self, query, *, session=None):
         self._join(session)
@@ -195,6 +210,8 @@ class Collection:
 
     async def insert_one(self, doc, *, session=None):
         self._join(session)
+        # Like the driver, which also adds the generated id to the caller's dict.
+        doc.setdefault("_id", ObjectId())
         self._unique(doc)
         self.docs.append(deepcopy(doc))
 

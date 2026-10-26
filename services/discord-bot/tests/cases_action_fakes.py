@@ -27,7 +27,7 @@ class Claims:
 
 
 def mirror_audits(bot, action_bot, database, mutations):
-    append = action_bot.store.append_moderation_audit
+    append = action_bot.container.audit.append_moderation_audit
 
     async def audit(**kwargs):
         audit_id = await append(**kwargs)
@@ -36,4 +36,4 @@ def mirror_audits(bot, action_bot, database, mutations):
         )
         return audit_id
 
-    bot.store.append_moderation_audit = audit
+    bot.container.audit.append_moderation_audit = audit

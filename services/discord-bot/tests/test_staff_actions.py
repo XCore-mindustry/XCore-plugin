@@ -682,7 +682,7 @@ async def test_unban_completion_is_written_before_pardon_and_audit_failure_stops
     order = []
     delete, append = (
         bot.container.punishments.delete_ban,
-        bot.store.append_moderation_audit,
+        bot.container.audit.append_moderation_audit,
     )
 
     async def deleted(**kwargs):
@@ -701,7 +701,10 @@ async def test_unban_completion_is_written_before_pardon_and_audit_failure_stops
         assert db["moderation_audit"].docs
         raise RuntimeError("pardon unavailable")
 
-    bot.container.punishments.delete_ban, bot.store.append_moderation_audit = (
+    (
+        bot.container.punishments.delete_ban,
+        bot.container.audit.append_moderation_audit,
+    ) = (
         deleted,
         audited,
     )
@@ -725,7 +728,7 @@ async def test_unban_completion_is_written_before_pardon_and_audit_failure_stops
 async def test_badge_case_audit_precedes_fallible_followups(failure):
     bot, db, bus, _ = _action_bot()
     if failure == "audit":
-        bot.store.append_moderation_audit = AsyncMock(
+        bot.container.audit.append_moderation_audit = AsyncMock(
             side_effect=RuntimeError("audit unavailable")
         )
     if failure == "lookup":
@@ -745,7 +748,7 @@ async def test_badge_case_audit_precedes_fallible_followups(failure):
     assert not bus.inventory_events
     if failure == "audit":
         # No verification lookup after the acknowledged mutation if audit persistence fails.
-        assert bot.store.append_moderation_audit.await_count == 1
+        assert bot.container.audit.append_moderation_audit.await_count == 1
 
 
 @pytest.mark.parametrize("fresh", [None, PLAYER])
@@ -866,7 +869,7 @@ async def test_map_response_must_match_server_and_exact_ordered_files(server, na
 
 async def test_map_audit_error_after_installed_is_not_translated_or_retried():
     bot, db, bus, _ = _action_bot()
-    bot.store.append_moderation_audit = AsyncMock(
+    bot.container.audit.append_moderation_audit = AsyncMock(
         side_effect=ValueError("audit persistence failed")
     )
     with pytest.raises(ValueError, match="audit persistence failed"):

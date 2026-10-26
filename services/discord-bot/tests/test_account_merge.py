@@ -12,6 +12,7 @@ from cases_fakes import Collection, Database
 from pymongo.errors import OperationFailure, PyMongoError
 
 from xcore_discord_bot.account_merge_store import AccountMergeStore
+from xcore_discord_bot.audit_store import AuditStore
 from xcore_discord_bot.dto import (
     MERGE_KEEP_PID_SOURCE,
     MERGE_KEEP_PID_TARGET,
@@ -373,7 +374,9 @@ async def _merge(store: MongoStore, **overrides: Any) -> AccountMergeResult:
         "reason": "Device migration",
     }
     kwargs.update(overrides)
-    merges = AccountMergeStore(store, PunishmentStore(store), make_settings())
+    merges = AccountMergeStore(
+        store, PunishmentStore(store), AuditStore(store), make_settings()
+    )
     return await merges.merge_player_accounts(**kwargs)
 
 

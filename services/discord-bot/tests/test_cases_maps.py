@@ -508,13 +508,13 @@ async def test_crash_after_upload_before_case_close_recovers_from_audit_without_
 async def test_audit_write_response_failure_after_persisted_completion_recovers_without_second_upload():
     env, case = await opened()
     service, _, bot, _, bus, _, _, _, _, _ = env
-    original = bot.store.append_moderation_audit
+    original = bot.container.audit.append_moderation_audit
 
     async def failing(**kw):
         await original(**kw)
         raise RuntimeError("audit reply lost")
 
-    bot.store.append_moderation_audit = failing
+    bot.container.audit.append_moderation_audit = failing
     final = await do_accept(service, case)
     assert final.resolution.code == "accepted" and len(bus.upload_calls) == 1
 

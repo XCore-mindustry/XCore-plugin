@@ -259,7 +259,7 @@ async def test_followup_failure_after_audit_recovery_does_not_replay_helper(
 async def test_no_completion_audit_failure_keeps_case_open_no_invented_resolution():
     service, db, bot, mutations, bus, _ = await appeal_core()
     case = await opened(service, bot)
-    bot.store.append_moderation_audit = AsyncMock(
+    bot.container.audit.append_moderation_audit = AsyncMock(
         side_effect=RuntimeError("audit unavailable")
     )
     with pytest.raises(RuntimeError, match="audit unavailable"):

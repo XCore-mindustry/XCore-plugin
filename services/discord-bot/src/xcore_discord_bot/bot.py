@@ -143,6 +143,7 @@ class XCoreDiscordBot(commands.Bot):
         await self.bus.connect()
         await self.store.connect()
         await self.container.punishments.ensure_indexes()
+        await self.container.audit.ensure_indexes()
         container = self.container
         if self.settings.cases_enabled:
             try:

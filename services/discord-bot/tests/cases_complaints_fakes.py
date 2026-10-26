@@ -68,7 +68,8 @@ async def complaint_core(*, players=None, audits=(), enabled=True, **settings):
 
     bot.channels[500].create_thread = create_thread
     # Signals forbidden operational side effects without connecting to anything.
-    bot.store = SimpleNamespace(append_moderation_audit=AsyncMock())
+    bot.store = SimpleNamespace()
+    bot.container.audit = SimpleNamespace(append_moderation_audit=AsyncMock())
     return service, db, bot
 
 

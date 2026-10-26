@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from .account_merge_store import AccountMergeStore
+from .audit_store import AuditStore
 from .bus.accounts import AccountsBus
 from .bus.cases import CasesBus
 from .bus.chat import ChatBus
@@ -55,6 +56,7 @@ class ServiceContainer:
     rpc: MindustryRpcClient
     players: PlayerService
     punishments: PunishmentStore
+    audit: AuditStore
     ratings: RatingStore
     game_stats: GameStatsStore
     rating_service: RatingService
@@ -94,6 +96,7 @@ class ServiceContainer:
         )
 
         punishments = PunishmentStore(store)
+        audit = AuditStore(store)
         ratings = RatingStore(store)
         rating_service = RatingService(
             store=ratings, rpc=rpc, timeout_ms=settings.rpc_timeout_ms
@@ -105,7 +108,7 @@ class ServiceContainer:
             rpc=rpc,
             accounts=accounts_bus,
             moderation=moderation_bus,
-            merges=AccountMergeStore(store, punishments, settings),
+            merges=AccountMergeStore(store, punishments, audit, settings),
         )
 
         presence_daemon = PresenceDaemon(bot=bot)
@@ -141,6 +144,7 @@ class ServiceContainer:
             rpc=rpc,
             players=players,
             punishments=punishments,
+            audit=audit,
             ratings=ratings,
             game_stats=GameStatsStore(store),
             rating_service=rating_service,

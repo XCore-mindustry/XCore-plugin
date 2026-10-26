@@ -396,7 +396,7 @@ async def test_grant_failure_never_false_closes(failure):
     elif failure == "unconfirmed":
         bot.store.grant_badge = AsyncMock(return_value=False)
     elif failure == "audit":
-        bot.store.append_moderation_audit = AsyncMock(
+        bot.container.audit.append_moderation_audit = AsyncMock(
             side_effect=RuntimeError("audit failed")
         )
     else:
