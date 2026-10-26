@@ -372,7 +372,9 @@ async def test_persistent_grant_real_helper_confirmed_audit_and_inventory_recove
     assert audit["details"]["extra"]["case_action_token"] == token
     assert final.resolution.audit_id == audit["audit_id"]
     assert row["unlocked_badges"] == ["map-maker"]
-    assert len(bus.inventory_events) == (0 if already_owned or inventory_failure else 1)
+    assert len(await bus.inventory_events()) == (
+        0 if already_owned or inventory_failure else 1
+    )
     assert bot.channels[int(case.discord["thread_id"])].archived
     assert bot.channels[int(case.discord["user_thread_id"])].locked
     stale = Interaction(bot, user=member(102, (20,)))

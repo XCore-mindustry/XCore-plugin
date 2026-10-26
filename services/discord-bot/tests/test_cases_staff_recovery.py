@@ -61,7 +61,7 @@ async def setup_action(kind, *, payload=None):
         payload=payload or {},
         discord=discord_fields,
     )
-    bot, mutation_db, bus, channel = _action_bot()
+    bot, mutation_db, bus, channel = await _action_bot()
     bot.store.now_utc = lambda: NOW
     mirror_audits(bot, bot, db, mutation_db)
     return service, db, case, bot, mutation_db, bus, channel, closed
@@ -240,7 +240,7 @@ async def test_real_completion_survives_failed_case_cas_or_post_grant_lookup(mod
     assert closed == [case.number]
     if mode == "badge_owned":
         assert db["moderation_audit"].docs[0]["details"]["extra"]["changed"] == "false"
-        assert not bus.inventory_events
+        assert not await bus.inventory_events()
     if kind == "map":
         assert (
             final.resolution.server == "mini-pvp"
@@ -307,7 +307,7 @@ async def test_real_map_unconfirmed_results_stay_open_and_never_retry(status):
     )
     assert not closed and not final.progress.get("closed_done")
     assert len(bus.upload_calls) == 1 and not db["case_notices"].docs
-    assert not bus.inventory_events
+    assert not await bus.inventory_events()
     if status not in {"timeout", "audit_failed"}:
         assert db["moderation_audit"].docs[0]["details"]["extra"]["status"] == status
         assert (
@@ -355,7 +355,7 @@ async def test_real_mutation_without_completion_audit_remains_uncertain(kind):
     await reconcile_cases(service)
     assert (await service.get(case.number)).status == CaseStatus.OPEN
     assert calls == [case.number] and not db["moderation_audit"].docs and not closed
-    assert not bus.pardons and not bus.inventory_events
+    assert not await bus.pardons() and not await bus.inventory_events()
     if kind == "appeal":
         assert not mutation_db["bans"].docs
     else:

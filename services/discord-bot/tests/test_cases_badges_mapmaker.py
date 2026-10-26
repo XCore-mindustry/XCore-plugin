@@ -27,12 +27,12 @@ async def test_mapmaker_multiple_accounts_flag_off_role_and_retry_are_idempotent
         ["map-maker"],
         [],
     ]
-    assert len(bus.inventory_events) == 2
+    assert len(await bus.inventory_events()) == 2
     author.add_roles.assert_awaited_once()
     second = await grant_map_maker(service, "42", actor=ACTOR)
     assert second == "complete"
     assert (
-        len(bus.inventory_events) == 4
+        len(await bus.inventory_events()) == 4
     )  # fresh inventories also repair missed transport delivery
     author.add_roles.assert_awaited_once()
     assert db["moderation_audit"].docs == mutations["moderation_audit"].docs == []
@@ -44,7 +44,7 @@ async def test_mapmaker_no_role_configured_is_explicitly_skipped():
     bot.get_guild = lambda _: pytest.fail("Role zero must do no guild/member work")
     result = await grant_map_maker(service, 42, actor=ACTOR)
     assert result == "complete"
-    assert len(bus.inventory_events) == 1
+    assert len(await bus.inventory_events()) == 1
 
 
 @pytest.mark.parametrize("role_id", [0, 70])
@@ -55,7 +55,7 @@ async def test_mapmaker_unlinked_result_keeps_b8_pending_and_grants_no_role(role
     bot.get_guild = lambda _: pytest.fail("Unlinked author must not receive a role")
     result = await grant_map_maker(service, 42, actor=ACTOR)
     assert result == "link_needed"
-    assert not bus.inventory_events and not db["moderation_audit"].docs
+    assert not await bus.inventory_events() and not db["moderation_audit"].docs
     author.add_roles.assert_not_awaited()
 
 
@@ -96,7 +96,7 @@ async def test_configured_role_lookup_and_add_failures_propagate_and_retry(failu
     guild.fetch_member, author.add_roles = original_fetch_member, original_add_roles
     result = await grant_map_maker(service, 42, actor=ACTOR)
     assert result == "complete"
-    assert len(bus.inventory_events) == 2
+    assert len(await bus.inventory_events()) == 2
 
 
 async def test_mapmaker_fetch_member_when_uncached_and_already_role_owned():
@@ -140,7 +140,9 @@ async def test_mapmaker_inventory_failure_propagates_and_owned_retry_repairs_cur
     bot.container.accounts_bus.publish_player_badge_inventory_changed = publish
     result = await grant_map_maker(service, 42, actor=ACTOR)
     assert result == "complete"
-    assert bus.inventory_events[0]["unlocked_badges"] == ("map-maker", "translator")
+    assert await bus.inventory_events() == [
+        ("private-account-1=", "", ["map-maker", "translator"])
+    ]
 
 
 @pytest.mark.parametrize("failure", ["unlink", "missing", "wrong_uuid"])

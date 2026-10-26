@@ -11,14 +11,15 @@ import asyncio
 import json
 import time
 import uuid
-from collections.abc import Awaitable
+from collections.abc import Awaitable, Callable
 from contextlib import suppress
 from typing import Any
-from unittest.mock import patch
+from unittest.mock import create_autospec, patch
 
 from bot_fakes import make_bot, make_settings
 from cases_fakes import Database
 from fakeredis.aioredis import FakeRedis
+from xcore_protocol.generated.maps import MapsUploadResponseV1
 
 from xcore_discord_bot.bot import XCoreDiscordBot
 from xcore_discord_bot.bus.transport import RedisTransport
@@ -137,3 +138,66 @@ async def consumed(
         task.cancel()
         with suppress(asyncio.CancelledError):
             await task
+
+
+class GameServer:
+    """A game server on the bot's bus: it answers map uploads and reads its commands.
+
+    It registers with the bot, so commands published to every server reach it. Set
+    ``statuses`` for the upload results, ``upload_error`` to fail the upload, or
+    ``answer`` to return any other response.
+    """
+
+    def __init__(self, bot: XCoreDiscordBot, name: str = "mini-pvp") -> None:
+        self.bus, self.name = bot.bus, name
+        self.statuses = ["installed"]
+        self.upload_error: BaseException | None = None
+        self.upload_calls: list[tuple[str, list[dict[str, Any]], int]] = []
+        self.answer: Callable[[str, list[dict[str, Any]]], object] = self._installed
+        bot.container.servers.update_server(name, 1, 0, 10, "v1")
+        maps = bot.container.maps_bus
+        maps.rpc_upload_maps = create_autospec(  # type: ignore[method-assign]
+            maps.rpc_upload_maps, side_effect=self.rpc_upload_maps
+        )
+
+    def _installed(self, server: str, files: list[dict[str, Any]]) -> object:
+        return MapsUploadResponseV1.from_payload(
+            {
+                "messageType": "maps.upload.response",
+                "messageVersion": 1,
+                "server": server,
+                "results": [
+                    {"fileName": file["filename"], "status": status}
+                    for file, status in zip(files, self.statuses, strict=True)
+                ],
+            }
+        )
+
+    async def rpc_upload_maps(
+        self, *, server: str, files: list[dict[str, Any]], timeout_ms: int
+    ) -> object:
+        self.upload_calls.append((server, files, timeout_ms))
+        if self.upload_error is not None:
+            raise self.upload_error
+        return self.answer(server, files)
+
+    async def commands(self, kind: str) -> list[dict[str, Any]]:
+        return await published(self.bus, f"xcore:cmd:{kind}:{self.name}")
+
+    async def kicks(self) -> list[tuple[str | None, str | None]]:
+        return [
+            (command["target"].get("playerUuid"), command["target"].get("ip"))
+            for command in await self.commands("kick-banned")
+        ]
+
+    async def pardons(self) -> list[str]:
+        return [
+            command["target"]["playerUuid"]
+            for command in await self.commands("pardon-player")
+        ]
+
+    async def inventory_events(self) -> list[tuple[str, str, list[str]]]:
+        return [
+            (command["playerUuid"], command["activeBadge"], command["unlockedBadges"])
+            for command in await self.commands("player-badge-inventory")
+        ]

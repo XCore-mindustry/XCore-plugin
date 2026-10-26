@@ -33,7 +33,7 @@ async def badge_core(*, rows=None, enabled=True, **settings):
     )
     if not enabled:
         service.registry.disable(CaseKind.BADGE)
-    action_bot, mutations, bus, _ = _action_bot()
+    action_bot, mutations, bus, _ = await _action_bot()
     mutations["players"].docs = [player_row()] if rows is None else rows
     action_bot.store.now_utc = lambda: NOW
     service.player_store = Players(action_bot, mutations)

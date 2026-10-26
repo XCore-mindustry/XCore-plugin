@@ -72,7 +72,7 @@ async def test_ban_from_the_card_bans_with_the_case_and_tells_every_reporter():
     assert audit["audit_id"] == resolution.audit_id
     extra = audit["details"]["extra"]
     assert extra["case"] == str(case.number) and extra["case_action_token"]
-    assert bot.bus.kicks == [(TARGET_UUID, TARGET_IP)]
+    assert await bot.game.kicks() == [(TARGET_UUID, TARGET_IP)]
     fields = log_fields(bot)
     assert fields["Case"] == f"#{case.number}" and fields["Ban"] == f"B-{ban['ban_id']}"
     # Every reporter: a notice in game, and a DM for the one with a linked account.

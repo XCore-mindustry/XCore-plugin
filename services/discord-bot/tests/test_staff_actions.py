@@ -1,12 +1,14 @@
 from __future__ import annotations
 
+import math
 from dataclasses import replace
 from datetime import timedelta
 from unittest.mock import AsyncMock
 
 import pytest
-from bot_fakes import make_bot, make_settings
-from test_ban_identity import NOW, _ban, _store
+from backends import GameServer, real_bot
+from bot_fakes import make_settings
+from test_ban_identity import NOW, _ban
 from xcore_protocol.generated.maps import MapsUploadResponseV1
 
 from xcore_discord_bot.bus.transport import RpcError
@@ -48,54 +50,13 @@ class _Channel:
         self.embeds.append(embed)
 
 
-class _Bus:
-    def __init__(self) -> None:
-        self.claims = []
-        self.keys = set()
-        self.kicks = []
-        self.pardons = []
-        self.inventory_events = []
-        self.upload_calls = []
-        self.upload_error = None
-        self.statuses = ["installed"]
-
-    async def claim_idempotency(self, key, ttl_seconds=600):
-        self.claims.append((key, ttl_seconds))
-        if key in self.keys:
-            return False
-        self.keys.add(key)
-        return True
-
-    async def publish_kick_banned(self, *, uuid_value, ip):
-        self.kicks.append((uuid_value, ip))
-
-    async def publish_pardon_player(self, *, uuid_value):
-        self.pardons.append(uuid_value)
-
-    async def publish_player_badge_inventory_changed(self, **kwargs):
-        self.inventory_events.append(kwargs)
-
-    async def rpc_upload_maps(self, *, server, files, timeout_ms):
-        self.upload_calls.append((server, files, timeout_ms))
-        if self.upload_error is not None:
-            raise self.upload_error
-        return MapsUploadResponseV1.from_payload(
-            {
-                "messageType": "maps.upload.response",
-                "messageVersion": 1,
-                "server": server,
-                "results": [
-                    {"fileName": file["filename"], "status": status}
-                    for file, status in zip(files, self.statuses, strict=True)
-                ],
-            }
-        )
-
-
-def _action_bot():
-    store, db = _store()
-    store.now_utc = lambda: NOW
-    db["players"].docs = [
+async def _action_bot():
+    """A bot on the real store and bus, a game server on that bus, and the log channel."""
+    bot, db = await real_bot(
+        settings=make_settings(discord_bans_channel_id=10, discord_mutes_channel_id=20)
+    )
+    bot.store.now_utc = lambda: NOW
+    await db["players"].insert_one(
         {
             "_id": 1,
             "pid": PLAYER.pid,
@@ -105,18 +66,21 @@ def _action_bot():
             "unlocked_badges": [],
             "active_badge": None,
         }
-    ]
-    bus = _Bus()
-    channel = _Channel()
-    bot = make_bot(
-        store=store,
-        bus=bus,
-        settings=make_settings(discord_bans_channel_id=10, discord_mutes_channel_id=20),
     )
+    channel = _Channel()
     bot.map_cache = {"mini-pvp": (0, [])}
     bot.resolve_channel = AsyncMock(return_value=channel)
     bot.container.cases.get = _case
-    return bot, db, bus, channel
+    return bot, db, GameServer(bot), channel
+
+
+async def _claims(bot) -> dict[str, int]:
+    """The idempotency keys the bot claimed, with their time to live."""
+    redis = bot.bus.redis
+    return {
+        key.removeprefix("xcore:idmp:"): math.ceil(await redis.pttl(key) / 1000)
+        for key in await redis.keys("xcore:idmp:*")
+    }
 
 
 async def _case(number):
@@ -163,7 +127,7 @@ def _assert_audit(
 
 
 async def test_perform_ban_allocates_identity_audits_kicks_and_logs_case() -> None:
-    bot, db, bus, channel = _action_bot()
+    bot, db, game, channel = await _action_bot()
     result = await perform_ban(
         bot,
         player=PLAYER,
@@ -185,8 +149,11 @@ async def test_perform_ban_allocates_identity_audits_kicks_and_logs_case() -> No
         expires_at=NOW + timedelta(days=1),
         duration_ms=86_400_000,
     )
-    assert bus.kicks == [("uuid-42", "1.2.3.4")]
-    assert bus.claims == [("ban-confirm:uuid-42:1.2.3.4:1d:griefing:case:57", 600)]
+    assert await game.kicks() == [("uuid-42", "1.2.3.4")]
+    claims = await _claims(bot)
+    assert claims.keys() == {"ban-confirm:uuid-42:1.2.3.4:1d:griefing:case:57"}
+    # Time spent after the claim can only shorten the 600-second TTL.
+    assert all(590 < ttl <= 600 for ttl in claims.values())
     fields = {field.name: field.value for field in channel.embeds[0].fields}
     assert fields["Ban"] == "B-1" and fields["Case"] == "#57"
     assert fields["Admin"] == "Moderator (<@123>)"
@@ -196,7 +163,7 @@ async def test_perform_ban_allocates_identity_audits_kicks_and_logs_case() -> No
 async def test_perform_ban_duplicate_is_a_typed_error_without_extra_side_effects() -> (
     None
 ):
-    bot, db, bus, channel = _action_bot()
+    bot, db, game, channel = await _action_bot()
     kwargs = {
         "player": PLAYER,
         "duration": timedelta(days=1),
@@ -209,7 +176,7 @@ async def test_perform_ban_duplicate_is_a_typed_error_without_extra_side_effects
     assert (
         len(db["bans"].docs)
         == len(db["moderation_audit"].docs)
-        == len(bus.kicks)
+        == len(await game.kicks())
         == len(channel.embeds)
         == 1
     )
@@ -217,7 +184,7 @@ async def test_perform_ban_duplicate_is_a_typed_error_without_extra_side_effects
 
 
 async def test_perform_ban_reban_gets_a_new_identity() -> None:
-    bot, db, _, _ = _action_bot()
+    bot, db, _, _ = await _action_bot()
     first = await perform_ban(
         bot, player=PLAYER, duration=timedelta(days=1), reason="one", actor=ACTOR
     )
@@ -230,7 +197,7 @@ async def test_perform_ban_reban_gets_a_new_identity() -> None:
 
 
 async def test_perform_ban_missing_identifiers_is_a_typed_error() -> None:
-    bot, db, bus, _ = _action_bot()
+    bot, db, _, _ = await _action_bot()
     with pytest.raises(MissingPlayerIdentifiers, match="both UUID and IP"):
         await perform_ban(
             bot,
@@ -239,19 +206,19 @@ async def test_perform_ban_missing_identifiers_is_a_typed_error() -> None:
             reason="griefing",
             actor=ACTOR,
         )
-    assert not db["bans"].docs and not bus.claims
+    assert not db["bans"].docs and not await _claims(bot)
 
 
 @pytest.mark.parametrize("duration", [timedelta(0), timedelta(seconds=-1)])
 @pytest.mark.parametrize("action", ["ban", "mute"])
 async def test_perform_sanctions_reject_non_positive_duration(action, duration) -> None:
-    bot, db, bus, _ = _action_bot()
+    bot, db, _, _ = await _action_bot()
     function = perform_ban if action == "ban" else perform_mute
     with pytest.raises(InvalidDuration):
         await function(
             bot, player=PLAYER, duration=duration, reason="griefing", actor=ACTOR
         )
-    assert not db["bans"].docs and not db["mutes"].docs and not bus.claims
+    assert not db["bans"].docs and not db["mutes"].docs and not await _claims(bot)
 
 
 @pytest.mark.parametrize(
@@ -262,27 +229,30 @@ async def test_perform_sanctions_reject_non_positive_duration(action, duration) 
     ],
 )
 async def test_perform_ban_accepts_ip_only_and_normalizes_identifiers(player) -> None:
-    bot, _, bus, _ = _action_bot()
+    bot, _, game, _ = await _action_bot()
     result = await perform_ban(
         bot, player=player, duration=timedelta(days=1), reason="griefing", actor=ACTOR
     )
     if player.uuid is None:
-        assert result.ban.uuid == "" and bus.kicks == [("", "1.2.3.4")]
+        # An IP-only kick names no player.
+        assert result.ban.uuid == "" and await game.kicks() == [(None, "1.2.3.4")]
     else:
-        assert result.ban.uuid == "uuid-42" and bus.kicks == [("uuid-42", "5.6.7.8")]
+        assert result.ban.uuid == "uuid-42" and await game.kicks() == [
+            ("uuid-42", "5.6.7.8")
+        ]
 
 
 @pytest.mark.parametrize("legacy", [False, True])
 async def test_perform_unban_removes_ban_pardons_and_audits_identity(legacy) -> None:
-    bot, db, bus, channel = _action_bot()
-    db["bans"].docs = [_ban()] if legacy else [_ban(ban_id=71)]
+    bot, db, game, channel = await _action_bot()
+    await db["bans"].insert_one(_ban() if legacy else _ban(ban_id=71))
     ban = await bot.container.punishments.find_ban(uuid=PLAYER.uuid, ip=None)
     result = await perform_unban(
         bot, ban, ACTOR, case_number=57, request_id="request-1"
     )
     ban_id = 1 if legacy else 71
     assert result.ban.ban_id == ban_id
-    assert not db["bans"].docs and bus.pardons == ["uuid-42"]
+    assert not db["bans"].docs and await game.pardons() == ["uuid-42"]
     _assert_audit(
         db["moderation_audit"].docs[0],
         action="UNBAN",
@@ -295,17 +265,17 @@ async def test_perform_unban_removes_ban_pardons_and_audits_identity(legacy) -> 
 
 
 async def test_perform_unban_ip_only_does_not_publish_pardon() -> None:
-    bot, db, bus, _ = _action_bot()
-    db["bans"].docs = [_ban(uuid="", ban_id=71)]
+    bot, db, game, _ = await _action_bot()
+    await db["bans"].insert_one(_ban(uuid="", ban_id=71))
     ban = await bot.container.punishments.find_ban(uuid="", ip="1.2.3.4")
     await perform_unban(bot, ban, ACTOR)
-    assert not bus.pardons and not db["bans"].docs
+    assert not await game.pardons() and not db["bans"].docs
     assert db["moderation_audit"].docs[0]["details"]["extra"] == {"ban_id": "71"}
 
 
 async def test_perform_unban_missing_identifiers_is_a_typed_error() -> None:
-    bot, db, _, _ = _action_bot()
-    db["bans"].docs = [_ban(ban_id=71)]
+    bot, db, _, _ = await _action_bot()
+    await db["bans"].insert_one(_ban(ban_id=71))
     ban = await bot.container.punishments.find_ban_by_id(71)
     with pytest.raises(MissingPlayerIdentifiers):
         await perform_unban(bot, replace(ban, uuid=None, ip=None), ACTOR)
@@ -314,29 +284,29 @@ async def test_perform_unban_missing_identifiers_is_a_typed_error() -> None:
 
 @pytest.mark.parametrize("legacy", [False, True])
 async def test_perform_unban_missing_ban_is_a_typed_error(legacy) -> None:
-    bot, db, bus, _ = _action_bot()
-    db["bans"].docs = [_ban()] if legacy else [_ban(ban_id=71)]
+    bot, db, game, _ = await _action_bot()
+    await db["bans"].insert_one(_ban() if legacy else _ban(ban_id=71))
     ban = await bot.container.punishments.find_ban(uuid=PLAYER.uuid, ip=None)
-    db["bans"].docs.clear()
+    await db["bans"].delete_many({})
     with pytest.raises(BanNotFound):
         await perform_unban(bot, ban, ACTOR)
-    assert not db["moderation_audit"].docs and not bus.pardons
+    assert not db["moderation_audit"].docs and not await game.pardons()
 
 
 async def test_perform_unban_stale_identity_cannot_remove_replacement_ban() -> None:
-    bot, db, bus, _ = _action_bot()
-    db["bans"].docs = [_ban(ban_id=71)]
+    bot, db, game, _ = await _action_bot()
+    await db["bans"].insert_one(_ban(ban_id=71))
     ban = await bot.container.punishments.find_ban_by_id(71)
-    db["bans"].docs[0]["ban_id"] = 72
+    await db["bans"].update_one({}, {"$set": {"ban_id": 72}})
     with pytest.raises(BanNotFound):
         await perform_unban(bot, ban, ACTOR, 57)
     assert db["bans"].docs[0]["ban_id"] == 72
-    assert not db["moderation_audit"].docs and not bus.pardons
+    assert not db["moderation_audit"].docs and not await game.pardons()
 
 
 async def test_perform_shorten_ban_keeps_identity_audits_note_and_logs() -> None:
-    bot, db, bus, channel = _action_bot()
-    db["bans"].docs = [_ban(ban_id=71, case_number=50)]
+    bot, db, game, channel = await _action_bot()
+    await db["bans"].insert_one(_ban(ban_id=71, case_number=50))
     earlier = NOW + timedelta(days=2)
     result = await perform_shorten_ban(
         bot, 71, earlier, ACTOR, 57, request_id="request-1"
@@ -353,14 +323,14 @@ async def test_perform_shorten_ban_keeps_identity_audits_note_and_logs() -> None
     assert channel.embeds[0].title == "Ban Shortened"
     fields = {field.name: field.value for field in channel.embeds[0].fields}
     assert fields["Ban"] == "B-71" and fields["Case"] == "#57"
-    assert not bus.kicks and not bus.pardons
+    assert not await game.kicks() and not await game.pardons()
     assert not db["counters"].docs
 
 
 @pytest.mark.parametrize("verb", ["unban", "shorten"])
 async def test_ban_check_sees_the_ban_right_before_the_write_and_can_stop_it(verb):
-    bot, db, bus, channel = _action_bot()
-    db["bans"].docs = [_ban(ban_id=71)]
+    bot, db, game, channel = await _action_bot()
+    await db["bans"].insert_one(_ban(ban_id=71))
     checked = []
 
     async def check(ban):
@@ -378,11 +348,15 @@ async def test_ban_check_sees_the_ban_right_before_the_write_and_can_stop_it(ver
             )
     assert checked == [(71, NOW + timedelta(days=7))]
     assert db["bans"].docs[0]["expire_date"] == NOW + timedelta(days=7)
-    assert not db["moderation_audit"].docs and not bus.pardons and not channel.embeds
+    assert (
+        not db["moderation_audit"].docs
+        and not await game.pardons()
+        and not channel.embeds
+    )
 
 
 async def test_perform_shorten_ban_missing_identity_is_a_typed_error() -> None:
-    bot, db, _, channel = _action_bot()
+    bot, db, _, channel = await _action_bot()
     with pytest.raises(BanNotFound):
         await perform_shorten_ban(bot, 71, NOW, ACTOR)
     assert not db["moderation_audit"].docs and not channel.embeds
@@ -399,8 +373,8 @@ async def test_perform_shorten_ban_missing_identity_is_a_typed_error() -> None:
     ],
 )
 async def test_perform_shorten_ban_invalid_expiry_is_a_typed_error(expiry) -> None:
-    bot, db, _, channel = _action_bot()
-    db["bans"].docs = [_ban(ban_id=71)]
+    bot, db, _, channel = await _action_bot()
+    await db["bans"].insert_one(_ban(ban_id=71))
     with pytest.raises(InvalidBanExpiry):
         await perform_shorten_ban(bot, 71, expiry, ACTOR)
     assert db["bans"].docs == [_ban(ban_id=71)]
@@ -408,20 +382,22 @@ async def test_perform_shorten_ban_invalid_expiry_is_a_typed_error(expiry) -> No
 
 
 async def test_perform_shorten_normalizes_naive_expiry_to_utc() -> None:
-    bot, db, _, _ = _action_bot()
-    db["bans"].docs = [_ban(ban_id=71)]
+    bot, db, _, _ = await _action_bot()
+    await db["bans"].insert_one(_ban(ban_id=71))
     expiry = NOW + timedelta(hours=1)
     result = await perform_shorten_ban(bot, 71, expiry.replace(tzinfo=None), ACTOR)
     assert result.ban.expire_date == expiry
 
 
 async def test_perform_shorten_cannot_lengthen_after_a_concurrent_shortening() -> None:
-    bot, db, _, _ = _action_bot()
-    db["bans"].docs = [_ban(ban_id=71)]
+    bot, db, _, _ = await _action_bot()
+    await db["bans"].insert_one(_ban(ban_id=71))
     original_update = bot.container.punishments.update_ban_expiry
 
     async def shorter_wins(**kwargs):
-        db["bans"].docs[0]["expire_date"] = NOW + timedelta(days=1)
+        await db["bans"].update_one(
+            {}, {"$set": {"expire_date": NOW + timedelta(days=1)}}
+        )
         return await original_update(**kwargs)
 
     bot.container.punishments.update_ban_expiry = shorter_wins
@@ -432,7 +408,7 @@ async def test_perform_shorten_cannot_lengthen_after_a_concurrent_shortening() -
 
 
 async def test_perform_mute_persists_case_and_audits_without_a_view() -> None:
-    bot, db, bus, channel = _action_bot()
+    bot, db, game, channel = await _action_bot()
     result = await perform_mute(
         bot, PLAYER, timedelta(minutes=10), "spam", ACTOR, 57, request_id="request-1"
     )
@@ -449,11 +425,11 @@ async def test_perform_mute_persists_case_and_audits_without_a_view() -> None:
     )
     assert result.message.startswith("Muted `Target` until")
     assert len(channel.embeds) == 1 and channel.embeds[0].title == "Mute Issued"
-    assert not bus.kicks and not db["counters"].docs
+    assert not await game.kicks() and not db["counters"].docs
 
 
 async def test_perform_mute_missing_uuid_is_a_typed_error() -> None:
-    bot, db, _, _ = _action_bot()
+    bot, db, _, _ = await _action_bot()
     with pytest.raises(MissingPlayerIdentifiers):
         await perform_mute(
             bot, replace(PLAYER, uuid=" "), timedelta(minutes=10), "spam", ACTOR
@@ -462,7 +438,7 @@ async def test_perform_mute_missing_uuid_is_a_typed_error() -> None:
 
 
 async def test_perform_badge_grant_is_idempotent_and_publishes_inventory() -> None:
-    bot, db, bus, _ = _action_bot()
+    bot, db, game, _ = await _action_bot()
     first = await perform_badge_grant(
         bot, PLAYER, " MAP-MAKER ", ACTOR, 57, request_id="request-1"
     )
@@ -471,13 +447,7 @@ async def test_perform_badge_grant_is_idempotent_and_publishes_inventory() -> No
     assert not second.changed and second.audit_id
     assert first.message == "Granted badge `map-maker` to `Target`"
     assert second.message == "Player already has badge `map-maker`"
-    assert bus.inventory_events == [
-        {
-            "uuid_value": "uuid-42",
-            "active_badge": None,
-            "unlocked_badges": ("map-maker",),
-        }
-    ]
+    assert await game.inventory_events() == [("uuid-42", "", ["map-maker"])]
     assert len(db["moderation_audit"].docs) == 2
     assert db["moderation_audit"].docs[1]["details"]["extra"]["changed"] == "false"
     _assert_audit(
@@ -494,17 +464,17 @@ async def test_perform_badge_grant_is_idempotent_and_publishes_inventory() -> No
 
 
 async def test_perform_badge_grant_command_context_has_no_new_audit() -> None:
-    bot, db, bus, _ = _action_bot()
+    bot, db, game, _ = await _action_bot()
     result = await perform_badge_grant(bot, PLAYER, "translator", ACTOR)
     assert result.changed and result.audit_id is None
-    assert len(bus.inventory_events) == 1 and not db["moderation_audit"].docs
+    assert len(await game.inventory_events()) == 1 and not db["moderation_audit"].docs
 
 
 async def test_perform_badge_grant_skips_event_if_updated_player_disappears() -> None:
-    bot, _, bus, _ = _action_bot()
+    bot, _, game, _ = await _action_bot()
     bot.store.find_player_by_uuid = AsyncMock(return_value=None)
     result = await perform_badge_grant(bot, PLAYER, "translator", ACTOR)
-    assert result.changed and not bus.inventory_events
+    assert result.changed and not await game.inventory_events()
 
 
 @pytest.mark.parametrize(
@@ -512,15 +482,15 @@ async def test_perform_badge_grant_skips_event_if_updated_player_disappears() ->
     [("unknown", BadgeNotFound), (" ", BadgeNotFound), ("admin", BadgeNotGrantable)],
 )
 async def test_perform_badge_grant_badge_errors_are_typed(badge_id, error) -> None:
-    bot, db, bus, _ = _action_bot()
+    bot, db, game, _ = await _action_bot()
     with pytest.raises(error):
         await perform_badge_grant(bot, PLAYER, badge_id, ACTOR)
     assert db["players"].docs[0]["unlocked_badges"] == []
-    assert not bus.inventory_events and not db["moderation_audit"].docs
+    assert not await game.inventory_events() and not db["moderation_audit"].docs
 
 
 async def test_perform_badge_grant_missing_uuid_is_a_typed_error() -> None:
-    bot, db, _, _ = _action_bot()
+    bot, db, _, _ = await _action_bot()
     with pytest.raises(MissingPlayerIdentifiers):
         await perform_badge_grant(bot, replace(PLAYER, uuid=None), "map-maker", ACTOR)
     assert db["players"].docs[0]["unlocked_badges"] == []
@@ -532,8 +502,8 @@ async def test_perform_map_upload_attribution_and_all_file_statuses(
     monkeypatch.setattr(
         "xcore_discord_bot.staff_actions.time.time", lambda: NOW.timestamp()
     )
-    bot, db, bus, _ = _action_bot()
-    bus.statuses = [
+    bot, db, game, _ = await _action_bot()
+    game.statuses = [
         "installed",
         "download_failed",
         "invalid_map",
@@ -549,13 +519,13 @@ async def test_perform_map_upload_attribution_and_all_file_statuses(
         for index in range(6)
     ]
     result = await perform_map_upload(bot, "mini-pvp", files, uploader, creator)
-    assert [entry.status.value for entry in result.results] == bus.statuses
+    assert [entry.status.value for entry in result.results] == game.statuses
     assert result.audit_id is None and not db["moderation_audit"].docs
     assert [entry.fileName for entry in result.results] == [
         file.filename for file in files
     ]
-    assert len(bus.upload_calls) == 1
-    server, payload, timeout = bus.upload_calls[0]
+    assert len(game.upload_calls) == 1
+    server, payload, timeout = game.upload_calls[0]
     assert server == "mini-pvp" and timeout == 120_000
     assert payload[0]["discordUpload"] == {
         "uploadedBy": {"discordId": "123", "discordUsername": "Reviewer"},
@@ -570,12 +540,12 @@ async def test_perform_map_upload_attribution_and_all_file_statuses(
 
 
 async def test_perform_map_upload_filters_non_msav_and_omits_unknown_creator() -> None:
-    bot, _, bus, _ = _action_bot()
+    bot, _, game, _ = await _action_bot()
     await perform_map_upload(
         bot, "mini-pvp", [MapUploadFile(FILE.url, "skip.txt"), FILE], ACTOR
     )
-    assert [file["filename"] for file in bus.upload_calls[0][1]] == ["arena.msav"]
-    assert "creator" not in bus.upload_calls[0][1][0]["discordUpload"]
+    assert [file["filename"] for file in game.upload_calls[0][1]] == ["arena.msav"]
+    assert "creator" not in game.upload_calls[0][1][0]["discordUpload"]
 
 
 @pytest.mark.parametrize(
@@ -592,10 +562,10 @@ async def test_perform_map_upload_filters_non_msav_and_omits_unknown_creator() -
 async def test_perform_map_upload_invalid_inputs_are_typed_and_do_not_send(
     files, uploader
 ) -> None:
-    bot, _, bus, _ = _action_bot()
+    bot, _, game, _ = await _action_bot()
     with pytest.raises(InvalidMapUpload):
         await perform_map_upload(bot, "mini-pvp", files, uploader)
-    assert not bus.upload_calls and "mini-pvp" in bot.map_cache
+    assert not game.upload_calls and "mini-pvp" in bot.map_cache
 
 
 @pytest.mark.parametrize(
@@ -611,17 +581,17 @@ async def test_perform_map_upload_invalid_inputs_are_typed_and_do_not_send(
 async def test_perform_map_upload_errors_are_typed_without_retrying(
     error, expected
 ) -> None:
-    bot, _, bus, _ = _action_bot()
-    bus.upload_error = error
+    bot, _, game, _ = await _action_bot()
+    game.upload_error = error
     with pytest.raises(expected) as caught:
         await perform_map_upload(bot, "mini-pvp", [FILE], ACTOR)
     assert caught.value.__cause__ is error
-    assert len(bus.upload_calls) == 1 and "mini-pvp" not in bot.map_cache
+    assert len(game.upload_calls) == 1 and "mini-pvp" not in bot.map_cache
 
 
 async def test_post_ban_log_lazily_assigns_game_ban_identity_and_case() -> None:
-    bot, db, _, channel = _action_bot()
-    db["bans"].docs = [_ban(case_number=57)]
+    bot, db, _, channel = await _action_bot()
+    await db["bans"].insert_one(_ban(case_number=57))
     kwargs = {
         "pid": 42,
         "name": "Target",
@@ -640,7 +610,7 @@ async def test_post_ban_log_lazily_assigns_game_ban_identity_and_case() -> None:
 
 
 async def test_post_ban_log_accepts_supplied_game_id_without_a_lookup() -> None:
-    bot, db, _, channel = _action_bot()
+    bot, db, _, channel = await _action_bot()
     bot.store.find_player_by_pid = AsyncMock(
         side_effect=AssertionError("unnecessary lookup")
     )
@@ -661,8 +631,8 @@ async def test_post_ban_log_accepts_supplied_game_id_without_a_lookup() -> None:
 
 @pytest.mark.parametrize("action", ["unban", "shorten"])
 async def test_ban_actions_preserve_an_unknown_player_pid_in_the_audit(action) -> None:
-    bot, db, _, _ = _action_bot()
-    db["bans"].docs = [_ban(ban_id=71, pid=None)]
+    bot, db, _, _ = await _action_bot()
+    await db["bans"].insert_one(_ban(ban_id=71, pid=None))
     if action == "unban":
         ban = await bot.container.punishments.find_ban_by_id(71)
         await perform_unban(bot, ban, ACTOR)
@@ -676,8 +646,8 @@ async def test_ban_actions_preserve_an_unknown_player_pid_in_the_audit(action) -
 async def test_unban_completion_is_written_before_pardon_and_audit_failure_stops_it(
     failure,
 ):
-    bot, db, bus, _ = _action_bot()
-    db["bans"].docs = [_ban(ban_id=71)]
+    bot, db, game, _ = await _action_bot()
+    await db["bans"].insert_one(_ban(ban_id=71))
     ban = await bot.container.punishments.find_ban_by_id(71)
     order = []
     delete, append = (
@@ -714,7 +684,7 @@ async def test_unban_completion_is_written_before_pardon_and_audit_failure_stops
     assert order == (
         ["delete", "audit", "pardon"] if failure == "pardon" else ["delete", "audit"]
     )
-    assert not db["bans"].docs and not bus.pardons
+    assert not db["bans"].docs and not await game.pardons()
     if failure == "pardon":
         assert (
             db["moderation_audit"].docs[0]["details"]["extra"]["case_action_token"]
@@ -726,7 +696,7 @@ async def test_unban_completion_is_written_before_pardon_and_audit_failure_stops
 
 @pytest.mark.parametrize("failure", ["lookup", "inventory", "audit"])
 async def test_badge_case_audit_precedes_fallible_followups(failure):
-    bot, db, bus, _ = _action_bot()
+    bot, db, game, _ = await _action_bot()
     if failure == "audit":
         bot.container.audit.append_moderation_audit = AsyncMock(
             side_effect=RuntimeError("audit unavailable")
@@ -745,7 +715,7 @@ async def test_badge_case_audit_precedes_fallible_followups(failure):
         )
     assert db["players"].docs[0]["unlocked_badges"] == ["map-maker"]
     assert bool(db["moderation_audit"].docs) == (failure != "audit")
-    assert not bus.inventory_events
+    assert not await game.inventory_events()
     if failure == "audit":
         # No verification lookup after the acknowledged mutation if audit persistence fails.
         assert bot.container.audit.append_moderation_audit.await_count == 1
@@ -753,18 +723,18 @@ async def test_badge_case_audit_precedes_fallible_followups(failure):
 
 @pytest.mark.parametrize("fresh", [None, PLAYER])
 async def test_unchanged_case_badge_requires_fresh_membership_not_input_snapshot(fresh):
-    bot, db, bus, _ = _action_bot()
+    bot, db, game, _ = await _action_bot()
     bot.store.grant_badge = AsyncMock(return_value=False)
     bot.store.find_player_by_uuid = AsyncMock(return_value=fresh)
     snapshot = replace(PLAYER, unlocked_badges=("map-maker",))
     with pytest.raises(BadgeGrantUnconfirmed):
         await perform_badge_grant(bot, snapshot, "map-maker", ACTOR, 57)
     bot.store.find_player_by_uuid.assert_awaited_once_with("uuid-42")
-    assert not db["moderation_audit"].docs and not bus.inventory_events
+    assert not db["moderation_audit"].docs and not await game.inventory_events()
 
 
 async def test_legacy_unchanged_badge_does_not_add_verification_or_audit():
-    bot, db, _, _ = _action_bot()
+    bot, db, _, _ = await _action_bot()
     bot.store.grant_badge = AsyncMock(return_value=False)
     bot.store.find_player_by_uuid = AsyncMock(
         side_effect=AssertionError("legacy lookup")
@@ -788,8 +758,8 @@ async def test_legacy_unchanged_badge_does_not_add_verification_or_audit():
     ],
 )
 async def test_case_map_audit_has_string_metadata_and_only_installed_completion(status):
-    bot, db, bus, _ = _action_bot()
-    bus.statuses = [status]
+    bot, db, game, _ = await _action_bot()
+    game.statuses = [status]
     result = await perform_map_upload(
         bot,
         "mini-pvp",
@@ -826,7 +796,7 @@ async def test_case_map_audit_has_string_metadata_and_only_installed_completion(
 
 
 async def test_case_map_rejects_multiple_eligible_files_before_rpc():
-    bot, db, bus, _ = _action_bot()
+    bot, db, game, _ = await _action_bot()
     with pytest.raises(InvalidMapUpload, match="exactly one"):
         await perform_map_upload(
             bot,
@@ -835,7 +805,7 @@ async def test_case_map_rejects_multiple_eligible_files_before_rpc():
             ACTOR,
             case_number=57,
         )
-    assert not bus.upload_calls and not db["moderation_audit"].docs
+    assert not game.upload_calls and not db["moderation_audit"].docs
     assert "mini-pvp" in bot.map_cache
 
 
@@ -850,7 +820,7 @@ async def test_case_map_rejects_multiple_eligible_files_before_rpc():
     ],
 )
 async def test_map_response_must_match_server_and_exact_ordered_files(server, names):
-    bot, db, _, _ = _action_bot()
+    bot, db, game, _ = await _action_bot()
     response = MapsUploadResponseV1.from_payload(
         {
             "messageType": "maps.upload.response",
@@ -859,7 +829,7 @@ async def test_map_response_must_match_server_and_exact_ordered_files(server, na
             "results": [{"fileName": name, "status": "installed"} for name in names],
         }
     )
-    bot.bus.rpc_upload_maps = AsyncMock(return_value=response)
+    game.answer = lambda server, files: response
     with pytest.raises(MapUploadFailed):
         await perform_map_upload(
             bot, "mini-pvp", [FILE, replace(FILE, filename="second.msav")], ACTOR
@@ -868,32 +838,30 @@ async def test_map_response_must_match_server_and_exact_ordered_files(server, na
 
 
 async def test_map_audit_error_after_installed_is_not_translated_or_retried():
-    bot, db, bus, _ = _action_bot()
+    bot, db, game, _ = await _action_bot()
     bot.container.audit.append_moderation_audit = AsyncMock(
         side_effect=ValueError("audit persistence failed")
     )
     with pytest.raises(ValueError, match="audit persistence failed"):
         await perform_map_upload(bot, "mini-pvp", [FILE], ACTOR, case_number=57)
-    assert len(bus.upload_calls) == 1 and not db["moderation_audit"].docs
+    assert len(game.upload_calls) == 1 and not db["moderation_audit"].docs
 
 
 async def test_case_map_filters_ineligible_files_and_preserves_result_detail():
-    bot, db, _, _ = _action_bot()
-    bot.bus.rpc_upload_maps = AsyncMock(
-        return_value=MapsUploadResponseV1.from_payload(
-            {
-                "messageType": "maps.upload.response",
-                "messageVersion": 1,
-                "server": "mini-pvp",
-                "results": [
-                    {
-                        "fileName": "arena.msav",
-                        "status": "metadata_failed",
-                        "detail": "attribution failed",
-                    }
-                ],
-            }
-        )
+    bot, db, game, _ = await _action_bot()
+    game.answer = lambda server, files: MapsUploadResponseV1.from_payload(
+        {
+            "messageType": "maps.upload.response",
+            "messageVersion": 1,
+            "server": "mini-pvp",
+            "results": [
+                {
+                    "fileName": "arena.msav",
+                    "status": "metadata_failed",
+                    "detail": "attribution failed",
+                }
+            ],
+        }
     )
     result = await perform_map_upload(
         bot,
@@ -907,16 +875,16 @@ async def test_case_map_filters_ineligible_files_and_preserves_result_detail():
         db["moderation_audit"].docs[0]["details"]["extra"]["detail"]
         == "attribution failed"
     )
-    assert len(bot.bus.rpc_upload_maps.call_args.kwargs["files"]) == 1
+    assert len(game.upload_calls[0][1]) == 1
 
 
 @pytest.mark.parametrize("response", [None, {}, {"server": "mini-pvp", "results": []}])
 async def test_case_map_malformed_response_writes_no_completion(response):
-    bot, db, _, _ = _action_bot()
-    bot.bus.rpc_upload_maps = AsyncMock(return_value=response)
+    bot, db, game, _ = await _action_bot()
+    game.answer = lambda server, files: response
     with pytest.raises(MapUploadFailed):
         await perform_map_upload(
             bot, "mini-pvp", [FILE], ACTOR, case_number=57, case_action_token="attempt"
         )
     assert not db["moderation_audit"].docs
-    bot.bus.rpc_upload_maps.assert_awaited_once()
+    assert len(game.upload_calls) == 1

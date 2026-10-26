@@ -40,7 +40,7 @@ async def test_unban_confirmation_real_helper_delete_audit_before_pardon_and_not
     case = await service.get(case.number)
     assert case.status == CaseStatus.RESOLVED and case.resolution.code == "unbanned"
     assert case.resolution.audit_id == mutations["moderation_audit"].docs[0]["audit_id"]
-    assert case.resolution.ban_id == 101 and bus.pardons == ["private-1="]
+    assert case.resolution.ban_id == 101 and await bus.pardons() == ["private-1="]
     audit = mutations["moderation_audit"].docs[0]
     token = next(
         e["data"]["token"] for e in case.events if e["type"] == "action_started"
@@ -78,7 +78,9 @@ async def test_missing_expired_replaced_subject_guard_stays_open_without_mutatio
         await act(service, case, verb, values={"confirmed": "yes", "duration": "1h"})
     case = await service.get(case.number)
     assert case.status == CaseStatus.OPEN and not case.pending_action
-    assert not db["moderation_audit"].docs and not bus.pardons and not log.embeds
+    assert (
+        not db["moderation_audit"].docs and not await bus.pardons() and not log.embeds
+    )
     if change != "gone":
         assert len(mutations["bans"].docs) == 1
 
@@ -98,7 +100,7 @@ async def test_unban_replacement_between_lookup_and_delete_real_mongo_guard(
     with pytest.raises((BanNotFound, ActionFailed)):
         await act(service, case, "unban", values={"confirmed": "yes"})
     assert mutations["bans"].docs[0]["ban_id"] == 202
-    assert not db["moderation_audit"].docs and not bus.pardons
+    assert not db["moderation_audit"].docs and not await bus.pardons()
     assert (await service.get(case.number)).status == CaseStatus.OPEN
 
 
@@ -160,7 +162,7 @@ async def test_shorten_real_helper_same_id_duration_audit_and_single_helper_log(
     assert audit["details"]["duration_ms"] == milliseconds
     assert (await service.get(case.number)).status == CaseStatus.RESOLVED
     assert db["moderation_audit"].docs[0] == audit
-    assert case.resolution.audit_id == audit["audit_id"] and not bus.pardons
+    assert case.resolution.audit_id == audit["audit_id"] and not await bus.pardons()
     assert len(log.embeds) == 1 and log.embeds[0].title == "Ban Shortened"
     assert not bot.channels[100].messages
     assert db["case_notices"].docs[0]["kind"] == "appeal_shortened"
@@ -252,7 +254,7 @@ async def test_followup_failure_after_audit_recovery_does_not_replay_helper(
     if verb == "unban":
         assert (
             bot.container.moderation_bus.publish_pardon_player.await_count == 1
-            and not bus.pardons
+            and not await bus.pardons()
         )
 
 
@@ -273,7 +275,7 @@ async def test_no_completion_audit_failure_keeps_case_open_no_invented_resolutio
     assert (
         not mutations["bans"].docs
         and not db["moderation_audit"].docs
-        and not bus.pardons
+        and not await bus.pardons()
     )
     with pytest.raises(ActionFailed):
         await act(service, case, "unban", values={"confirmed": "yes"})
@@ -314,7 +316,7 @@ async def test_unban_log_retry_after_durable_completion_never_reexecutes_helper(
         "closed_hook_done"
     )
     assert not case.progress.get("appeal_unban_log")
-    assert len(mutations["moderation_audit"].docs) == 1 and bus.pardons == [
+    assert len(mutations["moderation_audit"].docs) == 1 and await bus.pardons() == [
         "private-1="
     ]
     bot.channels[100] = channel
@@ -421,6 +423,8 @@ async def test_helper_fresh_read_reauthorizes_after_flow_lookup(
     monkeypatch.setattr(appeals, name, changed)
     with pytest.raises(AccessDenied if change == "issuer" else ActionFailed):
         await act(service, case, verb, values={"confirmed": "yes", "duration": "1h"})
-    assert not db["moderation_audit"].docs and not bus.pardons and not log.embeds
+    assert (
+        not db["moderation_audit"].docs and not await bus.pardons() and not log.embeds
+    )
     assert (await service.get(case.number)).status == CaseStatus.OPEN
     assert len(mutations["bans"].docs) == 1

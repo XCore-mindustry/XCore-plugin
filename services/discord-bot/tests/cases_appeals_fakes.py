@@ -52,7 +52,7 @@ async def appeal_core(*, players=None, bans=None, enabled=True, **settings):
     )
     if not enabled:
         service.registry.disable(CaseKind.APPEAL)
-    action_bot, mutations, bus, log = _action_bot()
+    action_bot, mutations, bus, log = await _action_bot()
     mutations["players"].docs = [player_row()] if players is None else players
     mutations["bans"].docs = [ban_row()] if bans is None else bans
     action_bot.store.now_utc = lambda: NOW

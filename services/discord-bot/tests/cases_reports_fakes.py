@@ -114,7 +114,7 @@ async def reports_core(*, enabled=True, guild=None, **settings):
     )
     if not enabled:
         service.registry.disable(CaseKind.REPORT)
-    action_bot, mutations, bus, log = _action_bot()
+    action_bot, mutations, bus, log = await _action_bot()
     mutations["players"].docs = player_rows()
     action_bot.store.now_utc = lambda: service.now()
     database_bans = mutations["bans"]
@@ -144,7 +144,7 @@ async def reports_core(*, enabled=True, guild=None, **settings):
         rpc_inspect_map=AsyncMock(return_value=None),
     )
     service.set_transport(transport)
-    bot.mutations, bot.bus, bot.log = mutations, bus, log
+    bot.mutations, bot.game, bot.log = mutations, bus, log
     return service, db, bot
 
 
