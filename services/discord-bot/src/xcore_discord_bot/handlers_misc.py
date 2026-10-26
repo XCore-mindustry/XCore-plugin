@@ -24,7 +24,6 @@ from .presentation import (
     format_size,
 )
 from .rating_store import Placing
-from .retry import retry_read_rpc
 from .server_views import MapsListView, ServersView
 from .staff_actions import (
     Actor,
@@ -541,7 +540,7 @@ async def cmd_maps(
 ) -> None:
     await interaction.response.defer()
     try:
-        maps = await bot.bus.rpc_maps_list(
+        maps = await bot.container.rpc.list_maps(
             server=server, timeout_ms=bot.settings.rpc_timeout_ms
         )
     except TimeoutError:
@@ -603,9 +602,7 @@ async def get_cached_maps(bot: XCoreDiscordBot, server: str) -> list[dict[str, s
             return maps
 
     try:
-        maps = await retry_read_rpc(
-            lambda: bot.bus.rpc_maps_list(server=server, timeout_ms=3000)
-        )
+        maps = await bot.container.rpc.list_maps(server=server, timeout_ms=3000)
         bot.map_cache[server] = (now, maps)
         return maps
     except TimeoutError:
@@ -652,7 +649,7 @@ async def perform_remove_map(
         return "This map removal was already processed."
 
     try:
-        result = await bot.bus.rpc_remove_map(
+        result = await bot.container.rpc.remove_map(
             server=server,
             file_name=file_name,
             timeout_ms=bot.settings.rpc_timeout_ms,

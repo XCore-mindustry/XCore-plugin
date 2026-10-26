@@ -9,6 +9,7 @@ from test_cases_msav import msav
 from xcore_discord_bot.cases.flows.maps import MAP_FLOW
 from xcore_discord_bot.cases.model import CaseKind
 from xcore_discord_bot.cases.msav import validate_msav
+from xcore_discord_bot.rpc.mindustry_rpc import MindustryRpcClient
 
 
 class Attachment:
@@ -30,6 +31,7 @@ async def map_core(**kwargs):
     service.registry.enable(CaseKind.MAP)
     bot.map_cache = {}
     bot.bus.rpc_upload_maps = bus.rpc_upload_maps
+    bot.container.rpc = MindustryRpcClient(bot.bus)
     author.bot = False
     author.name = "mapper"
     forum = bot.channels[400]

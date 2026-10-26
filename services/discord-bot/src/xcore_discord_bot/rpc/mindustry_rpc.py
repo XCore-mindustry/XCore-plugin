@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 import uuid
 from collections.abc import Awaitable, Callable
-from typing import Any, TypeVar
+from typing import TypeVar
 
 from xcore_protocol.generated.cases import CasesEvidenceResponseV1
 from xcore_protocol.generated.maps import MapsInspectResponseV1, MapsUploadResponseV1
@@ -20,11 +20,16 @@ from xcore_protocol.generated.security import (
     SecurityStaffSyncRequestV1,
     SecurityStaffSyncResponseV1,
 )
+from xcore_protocol.generated.sentinel import (
+    SentinelSubnetRulesCheckResponseV1,
+    SentinelSubnetRulesListResponseV1,
+    SentinelSubnetRulesResponseV1,
+)
 from xcore_protocol.generated.shared import SeasonPrizeV1
 
 from ..redis_bus import RedisBus, RpcFailed
 from ..registry import server_registry
-from ..retry import TRANSIENT_EXCEPTIONS
+from ..retry import TRANSIENT_EXCEPTIONS, retry_read_rpc
 
 T = TypeVar("T")
 
@@ -275,49 +280,61 @@ class MindustryRpcClient:
             return await inspect(server)
         return await self.on_any_live_server(inspect)
 
-    async def rpc_subnet_rules_command(self, **kwargs: Any) -> Any:
-        return await self._bus.rpc_subnet_rules_command(**kwargs)
+    # Reads are retried on a transient failure; writes are not, since a write that timed
+    # out may still have been applied.
 
-    async def rpc_subnet_rules_list(self, target_server: str, timeout_ms: int) -> Any:
-        return await self._bus.rpc_subnet_rules_list(target_server, timeout_ms)
-
-    async def rpc_subnet_rules_check(
-        self, target_server: str, ip: str, timeout_ms: int
-    ) -> Any:
-        return await self._bus.rpc_subnet_rules_check(target_server, ip, timeout_ms)
-
-    async def rpc_maps_list(
-        self, *, server: str, timeout_ms: int
-    ) -> list[dict[str, str]]:
-        return await self._bus.rpc_maps_list(server=server, timeout_ms=timeout_ms)
-
-    async def claim_idempotency(self, key: str, *, ttl_seconds: int = 600) -> bool:
-        return await self._bus.claim_idempotency(key, ttl_seconds=ttl_seconds)
-
-    async def rpc_remove_map(
-        self,
-        *,
-        server: str,
-        file_name: str,
-        timeout_ms: int,
-    ) -> str:
-        return await self._bus.rpc_remove_map(
-            server=server,
-            file_name=file_name,
-            timeout_ms=timeout_ms,
+    async def list_maps(self, *, server: str, timeout_ms: int) -> list[dict[str, str]]:
+        return await retry_read_rpc(
+            lambda: self._bus.rpc_maps_list(server=server, timeout_ms=timeout_ms)
         )
 
-    async def rpc_upload_maps(
+    async def remove_map(self, *, server: str, file_name: str, timeout_ms: int) -> str:
+        return await self._bus.rpc_remove_map(
+            server=server, file_name=file_name, timeout_ms=timeout_ms
+        )
+
+    async def upload_maps(
         self, *, server: str, files: list[dict[str, object]], timeout_ms: int
     ) -> MapsUploadResponseV1:
         return await self._bus.rpc_upload_maps(
             server=server, files=files, timeout_ms=timeout_ms
         )
 
-    async def publish_maps_load(
+    async def subnet_rules_command(
         self,
         *,
-        server: str,
-        files: list[dict[str, object]],
-    ) -> None:
-        await self._bus.publish_maps_load(server=server, files=files)
+        operation: str,
+        rules: list[str] | tuple[str, ...],
+        discord_id: str,
+        target_server: str,
+        source: str | None = None,
+        reason: str | None = None,
+        discord_username: str | None = None,
+        expires_at: int | None = None,
+        timeout_ms: int,
+    ) -> SentinelSubnetRulesResponseV1:
+        return await self._bus.rpc_subnet_rules_command(
+            operation=operation,
+            rules=rules,
+            discord_id=discord_id,
+            target_server=target_server,
+            source=source,
+            reason=reason,
+            discord_username=discord_username,
+            expires_at=expires_at,
+            timeout_ms=timeout_ms,
+        )
+
+    async def subnet_rules_list(
+        self, *, server: str, timeout_ms: int
+    ) -> SentinelSubnetRulesListResponseV1:
+        return await retry_read_rpc(
+            lambda: self._bus.rpc_subnet_rules_list(server, timeout_ms)
+        )
+
+    async def subnet_rules_check(
+        self, *, server: str, ip: str, timeout_ms: int
+    ) -> SentinelSubnetRulesCheckResponseV1:
+        return await retry_read_rpc(
+            lambda: self._bus.rpc_subnet_rules_check(server, ip, timeout_ms)
+        )

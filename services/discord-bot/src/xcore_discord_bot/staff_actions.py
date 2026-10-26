@@ -573,7 +573,7 @@ async def perform_map_upload(
         raise InvalidMapUpload("A map case must upload exactly one .msav file.")
     bot.map_cache.pop(server, None)
     try:
-        response = await bot.bus.rpc_upload_maps(
+        response = await bot.container.rpc.upload_maps(
             server=server, files=payload, timeout_ms=120_000
         )
         if not isinstance(response, MapsUploadResponseV1):

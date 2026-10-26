@@ -122,7 +122,7 @@ async def _command(
     normalized_rules = [_cidr(rule) for rule in rules]
     discord_id, username = _actor(interaction)
     await _defer(interaction)
-    response = await bot.bus.rpc_subnet_rules_command(
+    response = await bot.container.rpc.subnet_rules_command(
         operation=operation,
         rules=normalized_rules,
         discord_id=discord_id,
@@ -145,7 +145,9 @@ async def _command(
 async def cmd_subnet_list(bot: XCoreDiscordBot, interaction: Interaction) -> None:
     target = _control_server(bot)
     await _defer(interaction)
-    response = await bot.bus.rpc_subnet_rules_list(target, _timeout(bot))
+    response = await bot.container.rpc.subnet_rules_list(
+        server=target, timeout_ms=_timeout(bot)
+    )
     rules = tuple(_value(response, "rules", ()) or ())
     lines = [f"`{rule}`" for rule in rules]
     if not lines:
@@ -169,7 +171,9 @@ async def cmd_subnet_check(
 ) -> None:
     target, address = _target(server), _ip(ip)
     await _defer(interaction)
-    response = await bot.bus.rpc_subnet_rules_check(target, address, _timeout(bot))
+    response = await bot.container.rpc.subnet_rules_check(
+        server=target, ip=address, timeout_ms=_timeout(bot)
+    )
     allowed = bool(_value(response, "allowed", False))
     matched = tuple(
         _value(response, "matchedRules", _value(response, "matched_rules", ())) or ()
