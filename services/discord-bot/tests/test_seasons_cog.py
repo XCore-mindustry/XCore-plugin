@@ -154,10 +154,16 @@ async def test_extend_rejects_a_bad_duration_without_calling_the_server() -> Non
 @pytest.mark.parametrize(
     ("error", "expected"),
     [
-        (RpcRejected("rating.season.reschedule.request", "REJECTED", "too late"), "too late"),
+        (
+            RpcRejected("rating.season.reschedule.request", "REJECTED", "too late"),
+            "too late",
+        ),
         (NoLiveServerError("none"), "No Mindustry server"),
         (TimeoutError(), "did not answer"),
-        (RpcFailed("rating.season.reschedule.request", "FAILED", "boom"), "could not carry"),
+        (
+            RpcFailed("rating.season.reschedule.request", "FAILED", "boom"),
+            "could not carry",
+        ),
     ],
 )
 async def test_admin_failures_are_worded_for_the_admin(error, expected) -> None:

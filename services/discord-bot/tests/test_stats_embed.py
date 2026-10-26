@@ -162,11 +162,17 @@ def test_discord_link_is_shown_only_when_asked_for() -> None:
     player = PlayerRecord(pid=5, nickname="Ann", discord_id="4242")
     other = PlayerRecord(pid=6, nickname="Alt")
     hidden = build_stats_embed(
-        StatsView(player=player, avatar_url="https://cdn.example/a.png", other_accounts=[other])
+        StatsView(
+            player=player,
+            avatar_url="https://cdn.example/a.png",
+            other_accounts=[other],
+        )
     )
     shown = build_stats_embed(
         StatsView(
-            player=PlayerRecord(pid=5, nickname="Ann"), show_discord=True, other_accounts=[other]
+            player=PlayerRecord(pid=5, nickname="Ann"),
+            show_discord=True,
+            other_accounts=[other],
         )
     )
 

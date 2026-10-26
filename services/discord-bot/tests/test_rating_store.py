@@ -182,9 +182,30 @@ async def test_current_season_prefers_the_running_one() -> None:
 async def test_top_orders_by_rating_then_uuid_and_names_players() -> None:
     store, db = _store()
     db["rating_standings"].docs += [
-        {"ladder": "minipvp", "season": 1, "player_uuid": "b", "rating": 1200, "matches": 3, "wins": 1},
-        {"ladder": "minipvp", "season": 1, "player_uuid": "a", "rating": 1200, "matches": 4, "wins": 2},
-        {"ladder": "minipvp", "season": 1, "player_uuid": "c", "rating": 1500, "matches": 9, "wins": 7},
+        {
+            "ladder": "minipvp",
+            "season": 1,
+            "player_uuid": "b",
+            "rating": 1200,
+            "matches": 3,
+            "wins": 1,
+        },
+        {
+            "ladder": "minipvp",
+            "season": 1,
+            "player_uuid": "a",
+            "rating": 1200,
+            "matches": 4,
+            "wins": 2,
+        },
+        {
+            "ladder": "minipvp",
+            "season": 1,
+            "player_uuid": "c",
+            "rating": 1500,
+            "matches": 9,
+            "wins": 7,
+        },
         {"ladder": "minipvp", "season": 2, "player_uuid": "z", "rating": 9999},
     ]
     db["players"].docs += [
@@ -210,7 +231,14 @@ async def test_placings_rank_the_player_on_each_ladder_current_season() -> None:
         _season("hexed", 1, "ACTIVE"),
     ]
     db["rating_standings"].docs += [
-        {"ladder": "minipvp", "season": 2, "player_uuid": "me", "rating": 1100, "matches": 2, "wins": 1},
+        {
+            "ladder": "minipvp",
+            "season": 2,
+            "player_uuid": "me",
+            "rating": 1100,
+            "matches": 2,
+            "wins": 1,
+        },
         {"ladder": "minipvp", "season": 2, "player_uuid": "x", "rating": 1300},
         {"ladder": "minipvp", "season": 2, "player_uuid": "a", "rating": 1100},
         {"ladder": "minipvp", "season": 1, "player_uuid": "me", "rating": 1900},
@@ -262,7 +290,9 @@ async def test_a_posted_announcement_is_never_taken_over() -> None:
     store, db = _store()
     assert await store.claim_post("minipvp:1", "ended") is True
     await store.record_post("minipvp:1", "ended", 99)
-    db["discord_season_posts"].docs[0]["claimed_at"] = datetime.now(UTC) - timedelta(days=1)
+    db["discord_season_posts"].docs[0]["claimed_at"] = datetime.now(UTC) - timedelta(
+        days=1
+    )
 
     assert await store.claim_post("minipvp:1", "ended") is False
 

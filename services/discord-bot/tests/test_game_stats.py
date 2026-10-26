@@ -33,7 +33,11 @@ def test_rows_fold_into_totals_and_modes() -> None:
     )
 
     assert (stats.games, stats.wins, stats.win_rate) == (21, 10, 48)
-    assert (stats.blocks_built, stats.blocks_destroyed, stats.units_produced) == (150, 9, 7)
+    assert (stats.blocks_built, stats.blocks_destroyed, stats.units_produced) == (
+        150,
+        9,
+        7,
+    )
     assert (stats.pvp.games, stats.pvp.wins, stats.pvp.win_rate) == (10, 6, 60)
     assert (stats.survival.best_wave, stats.survival.average_wave) == (120, 45)
     assert (stats.hexed.best_placement, stats.hexed.top3) == (2, 2)
@@ -68,7 +72,9 @@ async def test_overview_counts_only_the_games_that_count_for_this_player() -> No
 
     assert (stats.games, stats.pvp.wins) == (2, 1)
     match, unwind, own, group = games.pipelines[0]
-    assert match == {"$match": {"player_stats.uuid": "uuid-1", "counted_in_stats": True}}
+    assert match == {
+        "$match": {"player_stats.uuid": "uuid-1", "counted_in_stats": True}
+    }
     assert unwind == {"$unwind": "$player_stats"}
     # the other players of the same games are dropped before anything is summed
     assert own == {"$match": {"player_stats.uuid": "uuid-1"}}

@@ -25,10 +25,12 @@ jobs:
         run: uv run ruff check
 
       - name: Format check
-        run: |
-          if ! uv run ruff format --check; then
-            echo "::warning::Code formatting differs from ruff format output. Run 'uv run ruff format' to auto-fix."
-          fi
+        run: uv run ruff format --check
+
+      # mypy-baseline fails on a new error, and on a fixed one still in the baseline,
+      # so the baseline only shrinks. After fixing errors: uv run mypy | uv run mypy-baseline sync
+      - name: Type check
+        run: uv run mypy | uv run mypy-baseline filter
 
       - name: Test
         run: uv run pytest -q

@@ -89,12 +89,16 @@ async def _autocomplete_ladder(
     return [
         app_commands.Choice(name=ladder_name(ladder), value=ladder)
         for ladder in ladders
-        if not needle or needle in ladder.lower() or needle in ladder_name(ladder).lower()
+        if not needle
+        or needle in ladder.lower()
+        or needle in ladder_name(ladder).lower()
     ][:25]
 
 
 class SeasonEndConfirmView(discord.ui.View):
-    def __init__(self, cog: SeasonsCog, *, requester_id: int, ladder: str, reason: str | None):
+    def __init__(
+        self, cog: SeasonsCog, *, requester_id: int, ladder: str, reason: str | None
+    ):
         super().__init__(timeout=60)
         self._cog = cog
         self._requester_id = requester_id
@@ -103,7 +107,9 @@ class SeasonEndConfirmView(discord.ui.View):
         self.message: discord.Message | None = None
 
     @discord.ui.button(label="End season now", style=discord.ButtonStyle.danger)
-    async def _confirm(self, interaction: Interaction, button: discord.ui.Button) -> None:
+    async def _confirm(
+        self, interaction: Interaction, button: discord.ui.Button
+    ) -> None:
         if not await ensure_requester_action_allowed(
             interaction,
             requester_id=self._requester_id,
@@ -128,7 +134,9 @@ class SeasonEndConfirmView(discord.ui.View):
         await interaction.edit_original_response(content=message)
 
     @discord.ui.button(label="Cancel", style=discord.ButtonStyle.secondary)
-    async def _cancel(self, interaction: Interaction, button: discord.ui.Button) -> None:
+    async def _cancel(
+        self, interaction: Interaction, button: discord.ui.Button
+    ) -> None:
         if not await ensure_requester_action_allowed(
             interaction,
             requester_id=self._requester_id,
@@ -143,7 +151,9 @@ class SeasonEndConfirmView(discord.ui.View):
     async def on_timeout(self) -> None:
         if self.message is not None:
             try:
-                await self.message.edit(content="Timed out. The season was not changed.", view=None)
+                await self.message.edit(
+                    content="Timed out. The season was not changed.", view=None
+                )
             except discord.HTTPException:
                 pass
 
@@ -168,7 +178,9 @@ class SeasonsCog(commands.Cog):
     @season_group.command(name="info", description="Show the current rating season")
     @app_commands.describe(ladder="Ladder (all of them when omitted)")
     @app_commands.autocomplete(ladder=_autocomplete_ladder)
-    async def cmd_info(self, interaction: Interaction, ladder: str | None = None) -> None:
+    async def cmd_info(
+        self, interaction: Interaction, ladder: str | None = None
+    ) -> None:
         # The reads below can outlast Discord's three seconds for a first answer.
         await interaction.response.defer(thinking=True)
         ratings = self.bot.container.ratings
@@ -210,7 +222,9 @@ class SeasonsCog(commands.Cog):
             else await ratings.current_season(ladder)
         )
         if found is None:
-            await interaction.followup.send(f"No such season for {ladder_name(ladder)}.")
+            await interaction.followup.send(
+                f"No such season for {ladder_name(ladder)}."
+            )
             return
         standings = await ratings.top(ladder, found.number, TOP_SIZE)
         embed = build_season_top_embed(
@@ -251,7 +265,9 @@ class SeasonsCog(commands.Cog):
     def _clean_reason(reason: str | None) -> str | None:
         return (reason or "").strip()[:MAX_REASON] or None
 
-    @season_group.command(name="extend", description="Move the season end later (head admin)")
+    @season_group.command(
+        name="extend", description="Move the season end later (head admin)"
+    )
     @app_commands.describe(
         ladder="Ladder",
         duration="How much later, e.g. 3d, 2w, 12h",
@@ -283,7 +299,9 @@ class SeasonsCog(commands.Cog):
             describe=lambda response: self._describe_moved(ladder, response),
         )
 
-    @season_group.command(name="end-at", description="Set the exact season end (head admin)")
+    @season_group.command(
+        name="end-at", description="Set the exact season end (head admin)"
+    )
     @app_commands.describe(
         ladder="Ladder",
         when="UTC date and time, e.g. 2026-07-01 or 2026-07-01 18:00",
@@ -315,7 +333,9 @@ class SeasonsCog(commands.Cog):
             describe=lambda response: self._describe_moved(ladder, response),
         )
 
-    @season_group.command(name="end-now", description="End the season right now (head admin)")
+    @season_group.command(
+        name="end-now", description="End the season right now (head admin)"
+    )
     @app_commands.describe(ladder="Ladder", reason="Why (shown in the announcement)")
     @app_commands.autocomplete(ladder=_autocomplete_ladder)
     @head_admin_check()
@@ -380,7 +400,9 @@ class SeasonsCog(commands.Cog):
             ),
         )
 
-    @prize_group.command(name="clear", description="Remove prizes from the running season")
+    @prize_group.command(
+        name="clear", description="Remove prizes from the running season"
+    )
     @app_commands.describe(ladder="Ladder", places="A place or a range, e.g. 1 or 1-3")
     @app_commands.autocomplete(ladder=_autocomplete_ladder)
     @head_admin_check()
@@ -407,7 +429,9 @@ class SeasonsCog(commands.Cog):
             ),
         )
 
-    @prize_group.command(name="list", description="Show a season's prizes and who got them")
+    @prize_group.command(
+        name="list", description="Show a season's prizes and who got them"
+    )
     @app_commands.describe(
         ladder="Ladder", season="Season number (the current one when omitted)"
     )

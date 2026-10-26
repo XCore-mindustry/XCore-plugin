@@ -93,7 +93,9 @@ def mentioned_user_ids(podium: Sequence[PodiumEntry]) -> list[discord.Object]:
     seen: dict[int, discord.Object] = {}
     for entry in podium:
         if entry.discord_id and entry.discord_id.isdigit():
-            seen.setdefault(int(entry.discord_id), discord.Object(id=int(entry.discord_id)))
+            seen.setdefault(
+                int(entry.discord_id), discord.Object(id=int(entry.discord_id))
+            )
     return list(seen.values())
 
 
@@ -179,7 +181,9 @@ def build_season_ended_embed(
     if matches is not None:
         totals.append(f"Matches: `{matches}`")
     if totals:
-        embed.add_field(name="Season in numbers", value=" · ".join(totals), inline=False)
+        embed.add_field(
+            name="Season in numbers", value=" · ".join(totals), inline=False
+        )
     return embed
 
 
@@ -235,7 +239,10 @@ def build_season_info_embed(
 
 
 def build_season_prizes_embed(
-    season: Season, grants: Sequence[PrizeGrantRecord], *, names: dict[str, str] | None = None
+    season: Season,
+    grants: Sequence[PrizeGrantRecord],
+    *,
+    names: dict[str, str] | None = None,
 ) -> discord.Embed:
     """What the admins see in `/season prize list`: the prizes set and who they went to."""
     embed = discord.Embed(
@@ -243,7 +250,9 @@ def build_season_prizes_embed(
         color=discord.Color.gold(),
     )
     embed.description = (
-        prize_lines(season.prizes) if season.prizes else "No prizes are set for this season."
+        prize_lines(season.prizes)
+        if season.prizes
+        else "No prizes are set for this season."
     )
     if grants:
         names = names or {}
@@ -251,7 +260,9 @@ def build_season_prizes_embed(
         for grant in grants:
             who = _escape(names.get(grant.player_uuid, grant.player_uuid))
             what = prize_text(
-                Prize(grant.place, grant.place, grant.kind, grant.value, grant.description)
+                Prize(
+                    grant.place, grant.place, grant.kind, grant.value, grant.description
+                )
             )
             status = GRANT_MARKS.get(grant.status, grant.status)
             note = f" — {_escape(grant.note)}" if grant.note else ""

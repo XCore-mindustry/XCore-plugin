@@ -34,6 +34,8 @@ xcore-discord-bot = "xcore_discord_bot.main:main"
 [dependency-groups]
 dev = [
     "fakeredis>=2.31.0",
+    "mypy>=2.4.0",
+    "mypy-baseline>=0.7.4",
     "pre-commit>=4.3.0",
     "pytest>=8.4.0",
     "pytest-asyncio>=1.2.0",
@@ -43,6 +45,14 @@ dev = [
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
+
+[tool.mypy]
+files = ["src"]
+
+[[tool.mypy.overrides]]
+# The protocol package ships no py.typed marker; read its annotations anyway.
+module = ["xcore_protocol", "xcore_protocol.*"]
+follow_untyped_imports = true
 
 [tool.ruff]
 target-version = "py311"

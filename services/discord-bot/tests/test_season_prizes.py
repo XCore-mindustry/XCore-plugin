@@ -61,8 +61,20 @@ def test_prizes_are_read_from_the_season_document() -> None:
             2,
             "ACTIVE",
             prizes=[
-                {"place_from": 1, "place_to": 1, "kind": "BADGE", "value": "season-champion", "description": ""},
-                {"place_from": 2, "place_to": 4, "kind": "CUSTOM", "value": "Nitro", "description": "A month"},
+                {
+                    "place_from": 1,
+                    "place_to": 1,
+                    "kind": "BADGE",
+                    "value": "season-champion",
+                    "description": "",
+                },
+                {
+                    "place_from": 2,
+                    "place_to": 4,
+                    "kind": "CUSTOM",
+                    "value": "Nitro",
+                    "description": "A month",
+                },
             ],
         )
     )
@@ -85,14 +97,37 @@ def test_a_season_without_prizes_has_none() -> None:
 async def test_prize_grants_are_read_by_place() -> None:
     store, db = _store()
     db["rating_prize_grants"].docs += [
-        {"_id": "b", "season_id": "minipvp:1", "place": 2, "prize_index": 1, "player_uuid": "bob",
-         "prize": {"kind": "CUSTOM", "value": "Nitro", "description": ""}, "status": "PENDING",
-         "granted_by": "system", "note": ""},
-        {"_id": "a", "season_id": "minipvp:1", "place": 1, "prize_index": 0, "player_uuid": "ace",
-         "prize": {"kind": "BADGE", "value": "season-champion", "description": ""}, "status": "GRANTED",
-         "granted_by": "system", "note": "unlocked"},
-        {"_id": "x", "season_id": "minipvp:2", "place": 1, "prize_index": 0, "player_uuid": "zed",
-         "prize": {"kind": "BADGE", "value": "season-champion"}, "status": "GRANTED"},
+        {
+            "_id": "b",
+            "season_id": "minipvp:1",
+            "place": 2,
+            "prize_index": 1,
+            "player_uuid": "bob",
+            "prize": {"kind": "CUSTOM", "value": "Nitro", "description": ""},
+            "status": "PENDING",
+            "granted_by": "system",
+            "note": "",
+        },
+        {
+            "_id": "a",
+            "season_id": "minipvp:1",
+            "place": 1,
+            "prize_index": 0,
+            "player_uuid": "ace",
+            "prize": {"kind": "BADGE", "value": "season-champion", "description": ""},
+            "status": "GRANTED",
+            "granted_by": "system",
+            "note": "unlocked",
+        },
+        {
+            "_id": "x",
+            "season_id": "minipvp:2",
+            "place": 1,
+            "prize_index": 0,
+            "player_uuid": "zed",
+            "prize": {"kind": "BADGE", "value": "season-champion"},
+            "status": "GRANTED",
+        },
     ]
     db["players"].docs.append({"uuid": "ace", "nickname": "Ace", "pid": 1})
 
@@ -141,7 +176,9 @@ def test_prize_lines_are_ordered_by_place_and_fit_an_embed_field() -> None:
 
 
 def test_a_winner_sees_the_prizes_of_their_place() -> None:
-    entry = PodiumEntry(1, "u1", 1, "Ann", 1600, "GOLD", 20, 12, "42", None, prizes=(CHAMPION, NITRO))
+    entry = PodiumEntry(
+        1, "u1", 1, "Ann", 1600, "GOLD", 20, 12, "42", None, prizes=(CHAMPION, NITRO)
+    )
     plain = PodiumEntry(2, "u2", 2, "Bob", 1500, "GOLD", 20, 12, None, None)
 
     assert "└ 🎖️ Season Champion badge · 🎁 A month of Nitro" in podium_line(entry)
@@ -153,21 +190,37 @@ def test_ending_soon_lists_the_prizes_only_when_there_are_some() -> None:
     with_prizes = build_season_ending_soon_embed(
         ladder="minipvp", name=None, number=3, ends_at=ends, prizes=(CHAMPION,)
     )
-    without = build_season_ending_soon_embed(ladder="minipvp", name=None, number=3, ends_at=ends)
+    without = build_season_ending_soon_embed(
+        ladder="minipvp", name=None, number=3, ends_at=ends
+    )
 
     assert [field.name for field in with_prizes.fields] == ["Ends", "Prizes"]
     assert [field.name for field in without.fields] == ["Ends"]
 
 
 def _season_model(status: str = "ACTIVE", prizes: tuple[Prize, ...] = ()) -> Season:
-    return Season("minipvp", 3, "Winter", status, datetime(2026, 1, 1, tzinfo=UTC),
-                  datetime(2026, 4, 1, tzinfo=UTC), 5, None, (), prizes)
+    return Season(
+        "minipvp",
+        3,
+        "Winter",
+        status,
+        datetime(2026, 1, 1, tzinfo=UTC),
+        datetime(2026, 4, 1, tzinfo=UTC),
+        5,
+        None,
+        (),
+        prizes,
+    )
 
 
 def test_info_shows_prizes_of_the_running_season_only() -> None:
     now = datetime(2026, 2, 1, tzinfo=UTC)
-    running = build_season_info_embed(_season_model(prizes=(CHAMPION,)), participants=3, now=now)
-    over = build_season_info_embed(_season_model("ARCHIVED", (CHAMPION,)), participants=3, now=now)
+    running = build_season_info_embed(
+        _season_model(prizes=(CHAMPION,)), participants=3, now=now
+    )
+    over = build_season_info_embed(
+        _season_model("ARCHIVED", (CHAMPION,)), participants=3, now=now
+    )
 
     assert "Prizes" in [field.name for field in running.fields]
     assert "Prizes" not in [field.name for field in over.fields]
@@ -175,13 +228,37 @@ def test_info_shows_prizes_of_the_running_season_only() -> None:
 
 def test_the_admin_list_shows_prizes_and_where_each_grant_stands() -> None:
     grants = [
-        PrizeGrantRecord("minipvp:3", 1, "ace", "badge", "season-champion", None, "GRANTED", "system", None),
-        PrizeGrantRecord("minipvp:3", 2, "bob", "custom", "Nitro", None, "PENDING", "system", None),
-        PrizeGrantRecord("minipvp:3", 2, "cat", "custom", "Nitro", None, "DELIVERED", "discord_user:5", "sent by DM"),
+        PrizeGrantRecord(
+            "minipvp:3",
+            1,
+            "ace",
+            "badge",
+            "season-champion",
+            None,
+            "GRANTED",
+            "system",
+            None,
+        ),
+        PrizeGrantRecord(
+            "minipvp:3", 2, "bob", "custom", "Nitro", None, "PENDING", "system", None
+        ),
+        PrizeGrantRecord(
+            "minipvp:3",
+            2,
+            "cat",
+            "custom",
+            "Nitro",
+            None,
+            "DELIVERED",
+            "discord_user:5",
+            "sent by DM",
+        ),
     ]
 
     embed = build_season_prizes_embed(
-        _season_model("ARCHIVED", (CHAMPION, NITRO)), grants, names={"ace": "Ace", "bob": "Bob"}
+        _season_model("ARCHIVED", (CHAMPION, NITRO)),
+        grants,
+        names={"ace": "Ace", "bob": "Bob"},
     )
 
     assert "Season Champion badge" in embed.description
@@ -195,7 +272,11 @@ def test_the_admin_list_shows_prizes_and_where_each_grant_stands() -> None:
 
 
 def test_ended_embed_puts_each_winners_prizes_under_their_name() -> None:
-    podium = (PodiumEntry(1, "u1", 1, "Ann", 1600, "GOLD", 20, 12, None, None, prizes=(CHAMPION,)),)
+    podium = (
+        PodiumEntry(
+            1, "u1", 1, "Ann", 1600, "GOLD", 20, 12, None, None, prizes=(CHAMPION,)
+        ),
+    )
 
     embed = build_season_ended_embed(
         ladder="minipvp", name=None, number=3, podium=podium, participants=3, matches=9
@@ -207,15 +288,27 @@ def test_ended_embed_puts_each_winners_prizes_under_their_name() -> None:
 # --------------------------------------------------------------- handlers
 
 
-def _prize_v1(place_from: int, place_to: int, kind: SeasonPrizeV1Kind, value: str, description=None):
-    return SeasonPrizeV1(placeFrom=place_from, placeTo=place_to, kind=kind, value=value, description=description)
+def _prize_v1(
+    place_from: int,
+    place_to: int,
+    kind: SeasonPrizeV1Kind,
+    value: str,
+    description=None,
+):
+    return SeasonPrizeV1(
+        placeFrom=place_from,
+        placeTo=place_to,
+        kind=kind,
+        value=value,
+        description=description,
+    )
 
 
 def test_prizes_are_read_from_an_event_and_their_absence_means_none() -> None:
     assert prizes_from_event(None) == ()
-    assert prizes_from_event([_prize_v1(1, 2, SeasonPrizeV1Kind.CUSTOM, "Nitro", "Month")]) == (
-        Prize(1, 2, "custom", "Nitro", "Month"),
-    )
+    assert prizes_from_event(
+        [_prize_v1(1, 2, SeasonPrizeV1Kind.CUSTOM, "Nitro", "Month")]
+    ) == (Prize(1, 2, "custom", "Nitro", "Month"),)
 
 
 @pytest.mark.asyncio
@@ -240,13 +333,20 @@ async def test_the_ending_soon_post_lists_the_prizes() -> None:
 
 
 @pytest.mark.asyncio
-async def test_the_results_post_shows_what_each_winner_gets_and_still_mentions_them() -> None:
+async def test_the_results_post_shows_what_each_winner_gets_and_still_mentions_them() -> (
+    None
+):
     channel = _Channel()
     bot = _Bot(channel)
     first = _entry(1, "Ann", "111")
     first = SeasonPodiumEntryV1(
-        place=first.place, player=first.player, discord=first.discord, rating=first.rating,
-        league=first.league, matches=first.matches, wins=first.wins,
+        place=first.place,
+        player=first.player,
+        discord=first.discord,
+        rating=first.rating,
+        league=first.league,
+        matches=first.matches,
+        wins=first.wins,
         prizes=(_prize_v1(1, 1, SeasonPrizeV1Kind.BADGE, "season-champion"),),
     )
 
@@ -292,26 +392,47 @@ async def test_the_service_turns_a_prize_into_one_rpc() -> None:
     service = RatingService(store=SimpleNamespace(), rpc=rpc, timeout_ms=1234)
 
     added = await service.add_prize(
-        ladder="minipvp", place_from=1, place_to=3, kind=SeasonPrizeV1Kind.CUSTOM,
-        value="Nitro", description="", discord_id="5", actor_name="Head",
+        ladder="minipvp",
+        place_from=1,
+        place_to=3,
+        kind=SeasonPrizeV1Kind.CUSTOM,
+        value="Nitro",
+        description="",
+        discord_id="5",
+        actor_name="Head",
     )
-    await service.clear_prizes(ladder="minipvp", place_from=2, place_to=2, discord_id="5", actor_name="Head")
+    await service.clear_prizes(
+        ladder="minipvp", place_from=2, place_to=2, discord_id="5", actor_name="Head"
+    )
     await service.mark_prize_delivered(
-        ladder="minipvp", season=3, place=2, discord_id="5", actor_name="Head", note="sent"
+        ladder="minipvp",
+        season=3,
+        place=2,
+        discord_id="5",
+        actor_name="Head",
+        note="sent",
     )
 
     assert added == "added"
     (_, add), (_, remove), (_, delivered) = rpc.calls
-    assert add["prize"] == SeasonPrizeV1(placeFrom=1, placeTo=3, kind=SeasonPrizeV1Kind.CUSTOM, value="Nitro")
+    assert add["prize"] == SeasonPrizeV1(
+        placeFrom=1, placeTo=3, kind=SeasonPrizeV1Kind.CUSTOM, value="Nitro"
+    )
     assert add["timeout_ms"] == 1234
     assert (remove["place_from"], remove["place_to"]) == (2, 2)
-    assert (delivered["season"], delivered["place"], delivered["note"]) == (3, 2, "sent")
+    assert (delivered["season"], delivered["place"], delivered["note"]) == (
+        3,
+        2,
+        "sent",
+    )
 
 
 @pytest.mark.asyncio
 async def test_prize_rpcs_go_to_a_live_server() -> None:
     server_registry._servers.clear()
-    server_registry.update_server(name="mini-pvp", channel_id=1, players=0, max_players=10, version="1")
+    server_registry.update_server(
+        name="mini-pvp", channel_id=1, players=0, max_players=10, version="1"
+    )
     seen: list[tuple[str, str]] = []
 
     class _Bus:
@@ -326,15 +447,32 @@ async def test_prize_rpcs_go_to_a_live_server() -> None:
 
     client = MindustryRpcClient(_Bus())
     prize = _prize_v1(1, 1, SeasonPrizeV1Kind.BADGE, "veteran")
-    await client.add_season_prize(ladder="l", prize=prize, discord_id="5", actor_name="H", timeout_ms=1)
+    await client.add_season_prize(
+        ladder="l", prize=prize, discord_id="5", actor_name="H", timeout_ms=1
+    )
     await client.remove_season_prizes(
-        ladder="l", place_from=1, place_to=1, discord_id="5", actor_name="H", timeout_ms=1
+        ladder="l",
+        place_from=1,
+        place_to=1,
+        discord_id="5",
+        actor_name="H",
+        timeout_ms=1,
     )
     await client.mark_prize_delivered(
-        ladder="l", season=1, place=1, discord_id="5", actor_name="H", note=None, timeout_ms=1
+        ladder="l",
+        season=1,
+        place=1,
+        discord_id="5",
+        actor_name="H",
+        note=None,
+        timeout_ms=1,
     )
 
-    assert seen == [("add", "mini-pvp"), ("remove", "mini-pvp"), ("delivered", "mini-pvp")]
+    assert seen == [
+        ("add", "mini-pvp"),
+        ("remove", "mini-pvp"),
+        ("delivered", "mini-pvp"),
+    ]
 
 
 @pytest.mark.asyncio
@@ -347,45 +485,88 @@ async def test_the_bus_sends_the_canonical_prize_requests() -> None:
         )
     )
     sent: list[tuple[str, dict[str, Any]]] = []
-    season = {"ladder": "minipvp", "season": 3, "name": "S",
-              "startsAt": "2026-01-01T00:00:00Z", "endsAt": "2026-04-01T00:00:00Z"}
+    season = {
+        "ladder": "minipvp",
+        "season": 3,
+        "name": "S",
+        "startsAt": "2026-01-01T00:00:00Z",
+        "endsAt": "2026-04-01T00:00:00Z",
+    }
 
     async def fake_rpc_request(self, server, rpc_type, payload, timeout_ms):
         sent.append((rpc_type, payload))
         if rpc_type == "rating.prize.grant.update.request":
-            body = {"messageType": "rating.prize.grant.update.response", "messageVersion": 1,
-                    "server": server, "season": 3, "place": 2, "updated": 1}
+            body = {
+                "messageType": "rating.prize.grant.update.response",
+                "messageVersion": 1,
+                "server": server,
+                "season": 3,
+                "place": 2,
+                "updated": 1,
+            }
         else:
-            body = {"messageType": "rating.season.prizes.set.response", "messageVersion": 1,
-                    "server": server, "season": season,
-                    "prizes": [{"placeFrom": 1, "placeTo": 1, "kind": "badge", "value": "veteran"}]}
+            body = {
+                "messageType": "rating.season.prizes.set.response",
+                "messageVersion": 1,
+                "server": server,
+                "season": season,
+                "prizes": [
+                    {"placeFrom": 1, "placeTo": 1, "kind": "badge", "value": "veteran"}
+                ],
+            }
         return {"payload_json": json.dumps(body)}
 
     bus._rpc_request = MethodType(fake_rpc_request, bus)
 
     added = await bus.rpc_season_prize_add(
-        server="mini-pvp", ladder="minipvp",
+        server="mini-pvp",
+        ladder="minipvp",
         prize=_prize_v1(1, 1, SeasonPrizeV1Kind.BADGE, "veteran"),
-        discord_id="5", actor_name="Head", timeout_ms=100,
+        discord_id="5",
+        actor_name="Head",
+        timeout_ms=100,
     )
     await bus.rpc_season_prize_remove(
-        server="mini-pvp", ladder="minipvp", place_from=2, place_to=3,
-        discord_id="5", actor_name="Head", timeout_ms=100,
+        server="mini-pvp",
+        ladder="minipvp",
+        place_from=2,
+        place_to=3,
+        discord_id="5",
+        actor_name="Head",
+        timeout_ms=100,
     )
     delivered = await bus.rpc_prize_delivered(
-        server="mini-pvp", ladder="minipvp", season=3, place=2,
-        discord_id="5", actor_name="Head", note="sent", timeout_ms=100,
+        server="mini-pvp",
+        ladder="minipvp",
+        season=3,
+        place=2,
+        discord_id="5",
+        actor_name="Head",
+        note="sent",
+        timeout_ms=100,
     )
     await bus.rpc_prize_delivered(
-        server="mini-pvp", ladder="minipvp", season=3, place=2,
-        discord_id="5", actor_name="Head", note=None, timeout_ms=100, player_pid=14,
+        server="mini-pvp",
+        ladder="minipvp",
+        season=3,
+        place=2,
+        discord_id="5",
+        actor_name="Head",
+        note=None,
+        timeout_ms=100,
+        player_pid=14,
     )
 
     assert added.prizes[0].value == "veteran"
     assert delivered.updated == 1
     (_, add), (_, remove), (grant_type, grant), (_, one_player) = sent
     assert add["operation"] == "add"
-    assert add["prize"] == {"placeFrom": 1, "placeTo": 1, "kind": "badge", "value": "veteran"}
+    assert add["prize"] == {
+        "placeFrom": 1,
+        "placeTo": 1,
+        "kind": "badge",
+        "value": "veteran",
+    }
     assert add["actor"]["actorDiscordId"] == "5"
     assert remove["operation"] == "remove"
     assert (remove["placeFrom"], remove["placeTo"]) == (2, 3)
@@ -413,7 +594,12 @@ def test_prize_commands_are_registered_under_season() -> None:
     season = cog.__cog_app_commands__[0]
     prize = next(command for command in season.commands if command.name == "prize")
 
-    assert {command.name for command in prize.commands} == {"set", "clear", "list", "delivered"}
+    assert {command.name for command in prize.commands} == {
+        "set",
+        "clear",
+        "list",
+        "delivered",
+    }
 
 
 class _Service:
@@ -466,7 +652,11 @@ def _interaction() -> SimpleNamespace:
 
 
 def _cog(service: _Service, ratings: Any = None) -> SeasonsCog:
-    return SeasonsCog(SimpleNamespace(container=SimpleNamespace(rating_service=service, ratings=ratings)))
+    return SeasonsCog(
+        SimpleNamespace(
+            container=SimpleNamespace(rating_service=service, ratings=ratings)
+        )
+    )
 
 
 @pytest.mark.asyncio
@@ -474,7 +664,9 @@ async def test_set_sends_the_prize_with_the_admins_identity() -> None:
     service, interaction = _Service(), _interaction()
     cog = _cog(service)
 
-    await cog.cmd_prize_set.callback(cog, interaction, "minipvp", "1-3", "custom", "  Nitro ", "  A month ")
+    await cog.cmd_prize_set.callback(
+        cog, interaction, "minipvp", "1-3", "custom", "  Nitro ", "  A month "
+    )
 
     name, kwargs = service.calls[0]
     assert name == "add"
@@ -491,7 +683,9 @@ async def test_set_and_clear_refuse_bad_places_without_asking_a_server() -> None
     service, interaction = _Service(), _interaction()
     cog = _cog(service)
 
-    await cog.cmd_prize_set.callback(cog, interaction, "minipvp", "first", "badge", "veteran", None)
+    await cog.cmd_prize_set.callback(
+        cog, interaction, "minipvp", "first", "badge", "veteran", None
+    )
     await cog.cmd_prize_clear.callback(cog, interaction, "minipvp", "3-1")
 
     assert service.calls == []
@@ -501,13 +695,20 @@ async def test_set_and_clear_refuse_bad_places_without_asking_a_server() -> None
 
 @pytest.mark.asyncio
 async def test_a_refused_prize_is_worded_for_the_admin() -> None:
-    refusal = RpcRejected("rating.season.prizes.set.request", "REJECTED", "Badge 'x' was not found")
+    refusal = RpcRejected(
+        "rating.season.prizes.set.request", "REJECTED", "Badge 'x' was not found"
+    )
     service, interaction = _Service(refusal), _interaction()
     cog = _cog(service)
 
-    await cog.cmd_prize_set.callback(cog, interaction, "minipvp", "1", "badge", "x", None)
+    await cog.cmd_prize_set.callback(
+        cog, interaction, "minipvp", "1", "badge", "x", None
+    )
 
-    assert interaction.followup.sent[0]["content"] == "❌ The server refused: Badge 'x' was not found"
+    assert (
+        interaction.followup.sent[0]["content"]
+        == "❌ The server refused: Badge 'x' was not found"
+    )
 
 
 @pytest.mark.asyncio
@@ -539,7 +740,19 @@ async def test_list_is_private_and_shows_the_season_and_its_grants() -> None:
             return season
 
         async def prize_grants(self, ladder, number):
-            return [PrizeGrantRecord("minipvp:3", 1, "ace", "badge", "season-champion", None, "GRANTED", "system", None)]
+            return [
+                PrizeGrantRecord(
+                    "minipvp:3",
+                    1,
+                    "ace",
+                    "badge",
+                    "season-champion",
+                    None,
+                    "GRANTED",
+                    "system",
+                    None,
+                )
+            ]
 
         async def nicknames(self, uuids):
             return {"ace": "Ace"}
@@ -571,4 +784,6 @@ async def test_badge_prizes_suggest_grantable_badges_and_custom_ones_nothing() -
     assert [choice.value for choice in badge] == ["season-champion"]
     assert await _autocomplete_badge(asking("custom"), "champ") == []
     assert await _autocomplete_badge(asking(None), "") == []
-    assert "admin" not in [choice.value for choice in await _autocomplete_badge(asking("badge"), "")]
+    assert "admin" not in [
+        choice.value for choice in await _autocomplete_badge(asking("badge"), "")
+    ]

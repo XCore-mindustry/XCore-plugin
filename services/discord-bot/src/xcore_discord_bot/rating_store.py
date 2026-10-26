@@ -164,7 +164,9 @@ def season_from_doc(doc: dict[str, Any]) -> Season:
         starts_at=_utc(doc.get("starts_at")),
         ends_at=_utc(doc.get("ends_at")),
         matches=_int(doc.get("matches")),
-        participants=_int(summary["participants"]) if "participants" in summary else None,
+        participants=_int(summary["participants"])
+        if "participants" in summary
+        else None,
         podium=tuple(_podium_entry(entry) for entry in doc.get("podium") or ()),
         prizes=tuple(_prize(entry) for entry in doc.get("prizes") or ()),
     )
@@ -235,8 +237,10 @@ class RatingStore:
 
     async def list_seasons(self, ladder: str) -> list[Season]:
         """Newest first."""
-        cursor = self._collection(SEASONS).find({"ladder": ladder}).sort(
-            "number", DESCENDING
+        cursor = (
+            self._collection(SEASONS)
+            .find({"ladder": ladder})
+            .sort("number", DESCENDING)
         )
         return [season_from_doc(doc) async for doc in cursor]
 
@@ -269,7 +273,9 @@ class RatingStore:
             )
         )
 
-    async def top(self, ladder: str, season: int, limit: int = 10) -> list[RankedStanding]:
+    async def top(
+        self, ladder: str, season: int, limit: int = 10
+    ) -> list[RankedStanding]:
         cursor = (
             self._collection(STANDINGS)
             .find({"ladder": ladder, "season": season})
@@ -332,7 +338,10 @@ class RatingStore:
         return placings
 
     async def nicknames(self, uuids: list[str]) -> dict[str, str]:
-        return {uuid: nickname for uuid, (nickname, _) in (await self._players(uuids)).items()}
+        return {
+            uuid: nickname
+            for uuid, (nickname, _) in (await self._players(uuids)).items()
+        }
 
     async def _players(self, uuids: list[str]) -> dict[str, tuple[str, int | None]]:
         if not uuids:
@@ -404,9 +413,13 @@ class RatingStore:
     async def pending_merges(self) -> list[tuple[str, str]]:
         """The merges still waiting for a server; refused ones are kept but not retried."""
         cursor = self._collection(PENDING_MERGES).find({"failed_at": None})
-        return [(str(doc["source_uuid"]), str(doc["target_uuid"])) async for doc in cursor]
+        return [
+            (str(doc["source_uuid"]), str(doc["target_uuid"])) async for doc in cursor
+        ]
 
-    async def fail_pending_merge(self, source_uuid: str, target_uuid: str, error: str) -> None:
+    async def fail_pending_merge(
+        self, source_uuid: str, target_uuid: str, error: str
+    ) -> None:
         """Keeps a refused merge on record for an administrator instead of retrying it."""
         await self._collection(PENDING_MERGES).update_one(
             {"_id": f"{source_uuid}>{target_uuid}"},

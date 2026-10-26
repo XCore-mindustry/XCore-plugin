@@ -156,8 +156,19 @@ See `docs/canary-rollout.md`.
 ## Lint
 
 ```bash
-uvx ruff check
-uvx ruff format --check
+uv run ruff check
+uv run ruff format --check
+```
+
+## Type check
+
+`mypy` runs in CI against `mypy-baseline.txt`, the errors that existed when it was added.
+A new error fails the build, and so does a fixed one that is still in the baseline:
+
+```bash
+uv run mypy | uv run mypy-baseline filter
+# after fixing errors, shrink the baseline and commit it
+uv run mypy | uv run mypy-baseline sync
 ```
 
 ## Cases

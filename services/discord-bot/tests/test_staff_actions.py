@@ -373,7 +373,9 @@ async def test_ban_check_sees_the_ban_right_before_the_write_and_can_stop_it(ver
             ban = await bot.store.find_ban(uuid=PLAYER.uuid, ip=None)
             await perform_unban(bot, ban, ACTOR, check=check)
         else:
-            await perform_shorten_ban(bot, 71, NOW + timedelta(days=2), ACTOR, check=check)
+            await perform_shorten_ban(
+                bot, 71, NOW + timedelta(days=2), ACTOR, check=check
+            )
     assert checked == [(71, NOW + timedelta(days=7))]
     assert db["bans"].docs[0]["expire_date"] == NOW + timedelta(days=7)
     assert not db["moderation_audit"].docs and not bus.pardons and not channel.embeds
