@@ -1,132 +1,144 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 from datetime import timedelta
-from types import MethodType, SimpleNamespace
+from types import SimpleNamespace
 from typing import Any
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock
 
 import pytest
-from bot_fakes import make_rpc
+from backends import GameServer, RpcError, fail, real_bot, refuse, unplug
+from bot_fakes import make_rpc, make_settings
+from cases_fakes import Database
+from redis.exceptions import ConnectionError as RedisConnectionError
+from test_account_merge import SOURCE_DOC, TARGET_DOC
 from xcore_protocol.generated.rating import RatingSeasonRescheduleRequestV1Operation
+from xcore_protocol.generated.shared import SeasonPrizeV1, SeasonPrizeV1Kind
 
-from xcore_discord_bot.bus.rating import RatingBus
-from xcore_discord_bot.bus.transport import RedisTransport, RpcFailed, RpcRejected
-from xcore_discord_bot.daemons.rating_merge_daemon import RatingMergeDaemon
+from xcore_discord_bot.bot import XCoreDiscordBot
+from xcore_discord_bot.bus.transport import RpcFailed, RpcRejected
 from xcore_discord_bot.dto import AccountMergeResult, PlayerRecord
+from xcore_discord_bot.rating_store import PENDING_MERGES
 from xcore_discord_bot.registry import LiveServerRegistry
 from xcore_discord_bot.rpc.mindustry_rpc import (
     MAX_SERVERS_TRIED,
     NoLiveServerError,
 )
-from xcore_discord_bot.services.player_service import PlayerService
-from xcore_discord_bot.services.rating_service import RatingService, RefusedMerge
+
+MERGE = "rating.accounts.merge.request"
+RESCHEDULE = "rating.season.reschedule.request"
+PRIZES = "rating.season.prizes.set.request"
+# A response the bot cannot read.
+GARBLED: dict[str, Any] = {"messageType": "rating.accounts.merge.response"}
 
 
-class _Store:
-    def __init__(self) -> None:
-        self.pending: set[tuple[str, str]] = set()
-        self.failed: dict[tuple[str, str], str] = {}
-
-    async def add_pending_merge(self, source: str, target: str) -> None:
-        self.pending.add((source, target))
-
-    async def clear_pending_merge(self, source: str, target: str) -> None:
-        self.pending.discard((source, target))
-
-    async def pending_merges(self) -> list[tuple[str, str]]:
-        return sorted(self.pending - set(self.failed))
-
-    async def fail_pending_merge(self, source: str, target: str, error: str) -> None:
-        self.failed[(source, target)] = error
+def _merged(payload: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "messageType": "rating.accounts.merge.response",
+        "messageVersion": 1,
+        "server": payload["server"],
+        "standingsMerged": 2,
+    }
 
 
-class _Rpc:
-    def __init__(self, *errors: Exception | None) -> None:
-        self.errors = list(errors)
-        self.merged: list[tuple[str, str]] = []
-        self.rescheduled: list[dict[str, Any]] = []
-
-    async def merge_ratings(self, *, source_uuid, target_uuid, timeout_ms):
-        error = self.errors.pop(0) if self.errors else None
-        if error:
-            raise error
-        self.merged.append((source_uuid, target_uuid))
-
-    async def reschedule_season(self, **kwargs):
-        self.rescheduled.append(kwargs)
-        return "response"
+async def _ratings(
+    *answers: dict[str, Any] | RpcError | None, online: bool = True, **settings: Any
+) -> tuple[XCoreDiscordBot, Database]:
+    """A bot with one game server online. It gives the first merge requests ``answers``
+    in turn, None staying silent, and merges every later one."""
+    bot, db = await real_bot(settings=make_settings(rpc_timeout_ms=50, **settings))
+    if online:
+        queue = list(answers)
+        GameServer(bot).answers[MERGE] = lambda payload: (
+            queue.pop(0) if queue else _merged(payload)
+        )
+    return bot, db
 
 
-def _service(*errors: Exception | None) -> tuple[RatingService, _Store, _Rpc]:
-    store, rpc = _Store(), _Rpc(*errors)
-    return RatingService(store=store, rpc=rpc, timeout_ms=1234), store, rpc
+def _asked(bot: XCoreDiscordBot) -> list[tuple[str, str]]:
+    """Every merge the game server was asked for, answered or not."""
+    game = bot.bus.redis.game_servers["mini-pvp"]
+    return [(p["sourceUuid"], p["targetUuid"]) for p in game.sent(MERGE)]
+
+
+async def _queued(bot: XCoreDiscordBot) -> list[tuple[str, str]]:
+    return await bot.container.ratings.pending_merges()
+
+
+def _refused(db: Database) -> dict[tuple[str, str], str]:
+    """The merges kept on record for an administrator, with the server's answer."""
+    return {
+        (doc["source_uuid"], doc["target_uuid"]): doc["error"]
+        for doc in db[PENDING_MERGES].docs
+        if doc.get("failed_at") is not None
+    }
 
 
 @pytest.mark.asyncio
 async def test_successful_merge_leaves_nothing_queued() -> None:
-    service, store, rpc = _service()
+    bot, _ = await _ratings()
 
-    outcome = await service.merge_standings("s", "t")
+    outcome = await bot.container.rating_service.merge_standings("s", "t")
 
     assert outcome.merged is True
-    assert rpc.merged == [("s", "t")]
-    assert store.pending == set()
+    assert _asked(bot) == [("s", "t")]
+    assert await _queued(bot) == []
 
 
 @pytest.mark.asyncio
 async def test_unreachable_servers_queue_the_merge_and_a_retry_delivers_it() -> None:
-    service, store, rpc = _service(TimeoutError(), None)
+    bot, _ = await _ratings(None)
+    service = bot.container.rating_service
 
     outcome = await service.merge_standings("s", "t")
     assert (outcome.merged, outcome.queued) == (False, True)
-    assert store.pending == {("s", "t")}
+    assert await _queued(bot) == [("s", "t")]
 
     report = await service.retry_pending_merges()
     assert (report.delivered, report.refused) == (1, ())
-    assert store.pending == set()
-    assert rpc.merged == [("s", "t")]
+    assert await _queued(bot) == []
+    assert _asked(bot) == [("s", "t"), ("s", "t")]
 
 
 @pytest.mark.asyncio
 async def test_refused_merge_is_reported_and_never_queued() -> None:
-    refusal = RpcRejected("rating.accounts.merge.request", "REJECTED", "nope")
-    service, store, _ = _service(refusal)
+    bot, db = await _ratings(refuse("nope"))
 
-    outcome = await service.merge_standings("s", "t")
+    outcome = await bot.container.rating_service.merge_standings("s", "t")
 
     assert (outcome.merged, outcome.queued) == (False, False)
     assert "nope" in (outcome.error or "")
-    assert store.pending == set()
+    assert await _queued(bot) == [] and not db[PENDING_MERGES].docs
 
 
 @pytest.mark.asyncio
 async def test_a_merge_the_server_could_not_carry_out_is_queued_and_retried() -> None:
-    failure = RpcFailed("rating.accounts.merge.request", "FAILED", "see the server log")
-    service, store, rpc = _service(failure, failure, None)
+    failure = fail("see the server log")
+    bot, db = await _ratings(failure, failure)
+    service = bot.container.rating_service
 
     outcome = await service.merge_standings("s", "t")
 
     assert (outcome.merged, outcome.queued) == (False, True)
-    assert store.pending == {("s", "t")}
+    assert await _queued(bot) == [("s", "t")]
 
     # Still failing: it stays in the queue instead of being written off as refused.
     report = await service.retry_pending_merges()
     assert (report.delivered, report.refused) == (0, ())
-    assert store.failed == {}
+    assert _refused(db) == {}
 
     report = await service.retry_pending_merges()
     assert report.delivered == 1
-    assert store.pending == set()
-    assert rpc.merged == [("s", "t")]
+    assert await _queued(bot) == []
+    assert len(_asked(bot)) == 3
 
 
 @pytest.mark.asyncio
 async def test_a_queued_merge_that_is_refused_is_kept_reported_and_not_retried() -> (
     None
 ):
-    service, store, rpc = _service(RpcRejected("x", "REJECTED", "nope"))
-    store.pending.add(("s", "t"))
+    bot, db = await _ratings(refuse("nope"))
+    service = bot.container.rating_service
+    await bot.container.ratings.add_pending_merge("s", "t")
 
     report = await service.retry_pending_merges()
 
@@ -134,98 +146,83 @@ async def test_a_queued_merge_that_is_refused_is_kept_reported_and_not_retried()
     assert [(r.source_uuid, r.target_uuid) for r in report.refused] == [("s", "t")]
     assert "nope" in report.refused[0].error
     # Still on record for an administrator, but out of the retry queue.
-    assert store.pending == {("s", "t")}
-    assert "nope" in store.failed[("s", "t")]
+    assert await _queued(bot) == []
+    assert "nope" in _refused(db)[("s", "t")]
     assert (await service.retry_pending_merges()).refused == ()
-    assert rpc.merged == []
+    assert _asked(bot) == [("s", "t")]
 
 
 @pytest.mark.asyncio
 async def test_the_daemon_tells_the_administrators_about_a_refused_merge() -> None:
-    sent: list[str] = []
+    bot, _ = await _ratings(refuse("nope"), discord_private_channel_id=42)
+    channel = SimpleNamespace(send=AsyncMock())
+    bot.resolve_channel = AsyncMock(return_value=channel)  # type: ignore[method-assign]
+    await bot.container.ratings.add_pending_merge("s", "t")
 
-    class _Channel:
-        async def send(self, content, **kwargs) -> None:
-            sent.append(content)
+    await bot.container.rating_merge_daemon.run_once()
+    await bot.container.rating_merge_daemon.run_once()
 
-    class _Bot:
-        settings = SimpleNamespace(discord_private_channel_id=42)
-
-        async def resolve_channel(self, channel_id, *, context):
-            assert channel_id == 42
-            return _Channel()
-
-    service, store, _ = _service(RpcRejected("x", "REJECTED", "nope"))
-    store.pending.add(("s", "t"))
-
-    await RatingMergeDaemon(_Bot(), service).run_once()
-    await RatingMergeDaemon(_Bot(), service).run_once()
-
-    assert len(sent) == 1
-    assert "`s` → `t`" in sent[0] and "nope" in sent[0]
+    assert bot.resolve_channel.await_args is not None
+    assert bot.resolve_channel.await_args.args == (42,)
+    channel.send.assert_awaited_once()
+    sent = channel.send.await_args.args[0]
+    assert "`s` → `t`" in sent and "nope" in sent
 
 
 @pytest.mark.asyncio
 async def test_the_daemon_survives_a_refusal_it_cannot_report() -> None:
-    class _Bot:
-        settings = SimpleNamespace(discord_private_channel_id=0)
+    bot, db = await _ratings(refuse("nope"), discord_private_channel_id=0)
+    await bot.container.ratings.add_pending_merge("s", "t")
 
-    class _Ratings:
-        async def retry_pending_merges(self):
-            from xcore_discord_bot.services.rating_service import MergeRetryReport
+    await bot.container.rating_merge_daemon.run_once()
 
-            return MergeRetryReport(refused=(RefusedMerge("s", "t", "nope"),))
-
-    await RatingMergeDaemon(_Bot(), _Ratings()).run_once()
+    assert "nope" in _refused(db)[("s", "t")]
 
 
 @pytest.mark.asyncio
 async def test_a_queued_merge_stays_until_a_server_answers() -> None:
-    service, store, _ = _service(TimeoutError())
-    store.pending.add(("s", "t"))
+    bot, _ = await _ratings(None)
+    await bot.container.ratings.add_pending_merge("s", "t")
 
-    report = await service.retry_pending_merges()
+    report = await bot.container.rating_service.retry_pending_merges()
     assert (report.delivered, report.refused) == (0, ())
-    assert store.pending == {("s", "t")}
+    assert await _queued(bot) == [("s", "t")]
 
 
 @pytest.mark.asyncio
 async def test_an_unexpected_merge_failure_is_logged_with_its_traceback_and_queued(
     caplog,
 ) -> None:
-    service, store, _ = _service(KeyError("bug"), KeyError("bug"))
+    bot, _ = await _ratings(GARBLED, GARBLED)
+    service = bot.container.rating_service
 
     outcome = await service.merge_standings("s", "t")
     # The accounts are already merged, so the ratings must not be dropped.
     assert (outcome.merged, outcome.queued) == (False, True)
-    assert store.pending == {("s", "t")}
+    assert await _queued(bot) == [("s", "t")]
 
     report = await service.retry_pending_merges()
     assert (report.delivered, report.refused) == (0, ())
-    assert store.pending == {("s", "t")}
+    assert await _queued(bot) == [("s", "t")]
 
     unexpected = [r for r in caplog.records if "failed unexpectedly" in r.message]
     assert len(unexpected) == 2
-    assert all(r.exc_info and r.exc_info[0] is KeyError for r in unexpected)
+    assert all(r.exc_info and r.exc_info[0] is ValueError for r in unexpected)
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize(
-    "error",
-    [
-        NoLiveServerError("offline"),
-        RpcFailed("rating.accounts.merge.request", "FAILED", "busy"),
-        TimeoutError(),
-        ConnectionError(),
-    ],
-)
-async def test_an_unavailable_server_is_not_logged_as_a_failure(error, caplog) -> None:
-    service, store, _ = _service(error, error)
+@pytest.mark.parametrize("outage", ["no server online", "failing", "silent", "redis"])
+async def test_an_unavailable_server_is_not_logged_as_a_failure(outage, caplog) -> None:
+    answer = fail("busy") if outage == "failing" else None
+    bot, _ = await _ratings(answer, answer, online=outage != "no server online")
+    if outage == "redis":
+        unplug(bot.bus)
+    service = bot.container.rating_service
 
     await service.merge_standings("s", "t")
     await service.retry_pending_merges()
 
-    assert store.pending == {("s", "t")}
+    assert await _queued(bot) == [("s", "t")]
     assert all(r.exc_info is None for r in caplog.records)
 
 
@@ -240,81 +237,68 @@ def _merge_result(source_uuid="s", target_uuid="t") -> AccountMergeResult:
 
 @pytest.mark.asyncio
 async def test_account_merge_moves_ratings_between_the_two_uuids() -> None:
-    service, _, rpc = _service()
+    bot, _ = await _ratings()
 
-    outcome = await service.merge_after_account_merge(_merge_result())
+    outcome = await bot.container.rating_service.merge_after_account_merge(
+        _merge_result()
+    )
 
     assert outcome is not None and outcome.merged
-    assert rpc.merged == [("s", "t")]
+    assert _asked(bot) == [("s", "t")]
 
 
 @pytest.mark.asyncio
 async def test_account_merge_without_distinct_uuids_has_nothing_to_move() -> None:
-    service, _, rpc = _service()
+    bot, _ = await _ratings()
 
+    service = bot.container.rating_service
     assert await service.merge_after_account_merge(_merge_result("t", "t")) is None
-    assert rpc.merged == []
+    assert _asked(bot) == []
+
+
+async def _merge_accounts(bot: XCoreDiscordBot, db: Database) -> AccountMergeResult:
+    await db["players"].insert_one(dict(SOURCE_DOC))
+    await db["players"].insert_one(dict(TARGET_DOC))
+    return await bot.container.players.merge_player_accounts(
+        source_pid=SOURCE_DOC["pid"],
+        target_pid=TARGET_DOC["pid"],
+        actor_name="a",
+        actor_discord_id=None,
+        reason="r",
+    )
 
 
 @pytest.mark.asyncio
 async def test_player_service_reports_the_rating_outcome_on_the_merge_result() -> None:
-    class _Merges:
-        async def merge_player_accounts(self, **kwargs):
-            return _merge_result()
+    bot, db = await _ratings(None)
 
-    class _Bus:
-        async def publish_kick_banned(self, **kwargs) -> None:
-            pass
-
-    service, _, _ = _service(TimeoutError())
-    bus = _Bus()
-    players = PlayerService(
-        MagicMock(), ratings=service, accounts=bus, moderation=bus, merges=_Merges()
-    )
-
-    result = await players.merge_player_accounts(
-        source_pid=1, target_pid=2, actor_name="a", actor_discord_id=None, reason="r"
-    )
+    result = await _merge_accounts(bot, db)
 
     assert result.success is True
     assert result.ratings_merged is False
     assert result.ratings_pending is True
+    assert _asked(bot) == [("source-uuid", "target-uuid")]
 
 
 @pytest.mark.asyncio
 async def test_a_kick_that_cannot_be_sent_does_not_skip_the_rating_merge() -> None:
-    class _Merges:
-        async def merge_player_accounts(self, **kwargs):
-            return _merge_result()
+    bot, db = await _ratings()
+    unplug(bot.bus)
 
-    class _Bus:
-        async def publish_kick_banned(self, **kwargs) -> None:
-            raise ConnectionError("redis is down")
-
-    service, store, _ = _service(TimeoutError())
-    bus = _Bus()
-    players = PlayerService(
-        MagicMock(), ratings=service, accounts=bus, moderation=bus, merges=_Merges()
-    )
-
-    with pytest.raises(ConnectionError):
-        await players.merge_player_accounts(
-            source_pid=1,
-            target_pid=2,
-            actor_name="a",
-            actor_discord_id=None,
-            reason="r",
-        )
+    with pytest.raises(RedisConnectionError):
+        await _merge_accounts(bot, db)
 
     # The accounts are merged already, so the ratings were attempted and queued regardless.
-    assert len(store.pending) == 1
+    assert await _queued(bot) == [("source-uuid", "target-uuid")]
 
 
 @pytest.mark.asyncio
 async def test_season_administration_goes_out_as_one_rpc_each() -> None:
-    service, _, rpc = _service()
+    bot, _ = await _ratings()
+    game = bot.bus.redis.game_servers["mini-pvp"]
+    game.answers[RESCHEDULE] = _rescheduled
 
-    await service.extend_season(
+    await bot.container.rating_service.extend_season(
         ladder="minipvp",
         by=timedelta(days=2),
         discord_id="5",
@@ -322,10 +306,37 @@ async def test_season_administration_goes_out_as_one_rpc_each() -> None:
         reason=None,
     )
 
-    call = rpc.rescheduled[0]
-    assert call["operation"] is RatingSeasonRescheduleRequestV1Operation.EXTEND
-    assert call["extend_seconds"] == 172800
-    assert call["timeout_ms"] == 1234
+    [request] = game.sent(RESCHEDULE)
+    assert request["operation"] == "extend"
+    assert request["extendSeconds"] == 172800
+    assert game.requests[0]["timeout_ms"] == "50"
+
+
+def _rescheduled(payload: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "messageType": "rating.season.reschedule.response",
+        "messageVersion": 1,
+        "server": payload["server"],
+        "season": {
+            "ladder": "minipvp",
+            "season": 1,
+            "name": "S",
+            "startsAt": "2026-01-01T00:00:00Z",
+            "endsAt": "2026-04-01T00:00:00Z",
+        },
+        "previousEndsAt": "2026-03-01T00:00:00Z",
+        "ended": False,
+    }
+
+
+def _prizes_set(payload: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "messageType": "rating.season.prizes.set.response",
+        "messageVersion": 1,
+        "server": payload["server"],
+        "season": _rescheduled(payload)["season"],
+        "prizes": [],
+    }
 
 
 # ------------------------------------------------------------- server fallback
@@ -419,105 +430,76 @@ async def test_rpc_client_tries_the_next_server_when_one_could_not_carry_it_out(
 async def test_rpc_client_names_a_season_change_once_for_every_server_it_tries() -> (
     None
 ):
-    servers = _live("a", "b")
-    seen: list[tuple[str, str, str]] = []
+    bot, _ = await real_bot()
+    a, b = GameServer(bot, "a"), GameServer(bot, "b")
+    # "a" stays silent on the season and cannot set prizes; "b" does everything asked.
+    a.answers[RESCHEDULE] = lambda payload: None
+    a.answers[PRIZES] = lambda payload: (
+        fail("see the server log")
+        if payload["operation"] == "add"
+        else _prizes_set(payload)
+    )
+    b.answers[RESCHEDULE] = _rescheduled
+    b.answers[PRIZES] = _prizes_set
 
-    class _Bus:
-        async def rpc_season_reschedule(self, *, server, request_id, **kwargs):
-            seen.append(("reschedule", server, request_id))
-            if server == "a":
-                raise TimeoutError()
-            return "moved"
-
-        async def rpc_season_prize_add(self, *, server, request_id, **kwargs):
-            seen.append(("add", server, request_id))
-            if server == "a":
-                raise RpcFailed("x", "FAILED", "see the server log")
-            return "added"
-
-        async def rpc_season_prize_remove(self, *, server, request_id, **kwargs):
-            seen.append(("remove", server, request_id))
-            return "removed"
-
-    client = make_rpc(SimpleNamespace(), rating=_Bus(), servers=servers)
+    client = bot.container.rpc
     actor = {"discord_id": "5", "actor_name": "Head", "timeout_ms": 100}
     await client.reschedule_season(
         ladder="minipvp",
         operation=RatingSeasonRescheduleRequestV1Operation.END_NOW,
         **actor,
     )
-    await client.add_season_prize(ladder="minipvp", prize=None, **actor)
+    prize = SeasonPrizeV1(
+        placeFrom=1, placeTo=1, kind=SeasonPrizeV1Kind.BADGE, value="veteran"
+    )
+    await client.add_season_prize(ladder="minipvp", prize=prize, **actor)
     await client.remove_season_prizes(
         ladder="minipvp", place_from=1, place_to=3, **actor
     )
 
-    assert [(kind, server) for kind, server, _ in seen] == [
-        ("reschedule", "a"),
-        ("reschedule", "b"),
+    seen = [
+        (payload.get("operation"), game.name, payload["requestId"])
+        for game in (a, b)
+        for payload in game.sent(RESCHEDULE) + game.sent(PRIZES)
+    ]
+    assert sorted((kind, server) for kind, server, _ in seen) == [
         ("add", "a"),
         ("add", "b"),
+        ("end-now", "a"),
+        ("end-now", "b"),
         ("remove", "a"),
     ]
-    ids = [request_id for _, _, request_id in seen]
-    assert all(ids)
+    ids = {(kind, server): request_id for kind, server, request_id in seen}
+    assert all(ids.values())
     # The server that did not confirm and the one asked after it see the same request, so
     # only one of them applies it; every administrator action is a request of its own.
-    assert ids[0] == ids[1] and ids[2] == ids[3]
-    assert len({ids[0], ids[2], ids[4]}) == 3
-
-
-class _ReplyingRedis:
-    """Answers every RPC with an error carrying the given code."""
-
-    def __init__(self, error_code: str | None) -> None:
-        self.error_code = error_code
-        self.correlation_id = ""
-
-    async def xrevrange(self, stream, count):
-        return []
-
-    async def xadd(self, stream, fields, **kwargs):
-        self.correlation_id = fields["correlation_id"]
-
-    async def xread(self, streams, count, block):
-        body = {
-            "correlation_id": self.correlation_id,
-            "status": "error",
-            "error_message": "why",
-        }
-        if self.error_code is not None:
-            body["error_code"] = self.error_code
-        return [("reply", [("1-0", body)])]
+    assert ids["end-now", "a"] == ids["end-now", "b"]
+    assert ids["add", "a"] == ids["add", "b"]
+    assert len({ids["end-now", "a"], ids["add", "a"], ids["remove", "a"]}) == 3
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    ("error_code", "expected"),
-    [("REJECTED", RpcRejected), ("FAILED", RpcFailed), (None, RpcFailed)],
+    ("answer", "expected"),
+    [
+        (refuse("why"), RpcRejected),
+        (fail("why"), RpcFailed),
+        (RpcError(None, "why"), RpcFailed),
+    ],
 )
-async def test_bus_tells_a_refusal_from_a_failure(error_code, expected) -> None:
-    bus = RedisTransport(
-        SimpleNamespace(
-            redis_url="redis://127.0.0.1:6379",
-            redis_group_prefix="xcore:cg",
-            redis_consumer_name="discord-bot",
-        )
-    )
-    bus._redis = _ReplyingRedis(error_code)
+async def test_bus_tells_a_refusal_from_a_failure(answer, expected) -> None:
+    bot, _ = await real_bot()
+    GameServer(bot).answers[MERGE] = lambda payload: answer
 
     with pytest.raises(expected) as raised:
-        await bus.rpc_request(
-            server="mini-pvp",
-            rpc_type="rating.accounts.merge.request",
-            payload={},
-            timeout_ms=500,
+        await bot.container.rating_bus.rpc_ratings_merge(
+            server="mini-pvp", source_uuid="s", target_uuid="t", timeout_ms=500
         )
 
     assert type(raised.value) is expected
     assert raised.value.error_message == "why"
 
 
-@pytest.mark.asyncio
 async def test_rpc_client_needs_a_live_server() -> None:
     servers = _live()
 
@@ -530,54 +512,12 @@ async def test_rpc_client_needs_a_live_server() -> None:
 # --------------------------------------------------------------------- the bus
 
 
-@dataclass
-class _Captured:
-    server: str | None = None
-    rpc_type: str | None = None
-    payload: dict[str, Any] | None = None
-
-
 @pytest.mark.asyncio
 async def test_bus_sends_the_canonical_season_and_merge_requests() -> None:
-    bus = RedisTransport(
-        SimpleNamespace(
-            redis_url="redis://127.0.0.1:6379",
-            redis_group_prefix="xcore:cg",
-            redis_consumer_name="discord-bot",
-        )
-    )
-    seen: list[_Captured] = []
-
-    async def fake_rpc_request(self, server, rpc_type, payload, timeout_ms):
-        seen.append(_Captured(server, rpc_type, payload))
-        if rpc_type == "rating.accounts.merge.request":
-            body = {
-                "messageType": "rating.accounts.merge.response",
-                "messageVersion": 1,
-                "server": server,
-                "standingsMerged": 2,
-            }
-        else:
-            body = {
-                "messageType": "rating.season.reschedule.response",
-                "messageVersion": 1,
-                "server": server,
-                "season": {
-                    "ladder": "minipvp",
-                    "season": 1,
-                    "name": "S",
-                    "startsAt": "2026-01-01T00:00:00Z",
-                    "endsAt": "2026-04-01T00:00:00Z",
-                },
-                "previousEndsAt": "2026-03-01T00:00:00Z",
-                "ended": False,
-            }
-        import json
-
-        return {"payload_json": json.dumps(body)}
-
-    bus.rpc_request = MethodType(fake_rpc_request, bus)
-    rating = RatingBus(bus)
+    bot, _ = await real_bot()
+    game = GameServer(bot)
+    game.answers = {MERGE: _merged, RESCHEDULE: _rescheduled}
+    rating = bot.container.rating_bus
 
     merged = await rating.rpc_ratings_merge(
         server="mini-pvp", source_uuid="s", target_uuid="t", timeout_ms=100
@@ -594,11 +534,13 @@ async def test_bus_sends_the_canonical_season_and_merge_requests() -> None:
 
     assert merged.standingsMerged == 2
     assert moved.ended is False
-    assert seen[0].payload["sourceUuid"] == "s"
-    assert seen[1].payload["operation"] == "extend"
-    assert seen[1].payload["extendSeconds"] == 60
-    assert seen[1].payload["actor"]["actorDiscordId"] == "5"
-    assert "requestId" not in seen[1].payload
+    [merge] = game.sent(MERGE)
+    assert (merge["sourceUuid"], merge["targetUuid"]) == ("s", "t")
+    [extend] = game.sent(RESCHEDULE)
+    assert extend["operation"] == "extend"
+    assert extend["extendSeconds"] == 60
+    assert extend["actor"]["actorDiscordId"] == "5"
+    assert "requestId" not in extend
 
     await rating.rpc_season_reschedule(
         server="mini-pvp",
@@ -609,7 +551,7 @@ async def test_bus_sends_the_canonical_season_and_merge_requests() -> None:
         timeout_ms=100,
         request_id="req-1",
     )
-    assert seen[2].payload["requestId"] == "req-1"
+    assert game.sent(RESCHEDULE)[1]["requestId"] == "req-1"
 
 
 def test_merge_embed_tells_the_admin_what_happened_to_the_ratings() -> None:

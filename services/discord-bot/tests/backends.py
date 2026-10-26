@@ -13,11 +13,13 @@ import time
 import uuid
 from collections.abc import Awaitable, Callable
 from contextlib import suppress
-from typing import Any
+from dataclasses import dataclass
+from typing import Any, cast
 from unittest.mock import create_autospec, patch
 
 from bot_fakes import make_bot, make_settings
 from cases_fakes import Database
+from fakeredis import FakeServer
 from fakeredis.aioredis import FakeRedis
 from xcore_protocol.generated.maps import MapsUploadResponseV1
 
@@ -26,11 +28,32 @@ from xcore_discord_bot.bus.transport import RedisTransport
 from xcore_discord_bot.mongo_store import MongoStore
 from xcore_discord_bot.settings import Settings
 
+RPC_REQUESTS = "xcore:rpc:req:"
+
 
 class _Redis(FakeRedis):
     """fakeredis serves a blocking read without ever yielding to the event loop, so a
     consumer waiting on an empty stream would starve the test. Real Redis waits on the
-    socket instead; this reads without blocking and yields in place of the wait."""
+    socket instead; this reads without blocking and yields in place of the wait.
+
+    A ``GameServer`` on it answers each RPC request as it is published, on the request's
+    ``reply_to`` stream, the way the plugin does.
+    """
+
+    def __init__(self) -> None:
+        self.server = FakeServer()
+        self.game_servers: dict[str, GameServer] = {}
+        super().__init__(server=self.server, decode_responses=True)
+
+    async def xadd(self, name: Any, fields: Any, *args: Any, **kwargs: Any) -> Any:
+        entry = await super().xadd(name, fields, *args, **kwargs)
+        server = self.game_servers.get(str(name).removeprefix(RPC_REQUESTS))
+        if str(name).startswith(RPC_REQUESTS) and server is not None:
+            reply = server.reply(fields)
+            if reply is not None:
+                reply["correlation_id"] = fields["correlation_id"]
+                await super().xadd(fields["reply_to"], reply)
+        return entry
 
     async def xreadgroup(self, *args: Any, block: int | None = None, **kwargs: Any):
         await asyncio.sleep(0.01 if block else 0)
@@ -69,7 +92,7 @@ async def connected_bus(settings: Settings | None = None) -> RedisTransport:
     bus = RedisTransport(settings or make_settings())
     with patch(
         "xcore_discord_bot.bus.transport.Redis.from_url",
-        lambda *args, **kwargs: _Redis(decode_responses=True),
+        lambda *args, **kwargs: _Redis(),
     ):
         await bus.connect()
     return bus
@@ -83,6 +106,11 @@ async def real_bot(
     store, db = await connected_store(db, settings)
     bot = make_bot(settings=settings, bus=await connected_bus(settings), store=store)
     return bot, db
+
+
+def unplug(bus: RedisTransport) -> None:
+    """Takes Redis down: from now on every call on ``bus`` raises a connection error."""
+    cast(_Redis, bus.redis).server.connected = False
 
 
 async def published(bus: RedisTransport, stream: str) -> list[dict[str, Any]]:
@@ -140,25 +168,82 @@ async def consumed(
             await task
 
 
-class GameServer:
-    """A game server on the bot's bus: it answers map uploads and reads its commands.
+@dataclass(frozen=True)
+class RpcError:
+    """An error reply to an RPC; ``code`` is None for a server that sends none."""
 
-    It registers with the bot, so commands published to every server reach it. Set
-    ``statuses`` for the upload results, ``upload_error`` to fail the upload, or
-    ``answer`` to return any other response.
+    code: str | None
+    message: str
+
+
+def refuse(message: str) -> RpcError:
+    return RpcError("REJECTED", message)
+
+
+def fail(message: str) -> RpcError:
+    return RpcError("FAILED", message)
+
+
+# What a game server makes of an RPC request's payload: the response payload, an error
+# reply, or None to stay silent.
+RpcAnswer = Callable[[dict[str, Any]], dict[str, Any] | RpcError | None]
+
+
+class GameServer:
+    """A game server on the bot's bus: it answers RPCs and map uploads and reads its
+    commands.
+
+    It registers with the bot, so commands published to every server reach it. Put an
+    ``RpcAnswer`` in ``answers`` for each RPC type it should answer; ``requests`` holds
+    the fields of every request it was sent. Set ``statuses`` for the upload results,
+    ``upload_error`` to fail the upload, or ``answer`` to return any other response.
     """
 
     def __init__(self, bot: XCoreDiscordBot, name: str = "mini-pvp") -> None:
         self.bus, self.name = bot.bus, name
+        self.answers: dict[str, RpcAnswer] = {}
+        self.requests: list[dict[str, str]] = []
         self.statuses = ["installed"]
         self.upload_error: BaseException | None = None
         self.upload_calls: list[tuple[str, list[dict[str, Any]], int]] = []
         self.answer: Callable[[str, list[dict[str, Any]]], object] = self._installed
         bot.container.servers.update_server(name, 1, 0, 10, "v1")
-        maps = bot.container.maps_bus
-        maps.rpc_upload_maps = create_autospec(  # type: ignore[method-assign]
-            maps.rpc_upload_maps, side_effect=self.rpc_upload_maps
-        )
+        game_servers = cast(_Redis, self.bus.redis).game_servers
+        game_servers[name] = self
+        if len(game_servers) == 1:  # the first server patches the uploads for all
+            maps = bot.container.maps_bus
+
+            async def upload(*, server: str, **kwargs: Any) -> object:
+                return await game_servers[server].rpc_upload_maps(
+                    server=server, **kwargs
+                )
+
+            maps.rpc_upload_maps = create_autospec(  # type: ignore[method-assign]
+                maps.rpc_upload_maps, side_effect=upload
+            )
+
+    def reply(self, fields: dict[str, str]) -> dict[str, str] | None:
+        self.requests.append(dict(fields))
+        rpc_type, payload = fields["rpc_type"], json.loads(fields["payload_json"])
+        if rpc_type not in self.answers:
+            raise AssertionError(f"{self.name} has no answer for {rpc_type}")
+        answer = self.answers[rpc_type](payload)
+        if answer is None:
+            return None
+        if isinstance(answer, RpcError):
+            reply = {"status": "error", "error_message": answer.message}
+            if answer.code is not None:
+                reply["error_code"] = answer.code
+            return reply
+        return {"status": "ok", "payload_json": json.dumps(answer)}
+
+    def sent(self, rpc_type: str) -> list[dict[str, Any]]:
+        """The payloads of the ``rpc_type`` requests this server was sent."""
+        return [
+            json.loads(fields["payload_json"])
+            for fields in self.requests
+            if fields["rpc_type"] == rpc_type
+        ]
 
     def _installed(self, server: str, files: list[dict[str, Any]]) -> object:
         return MapsUploadResponseV1.from_payload(
