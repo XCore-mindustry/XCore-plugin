@@ -4,19 +4,17 @@ import asyncio
 import logging
 from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager
-from dataclasses import asdict, replace
-from datetime import UTC, datetime, timedelta
+from dataclasses import asdict
+from datetime import UTC, datetime
 from typing import Any
-from uuid import uuid4
 
 from pymongo.errors import DuplicateKeyError
 
-from ..badges import get_badge
 from ..dto import Actor
 from ._privacy import log_failure
 from .access import check_access, check_opening
+from .actions import CaseActions
 from .model import (
-    RESOLUTIONS,
     AccessDenied,
     Case,
     CaseError,
@@ -32,7 +30,6 @@ from .model import (
     Resolution,
     event,
     party_of,
-    utc,
 )
 from .registry import REJECT_OTHER, FlowRegistry, FormField, clean_values
 from .store import CaseStore
@@ -40,17 +37,6 @@ from .transport import CaseTransport, NoCaseTransport
 from .views import ActionContext
 
 logger = logging.getLogger(__name__)
-# Lifetime of the Redis claim and of an action guard nobody finished (process death mid-action).
-ACTION_GUARD_SECONDS = 600
-# Which audit record closes which kind: (kind, audit action, details.extra.kind) -> resolution.
-AUDIT_RESOLUTIONS = {
-    ("report", "BAN", ""): "banned",
-    ("report", "MUTE", ""): "muted",
-    ("appeal", "UNBAN", ""): "unbanned",
-    ("appeal", "NOTE", "ban_shortened"): "shortened",
-    ("badge", "NOTE", "badge_granted"): "granted",
-    ("map", "NOTE", "map_uploaded"): "accepted",
-}
 
 
 def _without_thread_receipts(case: Case, owners: set[str]) -> list[dict[str, Any]]:
@@ -95,6 +81,7 @@ class CaseService:
         self._locks: dict[str, tuple[asyncio.Lock, int]] = {}
         self.transport: CaseTransport = NoCaseTransport()
         self.storage_available = True
+        self.actions = CaseActions(self)
 
     @property
     def bot(self):
@@ -643,141 +630,12 @@ class CaseService:
     ) -> Case:
         """The action pipeline of 8.3: claim, staff action, close, notify, re-render.
 
-        ``action`` performs the side effect (``staff_actions.*`` with ``case_number`` and the pending token) and
-        returns the resolution. If it raises without completion evidence, the case stays open
-        with an ``error`` event; an external mutation may still have happened. A matching
-        durable completion audit lets the core finish closure without replaying the action.
+        ``CaseActions.run`` says what happens when ``action`` fails.
         """
         case = await self._staff_case(number, member, verb)
-        if not case.actionable or case.pending_action:
-            raise CaseRace()
-        # A claim cannot be released, so the revision is part of the key: a repeated press on
-        # the same state is dropped, while the press after a failed attempt is a new claim.
-        if not await self.claims.claim_idempotency(
-            f"case-act:{number}:{verb}:{case.revision}",
-            ttl_seconds=ACTION_GUARD_SECONDS,
-        ):
-            raise CaseRace()
-        token = uuid4().hex
-        actor = self.actor(member)
-        # The claim is per verb. This guard also keeps two different actions (Ban and Mute by
-        # two people) from both running, and marks an interrupted action for the reconcile task.
-        claimed = await self.store.cas(
-            case,
-            set_fields={
-                "pending_action": {
-                    "token": token,
-                    "verb": verb,
-                    "at": self.now(),
-                    "actor": asdict(actor),
-                }
-            },
-            event=event("action_started", actor, self.now(), verb=verb, token=token),
-        )
-        try:
-            resolution = await action(claimed)
-            self._check_resolution(case.kind, resolution)
-        except Exception as error:  # recovered from the audit, or the guard is released and it re-raises
-            if not await self._recover(number):
-                await self._release_guard(number, token, actor, verb, type(error))
-                raise
-            logger.warning(
-                "Case #%s: %s failed after completion was recorded; closed from the audit",
-                number,
-                verb,
-                exc_info=case.kind != CaseKind.COMPLAINT,
-            )
-        else:
-            await self._finish_action(
-                number,
-                token,
-                replace(
-                    resolution,
-                    at=self.now(),
-                    by_discord_id=actor.discord_id,
-                    by_name=actor.name,
-                ),
-                actor,
-            )
+        await self.actions.run(case, verb, self.actor(member), action)
         await self.finish_close(number)
         return await self.get(number)
-
-    @staticmethod
-    def _check_resolution(kind: CaseKind, resolution: Resolution) -> None:
-        if (
-            not isinstance(resolution, Resolution)
-            or resolution.code not in RESOLUTIONS[kind]
-        ):
-            raise ValueError("Resolution is not valid for this kind")
-
-    async def _finish_action(
-        self, number: int, token: str, resolution: Resolution, actor: Actor
-    ) -> Case:
-        for _ in range(5):
-            case = await self.get(number)
-            if (case.pending_action or {}).get("token") != token:
-                break
-            try:
-                return await self._close(case, resolution, actor, action_token=token)
-            except CaseRace:
-                continue
-        raise CaseRace()
-
-    async def _release_guard(
-        self, number: int, token: str, actor: Actor | None, verb: str, reason: type
-    ) -> None:
-        try:
-            await self.checkpoint(
-                number,
-                unset_fields=("pending_action",),
-                event_type="error",
-                actor=actor,
-                data={"verb": verb, "error_type": reason.__name__},
-                action_token=token,
-            )
-        except CaseError:
-            log_failure(
-                logger,
-                (self.store.peek(number).kind if self.store.peek(number) else None),
-                "Case #%s: the action guard could not be released",
-                number,
-            )
-
-    async def _close(
-        self,
-        case: Case,
-        resolution: Resolution,
-        actor: Actor | None,
-        *,
-        action_token: str | None = None,
-    ) -> Case:
-        fields: dict[str, Any] = {
-            "status": CaseStatus.REJECTED
-            if resolution.code == "rejected"
-            else CaseStatus.RESOLVED,
-            "resolution": asdict(resolution),
-            "closed_at": resolution.at or self.now(),
-        }
-        if case.assignee is None and actor is not None and actor.discord_id:
-            # 4.2: acting on an open case makes the actor its assignee.
-            fields["assignee"] = {
-                "discord_id": actor.discord_id,
-                "name": actor.name,
-                "taken_at": self.now(),
-            }
-        return await self.store.cas(
-            case,
-            set_fields=fields,
-            unset_fields=("pending_action",),
-            event=event(
-                "rejected" if resolution.code == "rejected" else "action",
-                actor,
-                self.now(),
-                code=resolution.code,
-                audit_id=resolution.audit_id,
-            ),
-            action_token=action_token,
-        )
 
     async def close_validated(self, case: Case, resolution: Resolution) -> Case:
         """Close an observed sanction only at the revision its caller validated.
@@ -785,181 +643,24 @@ class CaseService:
         A lost CAS is left to the next event/repair pass, which must validate subject and
         filing/reopen cutoff again. Never reload and silently close a newer revision.
         """
-        self.registry.require(case.kind)
-        if not case.actionable or case.pending_action:
-            raise CaseRace()
-        self._check_resolution(case.kind, resolution)
-        await self._close(
-            case, replace(resolution, at=resolution.at or self.now()), None
-        )
+        await self.actions.close_observed(case, resolution)
         await self.finish_close(case.number)
         return await self.get(case.number)
 
     async def recover_action(self, number: int) -> bool:
         """Reconcile duty 3: finish a close whose sanction is already in the audit trail."""
-        if not await self._recover(number):
+        if not await self.actions.recover(number):
             return False
         await self.finish_close(number)
         return True
-
-    async def _recover(self, number: int) -> bool:
-        case = await self.get(number)
-        if not case.actionable:
-            return False
-        self.registry.require(case.kind)
-        # Event order is authoritative: Mongo timestamps can share a millisecond across
-        # a close/reopen. Never revive an earlier attempt, even if its audit arrived late.
-        recent_events = []
-        threshold = case.created_at
-        for entry in case.events:
-            if entry["type"] == "reopened":
-                recent_events.clear()
-                threshold = utc(entry["at"])
-            else:
-                recent_events.append(entry)
-        started = next(
-            (
-                entry
-                for entry in reversed(recent_events)
-                if entry["type"] == "action_started"
-                and entry.get("data", {}).get("token")
-            ),
-            None,
-        )
-        legacy_started = next(
-            (
-                entry
-                for entry in reversed(recent_events)
-                if entry["type"] == "action_started"
-            ),
-            None,
-        )
-        attempt = started or legacy_started or {}
-        pending = case.pending_action or {}
-        token = pending.get("token") or attempt.get("data", {}).get("token")
-        verb = pending.get("verb") or attempt.get("data", {}).get("verb")
-        if pending.get("at"):
-            threshold = max(threshold, utc(pending["at"]))
-        elif attempt:
-            threshold = max(threshold, utc(attempt["at"]))
-        # Guards predating token-bearing events can still have untokened completion rows.
-        # New attempts must supply their token; never fall back to an older legacy row.
-        legacy_guard = bool(pending) and started is None
-        audits = await self.store.audits_for(case, action_token=token, since=threshold)
-        if legacy_guard:
-            audits += [
-                audit
-                for audit in await self.store.audits_for(case, since=threshold)
-                if not audit.get("details", {})
-                .get("extra", {})
-                .get("case_action_token")
-            ]
-        for audit in audits:
-            extra = audit.get("details", {}).get("extra", {})
-            if not token and extra.get("case_action_token"):
-                continue
-            code = self._completion_code(case, audit, verb=verb, strict=bool(token))
-            if code is None:
-                continue
-            try:
-                ban_id = int(extra["ban_id"]) if extra.get("ban_id") else None
-            except (TypeError, ValueError):
-                continue
-            actor_data = audit.get("actor", {})
-            actor = Actor(
-                actor_data.get("discord_id"), actor_data.get("name_snapshot") or ""
-            )
-            resolution = Resolution(
-                code,
-                by_discord_id=actor.discord_id,
-                by_name=actor.name or None,
-                at=utc(audit["occurred_at"]),
-                audit_id=audit.get("audit_id"),
-                ban_id=ban_id,
-                server=extra.get("server") if code == "accepted" else None,
-                file_name=extra.get("file_name") if code == "accepted" else None,
-                duration_ms=audit.get("details", {}).get("duration_ms"),
-            )
-            try:
-                await self._close(
-                    case,
-                    resolution,
-                    actor,
-                    action_token=(case.pending_action or {}).get("token"),
-                )
-            except CaseRace:
-                # Someone else closed it in between; the next pass looks again.
-                return not (await self.get(number)).actionable
-            return True
-        return False
-
-    @staticmethod
-    def _completion_code(
-        case: Case, audit: dict[str, Any], *, verb: str | None, strict: bool
-    ) -> str | None:
-        extra = audit.get("details", {}).get("extra", {})
-        code = AUDIT_RESOLUTIONS.get(
-            (case.kind.value, audit.get("action"), extra.get("kind", ""))
-        )
-        if code is None:
-            return None
-        expected_verb = {
-            "banned": "ban",
-            "muted": "mute",
-            "unbanned": "unban",
-            "shortened": "shorten",
-            "granted": "grant",
-            "accepted": "accept",
-        }[code]
-        if (strict and verb is None) or (verb is not None and verb != expected_verb):
-            return None
-        if case.kind != CaseKind.MAP and case.subject and case.subject.player_uuid:
-            target = audit.get("target", {}).get("uuid")
-            if target != case.subject.player_uuid and (strict or target is not None):
-                return None
-        if (
-            case.kind == CaseKind.APPEAL
-            and case.payload.get("ban_id") is not None
-            and extra.get("ban_id") != str(case.payload["ban_id"])
-        ):
-            return None
-        if case.kind == CaseKind.BADGE and case.payload.get("badge"):
-            badge = get_badge(case.payload["badge"])
-            if badge is None or extra.get("badge_id") != badge.id:
-                return None
-        if code == "accepted":
-            if (
-                extra.get("status") != "installed"
-                or not isinstance(extra.get("server"), str)
-                or not extra["server"].strip()
-                or not isinstance(extra.get("file_name"), str)
-                or not extra["file_name"].strip()
-            ):
-                return None
-            for payload_key, audit_key in (
-                ("server", "server"),
-                ("file_name", "file_name"),
-                ("sha256", "reviewed_sha256"),
-            ):
-                expected = case.payload.get(payload_key)
-                if expected is not None and extra.get(audit_key) != expected:
-                    return None
-        return code
 
     async def release_abandoned_action(self, number: int) -> bool:
         """Free a case whose action neither finished nor left an audit record.
 
         The outcome may be unknown. Nothing is executed again: a person decides.
         """
-        case = await self.get(number)
-        pending = case.pending_action
-        if not pending or self.now() - utc(pending["at"]) < timedelta(
-            seconds=ACTION_GUARD_SECONDS
-        ):
+        if not await self.actions.release_abandoned(number):
             return False
-        await self._release_guard(
-            number, pending["token"], None, pending["verb"], TimeoutError
-        )
         await self.project(number)
         return True
 

@@ -146,8 +146,8 @@ async def test_a_sanction_during_a_card_action_is_retried_not_dropped(monkeypatc
     async def crash(*args, **kwargs):
         raise RuntimeError("process died")
 
-    finish = service._finish_action
-    monkeypatch.setattr(service, "_finish_action", crash)
+    finish = service.actions._finish
+    monkeypatch.setattr(service.actions, "_finish", crash)
     with pytest.raises(RuntimeError):
         await sanction(service, case, "mute")
     assert (await service.get(case.number)).pending_action
@@ -156,7 +156,7 @@ async def test_a_sanction_during_a_card_action_is_retried_not_dropped(monkeypatc
         await service.registry.dispatch_event(
             reports.BAN_EVENT, service, moderation(at=NOW + timedelta(minutes=2))
         )
-    monkeypatch.setattr(service, "_finish_action", finish)
+    monkeypatch.setattr(service.actions, "_finish", finish)
     await reconcile_cases(service)
     closed = await service.get(case.number)
     # The card's mute is what closed it, from the audit trail, without a second mute.

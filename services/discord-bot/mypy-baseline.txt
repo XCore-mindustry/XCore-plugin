@@ -43,9 +43,6 @@ src/xcore_discord_bot/cases/service.py:0: note: def update(self, SupportsKeysAnd
 src/xcore_discord_bot/cases/service.py:0: note: def update(self, Iterable[tuple[str, Collection[str]]], /) -> None
 src/xcore_discord_bot/cases/service.py:0: note: def update(self, Iterable[tuple[str, Collection[str]]], /, **kwargs: Collection[str]) -> None
 src/xcore_discord_bot/cases/service.py:0: note: def update(self, **kwargs: Collection[str]) -> None
-src/xcore_discord_bot/cases/service.py:0: error: Item "None" of "Case | None" has no attribute "kind"  [union-attr]
-src/xcore_discord_bot/cases/service.py:0: error: Need type annotation for "recent_events" (hint: "recent_events: list[<type>] = ...")  [var-annotated]
-src/xcore_discord_bot/cases/service.py:0: error: Argument 1 to "get" of "dict" has incompatible type "tuple[str, Any | None, Any]"; expected "tuple[str, str, str]"  [arg-type]
 src/xcore_discord_bot/cases/service.py:0: error: Incompatible types in assignment (expression has type "tuple[str, str, str]", variable has type "tuple[str, str, str, str]")  [assignment]
 src/xcore_discord_bot/cases/service.py:0: error: Incompatible types in assignment (expression has type "tuple[str]", variable has type "tuple[str, str, str, str]")  [assignment]
 src/xcore_discord_bot/cases/service.py:0: error: Incompatible types in assignment (expression has type "tuple[str, str, str, str, str, str]", variable has type "tuple[str, str, str, str]")  [assignment]

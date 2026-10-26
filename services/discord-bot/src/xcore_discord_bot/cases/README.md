@@ -308,7 +308,8 @@ fresh audit, or the report stays open.
 
 Attributes: `store`, `settings`, `registry`, `threads`, `notifier`, `claims` (the Redis bus:
 `claim_idempotency(key, ttl_seconds)`), `player_store` (`MongoStore`), `punishments`
-(`PunishmentStore`: bans and mutes), `transport`, `bot`, `now()`.
+(`PunishmentStore`: bans and mutes), `actions` (`CaseActions`: the action guard, the close it
+ends in and recovery from the audit trail; `cases/actions.py`), `transport`, `bot`, `now()`.
 
 | Method | Use |
 |---|---|

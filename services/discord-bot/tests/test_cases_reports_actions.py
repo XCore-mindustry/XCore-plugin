@@ -195,7 +195,7 @@ async def test_a_crash_after_the_ban_is_finished_from_the_audit_without_a_second
 ):
     service, db, bot = await reports_core()
     case = await open_report(service)
-    finish = service._finish_action
+    finish = service.actions._finish
     calls = []
 
     async def crash(*args, **kwargs):
@@ -204,7 +204,7 @@ async def test_a_crash_after_the_ban_is_finished_from_the_audit_without_a_second
             raise RuntimeError("process died")
         return await finish(*args, **kwargs)
 
-    monkeypatch.setattr(service, "_finish_action", crash)
+    monkeypatch.setattr(service.actions, "_finish", crash)
     with pytest.raises(RuntimeError):
         await sanction(service, case, "ban")
     stuck = await service.get(case.number)

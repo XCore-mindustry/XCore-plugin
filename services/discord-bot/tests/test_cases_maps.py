@@ -486,8 +486,8 @@ async def test_crash_after_upload_before_case_close_recovers_from_audit_without_
 ):
     env, case = await opened()
     service, _, _, _, bus, _, _, _, _, _ = env
-    original = service._finish_action
-    service._finish_action = AsyncMock(
+    original = service.actions._finish
+    service.actions._finish = AsyncMock(
         side_effect=RuntimeError("crash before case write")
     )
     with pytest.raises(RuntimeError, match="crash"):
@@ -495,7 +495,7 @@ async def test_crash_after_upload_before_case_close_recovers_from_audit_without_
     current = await service.get(case.number)
     assert current.pending_action and current.actionable
     assert current.payload["upload_attempt"]["state"] == "installed"
-    service._finish_action = original
+    service.actions._finish = original
     await reconcile_cases(service)
     final = await service.get(case.number)
     assert (

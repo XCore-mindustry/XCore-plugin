@@ -195,9 +195,9 @@ async def test_real_completion_survives_failed_case_cas_or_post_grant_lookup(mod
         bot.store.find_player_by_uuid = AsyncMock(
             side_effect=RuntimeError("fresh lookup failed")
         )
-    finish = service._finish_action
+    finish = service.actions._finish
     if mode != "badge_lookup":
-        service._finish_action = AsyncMock(side_effect=CaseRace())
+        service.actions._finish = AsyncMock(side_effect=CaseRace())
 
     async def callback(claimed):
         if kind == "map":
@@ -231,7 +231,7 @@ async def test_real_completion_survives_failed_case_cas_or_post_grant_lookup(mod
                 callback,
             )
         assert (await service.get(case.number)).pending_action
-    service._finish_action = finish
+    service.actions._finish = finish
     await reconcile_cases(service)
     await reconcile_cases(service)
     final = await service.get(case.number)
