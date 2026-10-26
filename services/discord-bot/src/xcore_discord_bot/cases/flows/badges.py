@@ -316,7 +316,7 @@ def outcomes(case: Case) -> tuple[Outcome, ...]:
     )
 
 
-async def grant_map_maker(
+async def grant_map_maker(  # noqa: C901
     service, discord_id: str | int, *, actor: Actor, request_id: str | None = None
 ) -> Literal["complete", "link_needed", "pending_accounts"]:
     """After durable map acceptance, grant to every current linked account and add the role.

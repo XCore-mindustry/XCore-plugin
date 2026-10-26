@@ -388,7 +388,7 @@ class CaseThreads:
             raise ExceptionGroup("Private thread lookup failed", errors)
         return await service.get(case.number)
 
-    async def reconcile_memberships(self, service, case: Case) -> None:
+    async def reconcile_memberships(self, service, case: Case) -> None:  # noqa: C901
         """Owner plus current authorized assignee; remember invitations before adding.
 
         This manages explicit invitations only. Discord Administrator/Manage Threads

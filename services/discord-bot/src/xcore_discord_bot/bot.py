@@ -323,7 +323,7 @@ class XCoreDiscordBot(commands.Bot):
 
         return channel
 
-    async def handle_app_command_error(
+    async def handle_app_command_error(  # noqa: C901
         self,
         interaction: Interaction,
         error: app_commands.AppCommandError,

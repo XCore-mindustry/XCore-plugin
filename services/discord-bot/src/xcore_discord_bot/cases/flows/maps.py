@@ -280,7 +280,7 @@ async def _attachment(service, case, *, locale=None):
     return attachment
 
 
-async def _refresh(service, case, *, message=None):
+async def _refresh(service, case, *, message=None):  # noqa: C901
     # All writes use the revision actually inspected. A concurrent Accept or replacement
     # wins rather than receiving stale results from a slow inspection.
     payload = dict(case.payload)
@@ -465,7 +465,7 @@ def _ready(case, locale):
         raise ActionFailed(t(locale, "maps-not-valid"))
 
 
-async def accept(context: ActionContext):
+async def accept(context: ActionContext):  # noqa: C901
     case = context.case
     _ready(case, context.locale)
     stamp = context.values.setdefault("review_stamp", case.payload["review_stamp"])
@@ -773,7 +773,7 @@ def _finding(finding, locale):
     return text[:350]
 
 
-def card_builder(case, locale):
+def card_builder(case, locale):  # noqa: C901
     embed = base_card(case, locale)
     # Bound the free-text fields before allocating space to grouped findings.
     for index, field in enumerate(embed.fields):

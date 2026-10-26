@@ -23,7 +23,7 @@ def _clean_player_name(name: str | None) -> str:
     return cleaned or name
 
 
-async def cmd_link(bot: XCoreDiscordBot, interaction: Interaction, code: str) -> None:
+async def cmd_link(bot: XCoreDiscordBot, interaction: Interaction, code: str) -> None:  # noqa: C901
     if not code or not code.strip():
         await interaction.response.send_message(
             "Link code is required.", ephemeral=True

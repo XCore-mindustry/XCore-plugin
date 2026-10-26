@@ -236,7 +236,7 @@ class CaseActions:
             case, replace(resolution, at=resolution.at or self._cases.now()), None
         )
 
-    async def recover(self, number: int) -> bool:
+    async def recover(self, number: int) -> bool:  # noqa: C901
         """Close the case from the audit record of its interrupted action, if there is one."""
         case = await self._cases.get(number)
         if not case.actionable:
@@ -331,7 +331,7 @@ class CaseActions:
         return False
 
     @staticmethod
-    def completion_code(
+    def completion_code(  # noqa: C901
         case: Case, audit: dict[str, Any], *, verb: str | None, strict: bool
     ) -> str | None:
         """The resolution ``audit`` proves for ``case``, or None when it is not its action."""

@@ -56,7 +56,7 @@ async def initialize_flows(service) -> None:
             service.registry.enable(kind)
 
 
-async def validate_flow(service, kind: CaseKind) -> list[str]:
+async def validate_flow(service, kind: CaseKind) -> list[str]:  # noqa: C901
     settings, threads = service.settings, service.threads
     reasons: list[str] = []
     forum_key = (

@@ -63,7 +63,7 @@ def _mutf8(raw: bytes) -> str:
         raise InvalidMsav("meta") from error
 
 
-def validate_msav(
+def validate_msav(  # noqa: C901
     data: bytes,
     filename: str,
     *,
@@ -137,7 +137,7 @@ def validate_msav(
     return MsavInfo(version, meta, hashlib.sha256(data).hexdigest(), len(data))
 
 
-def data_patches(data: bytes) -> dict[str, str | None]:
+def data_patches(data: bytes) -> dict[str, str | None]:  # noqa: C901
     """Gameplay patch and content assets of a validated map, path -> text.
 
     Only the regions up to the assets are inflated. An asset saved as a hash only

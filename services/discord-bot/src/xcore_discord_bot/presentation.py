@@ -202,7 +202,7 @@ def build_merge_preview_embed(
     return embed
 
 
-def build_merge_result_embed(result: AccountMergeResult) -> discord.Embed:
+def build_merge_result_embed(result: AccountMergeResult) -> discord.Embed:  # noqa: C901
     embed = discord.Embed(title="✅ Accounts merged", color=discord.Color.green())
 
     source = result.source_before
@@ -282,7 +282,7 @@ def build_merge_result_embed(result: AccountMergeResult) -> discord.Embed:
     return embed
 
 
-def build_servers_embed(
+def build_servers_embed(  # noqa: C901
     servers, *, sort_mode: Literal["players", "name"]
 ) -> discord.Embed:
     embed = discord.Embed(title="Live Servers", color=0x00FF00)

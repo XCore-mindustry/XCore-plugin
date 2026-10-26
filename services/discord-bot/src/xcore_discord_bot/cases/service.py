@@ -538,7 +538,7 @@ class CaseService:
         await self.project(number)
         return await self.get(number)
 
-    async def set_subject(self, number: int, member, subject: Party) -> Case:
+    async def set_subject(self, number: int, member, subject: Party) -> Case:  # noqa: C901
         def change(case: Case):
             if not case.actionable:
                 raise InvalidTransition()
@@ -791,7 +791,7 @@ class CaseService:
                     logger, case.kind, "Case #%s needs a projection repair", number
                 )
 
-    async def finish_close(self, number: int) -> None:
+    async def finish_close(self, number: int) -> None:  # noqa: C901
         """Everything after the close is stored: flow hook, outcomes, card, tags, archive.
 
         Every step records its completion, so the reconcile task can repeat this safely.

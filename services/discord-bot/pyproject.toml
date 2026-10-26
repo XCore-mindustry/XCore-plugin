@@ -59,7 +59,17 @@ target-version = "py311"
 
 [tool.ruff.lint]
 # A broad `except Exception` needs a stated reason: `# noqa: BLE001 -- why`.
-extend-select = ["BLE001"]
+# C901: the functions over the limit when it was turned on carry `# noqa: C901` until
+# they are split; a new one has to stay under it. RUF100 flags a noqa that is no longer
+# needed, so a split function loses its marker.
+extend-select = ["BLE001", "C901", "RUF100"]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 10
+
+[tool.ruff.lint.per-file-ignores]
+# Test bodies and fakes are judged by how they read, not by branch count.
+"tests/**" = ["C901"]
 
 [build-system]
 requires = ["hatchling"]

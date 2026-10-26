@@ -70,7 +70,7 @@ def strip_mindustry_colors(text: str) -> str:
     return "".join(out)
 
 
-def _parse_color_markup(text: str, start: int, end: int) -> int:
+def _parse_color_markup(text: str, start: int, end: int) -> int:  # noqa: C901
     if start >= end:
         return -1
 

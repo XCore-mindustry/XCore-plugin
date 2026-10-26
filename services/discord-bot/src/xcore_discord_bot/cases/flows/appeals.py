@@ -256,7 +256,7 @@ async def _history_data(service, uuid, *, exclude=None):
     }
 
 
-async def _submit(
+async def _submit(  # noqa: C901
     context: PanelContext, values: dict[str, str], choice: BanRecord | None = None
 ) -> Case:
     service, user, locale = context.service, context.interaction.user, context.locale

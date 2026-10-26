@@ -49,7 +49,7 @@ class CaseNotifier:
         # ``uuid -> PlayerRecord | None``: the in-game language and the server to wake up.
         self.find_player = find_player
 
-    async def send(self, service, case: Case, outcome: Outcome) -> None:
+    async def send(self, service, case: Case, outcome: Outcome) -> None:  # noqa: C901
         """Deliver once per channel; what was delivered is recorded on the case, so a repeat
         after a failure sends only what is still missing."""
         party = outcome.recipient

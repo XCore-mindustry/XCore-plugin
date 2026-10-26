@@ -89,7 +89,7 @@ class AdminSyncDaemon:
             if getattr(member, "id", None) is not None
         }
 
-    async def reconcile(self) -> AdminReconcileResult:
+    async def reconcile(self) -> AdminReconcileResult:  # noqa: C901
         discord_admin_ids = await self.get_discord_admin_member_ids()
         linked_admin_players = await self._store.find_discord_admin_players()
 

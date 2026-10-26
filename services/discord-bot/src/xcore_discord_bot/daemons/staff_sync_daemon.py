@@ -200,7 +200,7 @@ class StaffSyncDaemon:
             removed=event.action == DiscordLinkStatusChangedV1Action.UNLINKED,
         )
 
-    async def reconcile(self) -> StaffSyncResult:
+    async def reconcile(self) -> StaffSyncResult:  # noqa: C901
         if self._pass_lock.locked():
             return StaffSyncResult(
                 0, 0, reason="A game role sync pass is already running."
