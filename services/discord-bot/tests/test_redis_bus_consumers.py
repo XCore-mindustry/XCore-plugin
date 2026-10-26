@@ -16,6 +16,7 @@ from xcore_protocol.generated.shared import (
     VoteKickParticipantV1,
 )
 
+from xcore_discord_bot.bus.chat import ChatBus
 from xcore_discord_bot.contracts import (
     ChatGlobalV1,
     ChatMessageV1,
@@ -101,7 +102,7 @@ async def test_consume_player_join_leave_dispatches_join_event(
 
     callback = AsyncMock()
     try:
-        await bus.consume_player_join_leave(callback)
+        await ChatBus(bus).consume_player_join_leave(callback)
     except KeyboardInterrupt:
         pass
 
@@ -146,7 +147,7 @@ async def test_consume_player_join_leave_dispatches_leave_event(
 
     callback = AsyncMock()
     try:
-        await bus.consume_player_join_leave(callback)
+        await ChatBus(bus).consume_player_join_leave(callback)
     except KeyboardInterrupt:
         pass
 
@@ -185,7 +186,7 @@ async def test_consume_server_actions_dispatches_event(
 
     callback = AsyncMock()
     try:
-        await bus.consume_server_actions(callback)
+        await ChatBus(bus).consume_server_actions(callback)
     except KeyboardInterrupt:
         pass
 
@@ -223,7 +224,7 @@ async def test_consume_server_actions_skips_malformed_payload(
 
     callback = AsyncMock()
     try:
-        await bus.consume_server_actions(callback)
+        await ChatBus(bus).consume_server_actions(callback)
     except KeyboardInterrupt:
         pass
 
@@ -569,7 +570,7 @@ async def test_consume_global_chat_dispatches_event(
 
     callback = AsyncMock()
     try:
-        await bus.consume_global_chat(callback)
+        await ChatBus(bus).consume_global_chat(callback)
     except KeyboardInterrupt:
         pass
 
@@ -614,7 +615,7 @@ async def test_consume_global_chat_callback_failure_not_acked(
 
     callback = AsyncMock(side_effect=RuntimeError("discord down"))
     try:
-        await bus.consume_global_chat(callback)
+        await ChatBus(bus).consume_global_chat(callback)
     except KeyboardInterrupt:
         pass
 
@@ -655,7 +656,7 @@ async def test_consume_server_heartbeats_dispatches_and_updates_registry(
 
     callback = AsyncMock()
     try:
-        await bus.consume_server_heartbeats(callback)
+        await ChatBus(bus).consume_server_heartbeats(callback)
     except KeyboardInterrupt:
         pass
 
@@ -703,7 +704,7 @@ async def test_consume_game_chat_dispatches_generated_event(
 
     callback = AsyncMock()
     try:
-        await bus.consume_game_chat(callback)
+        await ChatBus(bus).consume_game_chat(callback)
     except KeyboardInterrupt:
         pass
 

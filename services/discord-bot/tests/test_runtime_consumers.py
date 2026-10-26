@@ -86,6 +86,7 @@ def _GameChatBot(*, channel_id, channel):
     if channel_id is not None:
         server_registry.update_server("mini-pvp", channel_id, 0, 20, "test")
     bot = make_bot(store=backend, bus=backend)
+    bot.container.chat_bus = backend
     bot.resolve_channel = backend.resolve_channel
     return bot
 
@@ -127,6 +128,7 @@ def _JoinLeaveBot(*, channel_id, channel):
     if channel_id is not None:
         server_registry.update_server("mini-pvp", channel_id, 0, 20, "test")
     bot = make_bot(store=backend, bus=backend)
+    bot.container.chat_bus = backend
     bot.resolve_channel = backend.resolve_channel
     return bot
 
@@ -167,6 +169,7 @@ def _ServerActionBot(*, channel_id, channel):
     if channel_id is not None:
         server_registry.update_server("mini-pvp", channel_id, 0, 20, "test")
     bot = make_bot(store=backend, bus=backend)
+    bot.container.chat_bus = backend
     bot.resolve_channel = backend.resolve_channel
     return bot
 

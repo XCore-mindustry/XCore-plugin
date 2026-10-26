@@ -765,6 +765,7 @@ async def test_on_message_routes_to_server_registry_mapping() -> None:
 
     bus = _MessageBus()
     bot = make_bot(bus=bus)
+    bot.container.chat_bus = bus
 
     message = _DiscordMessage(
         id=44,

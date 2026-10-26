@@ -104,7 +104,7 @@ async def consume_game_chat(bot: XCoreDiscordBot) -> None:
         await channel.send(f"`{safe_author}: {safe_message}`")
 
     await run_consumer_forever(
-        bot.bus, "Game chat", bot.bus.consume_game_chat, dispatch
+        bot.bus, "Game chat", bot.container.chat_bus.consume_game_chat, dispatch
     )
 
 
@@ -120,7 +120,7 @@ async def consume_global_chat(bot: XCoreDiscordBot) -> None:
         await channel.send(f"`[GLOBAL:{safe_server}] {safe_author}: {safe_message}`")
 
     await run_consumer_forever(
-        bot.bus, "Global chat", bot.bus.consume_global_chat, dispatch
+        bot.bus, "Global chat", bot.container.chat_bus.consume_global_chat, dispatch
     )
 
 
@@ -131,7 +131,7 @@ async def consume_server_heartbeats(bot: XCoreDiscordBot) -> None:
     await run_consumer_forever(
         bot.bus,
         "Server heartbeat",
-        bot.bus.consume_server_heartbeats,
+        bot.container.chat_bus.consume_server_heartbeats,
         dispatch,
     )
 
@@ -149,7 +149,7 @@ async def consume_join_leave(bot: XCoreDiscordBot) -> None:
     await run_consumer_forever(
         bot.bus,
         "Join/leave",
-        bot.bus.consume_player_join_leave,
+        bot.container.chat_bus.consume_player_join_leave,
         dispatch,
     )
 
@@ -166,7 +166,7 @@ async def consume_server_actions(bot: XCoreDiscordBot) -> None:
     await run_consumer_forever(
         bot.bus,
         "Server action",
-        bot.bus.consume_server_actions,
+        bot.container.chat_bus.consume_server_actions,
         dispatch,
     )
 

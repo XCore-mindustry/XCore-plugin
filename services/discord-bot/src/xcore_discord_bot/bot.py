@@ -251,7 +251,7 @@ class XCoreDiscordBot(commands.Bot):
         if target_server is None or not message.content:
             return
 
-        await self.bus.publish_discord_message(
+        await self.container.chat_bus.publish_discord_message(
             server=target_server,
             author_name=message.author.display_name,
             message=message.content,

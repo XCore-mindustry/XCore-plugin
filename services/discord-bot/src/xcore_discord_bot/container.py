@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from .bus.chat import ChatBus
 from .bus.rating import RatingBus
 from .cases import flows  # noqa: F401 -- importing modules registers flow definitions
 from .cases.notify import CaseNotifier
@@ -35,6 +36,7 @@ class ServiceContainer:
     """The services built on the bot's store and bus; the bot owns those two itself."""
 
     settings: Settings
+    chat_bus: ChatBus
     rating_bus: RatingBus
     rpc: MindustryRpcClient
     players: PlayerService
@@ -60,6 +62,7 @@ class ServiceContainer:
         store: MongoStore,
         bus: RedisBus,
     ) -> ServiceContainer:
+        chat_bus = ChatBus(bus)
         rating_bus = RatingBus(bus)
         rpc = MindustryRpcClient(bus, rating=rating_bus)
 
@@ -92,6 +95,7 @@ class ServiceContainer:
 
         return cls(
             settings=settings,
+            chat_bus=chat_bus,
             rating_bus=rating_bus,
             rpc=rpc,
             players=players,

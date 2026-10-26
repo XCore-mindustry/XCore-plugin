@@ -2,6 +2,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 
+from xcore_discord_bot.bus.chat import ChatBus
 from xcore_discord_bot.contracts import ChatMessageV1
 from xcore_discord_bot.redis_bus import RedisBus
 from xcore_discord_bot.settings import Settings
@@ -60,7 +61,7 @@ async def test_consume_game_chat_drops_bot_producer(settings, mock_redis):
     callback = AsyncMock()
 
     try:
-        await bus.consume_game_chat(callback)
+        await ChatBus(bus).consume_game_chat(callback)
     except KeyboardInterrupt:
         pass
 
@@ -100,7 +101,7 @@ async def test_consume_game_chat_allows_server_producer(settings, mock_redis):
     callback = AsyncMock()
 
     try:
-        await bus.consume_game_chat(callback)
+        await ChatBus(bus).consume_game_chat(callback)
     except KeyboardInterrupt:
         pass
 
