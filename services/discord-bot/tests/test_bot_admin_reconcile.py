@@ -65,7 +65,9 @@ async def test_reconcile_discord_admin_access_revokes_missing_role_and_applies_p
     bot.store.find_discord_admin_players = find_discord_admin_players
     bot.store.find_players_by_discord_id = find_players_by_discord_id
     bot.store.set_admin_access = set_admin_access
-    bot.bus.publish_discord_admin_access_changed = publish_discord_admin_access_changed
+    bot.container.accounts_bus.publish_discord_admin_access_changed = (
+        publish_discord_admin_access_changed
+    )
 
     result = await bot.container.admin_sync_daemon.reconcile()
 
@@ -121,7 +123,9 @@ async def test_reconcile_discord_admin_access_skips_revoke_on_empty_snapshot_wit
     )
     bot.store.find_discord_admin_players = find_discord_admin_players
     bot.store.set_admin_access = set_admin_access
-    bot.bus.publish_discord_admin_access_changed = publish_discord_admin_access_changed
+    bot.container.accounts_bus.publish_discord_admin_access_changed = (
+        publish_discord_admin_access_changed
+    )
 
     result = await bot.container.admin_sync_daemon.reconcile()
 
@@ -169,7 +173,9 @@ async def test_reconcile_discord_admin_access_applies_to_all_linked_accounts() -
     bot.store.find_discord_admin_players = find_discord_admin_players
     bot.store.find_players_by_discord_id = find_players_by_discord_id
     bot.store.set_admin_access = set_admin_access
-    bot.bus.publish_discord_admin_access_changed = publish_discord_admin_access_changed
+    bot.container.accounts_bus.publish_discord_admin_access_changed = (
+        publish_discord_admin_access_changed
+    )
 
     result = await bot.container.admin_sync_daemon.reconcile()
 
@@ -232,7 +238,9 @@ async def test_reconcile_discord_admin_access_reports_skipped_unlinked_and_missi
     bot.store.find_discord_admin_players = find_discord_admin_players
     bot.store.find_players_by_discord_id = find_players_by_discord_id
     bot.store.set_admin_access = set_admin_access
-    bot.bus.publish_discord_admin_access_changed = publish_discord_admin_access_changed
+    bot.container.accounts_bus.publish_discord_admin_access_changed = (
+        publish_discord_admin_access_changed
+    )
 
     result = await bot.container.admin_sync_daemon.reconcile()
 

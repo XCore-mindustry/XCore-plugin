@@ -109,7 +109,7 @@ async def _cmd_badge_change(
     if changed:
         updated_player = await bot.store.find_player_by_uuid(uuid_value)
         if updated_player is not None:
-            await bot.bus.publish_player_badge_inventory_changed(
+            await bot.container.accounts_bus.publish_player_badge_inventory_changed(
                 uuid_value=uuid_value,
                 active_badge=updated_player.active_badge,
                 unlocked_badges=updated_player.unlocked_badges,

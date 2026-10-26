@@ -129,7 +129,9 @@ async def test_cmd_link_instantly_grants_admin_if_user_has_role() -> None:
 
     bot.container.admin_sync_daemon.get_discord_admin_member_ids = _get_admin_ids
     bot.store.set_admin_access = _set_admin_access
-    bot.bus.publish_discord_admin_access_changed = _publish_admin_access
+    bot.container.accounts_bus.publish_discord_admin_access_changed = (
+        _publish_admin_access
+    )
 
     interaction = _Interaction()
     await cmd_link(cast(Any, bot), cast(Any, interaction), "abc123")

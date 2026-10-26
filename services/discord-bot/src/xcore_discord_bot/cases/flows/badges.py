@@ -358,7 +358,7 @@ async def grant_map_maker(
         else:
             if not result.changed:
                 # Re-publish fresh inventory on retry after a prior delivery failure.
-                await service.bot.bus.publish_player_badge_inventory_changed(
+                await service.bot.container.accounts_bus.publish_player_badge_inventory_changed(
                     uuid_value=fresh.uuid,
                     active_badge=fresh.active_badge,
                     unlocked_badges=fresh.unlocked_badges,

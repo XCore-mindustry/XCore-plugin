@@ -111,7 +111,7 @@ async def test_real_helpers_recover_durable_completion_without_replaying(
             side_effect=RuntimeError("pardon unavailable")
         )
     if action == "grant":
-        bot.bus.publish_player_badge_inventory_changed = AsyncMock(
+        bot.container.accounts_bus.publish_player_badge_inventory_changed = AsyncMock(
             side_effect=RuntimeError("inventory unavailable")
         )
 

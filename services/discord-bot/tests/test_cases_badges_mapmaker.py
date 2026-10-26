@@ -127,8 +127,8 @@ async def test_mapmaker_inventory_failure_propagates_and_owned_retry_repairs_cur
     service, _, bot, mutations, bus, _, author = await badge_core(
         discord_map_maker_role_id=70
     )
-    publish = bot.bus.publish_player_badge_inventory_changed
-    bot.bus.publish_player_badge_inventory_changed = AsyncMock(
+    publish = bot.container.accounts_bus.publish_player_badge_inventory_changed
+    bot.container.accounts_bus.publish_player_badge_inventory_changed = AsyncMock(
         side_effect=RuntimeError("inventory unavailable")
     )
     with pytest.raises(RuntimeError, match="inventory unavailable"):
@@ -137,7 +137,7 @@ async def test_mapmaker_inventory_failure_propagates_and_owned_retry_repairs_cur
     assert mutations["players"].docs[0]["unlocked_badges"] == ["map-maker"]
     # Retry sends the current record, including subsequent grants; no stale snapshot.
     mutations["players"].docs[0]["unlocked_badges"].append("translator")
-    bot.bus.publish_player_badge_inventory_changed = publish
+    bot.container.accounts_bus.publish_player_badge_inventory_changed = publish
     result = await grant_map_maker(service, 42, actor=ACTOR)
     assert result == "complete"
     assert bus.inventory_events[0]["unlocked_badges"] == ("map-maker", "translator")

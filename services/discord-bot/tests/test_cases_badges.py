@@ -349,7 +349,7 @@ async def test_persistent_grant_real_helper_confirmed_audit_and_inventory_recove
     if already_owned:
         row["unlocked_badges"] = ["map-maker"]
     if inventory_failure:
-        bot.bus.publish_player_badge_inventory_changed = AsyncMock(
+        bot.container.accounts_bus.publish_player_badge_inventory_changed = AsyncMock(
             side_effect=RuntimeError("inventory delivery failed")
         )
     await service.take(case.number, member(101, (20,)))

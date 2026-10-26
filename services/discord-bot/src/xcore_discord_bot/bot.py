@@ -211,7 +211,7 @@ class XCoreDiscordBot(commands.Bot):
         if isinstance(message.channel, discord.DMChannel):
             code = message.content.strip().upper()
             if code:
-                code_doc = await self.bus.get_discord_link_code(code)
+                code_doc = await self.container.accounts_bus.get_discord_link_code(code)
                 player = None
                 if code_doc is not None:
                     player = await self.store.find_player_by_uuid(
@@ -234,7 +234,7 @@ class XCoreDiscordBot(commands.Bot):
                         )
                         return
 
-                    await self.bus.publish_discord_link_confirm(
+                    await self.container.accounts_bus.publish_discord_link_confirm(
                         code=code,
                         player_uuid=player.uuid,
                         player_pid=player.pid,

@@ -727,7 +727,7 @@ async def test_badge_case_audit_precedes_fallible_followups(failure):
             side_effect=RuntimeError("lookup unavailable")
         )
     if failure == "inventory":
-        bot.bus.publish_player_badge_inventory_changed = AsyncMock(
+        bot.container.accounts_bus.publish_player_badge_inventory_changed = AsyncMock(
             side_effect=RuntimeError("inventory unavailable")
         )
     with pytest.raises(RuntimeError):

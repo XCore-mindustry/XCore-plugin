@@ -71,7 +71,7 @@ class StaffSyncDaemon:
                 run_consumer_forever(
                     self._bot.bus,
                     "staff-link-status",
-                    self._bot.bus.consume_discord_link_status_changed,
+                    self._bot.container.accounts_bus.consume_discord_link_status_changed,
                     self.on_link_status,
                 ),
                 name="staff_link_status_consumer",

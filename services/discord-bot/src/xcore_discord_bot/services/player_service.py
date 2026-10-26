@@ -2,10 +2,10 @@ from __future__ import annotations
 
 from dataclasses import replace
 
+from ..bus.accounts import AccountsBus
 from ..bus.moderation import ModerationBus
 from ..dto import MERGE_KEEP_PID_TARGET, AccountMergeResult
 from ..mongo_store import MongoStore
-from ..redis_bus import RedisBus
 from ..rpc.mindustry_rpc import MindustryRpcClient
 from ..settings import Settings
 from .rating_service import RatingService
@@ -15,15 +15,15 @@ class PlayerService:
     def __init__(
         self,
         store: MongoStore,
-        bus: RedisBus,
         ratings: RatingService | None = None,
         settings: Settings | None = None,
         rpc: MindustryRpcClient | None = None,
         *,
+        accounts: AccountsBus,
         moderation: ModerationBus,
     ) -> None:
         self._store = store
-        self._bus = bus
+        self._accounts = accounts
         self._moderation = moderation
         self._ratings = ratings
         self._settings = settings
@@ -82,5 +82,5 @@ class PlayerService:
             return response.changed
         updated = await self._store.reset_password(uuid=uuid)
         if updated:
-            await self._bus.publish_player_password_reset(uuid_value=uuid)
+            await self._accounts.publish_player_password_reset(uuid_value=uuid)
         return updated

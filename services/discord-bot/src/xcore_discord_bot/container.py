@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from .bus.accounts import AccountsBus
 from .bus.chat import ChatBus
 from .bus.moderation import ModerationBus
 from .bus.rating import RatingBus
@@ -37,6 +38,7 @@ class ServiceContainer:
     """The services built on the bot's store and bus; the bot owns those two itself."""
 
     settings: Settings
+    accounts_bus: AccountsBus
     chat_bus: ChatBus
     moderation_bus: ModerationBus
     rating_bus: RatingBus
@@ -64,6 +66,7 @@ class ServiceContainer:
         store: MongoStore,
         bus: RedisBus,
     ) -> ServiceContainer:
+        accounts_bus = AccountsBus(bus)
         chat_bus = ChatBus(bus)
         moderation_bus = ModerationBus(bus)
         rating_bus = RatingBus(bus)
@@ -75,16 +78,16 @@ class ServiceContainer:
         )
         players = PlayerService(
             store=store,
-            bus=bus,
             ratings=rating_service,
             settings=settings,
             rpc=rpc,
+            accounts=accounts_bus,
             moderation=moderation_bus,
         )
 
         presence_daemon = PresenceDaemon(bot=bot)
         admin_sync_daemon = AdminSyncDaemon(
-            bot=bot, store=store, bus=bus, settings=settings
+            bot=bot, store=store, accounts=accounts_bus, settings=settings
         )
         rating_merge_daemon = RatingMergeDaemon(bot=bot, ratings=rating_service)
         stream_supervisor = StreamSupervisor(bot=bot)
@@ -103,6 +106,7 @@ class ServiceContainer:
 
         return cls(
             settings=settings,
+            accounts_bus=accounts_bus,
             chat_bus=chat_bus,
             moderation_bus=moderation_bus,
             rating_bus=rating_bus,

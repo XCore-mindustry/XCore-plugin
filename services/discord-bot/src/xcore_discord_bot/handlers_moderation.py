@@ -517,7 +517,7 @@ async def cmd_remove_admin(
         )
         if not matched:
             continue
-        await bot.bus.publish_discord_admin_access_changed(
+        await bot.container.accounts_bus.publish_discord_admin_access_changed(
             player_uuid=target_uuid,
             player_pid=target_player.pid,
             player_name=target_player.nickname,
@@ -605,7 +605,7 @@ async def cmd_add_admin(
         )
         if not matched:
             continue
-        await bot.bus.publish_discord_admin_access_changed(
+        await bot.container.accounts_bus.publish_discord_admin_access_changed(
             player_uuid=target_uuid,
             player_pid=target_player.pid,
             player_name=target_player.nickname,

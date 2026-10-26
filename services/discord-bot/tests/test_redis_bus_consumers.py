@@ -16,6 +16,7 @@ from xcore_protocol.generated.shared import (
     VoteKickParticipantV1,
 )
 
+from xcore_discord_bot.bus.accounts import AccountsBus
 from xcore_discord_bot.bus.chat import ChatBus
 from xcore_discord_bot.bus.moderation import ModerationBus
 from xcore_discord_bot.contracts import (
@@ -447,7 +448,7 @@ async def test_consume_discord_link_status_changed_dispatches_generated_event(
 
     callback = AsyncMock()
     try:
-        await bus.consume_discord_link_status_changed(callback)
+        await AccountsBus(bus).consume_discord_link_status_changed(callback)
     except KeyboardInterrupt:
         pass
 

@@ -44,7 +44,7 @@ async def cmd_link(bot: XCoreDiscordBot, interaction: Interaction, code: str) ->
     ):
         return
 
-    code_doc = await bot.bus.get_discord_link_code(normalized_code)
+    code_doc = await bot.container.accounts_bus.get_discord_link_code(normalized_code)
     if code_doc is None:
         await interaction.response.send_message("Link code not found.", ephemeral=True)
         return
@@ -75,7 +75,7 @@ async def cmd_link(bot: XCoreDiscordBot, interaction: Interaction, code: str) ->
         )
         return
 
-    await bot.bus.publish_discord_link_confirm(
+    await bot.container.accounts_bus.publish_discord_link_confirm(
         code=normalized_code,
         player_uuid=player.uuid,
         player_pid=player.pid,
@@ -96,7 +96,7 @@ async def cmd_link(bot: XCoreDiscordBot, interaction: Interaction, code: str) ->
                     is_admin=True,
                     admin_source="DISCORD_ROLE",
                 )
-                await bot.bus.publish_discord_admin_access_changed(
+                await bot.container.accounts_bus.publish_discord_admin_access_changed(
                     player_uuid=player.uuid,
                     player_pid=player.pid,
                     player_name=player.nickname,
@@ -177,7 +177,7 @@ async def cmd_unlink(
     ):
         return
 
-    await bot.bus.publish_discord_unlink(
+    await bot.container.accounts_bus.publish_discord_unlink(
         player_uuid=player.uuid,
         player_pid=player.pid,
         player_name=player.nickname,

@@ -9,8 +9,8 @@ import discord
 from xcore_protocol.generated.shared import ActorRefV1ActorType
 
 if TYPE_CHECKING:
+    from ..bus.accounts import AccountsBus
     from ..mongo_store import MongoStore
-    from ..redis_bus import RedisBus
     from ..settings import Settings
 
 logger = logging.getLogger(__name__)
@@ -46,12 +46,12 @@ class AdminSyncDaemon:
         self,
         bot: discord.Client,
         store: MongoStore,
-        bus: RedisBus,
+        accounts: AccountsBus,
         settings: Settings,
     ) -> None:
         self._bot = bot
         self._store = store
-        self._bus = bus
+        self._accounts = accounts
         self._settings = settings
         self._task: asyncio.Task[None] | None = None
 
@@ -133,7 +133,7 @@ class AdminSyncDaemon:
             )
             if not matched:
                 continue
-            await self._bus.publish_discord_admin_access_changed(
+            await self._accounts.publish_discord_admin_access_changed(
                 player_uuid=uuid_value,
                 player_pid=player.pid,
                 player_name=player.nickname,
@@ -184,7 +184,7 @@ class AdminSyncDaemon:
                 )
                 if not matched:
                     continue
-                await self._bus.publish_discord_admin_access_changed(
+                await self._accounts.publish_discord_admin_access_changed(
                     player_uuid=uuid_value,
                     player_pid=player.pid,
                     player_name=player.nickname,
