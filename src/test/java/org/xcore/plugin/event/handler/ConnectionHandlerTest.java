@@ -11,10 +11,12 @@ import org.xcore.plugin.config.TomlSecretsConfig;
 import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.localization.Localization;
 import org.xcore.plugin.model.PlayerData;
+import org.xcore.plugin.permission.PermissionSessions;
+import org.xcore.plugin.permission.RolesWorld;
+import org.xcore.plugin.permission.grant.InMemoryGrantStore;
 import org.xcore.plugin.service.NetworkService;
 import org.xcore.plugin.service.PlayerDisplayService;
 import org.xcore.plugin.service.PrivateMessageService;
-import org.xcore.plugin.service.DiscordAdminAccessService;
 import org.xcore.plugin.service.map.MapVoteObserverService;
 import org.xcore.plugin.session.ObserverService;
 import org.xcore.plugin.concurrent.Async;
@@ -76,9 +78,9 @@ class ConnectionHandlerTest {
         java.util.List<Runnable> queued = new java.util.ArrayList<>();
         ConnectionHandler handler = new ConnectionHandler(sessionService, networkService, config,
                 new TomlSecretsConfig(), mock(VoteService.class), privateMessageService,
-                playerDisplayService, mock(DiscordAdminAccessService.class), observerService,
+                playerDisplayService, observerService,
                 mock(MapVoteObserverService.class),
-                new Async(org.xcore.plugin.concurrent.InlineStorageExecutor.create(), queued::add));
+                new Async(org.xcore.plugin.concurrent.InlineStorageExecutor.create(), queued::add), permissionSessions());
 
         MockPlayer client = world.addPlayer(b -> b.name("Joiner").address("2.2.2.2").uuid("uuid-async"));
         Player player = client.player();
@@ -126,9 +128,9 @@ class ConnectionHandlerTest {
         ConnectionHandler handler = new ConnectionHandler(sessionService, networkService,
                 new TomlXcoreConfig(), new TomlSecretsConfig(), mock(VoteService.class),
                 privateMessageService, playerDisplayService,
-                mock(DiscordAdminAccessService.class), observerService,
+                observerService,
                 mock(MapVoteObserverService.class),
-                new Async(org.xcore.plugin.concurrent.InlineStorageExecutor.create(), queued::add));
+                new Async(org.xcore.plugin.concurrent.InlineStorageExecutor.create(), queued::add), permissionSessions());
 
         MockPlayer client = world.addPlayer(b -> b.name("Quitter").address("2.2.2.2").uuid("uuid-gone"));
         Player player = client.player();
@@ -162,9 +164,9 @@ class ConnectionHandlerTest {
         ConnectionHandler handler = new ConnectionHandler(sessionService,
                 mock(NetworkService.class), new TomlXcoreConfig(), new TomlSecretsConfig(),
                 mock(VoteService.class), privateMessageService, mock(PlayerDisplayService.class),
-                mock(DiscordAdminAccessService.class), mock(ObserverService.class),
+                mock(ObserverService.class),
                 mock(MapVoteObserverService.class),
-                new Async(org.xcore.plugin.concurrent.InlineStorageExecutor.create(), queued::add));
+                new Async(org.xcore.plugin.concurrent.InlineStorageExecutor.create(), queued::add), permissionSessions());
 
         MockPlayer client = world.addPlayer(b -> b.name("Quitter").address("2.2.2.2").uuid("uuid-gone2"));
         Player player = client.player();
@@ -187,14 +189,13 @@ class ConnectionHandlerTest {
     }
 
     @Test
-    @DisplayName("onPlayerJoin persists nickname with changed ip and revokes unconfirmed admin")
-    void onPlayerJoin_persistsNicknameWithChangedIp_andRevokesUnconfirmedAdmin() {
+    @DisplayName("onPlayerJoin persists nickname with changed ip and refuses a trusted admin from it")
+    void onPlayerJoin_persistsNicknameWithChangedIp_andRefusesTheAdminListEntry() {
         SessionService sessionService = mock(SessionService.class);
         NetworkService networkService = mock(NetworkService.class);
         VoteService voteService = mock(VoteService.class);
         PrivateMessageService privateMessageService = mock(PrivateMessageService.class);
         PlayerDisplayService playerDisplayService = mock(PlayerDisplayService.class);
-        DiscordAdminAccessService discordAdminAccessService = mock(DiscordAdminAccessService.class);
         ObserverService observerService = mock(ObserverService.class);
 
         TomlXcoreConfig config = new TomlXcoreConfig();
@@ -209,10 +210,10 @@ class ConnectionHandlerTest {
                 voteService,
                 privateMessageService,
                 playerDisplayService,
-                discordAdminAccessService,
                 observerService,
                 mock(MapVoteObserverService.class),
-                async
+                async,
+                permissionSessions(true)
         );
 
         MockPlayer client = world.addPlayer(b -> b.name("[red]Renamed[]").admin(true).address("2.2.2.2").uuid("uuid-1").usid("usid-1"));
@@ -240,7 +241,7 @@ class ConnectionHandlerTest {
 
         handler.onPlayerJoin(new EventType.PlayerJoin(player));
 
-        verify(discordAdminAccessService).deactivateRuntimeAdmin(player, "uuid-1");
+        assertThat(player.admin).isFalse();
         verify(observerService).restore(player);
         verify(sessionService).markOnline(data, "mini-pvp");
         verify(sessionService).updateConnectionData(data, "2.2.2.2", "[#00000000][red]Renamed[]");
@@ -258,7 +259,6 @@ class ConnectionHandlerTest {
         VoteService voteService = mock(VoteService.class);
         PrivateMessageService privateMessageService = mock(PrivateMessageService.class);
         PlayerDisplayService playerDisplayService = mock(PlayerDisplayService.class);
-        DiscordAdminAccessService discordAdminAccessService = mock(DiscordAdminAccessService.class);
         ObserverService observerService = mock(ObserverService.class);
 
         TomlXcoreConfig config = new TomlXcoreConfig();
@@ -273,10 +273,10 @@ class ConnectionHandlerTest {
                 voteService,
                 privateMessageService,
                 playerDisplayService,
-                discordAdminAccessService,
                 observerService,
                 mock(MapVoteObserverService.class),
-                async
+                async,
+                permissionSessions()
         );
 
         MockPlayer client = world.addPlayer(b -> b.name("[blue]NewName[]").admin(false).address("1.1.1.1").uuid("uuid-1").usid("usid-1"));
@@ -306,7 +306,7 @@ class ConnectionHandlerTest {
         verify(observerService).restore(player);
         verify(sessionService).updateConnectionData(data, "1.1.1.1", "[#00000000][blue]NewName[]");
         verify(playerDisplayService).refresh(session);
-        verify(discordAdminAccessService, never()).deactivateRuntimeAdmin(any(), any());
+        verify(localization, never()).send(eq("error-ip-changed"), anyMap());
     }
 
     @Test
@@ -317,7 +317,7 @@ class ConnectionHandlerTest {
         ConnectionHandler handler = new ConnectionHandler(sessionService,
                 mock(NetworkService.class), new TomlXcoreConfig(), new TomlSecretsConfig(), voteService,
                 mock(PrivateMessageService.class), mock(PlayerDisplayService.class),
-                mock(DiscordAdminAccessService.class), mock(ObserverService.class), mapObserver, async);
+                mock(ObserverService.class), mapObserver, async, permissionSessions());
         MockPlayer client = world.addPlayer(b -> b.address("1.1.1.1").uuid("uuid-left"));
         Player player = client.player();
 
@@ -335,8 +335,7 @@ class ConnectionHandlerTest {
         ConnectionHandler handler = new ConnectionHandler(sessionService,
                 networkService, new TomlXcoreConfig(), new TomlSecretsConfig(),
                 mock(VoteService.class), mock(PrivateMessageService.class),
-                mock(PlayerDisplayService.class), mock(DiscordAdminAccessService.class),
-                mock(ObserverService.class), mock(MapVoteObserverService.class), async);
+                mock(PlayerDisplayService.class), mock(ObserverService.class), mock(MapVoteObserverService.class), async, permissionSessions());
 
         MockPlayer client = world.addPlayer(b -> b.name("Leaver").address("1.1.1.1").uuid("uuid-left"));
         Player player = client.player();
@@ -362,9 +361,9 @@ class ConnectionHandlerTest {
         ConnectionHandler handler = new ConnectionHandler(sessionService, mock(NetworkService.class),
                 new TomlXcoreConfig(), new TomlSecretsConfig(), mock(VoteService.class),
                 mock(PrivateMessageService.class), mock(PlayerDisplayService.class),
-                mock(DiscordAdminAccessService.class), mock(ObserverService.class),
+                mock(ObserverService.class),
                 mock(MapVoteObserverService.class),
-                new Async(org.xcore.plugin.concurrent.InlineStorageExecutor.create(), queued::add));
+                new Async(org.xcore.plugin.concurrent.InlineStorageExecutor.create(), queued::add), permissionSessions(true));
 
         MockPlayer client = world.addPlayer(b -> b.name("Boss").admin(true).address("2.2.2.2").uuid("uuid-admin"));
         Player player = client.player();
@@ -380,15 +379,15 @@ class ConnectionHandlerTest {
     }
 
     @Test
-    @DisplayName("an admin from the same ip gets the flag back")
+    @DisplayName("a trusted admin from the same ip gets the flag back")
     void onPlayerJoin_restoresAdminWhenTheIpIsUnchanged() {
         SessionService sessionService = mock(SessionService.class);
         PrivateMessageService privateMessageService = mock(PrivateMessageService.class);
         ConnectionHandler handler = new ConnectionHandler(sessionService, mock(NetworkService.class),
                 new TomlXcoreConfig(), new TomlSecretsConfig(), mock(VoteService.class),
                 privateMessageService, mock(PlayerDisplayService.class),
-                mock(DiscordAdminAccessService.class), mock(ObserverService.class),
-                mock(MapVoteObserverService.class), async);
+                mock(ObserverService.class),
+                mock(MapVoteObserverService.class), async, permissionSessions(true));
 
         MockPlayer client = world.addPlayer(b -> b.name("Boss").admin(true).address("1.1.1.1").uuid("uuid-admin"));
         Player player = client.player();
@@ -400,6 +399,7 @@ class ConnectionHandlerTest {
         data.exists = true;
         Session session = mock(Session.class);
         session.data = data;
+        session.player = player;
         when(session.locale()).thenReturn(mock(Localization.class));
         when(sessionService.loadPlayerData("uuid-admin")).thenReturn(data);
         when(sessionService.registerLogin(eq(player), same(data))).thenReturn(session);
@@ -413,12 +413,10 @@ class ConnectionHandlerTest {
     @DisplayName("an admin from a new ip never gets the flag back")
     void onPlayerJoin_doesNotRestoreAdminWhenTheIpChanged() {
         SessionService sessionService = mock(SessionService.class);
-        DiscordAdminAccessService discordAdminAccessService = mock(DiscordAdminAccessService.class);
         ConnectionHandler handler = new ConnectionHandler(sessionService, mock(NetworkService.class),
                 new TomlXcoreConfig(), new TomlSecretsConfig(), mock(VoteService.class),
-                mock(PrivateMessageService.class), mock(PlayerDisplayService.class),
-                discordAdminAccessService, mock(ObserverService.class),
-                mock(MapVoteObserverService.class), async);
+                mock(PrivateMessageService.class), mock(PlayerDisplayService.class), mock(ObserverService.class),
+                mock(MapVoteObserverService.class), async, permissionSessions(true));
 
         MockPlayer client = world.addPlayer(b -> b.name("Boss").admin(true).address("9.9.9.9").uuid("uuid-admin"));
         Player player = client.player();
@@ -430,6 +428,7 @@ class ConnectionHandlerTest {
         data.exists = true;
         Session session = mock(Session.class);
         session.data = data;
+        session.player = player;
         when(session.locale()).thenReturn(mock(Localization.class));
         when(sessionService.loadPlayerData("uuid-admin")).thenReturn(data);
         when(sessionService.registerLogin(eq(player), same(data))).thenReturn(session);
@@ -437,7 +436,34 @@ class ConnectionHandlerTest {
         handler.onPlayerJoin(new EventType.PlayerJoin(player));
 
         assertThat(player.admin).isFalse();
-        verify(discordAdminAccessService).deactivateRuntimeAdmin(player, "uuid-admin");
+    }
+
+    @Test
+    @DisplayName("an entry of the game's admin list gives nothing on a server that does not trust it")
+    void onPlayerJoin_ignoresTheAdminListUnlessTrusted() {
+        SessionService sessionService = mock(SessionService.class);
+        ConnectionHandler handler = new ConnectionHandler(sessionService, mock(NetworkService.class),
+                new TomlXcoreConfig(), new TomlSecretsConfig(), mock(VoteService.class),
+                mock(PrivateMessageService.class), mock(PlayerDisplayService.class), mock(ObserverService.class),
+                mock(MapVoteObserverService.class), async, permissionSessions());
+
+        MockPlayer client = world.addPlayer(b -> b.name("Boss").admin(true).address("1.1.1.1").uuid("uuid-admin"));
+        Player player = client.player();
+
+        PlayerData data = storedData("uuid-admin", "1.1.1.1");
+        Session session = mock(Session.class);
+        session.data = data;
+        session.player = player;
+        Localization localization = mock(Localization.class);
+        when(session.locale()).thenReturn(localization);
+        when(sessionService.loadPlayerData("uuid-admin")).thenReturn(data);
+        when(sessionService.registerLogin(eq(player), same(data))).thenReturn(session);
+
+        handler.onPlayerJoin(new EventType.PlayerJoin(player));
+
+        assertThat(player.admin).isFalse();
+        assertThat(session.staffAuthenticated).isFalse();
+        verify(localization, never()).send(eq("error-ip-changed"), anyMap());
     }
 
     @Test
@@ -447,8 +473,8 @@ class ConnectionHandlerTest {
         ConnectionHandler handler = new ConnectionHandler(sessionService, mock(NetworkService.class),
                 new TomlXcoreConfig(), new TomlSecretsConfig(), mock(VoteService.class),
                 mock(PrivateMessageService.class), mock(PlayerDisplayService.class),
-                mock(DiscordAdminAccessService.class), mock(ObserverService.class),
-                mock(MapVoteObserverService.class), async);
+                mock(ObserverService.class),
+                mock(MapVoteObserverService.class), async, permissionSessions());
 
         MockPlayer client = world.addPlayer(b -> b.name("Rando").address("1.1.1.1").uuid("uuid-plain"));
         Player player = client.player();
@@ -476,9 +502,8 @@ class ConnectionHandlerTest {
         ConnectionHandler handler = new ConnectionHandler(sessionService,
                 mock(NetworkService.class), new TomlXcoreConfig(), new TomlSecretsConfig(),
                 mock(VoteService.class), mock(PrivateMessageService.class),
-                mock(PlayerDisplayService.class), mock(DiscordAdminAccessService.class),
-                mock(ObserverService.class), mock(MapVoteObserverService.class),
-                new Async(failingStorage(), Runnable::run));
+                mock(PlayerDisplayService.class), mock(ObserverService.class), mock(MapVoteObserverService.class),
+                new Async(failingStorage(), Runnable::run), permissionSessions());
 
         MockPlayer client = world.addPlayer(b -> b.name("Unlucky").address("1.1.1.1").uuid("uuid-mongo-down"));
         Player player = client.player();
@@ -504,8 +529,8 @@ class ConnectionHandlerTest {
         when(notices.prepareJoin("case-player")).thenReturn(prepared);
         var handler = new ConnectionHandler(sessions, mock(NetworkService.class), new TomlXcoreConfig(),
                 new TomlSecretsConfig(), mock(VoteService.class), mock(PrivateMessageService.class),
-                mock(PlayerDisplayService.class), mock(DiscordAdminAccessService.class), mock(ObserverService.class),
-                mock(MapVoteObserverService.class), loop.async, null, notices, recent);
+                mock(PlayerDisplayService.class), mock(ObserverService.class),
+                mock(MapVoteObserverService.class), loop.async, permissionSessions(), notices, recent);
         MockPlayer client = world.addPlayer(b -> b.name("Case Player").address("1.1.1.1").uuid("case-player"));
         Player player = client.player();
         var data = new PlayerData("case-player", true);
@@ -534,19 +559,28 @@ class ConnectionHandlerTest {
         var recent = mock(org.xcore.plugin.cases.RecentPlayers.class);
         var handler = new ConnectionHandler(sessions, mock(NetworkService.class), new TomlXcoreConfig(),
                 new TomlSecretsConfig(), mock(VoteService.class), mock(PrivateMessageService.class),
-                mock(PlayerDisplayService.class), mock(DiscordAdminAccessService.class), mock(ObserverService.class),
-                mock(MapVoteObserverService.class), async, null, mock(org.xcore.plugin.cases.CaseNoticeService.class), recent);
+                mock(PlayerDisplayService.class), mock(ObserverService.class),
+                mock(MapVoteObserverService.class), async, permissionSessions(), mock(org.xcore.plugin.cases.CaseNoticeService.class), recent);
         MockPlayer client = world.addPlayer(b -> b.address("1.1.1.1").uuid("leaving").admin(true));
         Player player = client.player();
         var session = mock(Session.class);
         session.player = player;
         session.data = new PlayerData("leaving", true);
-        session.permissions = new org.xcore.plugin.permission.PermissionService();
+        RolesWorld.asAdmin(session, java.time.Instant.now());
         when(sessions.get(player)).thenReturn(session);
         handler.onPlayerLeave(new EventType.PlayerLeave(player));
         var order = Mockito.inOrder(recent, sessions);
         order.verify(recent).left(session, true);
         order.verify(sessions).registerLogout(player);
+    }
+
+    /** Roles over an empty store: nobody holds anything unless the game's admin list is trusted. */
+    private static PermissionSessions permissionSessions() {
+        return permissionSessions(false);
+    }
+
+    private static PermissionSessions permissionSessions(boolean trustNativeAdmins) {
+        return new RolesWorld("mini-pvp", new RolesWorld.MutableClock(), new InMemoryGrantStore(), trustNativeAdmins).sessions;
     }
 
     /** A storage executor whose task fails, the way an unreachable Mongo would. */

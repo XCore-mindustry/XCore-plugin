@@ -238,14 +238,14 @@ private-message-compose-body-message = Wpisz prywatną wiadomość dla [accent]{
 # ==============================================================================
 # Authentication & Admin Access
 # ==============================================================================
-commands-login-description = Włącza uprawnienia admina, jeśli twoje połączone konto Discord ma już dostęp.
+commands-login-description = Włącza uprawnienia admina, jeśli jedna z twoich ról na tym serwerze pozwala zalogować się jako staff.
 commands-login-incorrect-password = [scarlet]⚠ Nieprawidłowe hasło!
 commands-login-success = [green]Przyznano uprawnienia admina.
 commands-login-confirmed = [green]Potwierdzono dostęp admina na Discordzie.
 commands-login-admin-password-created =
     [green]Utworzono hasło admina.
     [red]Nie zapomnij hasła! Jeśli je zapomnisz, musisz poprosić głównego administratora o jego zresetowanie.
-commands-login-request-approval-discord = [accent]Twoje konto nie ma uprawnień administratora Discorda. Uzyskaj rolę administratora na Discordzie i spróbuj ponownie.
+commands-login-request-approval-discord = [accent]Żadna z twoich ról na tym serwerze nie pozwala zalogować się jako staff. Poproś administrację o rolę i spróbuj ponownie.
 commands-login-verifying = [lightgray]Weryfikacja hasła administratora...
 commands-login-already-processing = [scarlet]⚠ Żądanie logowania jest już przetwarzane. Proszę czekać.
 commands-login-rate-limited = [scarlet]⚠ Zbyt wiele nieudanych prób logowania. Proszę poczekać przed kolejną próbą.
@@ -1457,7 +1457,6 @@ permission-xcore-permissions-inspect = Widzieć, kto ma jakie uprawnienia
 permission-xcore-permissions-manage = Zmieniać role i uprawnienia
 
 error-target-outranks = [scarlet]⚠ Nie możesz tego zrobić graczowi, którego rola nie jest niższa od twojej.
-perm-me-legacy = [accent]Role są wyłączone na tym serwerze. Admin: [white]{ $admin }
 perm-me-header = [accent]Twoje role tutaj (waga [white]{ $weight }[accent]):
 perm-me-none = [lightgray] - brak
 perm-me-logged-in = [green]Jesteś zalogowany jako członek administracji.

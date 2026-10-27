@@ -239,14 +239,14 @@ private-message-compose-body-message = Digite uma mensagem privada para [accent]
 # ==============================================================================
 # Authentication & Admin Access
 # ==============================================================================
-commands-login-description = Ativa os privilégios de admin se sua conta do Discord vinculada já tiver acesso.
+commands-login-description = Ativa os privilégios de admin se algum dos seus cargos neste servidor permitir o login como staff.
 commands-login-incorrect-password = [scarlet]⚠ Senha incorreta!
 commands-login-success = [green]Privilégios de admin concedidos.
 commands-login-confirmed = [green]Acesso de admin pelo Discord confirmado.
 commands-login-admin-password-created =
     [green]Senha de admin criada.
     [red]Não se esqueça da sua senha! Se esquecê-la, você precisará pedir a um administrador geral para redefini-la.
-commands-login-request-approval-discord = [accent]Sua conta não tem acesso de admin no Discord. Obtenha o cargo de admin no Discord e tente novamente.
+commands-login-request-approval-discord = [accent]Nenhum dos seus cargos neste servidor permite o login como staff. Peça um cargo à equipe e tente novamente.
 commands-login-verifying = [lightgray]Verificando senha de administrador...
 commands-login-already-processing = [scarlet]⚠ Uma solicitação de login já está sendo processada. Aguarde.
 commands-login-rate-limited = [scarlet]⚠ Muitas tentativas de login falhas. Aguarde antes de tentar novamente.
@@ -1444,7 +1444,6 @@ permission-xcore-permissions-inspect = Ver quem possui quais permissões
 permission-xcore-permissions-manage = Alterar cargos e permissões
 
 error-target-outranks = [scarlet]⚠ Não é possível fazer isso com um jogador cujo cargo não seja inferior ao seu.
-perm-me-legacy = [accent]Cargos desativados neste servidor. Admin: [white]{ $admin }
 perm-me-header = [accent]Seus cargos aqui (peso [white]{ $weight }[accent]):
 perm-me-none = [lightgray] - nenhum
 perm-me-logged-in = [green]Você está conectado como membro da equipe.

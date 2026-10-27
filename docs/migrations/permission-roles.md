@@ -1,7 +1,8 @@
-# Switching a server to permission roles
+# Permission roles
 
-Roles are off until `[permissions] mode = "roles"` is set. With `mode = "legacy"` (the default)
-nothing changes: `PlayerData.admin` and the native admin list decide who is staff.
+Staff rights come from roles only. `PlayerData.admin` and the native admin list no longer decide
+who is staff, and the old `[permissions] mode` key is ignored. A server without a usable
+`permissions.toml` does not start.
 
 ## 1. Describe the roles
 
@@ -36,12 +37,13 @@ role = "admin"
 - `weight` is the hierarchy: staff cannot act on a player whose weight is equal or higher.
 - `perm nodes` lists every node, `perm roles` shows the file as the server read it.
 
-A file with an error stops a server that starts in roles mode. `perm reload` on a running server
-refuses such a file and keeps the roles in use.
+A missing file or a file with an error stops the server at start. `perm reload` on a running
+server refuses such a file and keeps the roles in use.
 
 ## 2. Move the existing admins
 
-Run on one server, from its console:
+Admins of the old flag-based setup have no rights until they hold a role. Run once, on one
+server, from its console:
 
 ```
 perm migrate            # dry run: prints what would be granted, writes nothing
@@ -52,14 +54,13 @@ Players whose admin came from a Discord role get the role bound to it, with the 
 the source. Native admin list entries are only reported: grant them by hand if they are still
 needed.
 
-## 3. Switch
-
-Set `mode = "roles"` on every server and restart them. From then on:
+## 3. How staff work
 
 - staff rights work only after `/login`; the first login sets the password;
-- `Player.admin` is computed from the roles, `PlayerData.admin` is no longer written;
-- `trust_native_admins = true` lets an entry of the native admin list stand in for a login on
-  that server. Leave it `false` unless a server has no Mongo-backed staff yet.
+- `Player.admin` is computed from the roles, `PlayerData.admin` is no longer written or read
+  for rights;
+- `[permissions] trust_native_admins = true` lets an entry of the native admin list stand in for
+  a login on that server. Leave it `false` unless a server has no Mongo-backed staff yet.
 
 ## Console commands
 
@@ -94,7 +95,3 @@ expiry, whether or not the store answers.
 the next `/login` sets a new password. The reset is stored with the player's grants, so a
 connection that was logged in with the old password is logged out on the server that made the
 reset at once and on every other server by the next reread at the latest, even if Redis is down.
-
-## Rolling back
-
-Set `mode = "legacy"` and restart. The grants stay in `permission_grants` and are ignored.

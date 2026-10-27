@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Breaking changes
+- The legacy permissions mode is removed: staff rights come from roles only. `permissions.toml` is required, a server without a usable one does not start, and `[permissions] mode` is ignored. `PlayerData.admin` and the native admin list give nothing by themselves (`trust_native_admins` still lets the native list stand in on dev servers). Grant roles to existing admins with `perm migrate --apply`; see `docs/migrations/permission-roles.md`.
+- `DiscordAdminAccessService` is removed and the plugin no longer sends or handles `discord.admin-access.changed.command.v1` and `player.password-reset.command.v1`. Discord roles reach the plugin as grants; password resets travel with the grants.
+
+### Fixed
+- Unlinking a Discord account publishes the `unlinked` link status again; with roles on it used to stop before that, so the bot never removed the Discord-bound roles.
+
 ## [5.1.0] - 2026-10-23
 
 ### Breaking changes

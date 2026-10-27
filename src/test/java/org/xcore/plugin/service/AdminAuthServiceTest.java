@@ -11,6 +11,9 @@ import org.junit.jupiter.api.Test;
 import org.xcore.plugin.database.repository.AdminDataRepository;
 import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.model.enums.AuthResultStatus;
+import org.xcore.plugin.permission.RolesWorld;
+import org.xcore.plugin.permission.grant.InMemoryGrantStore;
+import org.xcore.plugin.permission.role.PermissionSet;
 import org.xcore.plugin.session.Session;
 import org.xcore.plugin.session.SessionService;
 
@@ -23,7 +26,7 @@ class AdminAuthServiceTest {
     private AdminDataRepository adminDataRepository;
     private SessionService sessionService;
     private PlayerDisplayService playerDisplayService;
-    private DiscordAdminAccessService discordAdminAccessService;
+    private PermissionSet staffSet;
     private AuthStatusBroadcaster authStatusBroadcaster;
     private AdminAuthService authService;
 
@@ -37,15 +40,17 @@ class AdminAuthServiceTest {
         adminDataRepository = mock(AdminDataRepository.class);
         sessionService = mock(SessionService.class);
         playerDisplayService = mock(PlayerDisplayService.class);
-        discordAdminAccessService = mock(DiscordAdminAccessService.class);
+        // The game's admin list is trusted here, so a set read with it holds the role admin.
+        RolesWorld roles = new RolesWorld("main", new RolesWorld.MutableClock(), new InMemoryGrantStore(), true);
+        staffSet = roles.sessions.load("uuid-1", true);
         authStatusBroadcaster = mock(AuthStatusBroadcaster.class);
 
         authService = new AdminAuthService(
                 adminDataRepository,
                 sessionService,
                 playerDisplayService,
-                discordAdminAccessService,
-                authStatusBroadcaster
+                authStatusBroadcaster,
+                roles.staff
         );
     }
 
@@ -57,8 +62,7 @@ class AdminAuthServiceTest {
     @Test
     @DisplayName("Short password rejected")
     void shortPasswordRejected() {
-        Player player = mock(Player.class);
-        when(player.uuid()).thenReturn("uuid-1");
+        Player player = RolesWorld.player("uuid-1");
         Session session = mock(Session.class);
         session.data = new PlayerData();
         when(sessionService.get("uuid-1")).thenReturn(session);
@@ -68,10 +72,9 @@ class AdminAuthServiceTest {
     }
 
     @Test
-    @DisplayName("First login creates password and authorizes if discord role present")
+    @DisplayName("First login creates password and authorizes a staff role holder")
     void firstLoginCreatesPassword() {
-        Player player = mock(Player.class);
-        when(player.uuid()).thenReturn("uuid-1");
+        Player player = RolesWorld.player("uuid-1");
         Administration.PlayerInfo info = new Administration.PlayerInfo();
         info.adminUsid = "usid-1";
         when(player.getInfo()).thenReturn(info);
@@ -80,10 +83,8 @@ class AdminAuthServiceTest {
         data.uuid = "uuid-1";
         data.password = ""; // No password set yet
 
-        Session session = mock(Session.class);
-        session.data = data;
-        when(sessionService.get("uuid-1")).thenReturn(session);
-        when(discordAdminAccessService.hasDiscordAdminAccess(data)).thenReturn(true);
+        Session session = liveSession(player, data);
+        mayLogIn(data, true);
 
         var result = authService.authenticate(player, "secret123");
         assertThat(result.status()).isEqualTo(AuthResultStatus.PASSWORD_CREATED);
@@ -97,17 +98,14 @@ class AdminAuthServiceTest {
     @Test
     @DisplayName("Wrong password returns WRONG_PASSWORD")
     void wrongPassword() {
-        Player player = mock(Player.class);
-        when(player.uuid()).thenReturn("uuid-1");
+        Player player = RolesWorld.player("uuid-1");
 
         PlayerData data = new PlayerData();
         data.uuid = "uuid-1";
         data.hashPassword("correctPassword");
 
-        Session session = mock(Session.class);
-        session.data = data;
-        when(sessionService.get("uuid-1")).thenReturn(session);
-        when(discordAdminAccessService.hasDiscordAdminAccess(data)).thenReturn(true);
+        Session session = liveSession(player, data);
+        mayLogIn(data, true);
 
         var result = authService.authenticate(player, "wrongPassword");
         assertThat(result.status()).isEqualTo(AuthResultStatus.WRONG_PASSWORD);
@@ -116,19 +114,16 @@ class AdminAuthServiceTest {
     }
 
     @Test
-    @DisplayName("Unprivileged user without Discord role cannot create password")
+    @DisplayName("A player without a staff role cannot create a password")
     void unprivilegedUserCannotCreatePassword() {
-        Player player = mock(Player.class);
-        when(player.uuid()).thenReturn("uuid-1");
+        Player player = RolesWorld.player("uuid-1");
 
         PlayerData data = new PlayerData();
         data.uuid = "uuid-1";
         data.password = "";
 
-        Session session = mock(Session.class);
-        session.data = data;
-        when(sessionService.get("uuid-1")).thenReturn(session);
-        when(discordAdminAccessService.hasDiscordAdminAccess(data)).thenReturn(false);
+        Session session = liveSession(player, data);
+        mayLogIn(data, false);
 
         var result = authService.authenticate(player, "secret123");
         assertThat(result.status()).isEqualTo(AuthResultStatus.DISCORD_APPROVAL_REQUIRED);
@@ -138,19 +133,16 @@ class AdminAuthServiceTest {
     }
 
     @Test
-    @DisplayName("Correct password without Discord role returns DISCORD_APPROVAL_REQUIRED")
+    @DisplayName("Correct password without a staff role returns DISCORD_APPROVAL_REQUIRED")
     void correctPasswordWithoutDiscord() {
-        Player player = mock(Player.class);
-        when(player.uuid()).thenReturn("uuid-1");
+        Player player = RolesWorld.player("uuid-1");
 
         PlayerData data = new PlayerData();
         data.uuid = "uuid-1";
         data.hashPassword("correctPassword");
 
-        Session session = mock(Session.class);
-        session.data = data;
-        when(sessionService.get("uuid-1")).thenReturn(session);
-        when(discordAdminAccessService.hasDiscordAdminAccess(data)).thenReturn(false);
+        Session session = liveSession(player, data);
+        mayLogIn(data, false);
 
         var result = authService.authenticate(player, "correctPassword");
         assertThat(result.status()).isEqualTo(AuthResultStatus.DISCORD_APPROVAL_REQUIRED);
@@ -160,8 +152,7 @@ class AdminAuthServiceTest {
     @Test
     @DisplayName("Login with rememberDevice mints token and authenticateToken succeeds")
     void rememberDeviceMintsTokenAndAllowsTokenLogin() {
-        Player player = mock(Player.class);
-        when(player.uuid()).thenReturn("uuid-1");
+        Player player = RolesWorld.player("uuid-1");
         Administration.PlayerInfo info = new Administration.PlayerInfo();
         info.adminUsid = "usid-1";
         when(player.getInfo()).thenReturn(info);
@@ -170,10 +161,8 @@ class AdminAuthServiceTest {
         data.uuid = "uuid-1";
         data.hashPassword("correctPassword");
 
-        Session session = mock(Session.class);
-        session.data = data;
-        when(sessionService.get("uuid-1")).thenReturn(session);
-        when(discordAdminAccessService.hasDiscordAdminAccess(data)).thenReturn(true);
+        Session session = liveSession(player, data);
+        mayLogIn(data, true);
 
         var result = authService.authenticate(player, "correctPassword", true);
         assertThat(result.status()).isEqualTo(AuthResultStatus.SUCCESS);
@@ -197,16 +186,26 @@ class AdminAuthServiceTest {
     }
 
     private Session liveSession(Player player, PlayerData data) {
+        if (data.uuid == null || data.uuid.isEmpty()) {
+            data.uuid = player.uuid();
+        }
         Session session = mock(Session.class);
         session.data = data;
         session.player = player;
+        session.permissionSet = PermissionSet.EMPTY;
         when(sessionService.get("uuid-1")).thenReturn(session);
         return session;
     }
 
+    /** Gives the registered session of {@code data} the role admin, or nothing. */
+    private void mayLogIn(PlayerData data, boolean staff) {
+        Session session = sessionService.get("uuid-1");
+        assertThat(session.data).isSameAs(data);
+        session.permissionSet = staff ? staffSet : PermissionSet.EMPTY;
+    }
+
     private Player loggingIn() {
-        Player player = mock(Player.class);
-        when(player.uuid()).thenReturn("uuid-1");
+        Player player = RolesWorld.player("uuid-1");
         when(player.getInfo()).thenReturn(new Administration.PlayerInfo());
         return player;
     }
@@ -236,7 +235,7 @@ class AdminAuthServiceTest {
         PlayerData data = new PlayerData();
         data.uuid = "uuid-1";
         Session session = liveSession(player, data);
-        when(discordAdminAccessService.hasDiscordAdminAccess(data)).thenReturn(true);
+        mayLogIn(data, true);
 
         PlayerData credentials = PlayerData.builder().uuid("uuid-1").password("fresh-hash").build();
         var verification = new AdminAuthService.PasswordVerificationResult(true, true, "commands-login-admin-password-created");
@@ -259,7 +258,7 @@ class AdminAuthServiceTest {
         PlayerData data = new PlayerData();
         data.password = "first-hash";
         liveSession(player, data);
-        when(discordAdminAccessService.hasDiscordAdminAccess(data)).thenReturn(true);
+        mayLogIn(data, true);
 
         PlayerData credentials = PlayerData.builder().uuid("uuid-1").password("second-hash").build();
         var verification = new AdminAuthService.PasswordVerificationResult(true, true, "commands-login-admin-password-created");
@@ -278,7 +277,7 @@ class AdminAuthServiceTest {
         Player player = loggingIn();
         PlayerData data = new PlayerData();
         liveSession(player, data);
-        when(discordAdminAccessService.hasDiscordAdminAccess(data)).thenReturn(true);
+        mayLogIn(data, true);
 
         PlayerData credentials = PlayerData.builder().uuid("uuid-1").password("old-hash").build();
         var verification = new AdminAuthService.PasswordVerificationResult(true, false, "commands-login-success");
@@ -307,12 +306,12 @@ class AdminAuthServiceTest {
     }
 
     @Test
-    @DisplayName("applyLogin grants nothing when the Discord approval went away while the password was hashed")
+    @DisplayName("applyLogin grants nothing when the staff role went away while the password was hashed")
     void applyLogin_approvalWithdrawn() {
         Player player = loggingIn();
         PlayerData data = new PlayerData();
         liveSession(player, data);
-        when(discordAdminAccessService.hasDiscordAdminAccess(data)).thenReturn(false);
+        mayLogIn(data, false);
         var verification = new AdminAuthService.PasswordVerificationResult(true, false, "commands-login-success");
 
         var result = authService.applyLogin(player, new PlayerData(), verification, false);
@@ -327,7 +326,7 @@ class AdminAuthServiceTest {
         Player player = loggingIn();
         PlayerData data = new PlayerData();
         liveSession(mock(Player.class), data);
-        when(discordAdminAccessService.hasDiscordAdminAccess(data)).thenReturn(true);
+        mayLogIn(data, true);
         var verification = new AdminAuthService.PasswordVerificationResult(true, false, "commands-login-success");
 
         var result = authService.applyLogin(player, new PlayerData(), verification, false);
@@ -343,7 +342,7 @@ class AdminAuthServiceTest {
         PlayerData data = new PlayerData();
         data.addDeviceToken(AdminAuthService.hashToken("device-token"), System.currentTimeMillis() + 60_000L);
         liveSession(player, data);
-        when(discordAdminAccessService.hasDiscordAdminAccess(data)).thenReturn(true);
+        mayLogIn(data, true);
 
         var result = authService.resumeWithToken(player, "device-token");
 

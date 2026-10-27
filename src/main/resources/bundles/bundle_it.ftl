@@ -239,14 +239,14 @@ private-message-compose-body-message = Inserisci un messaggio privato per [accen
 # ==============================================================================
 # Authentication & Admin Access
 # ==============================================================================
-commands-login-description = Attiva i permessi da admin se il tuo account Discord collegato ha già accesso.
+commands-login-description = Attiva i permessi da admin se uno dei tuoi ruoli su questo server consente l'accesso come staff.
 commands-login-incorrect-password = [scarlet]⚠ Password non corretta!
 commands-login-success = [green]Permessi da admin concessi.
 commands-login-confirmed = [green]Accesso admin da Discord confermato.
 commands-login-admin-password-created =
     [green]Password admin creata.
     [red]Non dimenticare la password! Se la dimentichi, dovrai chiedere a un amministratore generale di reimpostarla.
-commands-login-request-approval-discord = [accent]Il tuo account non ha l'accesso admin su Discord. Ottieni il ruolo admin su Discord e riprova.
+commands-login-request-approval-discord = [accent]Nessuno dei tuoi ruoli su questo server consente l'accesso come staff. Chiedi un ruolo allo staff e riprova.
 commands-login-verifying = [lightgray]Verifica della password da amministratore...
 commands-login-already-processing = [scarlet]⚠ Una richiesta di accesso è già in elaborazione. Attendi.
 commands-login-rate-limited = [scarlet]⚠ Troppi tentativi di accesso falliti. Attendi prima di riprovare.
@@ -1444,7 +1444,6 @@ permission-xcore-permissions-inspect = Visualizzare chi possiede quali permessi
 permission-xcore-permissions-manage = Modificare ruoli e permessi
 
 error-target-outranks = [scarlet]⚠ Non puoi farlo a un giocatore con un ruolo pari o superiore al tuo.
-perm-me-legacy = [accent]I ruoli sono disattivati su questo server. Admin: [white]{ $admin }
 perm-me-header = [accent]I tuoi ruoli qui (peso [white]{ $weight }[accent]):
 perm-me-none = [lightgray] - nessuno
 perm-me-logged-in = [green]Hai effettuato l'accesso come membro dello staff.

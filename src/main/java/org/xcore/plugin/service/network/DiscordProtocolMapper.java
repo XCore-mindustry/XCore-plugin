@@ -3,7 +3,6 @@ package org.xcore.plugin.service.network;
 import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.model.PlayerPids;
 import org.xcore.protocol.generated.messages.discord.DiscordLinkStatusChangedV1Action;
-import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordAdminAccessChangedCommandV1;
 import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordLinkCodeCreatedV1;
 import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordLinkStatusChangedV1;
 import org.xcore.protocol.generated.shared.ActorRefV1;
@@ -50,64 +49,6 @@ public final class DiscordProtocolMapper {
                 toPlayerRef(playerData.uuid, playerData.pid, playerData.nickname),
                 toDiscordIdentity(discordId, discordUsername),
                 toLinkStatusAction(action),
-                requireNonBlank(server, "server"),
-                toOccurredAt(occurredAt)
-        );
-    }
-
-    public static DiscordAdminAccessChangedCommandV1 toAdminAccessChangedCommand(
-            String playerUuid,
-            int playerPid,
-            String playerName,
-            String discordId,
-            String discordUsername,
-            boolean admin,
-            String adminSource,
-            String requestedBy,
-            String reason,
-            String server,
-            long occurredAt
-    ) {
-        return new DiscordAdminAccessChangedCommandV1(
-                toPlayerRef(playerUuid, playerPid, playerName),
-                toDiscordIdentity(discordId, discordUsername),
-                admin,
-                toSourceActor(adminSource),
-                toRequesterActor(requestedBy),
-                requireNonBlank(reason, "reason"),
-                requireNonBlank(server, "server"),
-                toOccurredAt(occurredAt)
-        );
-    }
-
-    /**
-     * Overload accepting canonical {@link ActorRefV1} objects for source and actor.
-     * Use this when the caller already has structured actor metadata (Discord ID, display name, actor type).
-     * <p>
-     * When actor metadata is not available, prefer the simpler overloads that use
-     * {@link #toRequesterActor(String)} and {@link #toSourceActor(String)} with their
-     * built-in system-actor fallback.
-     */
-    public static DiscordAdminAccessChangedCommandV1 toAdminAccessChangedCommand(
-            String playerUuid,
-            int playerPid,
-            String playerName,
-            String discordId,
-            String discordUsername,
-            boolean admin,
-            ActorRefV1 source,
-            ActorRefV1 actor,
-            String reason,
-            String server,
-            long occurredAt
-    ) {
-        return new DiscordAdminAccessChangedCommandV1(
-                toPlayerRef(playerUuid, playerPid, playerName),
-                toDiscordIdentity(discordId, discordUsername),
-                admin,
-                source,
-                actor,
-                requireNonBlank(reason, "reason"),
                 requireNonBlank(server, "server"),
                 toOccurredAt(occurredAt)
         );
@@ -173,24 +114,6 @@ public final class DiscordProtocolMapper {
         );
     }
 
-    public static ActorRefV1 toSourceActor(String adminSource) {
-        String sourceName = requireNonBlank(adminSource, "adminSource");
-        return new ActorRefV1(sourceName, null, resolveSourceActorType(sourceName));
-    }
-
-    /**
-     * Creates a system-level source actor for provenance tracking.
-     * Source actors represent system mechanisms (DISCORD_ROLE, NONE, COMMAND)
-     * and always use {@link ActorRefV1ActorType#SYSTEM}.
-     */
-    private static ActorRefV1 toSourceActor(String sourceName, ActorRefV1ActorType sourceType) {
-        return new ActorRefV1(
-                requireNonBlank(sourceName, "sourceName"),
-                null,
-                Objects.requireNonNull(sourceType, "sourceType")
-        );
-    }
-
     public static ActorRefV1 toRequesterActor(String requestedBy) {
         return new ActorRefV1(requireNonBlank(requestedBy, "requestedBy"), null, ActorRefV1ActorType.SYSTEM);
     }
@@ -206,14 +129,6 @@ public final class DiscordProtocolMapper {
                 ? ActorRefV1ActorType.DISCORD
                 : ActorRefV1ActorType.SYSTEM;
         return new ActorRefV1(actorName, normalizeOptional(discordId), actorType);
-    }
-
-    private static ActorRefV1ActorType resolveSourceActorType(String adminSource) {
-        return switch (adminSource) {
-            case "DISCORD_ROLE" -> ActorRefV1ActorType.SYSTEM;
-            case "NONE" -> ActorRefV1ActorType.SYSTEM;
-            default -> ActorRefV1ActorType.SYSTEM;
-        };
     }
 
     private static DiscordLinkStatusChangedV1Action toLinkStatusAction(String action) {

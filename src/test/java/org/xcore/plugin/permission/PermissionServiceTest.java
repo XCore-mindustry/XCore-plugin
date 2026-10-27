@@ -9,13 +9,12 @@ import org.junit.jupiter.api.Test;
 import org.xcore.cloud.mindustry.MindustrySender;
 import org.xcore.plugin.cloud.XCoreSender;
 import org.xcore.plugin.cloud.exception.XCoreCommandException;
+import org.xcore.plugin.permission.grant.InMemoryGrantStore;
 import org.xcore.plugin.session.Session;
-import org.xcore.plugin.session.SessionService;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 class PermissionServiceTest {
 
@@ -23,52 +22,72 @@ class PermissionServiceTest {
     private static final String CONSOLE_NODE = PermissionNodes.PERMISSIONS_MANAGE;
     private static final String TYPO = "xcore.moderation.bann";
 
-    private SessionService sessions;
+    private RolesWorld world;
     private PermissionService permissions;
 
     @BeforeEach
     void setUp() {
-        sessions = mock(SessionService.class);
-        permissions = new PermissionService(() -> sessions);
+        // The game's admin list is trusted, so an entry of it joins logged in with the role admin.
+        world = new RolesWorld("main", new RolesWorld.MutableClock(), new InMemoryGrantStore(), true);
+        permissions = world.permissions;
     }
 
-    private static Player player(String uuid, boolean admin) {
-        Player player = mock(Player.class);
-        when(player.uuid()).thenReturn(uuid);
-        player.admin = admin;
-        return player;
+    /** A connected admin, logged in as staff. */
+    private Session staff(String uuid) {
+        return world.join(uuid, true);
     }
 
-    private Session registered(Player player) {
-        Session session = mock(Session.class);
-        session.player = player;
-        when(sessions.get(player.uuid())).thenReturn(session);
-        return session;
+    /** A connected player without any role. */
+    private Session regular(String uuid) {
+        return world.join(uuid);
     }
 
     private XCoreSender console(Actor origin) {
-        return new XCoreSender(new MindustrySender.ConsoleSender(), mock(Bundle.class), () -> sessions, origin);
+        return new XCoreSender(new MindustrySender.ConsoleSender(), mock(Bundle.class), () -> world.sessionService, origin);
     }
 
     @Test
-    @DisplayName("A staff node follows the admin flag")
+    @DisplayName("A staff node follows the roles of a logged-in session")
     void staffNode() {
-        assertThat(permissions.has(player("a", true), STAFF_NODE)).isTrue();
-        assertThat(permissions.has(player("b", false), STAFF_NODE)).isFalse();
+        assertThat(permissions.has(staff("a").player, STAFF_NODE)).isTrue();
+        assertThat(permissions.has(regular("b").player, STAFF_NODE)).isFalse();
+    }
+
+    @Test
+    @DisplayName("A staff role gives nothing until its holder logs in")
+    void staffNode_needsLogin() {
+        world.grants.addRole(RolesWorld.data("c"), "admin", null, null, "r", Actor.LOCAL_CONSOLE);
+        Session holder = world.join("c");
+
+        assertThat(permissions.has(holder, STAFF_NODE)).isFalse();
+
+        world.staff.logIn(holder);
+        assertThat(permissions.has(holder, STAFF_NODE)).isTrue();
+    }
+
+    @Test
+    @DisplayName("The game's admin flag gives nothing by itself")
+    void adminFlagAlone() {
+        Session session = regular("b");
+        session.player.admin = true;
+
+        assertThat(permissions.has(session, STAFF_NODE)).isFalse();
     }
 
     @Test
     @DisplayName("An undeclared node is denied to everyone, the local console included")
     void undeclaredNode() {
-        assertThat(permissions.has(player("a", true), TYPO)).isFalse();
-        assertThat(permissions.has(registered(player("a", true)), TYPO)).isFalse();
+        Session admin = staff("a");
+
+        assertThat(permissions.has(admin.player, TYPO)).isFalse();
+        assertThat(permissions.has(admin, TYPO)).isFalse();
         assertThat(permissions.has(console(Actor.LOCAL_CONSOLE), TYPO)).isFalse();
     }
 
     @Test
     @DisplayName("A console-only node is out of reach of an admin")
     void consoleOnlyNode_player() {
-        assertThat(permissions.has(player("a", true), CONSOLE_NODE)).isFalse();
+        assertThat(permissions.has(staff("a").player, CONSOLE_NODE)).isFalse();
     }
 
     @Test
@@ -93,8 +112,8 @@ class PermissionServiceTest {
     @Test
     @DisplayName("A command that asks for nothing is open to everyone")
     void emptyPermission() {
-        XCoreSender sender = new XCoreSender(new MindustrySender.PlayerSender(player("a", false)),
-                mock(Bundle.class), () -> sessions);
+        XCoreSender sender = new XCoreSender(new MindustrySender.PlayerSender(regular("a").player),
+                mock(Bundle.class), () -> world.sessionService);
 
         assertThat(permissions.has(sender, "")).isTrue();
     }
@@ -102,26 +121,22 @@ class PermissionServiceTest {
     @Test
     @DisplayName("The old 'admin' string is answered like the node it stands for")
     void legacyAlias() {
-        assertThat(permissions.has(player("a", true), PermissionNodes.LEGACY_ADMIN)).isTrue();
-        assertThat(permissions.has(player("b", false), PermissionNodes.LEGACY_ADMIN)).isFalse();
+        assertThat(permissions.has(staff("a").player, PermissionNodes.LEGACY_ADMIN)).isTrue();
+        assertThat(permissions.has(regular("b").player, PermissionNodes.LEGACY_ADMIN)).isFalse();
     }
 
     @Test
     @DisplayName("A session speaks for its player while the registry holds that very connection")
     void currentSession() {
-        Player admin = player("a", true);
-        Session session = registered(admin);
-
-        assertThat(permissions.has(session, STAFF_NODE)).isTrue();
+        assertThat(permissions.has(staff("a"), STAFF_NODE)).isTrue();
     }
 
     @Test
     @DisplayName("A session rebuilt for the same connection keeps the old one valid")
     void sessionRebuiltForSamePlayer() {
-        Player admin = player("a", true);
+        Session registered = staff("a");
         Session held = mock(Session.class);
-        held.player = admin;
-        registered(admin);
+        held.player = registered.player;
 
         assertThat(permissions.has(held, STAFF_NODE)).isTrue();
     }
@@ -129,13 +144,12 @@ class PermissionServiceTest {
     @Test
     @DisplayName("A session kept past a reconnect or a disconnect grants nothing")
     void staleSession() {
-        Player before = player("a", true);
-        Session held = mock(Session.class);
-        held.player = before;
+        Session held = staff("a");
+        world.leave("a");
 
         assertThat(permissions.has(held, STAFF_NODE)).as("left the server").isFalse();
 
-        registered(player("a", true));
+        staff("a");
         assertThat(permissions.has(held, STAFF_NODE)).as("rejoined as a new connection").isFalse();
         assertThat(permissions.explain(held, STAFF_NODE).reason()).isEqualTo("stale session");
     }
@@ -143,7 +157,7 @@ class PermissionServiceTest {
     @Test
     @DisplayName("A closed connection grants nothing")
     void disconnected() {
-        Player admin = player("a", true);
+        Player admin = staff("a").player;
         admin.con = mock(NetConnection.class);
         admin.con.hasDisconnected = true;
 
@@ -156,30 +170,32 @@ class PermissionServiceTest {
         assertThat(permissions.has((Player) null, STAFF_NODE)).isFalse();
         assertThat(permissions.has((Session) null, STAFF_NODE)).isFalse();
         assertThat(permissions.has(mock(Session.class), STAFF_NODE)).isFalse();
+        assertThat(permissions.has(RolesWorld.player("not-joined"), STAFF_NODE)).isFalse();
     }
 
     @Test
     @DisplayName("require turns a refusal into the access-denied command error")
     void require() {
-        Session regular = registered(player("b", false));
+        Session regular = regular("b");
 
         assertThatThrownBy(() -> permissions.require(regular, STAFF_NODE))
                 .isInstanceOf(XCoreCommandException.class)
                 .hasMessage("error-access-denied");
 
-        permissions.require(registered(player("a", true)), STAFF_NODE);
+        permissions.require(staff("a"), STAFF_NODE);
     }
 
     @Test
-    @DisplayName("Staff can act on themselves and on players, not on other staff")
+    @DisplayName("Staff can act on themselves and on players, not on other staff of the same weight")
     void canTarget() {
-        Player admin = player("a", true);
-        Player otherAdmin = player("c", true);
-        Player regular = player("b", false);
+        Player admin = staff("a").player;
+        Player otherAdmin = staff("c").player;
+        Player regular = regular("b").player;
 
         assertThat(permissions.canTarget(admin, admin)).isTrue();
         assertThat(permissions.canTarget(admin, regular)).isTrue();
         assertThat(permissions.canTarget(admin, otherAdmin)).isFalse();
+        assertThat(permissions.canTarget(regular, admin)).isFalse();
         assertThat(permissions.canTarget(admin, null)).isFalse();
     }
 
@@ -187,8 +203,13 @@ class PermissionServiceTest {
     @DisplayName("Without a registry a session is taken at its word")
     void standalone() {
         Session session = mock(Session.class);
-        session.player = player("a", true);
+        session.player = RolesWorld.player("a");
+        // A standalone service reads the wall clock, so the set is loaded now.
+        RolesWorld.asAdmin(session, java.time.Instant.now());
 
         assertThat(new PermissionService().has(session, STAFF_NODE)).isTrue();
+
+        session.staffAuthenticated = false;
+        assertThat(new PermissionService().has(session, STAFF_NODE)).isFalse();
     }
 }

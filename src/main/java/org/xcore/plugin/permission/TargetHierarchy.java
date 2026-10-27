@@ -14,7 +14,6 @@ import java.util.concurrent.Callable;
 
 /**
  * Who may act on whom: only somebody whose roles weigh strictly more than the target's.
- * Without roles there is no hierarchy and everything here says yes.
  */
 @Singleton
 public class TargetHierarchy {
@@ -34,18 +33,18 @@ public class TargetHierarchy {
         this.async = async;
     }
 
-    /** No hierarchy at all; for wiring without roles. */
+    /** No hierarchy at all: everything here says yes. For tests of what lies behind the check. */
     public static TargetHierarchy none() {
-        return new TargetHierarchy(new PermissionService(), null, null, null);
+        return new TargetHierarchy(null, null, null, null);
     }
 
-    public boolean enabled() {
-        return permissions.rolesEnabled();
+    private boolean enforced() {
+        return permissions != null;
     }
 
     /** For two players who are both online here. No I/O. */
     public boolean outranks(Player actor, Player target) {
-        if (!permissions.rolesEnabled()) {
+        if (!enforced()) {
             return true;
         }
         return permissions.canTarget(actor, target);
@@ -57,7 +56,7 @@ public class TargetHierarchy {
      * {@code whenAllowed} is for.
      */
     public boolean mayTarget(Session actor, String targetUuid) {
-        if (!permissions.rolesEnabled()) {
+        if (!enforced()) {
             return true;
         }
         if (actor == null || actor.player == null || targetUuid == null) {
@@ -87,7 +86,7 @@ public class TargetHierarchy {
      * the actor may have lost it in the meantime.
      */
     public void whenAllowed(Session actor, String targetUuid, String node, Runnable action, Runnable denied) {
-        if (!permissions.rolesEnabled()) {
+        if (!enforced()) {
             action.run();
             return;
         }
@@ -111,7 +110,7 @@ public class TargetHierarchy {
      * always did.
      */
     public void whenAllowed(Session actor, Callable<String> targetUuid, String node, Runnable action, Runnable denied) {
-        if (!permissions.rolesEnabled()) {
+        if (!enforced()) {
             action.run();
             return;
         }

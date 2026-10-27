@@ -134,7 +134,7 @@ public class AuthController implements CloudClientController {
             return;
         }
 
-        if (!adminAuthService.hasDiscordAdminAccess(data)) {
+        if (!adminAuthService.mayLogInAsStaff(data)) {
             inFlightLogins.remove(uuid);
             local.send("commands-login-request-approval-discord", args());
             return;
@@ -178,6 +178,13 @@ public class AuthController implements CloudClientController {
                                 // credential that no longer exists.
                                 if (result.success() && !AdminAuthService.credentialsUnchanged(session.data, authSnapshot, result)) {
                                     local.send("error-processing-request", args());
+                                    return;
+                                }
+
+                                // The last staff role may have been taken away while the
+                                // password was being checked.
+                                if (result.success() && !adminAuthService.mayLogInAsStaff(session.data)) {
+                                    local.send("commands-login-request-approval-discord", args());
                                     return;
                                 }
 

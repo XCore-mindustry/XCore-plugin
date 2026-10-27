@@ -13,6 +13,7 @@ import org.xcore.plugin.cases.ReportResult;
 import org.xcore.plugin.cases.ReportTarget;
 import org.xcore.plugin.concurrent.GameThread;
 import org.xcore.plugin.model.PlayerPids;
+import org.xcore.plugin.permission.RolesWorld;
 import org.xcore.plugin.ui.kit.LayoutAssert;
 import org.xcore.plugin.ui.kit.Screen;
 import org.xcore.ui.VField;
@@ -20,6 +21,7 @@ import org.xcore.ui.VNodes;
 import org.xcore.ui.VButton;
 import org.xcore.plugin.ui.kit.Kit;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -154,7 +156,7 @@ class ReportMenuTest {
         var online = world.session("online-private", -12, "private-address");
         when(online.player.team()).thenReturn(Team.sharded);
         var staff = world.session("staff-private", 2, "private-staff-address");
-        staff.player.admin = true;
+        RolesWorld.asAdmin(staff, Instant.now());
         when(fixture.player.plainName()).thenReturn("Reporter");
         Groups.player.add(fixture.player);
         world.recent.left(fixture.session, false);

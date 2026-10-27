@@ -21,6 +21,8 @@ import org.xcore.plugin.model.AuditRecordSummary;
 import org.xcore.plugin.model.AuditTarget;
 import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.model.Slice;
+import org.xcore.plugin.permission.RolesWorld;
+import org.xcore.plugin.permission.role.PermissionSet;
 import org.xcore.plugin.service.moderation.AuditService;
 import org.xcore.plugin.service.moderation.DefaultAuditService;
 import org.xcore.plugin.session.Session;
@@ -95,6 +97,7 @@ class AuditHistoryUiControllerTest {
                 player,
                 viewerData
         );
+        RolesWorld.asAdmin(session, Instant.now());
         when(sessionService.get("viewer-uuid")).thenReturn(session);
     }
 
@@ -151,6 +154,7 @@ class AuditHistoryUiControllerTest {
     @DisplayName("non-admin cannot switch view mode")
     void update_selectMode_ignoredForNonAdmin() {
         player.admin = false;
+        session.permissionSet = PermissionSet.EMPTY;
         AuditHistoryUiController controller = new AuditHistoryUiController(menu, auditService, sessionService, session, targetData);
         AuditHistoryUiController.AuditHistoryModel initial = controller.createInitialModel(AuditHistoryUiController.AuditViewMode.TARGET);
 
@@ -336,6 +340,7 @@ class AuditHistoryUiControllerTest {
 
         // Someone who is not an admin sees the sanctions only, and a way back when there is one.
         player.admin = false;
+        session.permissionSet = PermissionSet.EMPTY;
         session.pushHistory(() -> {});
         VNode plain = controller.window(listModel(controller, List.of()), Screen.SMALL);
         assertThat(LayoutAssert.actions(plain)).doesNotContain("action:mode:TARGET", "action:mode:ACTOR").contains("action:back");

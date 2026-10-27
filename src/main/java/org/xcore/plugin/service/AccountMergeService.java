@@ -308,7 +308,7 @@ public class AccountMergeService {
         retired.password = null;
         retired.clearDeviceTokens();
         retired.admin = false;
-        retired.adminSource = DiscordAdminAccessService.SOURCE_NONE;
+        retired.adminSource = "NONE";
     }
 
     private MergeExecutionOutcome executeAtomicMerge(

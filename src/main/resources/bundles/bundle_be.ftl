@@ -238,14 +238,14 @@ private-message-compose-body-message = Увядзіце асабістае па�
 # ==============================================================================
 # Authentication & Admin Access
 # ==============================================================================
-commands-login-description = Актываваць правы адміна, калі ваш прывязаны акаўнт Discord ужо мае доступ.
+commands-login-description = Актываваць правы адміна, калі адна з вашых роляў на гэтым серверы дае ўваход як стаф.
 commands-login-incorrect-password = [scarlet]⚠ Няправільны пароль!
 commands-login-success = [green]Правы адміна выдадзены.
 commands-login-confirmed = [green]Доступ адміна праз Discord пацверджаны.
 commands-login-admin-password-created =
     [green]Пароль адміна створаны.
     [red]Не забудзьце пароль! Калі забудзеце, давядзецца прасіць галоўнага адміністратара скінуць яго.
-commands-login-request-approval-discord = [accent]Ваш акаунт не мае Discord-доступу адміністратара. Атрымайце роль адміністратара ў Discord і паспрабуйце зноў.
+commands-login-request-approval-discord = [accent]Ніводная з вашых роляў на гэтым серверы не дае ўваходу як стаф. Папрасіце ролю ў адміністрацыі і паспрабуйце зноў.
 commands-login-verifying = [lightgray]Праверка пароля адміністратара...
 commands-login-already-processing = [scarlet]⚠ Запыт на ўваход ужо апрацоўваецца. Пачакайце.
 commands-login-rate-limited = [scarlet]⚠ Занадта шмат няўдалых спроб уваходу. Пачакайце перад наступнай спробай.
@@ -1457,7 +1457,6 @@ permission-xcore-permissions-inspect = Бачыць, у каго якія даз
 permission-xcore-permissions-manage = Змяняць ролі і дазволы
 
 error-target-outranks = [scarlet]⚠ Нельга зрабіць гэта з гульцом, чыя роля не ніжэйшая за вашу.
-perm-me-legacy = [accent]Ролі на гэтым серверы выключаны. Адмін: [white]{ $admin }
 perm-me-header = [accent]Вашы ролі тут (вага [white]{ $weight }[accent]):
 perm-me-none = [lightgray] - няма
 perm-me-logged-in = [green]Вы ўвайшлі як член адміністрацыі.

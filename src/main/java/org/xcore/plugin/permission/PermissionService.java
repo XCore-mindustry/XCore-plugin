@@ -6,19 +6,20 @@ import jakarta.inject.Singleton;
 import mindustry.gen.Player;
 import org.xcore.plugin.cloud.XCoreSender;
 import org.xcore.plugin.cloud.exception.XCoreCommandException;
+import org.xcore.plugin.permission.role.PermissionModel;
 import org.xcore.plugin.permission.role.PermissionRoles;
 import org.xcore.plugin.permission.role.PermissionSet;
 import org.xcore.plugin.session.Session;
 import org.xcore.plugin.session.SessionService;
 
+import java.time.Clock;
 import java.util.Optional;
 
 /**
  * The single place that decides whether somebody may do something.
  * <p>
- * With roles switched off every {@link Access#STAFF} node follows the player's admin flag, as
- * it did before roles existed. With roles on, the answer comes from the {@link PermissionSet}
- * in the player's session: no I/O either way, so it is safe on the game thread.
+ * The answer comes from the {@link PermissionSet} in the player's session: no I/O, so it is
+ * safe on the game thread.
  */
 @Singleton
 public class PermissionService {
@@ -38,17 +39,12 @@ public class PermissionService {
         this.roles = roles;
     }
 
-    public PermissionService(Provider<SessionService> sessions) {
-        this(sessions, PermissionRoles.legacy());
-    }
-
-    /** Without a session registry a session is trusted to be current as long as its player is connected. */
+    /**
+     * Without a session registry or a role file: a session is trusted to be current as long as
+     * its player is connected, and holds what its own set gives.
+     */
     public PermissionService() {
-        this(null);
-    }
-
-    public boolean rolesEnabled() {
-        return roles.enabled();
+        this(null, PermissionRoles.of(PermissionModel.EMPTY, "server", false, Clock.systemUTC()));
     }
 
     /**
@@ -88,27 +84,20 @@ public class PermissionService {
         if (actor == target) {
             return true;
         }
-        if (roles.enabled()) {
-            return weight(actor) > weight(target);
-        }
-        return !has(target, PermissionNodes.MINDUSTRY_ADMIN);
+        return weight(actor) > weight(target);
     }
 
     /**
      * Whether a player may act on somebody whose roles weigh {@code targetWeight}; for targets
-     * who are offline, whose weight the caller has read from the store. Without roles there is
-     * no hierarchy to check here.
+     * who are offline, whose weight the caller has read from the store.
      */
     public boolean canTarget(Session actor, int targetWeight) {
-        if (!roles.enabled()) {
-            return true;
-        }
         return actor != null && actor.player != null && weight(actor.player) > targetWeight;
     }
 
     /** The highest weight among the roles a player holds on this server; 0 without roles. */
     public int weight(Player player) {
-        Session session = roles.enabled() ? current(player) : null;
+        Session session = current(player);
         return session == null ? 0 : session.permissionSet.weight(roles.clock().instant());
     }
 
@@ -139,10 +128,15 @@ public class PermissionService {
         if (!isCurrent(session)) {
             return new Explanation(node, false, "stale session");
         }
-        return explain(session.player, node);
+        return explain(session.player, registry() == null ? session : current(session.player), node);
     }
 
     public Explanation explain(Player player, String node) {
+        return explain(player, current(player), node);
+    }
+
+    /** @param session the session that speaks for this very connection, or null while it joins */
+    private Explanation explain(Player player, Session session, String node) {
         if (player == null) {
             return new Explanation(node, false, "no player");
         }
@@ -153,21 +147,11 @@ public class PermissionService {
         if (player.con != null && player.con.hasDisconnected) {
             return new Explanation(node, false, "disconnected");
         }
-        if (roles.enabled()) {
-            Session session = current(player);
-            // No session yet: the player is still joining and holds nothing but the defaults.
-            PermissionSet set = session == null ? PermissionSet.EMPTY : session.permissionSet;
-            PermissionSet.Decision decision = set.check(declared.get(),
-                    session != null && session.staffAuthenticated, roles.clock().instant());
-            return new Explanation(node, decision.granted(), decision.reason());
-        }
-        return switch (declared.get().access()) {
-            case PLAYER -> new Explanation(node, true, "open to every player");
-            case STAFF -> player.admin
-                    ? new Explanation(node, true, "admin")
-                    : new Explanation(node, false, "not an admin");
-            case CONSOLE_ONLY -> new Explanation(node, false, "local console only");
-        };
+        // No session yet: the player is still joining and holds nothing but the defaults.
+        PermissionSet set = session == null ? PermissionSet.EMPTY : session.permissionSet;
+        PermissionSet.Decision decision = set.check(declared.get(),
+                session != null && session.staffAuthenticated, roles.clock().instant());
+        return new Explanation(node, decision.granted(), decision.reason());
     }
 
     /**
@@ -175,7 +159,7 @@ public class PermissionService {
      * for the player only while the registry holds a session of the very same connection.
      */
     private boolean isCurrent(Session session) {
-        SessionService registry = sessions != null ? sessions.get() : null;
+        SessionService registry = registry();
         if (registry == null) {
             return true;
         }
@@ -185,12 +169,16 @@ public class PermissionService {
 
     /** The session that speaks for this very connection, or null. */
     private Session current(Player player) {
-        SessionService registry = sessions != null ? sessions.get() : null;
+        SessionService registry = registry();
         if (registry == null || player == null) {
             return null;
         }
         Session session = registry.get(player.uuid());
         return session != null && session.player == player ? session : null;
+    }
+
+    private SessionService registry() {
+        return sessions != null ? sessions.get() : null;
     }
 
     private static Explanation undeclared(String node) {

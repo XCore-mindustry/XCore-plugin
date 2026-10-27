@@ -234,14 +234,14 @@ private-message-compose-body-message = Enter a private message for [accent]{ $pi
 # ==============================================================================
 # Authentication & Admin Access
 # ==============================================================================
-commands-login-description = Activate admin rights if your linked Discord account already has access.
+commands-login-description = Activate admin rights if one of your roles on this server allows a staff login.
 commands-login-incorrect-password = [scarlet]⚠ Incorrect password!
 commands-login-success = [green]Admin rights granted.
 commands-login-confirmed = [green]Discord admin access confirmed.
 commands-login-admin-password-created =
     [green]Admin password created.
     [red]Don't forget your password! If you forget it, you will need to ask a general administrator to reset it.
-commands-login-request-approval-discord = [accent]Your account does not have Discord admin access. Get the admin role in Discord and try again.
+commands-login-request-approval-discord = [accent]None of your roles on this server allows a staff login. Ask the staff for a role and try again.
 commands-login-verifying = [lightgray]Verifying admin password...
 commands-login-already-processing = [scarlet]⚠ A login request is already being processed. Please wait.
 commands-login-rate-limited = [scarlet]⚠ Too many failed login attempts. Please wait before trying again.
@@ -1429,7 +1429,6 @@ permission-xcore-permissions-inspect = See who has which permissions
 permission-xcore-permissions-manage = Change roles and permissions
 
 error-target-outranks = [scarlet]⚠ You cannot do that to a player whose role is not below yours.
-perm-me-legacy = [accent]Roles are off on this server. Admin: [white]{ $admin }
 perm-me-header = [accent]Your roles here (weight [white]{ $weight }[accent]):
 perm-me-none = [lightgray] - none
 perm-me-logged-in = [green]You are logged in as staff.

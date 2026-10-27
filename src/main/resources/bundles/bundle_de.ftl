@@ -231,14 +231,14 @@ private-message-compose-body-message = Gib eine private Nachricht für [accent]{
 # ==============================================================================
 # Authentication & Admin Access
 # ==============================================================================
-commands-login-description = Aktiviert Admin-Rechte, wenn dein verknüpftes Discord-Konto bereits Zugriff hat.
+commands-login-description = Aktiviert Admin-Rechte, wenn eine deiner Rollen auf diesem Server eine Staff-Anmeldung erlaubt.
 commands-login-incorrect-password = [scarlet]⚠ Falsches Passwort!
 commands-login-success = [green]Admin-Rechte erteilt.
 commands-login-confirmed = [green]Discord-Adminzugriff bestätigt.
 commands-login-admin-password-created =
     [green]Admin-Passwort erstellt.
     [red]Vergiss dein Passwort nicht! Sonst musst du einen Hauptadministrator bitten, es zurückzusetzen.
-commands-login-request-approval-discord = [accent]Dein Konto hat keinen Discord-Adminzugriff. Hol dir die Admin-Rolle auf Discord und versuche es erneut.
+commands-login-request-approval-discord = [accent]Keine deiner Rollen auf diesem Server erlaubt eine Staff-Anmeldung. Bitte das Team um eine Rolle und versuche es erneut.
 commands-login-verifying = [lightgray]Admin-Passwort wird überprüft...
 commands-login-already-processing = [scarlet]⚠ Eine Anmeldeanforderung wird bereits verarbeitet. Bitte warten.
 commands-login-rate-limited = [scarlet]⚠ Zu viele fehlgeschlagene Anmeldeversuche. Bitte warten Sie, bevor Sie es erneut versuchen.
@@ -1428,7 +1428,6 @@ permission-xcore-permissions-inspect = Sehen, wer welche Berechtigungen hat
 permission-xcore-permissions-manage = Rollen und Berechtigungen ändern
 
 error-target-outranks = [scarlet]⚠ Das geht nicht bei einem Spieler, dessen Rolle nicht unter deiner liegt.
-perm-me-legacy = [accent]Rollen sind auf diesem Server deaktiviert. Admin: [white]{ $admin }
 perm-me-header = [accent]Deine Rollen hier (Gewicht [white]{ $weight }[accent]):
 perm-me-none = [lightgray] - keine
 perm-me-logged-in = [green]Du bist als Teammitglied angemeldet.

@@ -1,10 +1,12 @@
 package org.xcore.plugin.permission;
 
+import jakarta.inject.Provider;
 import mindustry.gen.Player;
 import org.xcore.plugin.database.MongoTransactions;
 import org.xcore.plugin.model.AuditAppendCommand;
 import org.xcore.plugin.model.AuditAppendResult;
 import org.xcore.plugin.model.PlayerData;
+import org.xcore.plugin.permission.grant.GrantDocument;
 import org.xcore.plugin.permission.grant.InMemoryGrantStore;
 import org.xcore.plugin.permission.grant.PermissionGrants;
 import org.xcore.plugin.permission.role.PermissionModelLoader;
@@ -116,6 +118,30 @@ public final class RolesWorld {
             tasks.clear();
             batch.forEach(Runnable::run);
         }
+    }
+
+    /** The roles of {@link #ROLES} on a server called main, for tests that need no world. */
+    private static final PermissionRoles MAIN =
+            PermissionRoles.of(PermissionModelLoader.parse(ROLES), "main", false, new MutableClock());
+
+    /** A permission service over the roles of {@link #ROLES} that finds sessions in {@code sessions}. */
+    public static PermissionService permissions(Provider<SessionService> sessions) {
+        return new PermissionService(sessions, MAIN);
+    }
+
+    /** Gives {@code session} the role admin and logs it in, the way a trusted admin joins. */
+    public static Session asAdmin(Session session) {
+        return asAdmin(session, MAIN.clock().instant());
+    }
+
+    /** {@link #asAdmin(Session)} with the set loaded at {@code loadedAt}, for code that reads the wall clock. */
+    public static Session asAdmin(Session session, Instant loadedAt) {
+        String uuid = session.data != null ? session.data.uuid : session.player != null ? session.player.uuid() : "admin";
+        session.permissionSet = PermissionSet.compile(MAIN.model(), GrantDocument.empty(uuid), MAIN.serverName(),
+                true, loadedAt);
+        session.nativeAdmin = true;
+        session.staffAuthenticated = true;
+        return session;
     }
 
     public final String serverName;

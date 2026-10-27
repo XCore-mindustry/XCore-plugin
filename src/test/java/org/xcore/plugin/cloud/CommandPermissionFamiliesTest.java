@@ -34,9 +34,11 @@ import org.xcore.plugin.command.controller.client.TeleportController;
 import org.xcore.plugin.command.controller.client.VoteController;
 import org.xcore.plugin.metrics.MetricsService;
 import org.xcore.plugin.permission.PermissionNodes;
-import org.xcore.plugin.permission.PermissionService;
 import org.xcore.plugin.permission.RemoteConsoleScope;
+import org.xcore.plugin.permission.RolesWorld;
+import org.xcore.plugin.permission.role.PermissionSet;
 import org.xcore.plugin.service.TimeService;
+import org.xcore.plugin.session.Session;
 import org.xcore.plugin.session.SessionService;
 
 import java.lang.reflect.Constructor;
@@ -90,7 +92,7 @@ class CommandPermissionFamiliesTest {
                 bundle,
                 () -> sessionService,
                 mock(MetricsService.class),
-                new PermissionService(() -> sessionService),
+                RolesWorld.permissions(() -> sessionService),
                 remoteConsole,
                 mock(CloudCaptionConfigurer.class)
         );
@@ -128,9 +130,14 @@ class CommandPermissionFamiliesTest {
     }
 
     private XCoreSender player(boolean admin) {
-        Player player = mock(Player.class);
-        when(player.uuid()).thenReturn(admin ? "admin-uuid" : "player-uuid");
-        player.admin = admin;
+        Player player = RolesWorld.player(admin ? "admin-uuid" : "player-uuid");
+        Session session = mock(Session.class);
+        session.player = player;
+        session.permissionSet = PermissionSet.EMPTY;
+        if (admin) {
+            RolesWorld.asAdmin(session);
+        }
+        when(sessionService.get(player.uuid())).thenReturn(session);
         return new XCoreSender(new MindustrySender.PlayerSender(player), bundle, () -> sessionService);
     }
 

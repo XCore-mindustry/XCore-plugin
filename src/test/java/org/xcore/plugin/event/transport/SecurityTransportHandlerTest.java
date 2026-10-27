@@ -9,7 +9,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
-import org.xcore.plugin.concurrent.Async;
 import org.xcore.plugin.database.repository.AdminDataRepository;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
 import org.xcore.plugin.model.PlayerData;
@@ -20,14 +19,11 @@ import org.xcore.plugin.permission.RolesWorld;
 import org.xcore.plugin.permission.StaffCredentials;
 import org.xcore.plugin.permission.TargetHierarchy;
 import org.xcore.plugin.permission.grant.InMemoryGrantStore;
-import org.xcore.plugin.permission.role.PermissionRoles;
 import org.xcore.plugin.service.AdminAuthService;
 import org.xcore.plugin.service.AuthStatusBroadcaster;
-import org.xcore.plugin.service.DiscordAdminAccessService;
 import org.xcore.plugin.service.NetworkService;
 import org.xcore.plugin.service.PlayerDisplayService;
 import org.xcore.plugin.session.Session;
-import org.xcore.protocol.generated.messages.security.SecurityMessages.PlayerPasswordResetCommandV1;
 import org.xcore.protocol.generated.messages.security.SecurityMessages.SecurityPermissionsChangedV1;
 import org.xcore.protocol.generated.messages.security.SecurityMessages.SecurityStaffResetPasswordRequestV1;
 import org.xcore.protocol.generated.messages.security.SecurityMessages.SecurityStaffResetPasswordResponseV1;
@@ -68,12 +64,10 @@ class SecurityTransportHandlerTest {
 
         Server(String name) {
             world = new RolesWorld(name, clock, store, false);
-            StaffCredentials credentials = new StaffCredentials(players, world.grants, world.roles, network);
+            StaffCredentials credentials = new StaffCredentials(players, world.grants);
             handler = new SecurityTransportHandler(network, world.roles, world.grants, world.sessions, credentials, players);
-            DiscordAdminAccessService access = new DiscordAdminAccessService(players, world.sessionService,
-                    mock(PlayerDisplayService.class), mock(AuthStatusBroadcaster.class), mock(Async.class), world.staff);
             auth = new AdminAuthService(mock(AdminDataRepository.class), world.sessionService,
-                    mock(PlayerDisplayService.class), access, mock(AuthStatusBroadcaster.class), world.staff);
+                    mock(PlayerDisplayService.class), mock(AuthStatusBroadcaster.class), world.staff);
             // What one server posts, every server hears - the sender included.
             doAnswer(call -> {
                 posted.add(call.getArgument(0));
@@ -275,7 +269,7 @@ class SecurityTransportHandlerTest {
     }
 
     @Test
-    @DisplayName("Unknown player: NOT_FOUND. Store down or roles off: UNAVAILABLE. Another server's request: no answer")
+    @DisplayName("Unknown player: NOT_FOUND. Store down: UNAVAILABLE. Another server's request: no answer")
     void errors() {
         SecurityStaffSyncRequestV1 unknown = sync("main", "nobody", true, RolesWorld.DISCORD_MODERATOR);
         main.handler.sync(unknown);
@@ -291,18 +285,10 @@ class SecurityTransportHandlerTest {
         main.handler.sync(down);
         verify(main.network).respondError(eq(down), eq(SecurityTransportHandler.UNAVAILABLE), anyString());
         store.failWith(null);
-
-        NetworkService network = mock(NetworkService.class);
-        PermissionRoles off = PermissionRoles.legacy();
-        SecurityTransportHandler legacy = new SecurityTransportHandler(network, off, main.world.grants, main.world.sessions,
-                mock(StaffCredentials.class), players);
-        SecurityStaffSyncRequestV1 toLegacy = sync(off.serverName(), MODERATOR, true, RolesWorld.DISCORD_MODERATOR);
-        legacy.sync(toLegacy);
-        verify(network).respondError(eq(toLegacy), eq(SecurityTransportHandler.UNAVAILABLE), anyString());
     }
 
     @Test
-    @DisplayName("Password reset: forgets the password, logs the connection out without any announcement, tells every server, and is safe to repeat")
+    @DisplayName("Password reset: forgets the password, logs the connection out without any announcement, and is safe to repeat")
     void resetPassword() {
         main.world.grants.addRole(stored.get(MODERATOR), "moderator", null, null, "r", Actor.LOCAL_CONSOLE);
         Session session = join(main, MODERATOR);
@@ -317,7 +303,6 @@ class SecurityTransportHandlerTest {
         verify(main.network).respond(eq(request), response.capture());
         assertThat(response.getValue().changed()).isTrue();
         verify(players).clearCredentials(MODERATOR);
-        assertThat(posted).anySatisfy(event -> assertThat(event).isEqualTo(new PlayerPasswordResetCommandV1(MODERATOR, "main")));
         assertThat(main.world.audited).hasSize(auditedBefore + 1);
         assertThat(main.world.audited.getLast().details().extra)
                 .containsEntry("operation", "reset-password")
@@ -328,13 +313,6 @@ class SecurityTransportHandlerTest {
         main.world.settle();
         assertThat(session.staffAuthenticated).isFalse();
         assertThat(session.data.password).isEmpty();
-        assertThat(main.world.has(session, PermissionNodes.MODERATION_MUTE)).isFalse();
-
-        // The legacy announcement, for a reset that came from somewhere that writes no epoch.
-        main.world.staff.logIn(session);
-        DiscordAdminAccessService access = new DiscordAdminAccessService(players, main.world.sessionService,
-                mock(PlayerDisplayService.class), mock(AuthStatusBroadcaster.class), mock(Async.class), main.world.staff);
-        access.onPasswordReset(MODERATOR);
         assertThat(main.world.has(session, PermissionNodes.MODERATION_MUTE)).isFalse();
 
         // The stored record is empty now, so a repeat finds nothing to do.

@@ -9,6 +9,8 @@ import org.xcore.plugin.cloud.XCoreSender;
 import org.xcore.plugin.localization.Localization;
 import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.permission.PermissionService;
+import org.xcore.plugin.permission.RolesWorld;
+import org.xcore.plugin.permission.role.PermissionSet;
 import org.xcore.plugin.session.Session;
 import org.xcore.plugin.session.SessionService;
 import org.xcore.plugin.vote.VoteKick;
@@ -28,6 +30,7 @@ import static org.mockito.Mockito.when;
 
 class VoteControllerTest {
 
+    private SessionService sessions;
     private VoteService voteService;
     private VoteKickFactory voteKickFactory;
     private VoteController controller;
@@ -38,11 +41,11 @@ class VoteControllerTest {
     void setUp() {
         voteService = mock(VoteService.class);
         voteKickFactory = mock(VoteKickFactory.class);
-        controller = new VoteController(mock(SessionService.class), voteService, voteKickFactory, new PermissionService());
+        sessions = mock(SessionService.class);
+        PermissionService permissions = RolesWorld.permissions(() -> sessions);
+        controller = new VoteController(sessions, voteService, voteKickFactory, permissions);
 
-        session = mock(Session.class, CALLS_REAL_METHODS);
-        session.permissions = new PermissionService();
-        session.player = player(false);
+        session = session("starter", permissions);
         session.data = new PlayerData();
         session.localization = mock(Localization.class);
         when(session.localization.format(anyString(), anyMap())).thenReturn("kicked");
@@ -52,17 +55,29 @@ class VoteControllerTest {
         when(sender.player()).thenReturn(session.player);
     }
 
-    private static Player player(boolean admin) {
+    /** An online player whose session the registry holds. */
+    private Session session(String uuid, PermissionService permissions) {
+        Session online = mock(Session.class, CALLS_REAL_METHODS);
+        online.permissions = permissions;
+        online.permissionSet = PermissionSet.EMPTY;
+        online.player = player(uuid);
+        when(sessions.get(uuid)).thenReturn(online);
+        return online;
+    }
+
+    private static Player player(String uuid) {
         Player player = mock(Player.class);
+        when(player.uuid()).thenReturn(uuid);
         when(player.team()).thenReturn(Team.sharded);
-        player.admin = admin;
         return player;
     }
 
     @Test
     @DisplayName("Starting a votekick against an admin kicks the starter instead")
     void votekick_adminIsImmune() {
-        controller.votekick(sender, player(true), "griefing");
+        Session admin = RolesWorld.asAdmin(session("admin", session.permissions));
+
+        controller.votekick(sender, admin.player, "griefing");
 
         verify(session.player).kick(anyString(), anyLong());
         verify(voteService, never()).startVote(any());
@@ -71,7 +86,7 @@ class VoteControllerTest {
     @Test
     @DisplayName("A votekick against a regular teammate starts")
     void votekick_regularPlayer() {
-        Player target = player(false);
+        Player target = session("target", session.permissions).player;
         VoteKick kick = mock(VoteKick.class);
         when(voteKickFactory.create(session.player, target, "griefing")).thenReturn(kick);
 
@@ -92,7 +107,7 @@ class VoteControllerTest {
         verify(current, never()).cancelByAdmin(any());
         verify(session.localization).send("error-access-denied");
 
-        session.player.admin = true;
+        RolesWorld.asAdmin(session);
         controller.vote(sender, "c");
 
         verify(current).cancelByAdmin(session.player);

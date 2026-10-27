@@ -107,9 +107,6 @@ public class PermissionController implements CloudServerController {
             PermissionSet set = PermissionSet.compile(roles.model(), document, roles.serverName(), false, now);
             PLog.info("  weight on @: @, may log in as staff: @, password set: @", roles.serverName(), set.weight(now),
                     set.canLogInAsStaff(now), target.password != null && !target.password.isEmpty());
-            if (!roles.enabled()) {
-                PLog.info("  roles are off on this server (permissions.mode = \"legacy\"): none of this is in force here");
-            }
         });
     }
 
@@ -238,8 +235,8 @@ public class PermissionController implements CloudServerController {
     @CommandDescription("Lists the roles of permissions.toml with their weight and rules.")
     public void roles(XCoreSender sender) {
         PermissionModel model = roles.model();
-        PLog.info("Roles (@) from @, roles are @ on this server:", model.roles().size(),
-                roles.file() == null ? "memory" : roles.file().absolutePath(), roles.enabled() ? "ON" : "OFF");
+        PLog.info("Roles (@) from @:", model.roles().size(),
+                roles.file() == null ? "memory" : roles.file().absolutePath());
         model.roles().values().stream()
                 .sorted(Comparator.comparingInt(RoleDefinition::weight).reversed())
                 .forEach(role -> PLog.info("  &fb@&fr weight @@: @", role.name(), role.weight(),
@@ -299,7 +296,7 @@ public class PermissionController implements CloudServerController {
         change.added().forEach(grant -> PLog.info("&g+&fr @: @", describe(target), describe(grant, now)));
         change.removed().forEach(grant -> PLog.info("&r-&fr @: @", describe(target), describe(grant, now)));
         Session online = sessions.get(target.uuid);
-        if (roles.enabled() && online != null) {
+        if (online != null) {
             PLog.info("  they are online here; the change is in force now.");
         }
     }

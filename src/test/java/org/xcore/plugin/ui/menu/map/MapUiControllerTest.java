@@ -18,6 +18,7 @@ import org.xcore.plugin.database.repository.MapDataRepository;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
 import org.xcore.plugin.model.MapData;
 import org.xcore.plugin.model.PlayerData;
+import org.xcore.plugin.permission.RolesWorld;
 import org.xcore.plugin.service.MapService;
 import org.xcore.plugin.service.map.MapPreviewService;
 import org.xcore.plugin.service.map.MapVoteObserverService;
@@ -30,6 +31,7 @@ import org.xcore.ui.VNodeCompiler;
 import org.xcore.ui.runtime.ControllerContext;
 import org.xcore.ui.runtime.UpdateResult;
 
+import java.time.Instant;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -531,6 +533,7 @@ class MapUiControllerTest {
         MapUiModel model = createTestDetailsModel("map-1");
         session.player = mindustry.gen.Player.create();
         session.player.admin = true;
+        RolesWorld.asAdmin(session, Instant.now());
 
         // 1st click: switches to confirming
         UpdateResult<MapUiModel> firstClick = controller.update(

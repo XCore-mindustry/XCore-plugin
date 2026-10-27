@@ -154,11 +154,8 @@ public class ReportService {
     /** Holder check, independent of whether staff have authenticated on this connection yet. */
     public static boolean isStaff(Session session) {
         if (session == null || session.player == null) return false;
-        if (session.permissions.rolesEnabled()) {
-            return session.permissionSet.check(PermissionNodes.find(PermissionNodes.MODERATION_BAN).orElseThrow(),
-                    true, Instant.now()).granted();
-        }
-        return session.player.admin;
+        return session.permissionSet.check(PermissionNodes.find(PermissionNodes.MODERATION_BAN).orElseThrow(),
+                true, Instant.now()).granted();
     }
 
     private static ReportTarget target(Session session) {

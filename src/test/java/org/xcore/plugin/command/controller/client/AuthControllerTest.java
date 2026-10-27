@@ -106,7 +106,7 @@ class AuthControllerTest {
     void login_successfulAuthentication() throws Exception {
         var ctx = createContext("uuid-1", true);
         ctx.data().password = "stored-hash";
-        when(adminAuthService.hasDiscordAdminAccess(ctx.data())).thenReturn(true);
+        when(adminAuthService.mayLogInAsStaff(ctx.data())).thenReturn(true);
         when(adminAuthService.checkPassword(argThat(sameIdentityAs(ctx.data())), eq("secret123")))
                 .thenReturn(new PasswordVerificationResult(true, false, "commands-login-success"));
 
@@ -129,7 +129,7 @@ class AuthControllerTest {
     void login_passwordResetMeanwhile() {
         var ctx = createContext("uuid-reset", true);
         ctx.data().password = "stored-hash";
-        when(adminAuthService.hasDiscordAdminAccess(ctx.data())).thenReturn(true);
+        when(adminAuthService.mayLogInAsStaff(ctx.data())).thenReturn(true);
         when(adminAuthService.checkPassword(argThat(sameIdentityAs(ctx.data())), eq("secret123")))
                 .thenAnswer(_ -> {
                     ctx.data().password = null;
@@ -148,10 +148,32 @@ class AuthControllerTest {
     }
 
     @Test
+    @DisplayName("losing the last staff role while the password is checked refuses the login and keeps no new password")
+    void login_staffRoleRemovedMeanwhile() {
+        var ctx = createContext("uuid-demoted", true);
+        when(adminAuthService.mayLogInAsStaff(ctx.data())).thenReturn(true, false);
+        when(adminAuthService.checkPassword(argThat(sameIdentityAs(ctx.data())), eq("newPassword123")))
+                .thenReturn(new PasswordVerificationResult(true, true, "commands-login-admin-password-created"));
+
+        controller.login(ctx.sender(), "newPassword123");
+
+        org.testcontainers.shaded.org.awaitility.Awaitility.await()
+                .atMost(2, TimeUnit.SECONDS)
+                .untilAsserted(() -> {
+                    verify(ctx.local()).send(eq("commands-login-request-approval-discord"), any());
+                    assertThat(controller.isInFlight("uuid-demoted")).isFalse();
+                });
+        verify(adminAuthService, never()).grantAdmin(any(), any());
+        verify(ctx.local(), never()).send(eq("commands-login-admin-password-created"), any());
+        verify(sessionService, never()).persistData(any());
+        assertThat(ctx.data().password).isNullOrEmpty();
+    }
+
+    @Test
     @DisplayName("first-time login creates password and sends password-created key")
     void login_firstTimePasswordCreated() {
         var ctx = createContext("uuid-create", true);
-        when(adminAuthService.hasDiscordAdminAccess(ctx.data())).thenReturn(true);
+        when(adminAuthService.mayLogInAsStaff(ctx.data())).thenReturn(true);
         when(adminAuthService.checkPassword(argThat(sameIdentityAs(ctx.data())), eq("newPassword123")))
                 .thenReturn(new PasswordVerificationResult(true, true, "commands-login-admin-password-created"));
 
@@ -171,7 +193,7 @@ class AuthControllerTest {
     @DisplayName("wrong password increments failure counter, does not grant admin, and sends error")
     void login_wrongPassword() {
         var ctx = createContext("uuid-wrong", true);
-        when(adminAuthService.hasDiscordAdminAccess(ctx.data())).thenReturn(true);
+        when(adminAuthService.mayLogInAsStaff(ctx.data())).thenReturn(true);
         when(adminAuthService.checkPassword(argThat(sameIdentityAs(ctx.data())), eq("wrongPassword123")))
                 .thenReturn(new PasswordVerificationResult(false, false, "error-wrong-admin-password"));
 
@@ -192,7 +214,7 @@ class AuthControllerTest {
     @DisplayName("concurrent login submissions for same player are rejected with in-flight message")
     void login_concurrentSubmissions_rejectsSecond() throws Exception {
         var ctx = createContext("uuid-concurrent", true);
-        when(adminAuthService.hasDiscordAdminAccess(ctx.data())).thenReturn(true);
+        when(adminAuthService.mayLogInAsStaff(ctx.data())).thenReturn(true);
 
         CountDownLatch holdBackground = new CountDownLatch(1);
         CountDownLatch backgroundStarted = new CountDownLatch(1);
@@ -225,7 +247,7 @@ class AuthControllerTest {
     @DisplayName("anti-brute-force gate locks out after N failures and skips BCrypt entirely")
     void login_bruteForceLockout() {
         var ctx = createContext("uuid-brute", true);
-        when(adminAuthService.hasDiscordAdminAccess(ctx.data())).thenReturn(true);
+        when(adminAuthService.mayLogInAsStaff(ctx.data())).thenReturn(true);
         when(adminAuthService.checkPassword(argThat(sameIdentityAs(ctx.data())), eq("badPassword1")))
                 .thenReturn(new PasswordVerificationResult(false, false, "error-wrong-admin-password"));
 
@@ -254,7 +276,7 @@ class AuthControllerTest {
     @DisplayName("player disconnect while verifying does not grant admin or touch player")
     void login_disconnectedPlayer_doesNotGrantAdmin() throws Exception {
         var ctx = createContext("uuid-disconnect", true);
-        when(adminAuthService.hasDiscordAdminAccess(ctx.data())).thenReturn(true);
+        when(adminAuthService.mayLogInAsStaff(ctx.data())).thenReturn(true);
 
         CountDownLatch holdBackground = new CountDownLatch(1);
         CountDownLatch started = new CountDownLatch(1);
@@ -299,7 +321,7 @@ class AuthControllerTest {
     @DisplayName("player without discord admin role rejected immediately before background execution")
     void login_noDiscordAdminRole() {
         var ctx = createContext("uuid-nodiscord", true);
-        when(adminAuthService.hasDiscordAdminAccess(ctx.data())).thenReturn(false);
+        when(adminAuthService.mayLogInAsStaff(ctx.data())).thenReturn(false);
 
         controller.login(ctx.sender(), "validPassword123");
 
@@ -317,7 +339,7 @@ class AuthControllerTest {
         // swapped while the hash is being computed the new password is written to an object
         // nothing reads any more.
         TestContext context = createContext("uuid-1", true);
-        when(adminAuthService.hasDiscordAdminAccess(any())).thenReturn(true);
+        when(adminAuthService.mayLogInAsStaff(any())).thenReturn(true);
 
         AtomicReference<PlayerData> passedToStorage = new AtomicReference<>();
         CountDownLatch reachedStorage = new CountDownLatch(1);
@@ -341,7 +363,7 @@ class AuthControllerTest {
     @DisplayName("a newly created password is copied onto the live session")
     void login_appliesANewlyCreatedPasswordToTheLiveSession() throws InterruptedException {
         TestContext context = createContext("uuid-1", true);
-        when(adminAuthService.hasDiscordAdminAccess(any())).thenReturn(true);
+        when(adminAuthService.mayLogInAsStaff(any())).thenReturn(true);
 
         CountDownLatch applied = new CountDownLatch(1);
         when(sessionService.persistData(any())).thenAnswer(invocation -> {

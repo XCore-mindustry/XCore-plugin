@@ -59,10 +59,6 @@ public class PermissionSessions {
         this.main = main;
     }
 
-    public boolean enabled() {
-        return roles.enabled();
-    }
-
     /**
      * Reads what a joining player is granted. I/O; a failure is the caller's to handle, since a
      * player let in without their grants would be let in without their denials too.
@@ -70,15 +66,12 @@ public class PermissionSessions {
      * @param nativeAdmin whether the game's admin list vouches for this connection
      */
     public PermissionSet load(String uuid, boolean nativeAdmin) {
-        if (!roles.enabled()) {
-            return PermissionSet.EMPTY;
-        }
         return compile(store.find(uuid), nativeAdmin);
     }
 
     /** Whether this server takes the game's admin list at its word. */
     public boolean trustsNativeAdmin(boolean nativeAdmin) {
-        return roles.enabled() && roles.trustNativeAdmins() && nativeAdmin;
+        return roles.trustNativeAdmins() && nativeAdmin;
     }
 
     /**
@@ -87,7 +80,7 @@ public class PermissionSessions {
      * counts as logged in.
      */
     public void attach(Session session, PermissionSet set, boolean nativeAdmin) {
-        if (!roles.enabled() || session == null) {
+        if (session == null) {
             return;
         }
         session.permissionSet = set;
@@ -102,7 +95,7 @@ public class PermissionSessions {
      * @param revision the revision the change produced
      */
     public void onChanged(String uuid, long revision) {
-        if (!roles.enabled() || uuid == null) {
+        if (uuid == null) {
             return;
         }
         main.execute(() -> {
@@ -134,9 +127,6 @@ public class PermissionSessions {
      * to the storage executor.
      */
     public void refreshAll() {
-        if (!roles.enabled()) {
-            return;
-        }
         List<String> uuids = new ArrayList<>();
         List<Boolean> nativeAdmins = new ArrayList<>();
         for (Session session : sessions.get().getAllCachedSnapshot()) {
@@ -175,9 +165,6 @@ public class PermissionSessions {
      * so this cannot wait for the store to answer.
      */
     public void reapplyAll() {
-        if (!roles.enabled()) {
-            return;
-        }
         for (Session session : sessions.get().getAllCachedSnapshot()) {
             staffAccess.apply(session);
         }
