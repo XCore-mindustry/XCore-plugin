@@ -236,14 +236,14 @@ private-message-compose-body-message = Zadej soukromou zprávu pro [accent]{ $pi
 # ==============================================================================
 # Authentication & Admin Access
 # ==============================================================================
-commands-login-description = Aktivuje admin práva, pokud tvůj propojený Discord účet už má přístup.
+commands-login-description = Aktivuje admin práva, pokud ti některá z tvých rolí na tomto serveru umožňuje přihlášení jako staff.
 commands-login-incorrect-password = [scarlet]⚠ Špatné heslo!
 commands-login-success = [green]Admin práva udělena.
 commands-login-confirmed = [green]Admin přístup přes Discord potvrzen.
 commands-login-admin-password-created =
     [green]Admin heslo vytvořeno.
     [red]Nezapomeň své heslo! Pokud ho zapomeneš, budeš muset požádat hlavního administrátora o reset.
-commands-login-request-approval-discord = [accent]Váš účet nemá přístup administrátora Discordu. Získejte roli administrátora na Discordu a zkuste to znovu.
+commands-login-request-approval-discord = [accent]Žádná z vašich rolí na tomto serveru neumožňuje přihlášení jako staff. Požádejte vedení o roli a zkuste to znovu.
 commands-login-verifying = [lightgray]Ověřování hesla správce...
 commands-login-already-processing = [scarlet]⚠ Požadavek na přihlášení již probíhá. Počkejte prosím.
 commands-login-rate-limited = [scarlet]⚠ Příliš mnoho neúspěšných pokusů o přihlášení. Zkuste to prosím později.

@@ -234,14 +234,14 @@ private-message-compose-body-message = Escribe un mensaje privado para [accent]{
 # ==============================================================================
 # Authentication & Admin Access
 # ==============================================================================
-commands-login-description = Activa los permisos de admin si tu cuenta de Discord vinculada ya tiene acceso.
+commands-login-description = Activa los permisos de admin si alguno de tus roles en este servidor permite iniciar sesión como staff.
 commands-login-incorrect-password = [scarlet]⚠ ¡Contraseña incorrecta!
 commands-login-success = [green]Permisos de admin concedidos.
 commands-login-confirmed = [green]Acceso de admin en Discord confirmado.
 commands-login-admin-password-created =
     [green]Contraseña de admin creada.
     [red]¡No olvides tu contraseña! Si la olvidas, tendrás que pedir a un administrador general que la restablezca.
-commands-login-request-approval-discord = [accent]Tu cuenta no tiene acceso de administrador en Discord. Obtén el rol de administrador en Discord e inténtalo de nuevo.
+commands-login-request-approval-discord = [accent]Ninguno de tus roles en este servidor permite iniciar sesión como staff. Pide un rol al staff e inténtalo de nuevo.
 commands-login-verifying = [lightgray]Verificando contraseña de administrador...
 commands-login-already-processing = [scarlet]⚠ Ya se está procesando una solicitud de inicio de sesión. Por favor, espere.
 commands-login-rate-limited = [scarlet]⚠ Demasiados intentos fallidos de inicio de sesión. Por favor, espere antes de intentarlo de nuevo.

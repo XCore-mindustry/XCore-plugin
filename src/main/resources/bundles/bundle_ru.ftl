@@ -238,14 +238,14 @@ private-message-compose-body-message = Введите личное сообще�
 # ==============================================================================
 # Authentication & Admin Access
 # ==============================================================================
-commands-login-description = Активировать права админа, если ваш Discord аккаунт уже имеет доступ.
+commands-login-description = Активировать права админа, если одна из ваших ролей на этом сервере даёт вход как стафф.
 commands-login-incorrect-password = [scarlet]⚠ Некорректный пароль!
 commands-login-success = [green]Права админа получены
 commands-login-confirmed = [green]Discord-доступ администратора подтверждён
 commands-login-admin-password-created =
     [green]Пароль админа создан
     [red]Не забудьте свой пароль! Если Вы его забудете, Вам придется обратиться к главному администратору с просьбой сбросить его.
-commands-login-request-approval-discord = [accent]У вашего аккаунта нет Discord-доступа администратора. Получите admin role в Discord и попробуйте снова.
+commands-login-request-approval-discord = [accent]Ни одна из ваших ролей на этом сервере не даёт вход как стафф. Попросите роль у администрации и попробуйте снова.
 commands-login-verifying = [lightgray]Проверка пароля администратора...
 commands-login-already-processing = [scarlet]⚠ Запрос на вход уже обрабатывается. Подождите.
 commands-login-rate-limited = [scarlet]⚠ Слишком много неудачных попыток входа. Подождите перед повторной попыткой.

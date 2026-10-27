@@ -148,6 +148,28 @@ class AuthControllerTest {
     }
 
     @Test
+    @DisplayName("losing the last staff role while the password is checked refuses the login and keeps no new password")
+    void login_staffRoleRemovedMeanwhile() {
+        var ctx = createContext("uuid-demoted", true);
+        when(adminAuthService.mayLogInAsStaff(ctx.data())).thenReturn(true, false);
+        when(adminAuthService.checkPassword(argThat(sameIdentityAs(ctx.data())), eq("newPassword123")))
+                .thenReturn(new PasswordVerificationResult(true, true, "commands-login-admin-password-created"));
+
+        controller.login(ctx.sender(), "newPassword123");
+
+        org.testcontainers.shaded.org.awaitility.Awaitility.await()
+                .atMost(2, TimeUnit.SECONDS)
+                .untilAsserted(() -> {
+                    verify(ctx.local()).send(eq("commands-login-request-approval-discord"), any());
+                    assertThat(controller.isInFlight("uuid-demoted")).isFalse();
+                });
+        verify(adminAuthService, never()).grantAdmin(any(), any());
+        verify(ctx.local(), never()).send(eq("commands-login-admin-password-created"), any());
+        verify(sessionService, never()).persistData(any());
+        assertThat(ctx.data().password).isNullOrEmpty();
+    }
+
+    @Test
     @DisplayName("first-time login creates password and sends password-created key")
     void login_firstTimePasswordCreated() {
         var ctx = createContext("uuid-create", true);

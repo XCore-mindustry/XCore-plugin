@@ -181,6 +181,13 @@ public class AuthController implements CloudClientController {
                                     return;
                                 }
 
+                                // The last staff role may have been taken away while the
+                                // password was being checked.
+                                if (result.success() && !adminAuthService.mayLogInAsStaff(session.data)) {
+                                    local.send("commands-login-request-approval-discord", args());
+                                    return;
+                                }
+
                                 if (result.success()) {
                                     tracker.reset();
                                     bruteForceMap.remove(uuid);
