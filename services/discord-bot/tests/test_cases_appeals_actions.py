@@ -106,7 +106,7 @@ async def test_unban_replacement_between_lookup_and_delete_real_mongo_guard(
 
 @pytest.mark.parametrize("verb", ["unban", "shorten"])
 @pytest.mark.parametrize("mode", ["id", "name"])
-async def test_fresh_database_issuer_change_reauthorizes_claimed_case(verb, mode):
+async def test_fresh_database_issuer_change_still_allows_the_issuer(verb, mode):
     service, db, bot, *_ = await appeal_core(
         players=[
             player_row(),
@@ -117,16 +117,17 @@ async def test_fresh_database_issuer_change_reauthorizes_claimed_case(verb, mode
     db["bans"].docs[0].update(
         admin_discord_id="101" if mode == "id" else None, admin_name="Staff 101"
     )
-    with pytest.raises(AccessDenied):
-        await act(
-            service,
-            case,
-            verb,
-            values={"confirmed": "yes", "duration": "1h"},
-            user=member(101, (10, 20)),
-        )
-    assert not db["moderation_audit"].docs
-    assert (await service.get(case.number)).status == CaseStatus.OPEN
+    await act(
+        service,
+        case,
+        verb,
+        values={"confirmed": "yes", "duration": "1h"},
+        user=member(101, (10,)),
+    )
+    assert db["moderation_audit"].docs[0]["actor"]["discord_id"] == "101"
+    current = await service.get(case.number)
+    assert current.status == CaseStatus.RESOLVED
+    assert current.payload["ban_snapshot"]["admin_name"] == "Staff 101"
 
 
 @pytest.mark.parametrize(
@@ -401,7 +402,7 @@ async def test_shorten_rechecks_the_expiry_right_before_the_write(monkeypatch):
 
 
 @pytest.mark.parametrize("verb", ["unban", "shorten"])
-@pytest.mark.parametrize("change", ["issuer", "subject", "replacement"])
+@pytest.mark.parametrize("change", ["role", "subject", "replacement"])
 async def test_helper_fresh_read_reauthorizes_after_flow_lookup(
     verb, change, monkeypatch
 ):
@@ -409,20 +410,26 @@ async def test_helper_fresh_read_reauthorizes_after_flow_lookup(
     case = await opened(service, bot)
     name = "perform_unban" if verb == "unban" else "perform_shorten_ban"
     helper = getattr(appeals, name)
+    reviewer = member()
 
     async def changed(*args, **kwargs):
-        db["bans"].docs[0].update(
-            {"admin_discord_id": "101"}
-            if change == "issuer"
-            else {"uuid": "wrong-target"}
-            if change == "subject"
-            else {"ban_id": 202}
-        )
+        if change == "role":
+            reviewer.roles = []
+        else:
+            db["bans"].docs[0].update(
+                {"uuid": "wrong-target"} if change == "subject" else {"ban_id": 202}
+            )
         return await helper(*args, **kwargs)
 
     monkeypatch.setattr(appeals, name, changed)
-    with pytest.raises(AccessDenied if change == "issuer" else ActionFailed):
-        await act(service, case, verb, values={"confirmed": "yes", "duration": "1h"})
+    with pytest.raises(AccessDenied if change == "role" else ActionFailed):
+        await act(
+            service,
+            case,
+            verb,
+            values={"confirmed": "yes", "duration": "1h"},
+            user=reviewer,
+        )
     assert (
         not db["moderation_audit"].docs and not await bus.pardons() and not log.embeds
     )

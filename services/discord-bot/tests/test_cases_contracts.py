@@ -86,7 +86,7 @@ async def test_merged_hook_retries_and_co_reporter_cooldown_is_enforced():
         )
 
 
-async def test_issuer_linked_names_are_loaded_by_service_without_senior_override():
+async def test_linked_ban_issuer_can_take_the_appeal():
     flow = replace(DUMMY_FLOW, kind=CaseKind.APPEAL)
     service, db, _ = await core(flow=flow)
     case = await service.open(
@@ -100,8 +100,9 @@ async def test_issuer_linked_names_are_loaded_by_service_without_senior_override
     await db["players"].insert_one(
         {"uuid": "issuer", "pid": 3, "nickname": "Issuer", "discord_id": "101"}
     )
-    with pytest.raises(AccessDenied):
-        await service.take(case.number, member(101, (10, 20)))
+    taken = await service.take(case.number, member(101, (10,)))
+    assert taken.status == CaseStatus.TAKEN
+    assert taken.assignee["discord_id"] == "101"
 
 
 async def test_cog_commands_defer_check_roles_and_keep_complaints_private():

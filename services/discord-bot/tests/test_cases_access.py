@@ -102,24 +102,22 @@ def test_report_opener_co_opener_and_subject_cannot_act(discord_id, verb):
 @pytest.mark.parametrize(
     "verb", ["take", "unban", "shorten", "reject", "history", "release", "reopen"]
 )
-def test_appeal_issuer_blocked_even_if_senior(verb):
+def test_appeal_issuer_can_act_with_the_required_role(verb):
     appeal = case(
         CaseKind.APPEAL,
         payload={"ban_snapshot": {"admin_discord_id": "101", "admin_name": "Issuer"}},
     )
+    assert not conflicted(appeal, "101")
+    check_access(settings(), member(101, (10, 20)), appeal, verb)
     with pytest.raises(AccessDenied):
-        check_access(settings(), member(101, (10, 20)), appeal, verb)
+        check_access(settings(), member(101, ()), appeal, verb)
     check_access(settings(), member(102, (10, 20)), appeal, verb)
 
 
-def test_appeal_name_match_unknown_issuer_and_complaint():
+def test_unknown_appeal_issuer_does_not_conflict_and_complaint_subject_still_does():
     appeal = case(CaseKind.APPEAL, payload={"ban_snapshot": {"admin_name": " Issuer "}})
-    assert conflicted(appeal, "101", ["issuer"])
-    with pytest.raises(AccessDenied):
-        check_access(
-            settings(), member(101, (10, 20)), appeal, "reject", linked_names=["issuer"]
-        )
     assert not conflicted(appeal, "101")
+    check_access(settings(), member(101, (10,)), appeal, "reject")
     unknown = replace(appeal, payload={"ban_snapshot": {}}, flags=("issuer_unknown",))
     check_access(settings(), member(101, (10,)), unknown, "take")
     complaint = case(CaseKind.COMPLAINT)

@@ -130,6 +130,9 @@ async def cmd_stats(
             return
         player, other_accounts = accounts[0], accounts[1:]
 
+    show_discord = is_admin_viewer or str(player.discord_id or "") == str(
+        interaction.user.id
+    )
     uuid = player.uuid or ""
     embed = build_stats_embed(
         StatsView(
@@ -141,8 +144,7 @@ async def cmd_stats(
             ),
             games=await _loaded(_game_stats(bot, uuid), "game stats", player),
             staff=await _staff_notes(bot, player) if is_admin_viewer else None,
-            show_discord=is_admin_viewer
-            or str(player.discord_id or "") == str(interaction.user.id),
+            show_discord=show_discord,
             avatar_url=_avatar_url(interaction, player, member),
             other_accounts=other_accounts,
             locale=locale,
@@ -150,7 +152,7 @@ async def cmd_stats(
     )
 
     if not is_admin_viewer:
-        await interaction.response.send_message(embed=embed)
+        await interaction.response.send_message(embed=embed, ephemeral=show_discord)
         return
 
     view = StatsActionsView(
@@ -167,7 +169,7 @@ async def cmd_stats(
         ),
         locale=locale,
     )
-    await interaction.response.send_message(embed=embed, view=view)
+    await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
     view.message = await interaction.original_response()
 
 

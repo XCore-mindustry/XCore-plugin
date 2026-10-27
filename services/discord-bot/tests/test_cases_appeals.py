@@ -19,7 +19,6 @@ from cases_fakes import NOW, Interaction, member
 from xcore_discord_bot.cases.flows import appeals
 from xcore_discord_bot.cases.flows.appeals import APPEAL_FLOW, parse_reference
 from xcore_discord_bot.cases.model import (
-    AccessDenied,
     CaseKind,
     CaseStatus,
 )
@@ -357,7 +356,7 @@ async def test_unverified_privacy_modal_result_threads_dm_outcomes(
 @pytest.mark.parametrize(
     "verb", ["take", "release", "unban", "shorten", "history", "reject"]
 )
-async def test_issuer_blocked_every_action_head_admin_no_override(issuer_mode, verb):
+async def test_ban_issuer_can_review_the_appeal(issuer_mode, verb):
     players = [player_row(), player_row(2, discord_id="99")]
     players[1]["nickname"] = "Issuer"
     service, db, bot, *_ = await appeal_core(
@@ -365,27 +364,46 @@ async def test_issuer_blocked_every_action_head_admin_no_override(issuer_mode, v
         bans=[ban_row(admin_discord_id="99" if issuer_mode == "id" else None)],
     )
     case = await opened(service, bot)
-    with pytest.raises(AccessDenied):
-        await act(
-            service,
-            case,
-            verb,
-            user=member(99, (10, 20)),
-            values={"confirmed": "yes", "duration": "1h", "reason_text": "No"},
-        )
-    assert (await service.get(case.number)).status == CaseStatus.OPEN
-    assert not db["moderation_audit"].docs and len(db["bans"].docs) == 1
+    reviewer = member(99, (10,))
+    if verb == "release":
+        await service.take(case.number, reviewer)
+    await act(
+        service,
+        case,
+        verb,
+        user=reviewer,
+        values={"confirmed": "yes", "duration": "1h", "reason_text": "No"},
+    )
+    current = await service.get(case.number)
+    assert (
+        current.status
+        == {
+            "take": CaseStatus.TAKEN,
+            "release": CaseStatus.OPEN,
+            "history": CaseStatus.OPEN,
+            "unban": CaseStatus.RESOLVED,
+            "shorten": CaseStatus.RESOLVED,
+            "reject": CaseStatus.REJECTED,
+        }[verb]
+    )
+    if verb in {"unban", "shorten"}:
+        assert current.resolution.by_discord_id == "99"
+        assert db["moderation_audit"].docs[0]["actor"]["discord_id"] == "99"
+    assert len(db["bans"].docs) == (0 if verb == "unban" else 1)
 
 
 @pytest.mark.parametrize("verb", ["shorten", "reject"])
 @pytest.mark.parametrize("issuer_mode", ["id", "name"])
-async def test_issuer_blocked_modal_submission_after_role_recheck(verb, issuer_mode):
+@pytest.mark.parametrize("role_lost", [False, True])
+async def test_issuer_modal_submission_still_rechecks_role(
+    verb, issuer_mode, role_lost
+):
     service, db, bot, *_ = await appeal_core(
         players=[player_row(), {**player_row(2, discord_id="99"), "nickname": "Issuer"}]
     )
     case = await opened(service, bot)
     interaction = Interaction(bot, user=member(99, (10, 20)))
-    # Open form before a change of issuer; submission must use the current case snapshot.
+    # A change of issuer does not block review, but losing the admin role does.
     db["bans"].docs[0]["admin_discord_id"] = "88"
     await service.checkpoint(
         case.number, set_fields={"payload.ban_snapshot.admin_discord_id": "88"}
@@ -400,18 +418,26 @@ async def test_issuer_blocked_modal_submission_after_role_recheck(verb, issuer_m
             else None
         },
     )
+    db["bans"].docs[0]["admin_discord_id"] = "99" if issuer_mode == "id" else None
     modal = interaction.events[0][1]
     for item in modal.inputs.values():
         item._value = "1h" if verb == "shorten" else "Reject reason"
-    submitted = Interaction(bot, user=member(99, (10, 20)), id=901)
+    submitted = Interaction(bot, user=member(99, () if role_lost else (10,)), id=901)
     await modal.on_submit(submitted)
-    assert submitted.events[0][0] == "defer" and submitted.events[-1][1] == t(
-        "en", "error-not-allowed"
-    )
-    assert not db["moderation_audit"].docs
+    assert submitted.events[0][0] == "defer"
+    current = await service.get(case.number)
+    if role_lost:
+        assert submitted.events[-1][1] == t("en", "error-not-allowed")
+        assert current.status == CaseStatus.OPEN
+        assert not db["moderation_audit"].docs
+    else:
+        assert current.status == (
+            CaseStatus.RESOLVED if verb == "shorten" else CaseStatus.REJECTED
+        )
+        assert current.resolution.by_discord_id == "99"
 
 
-async def test_unknown_issuer_keeps_name_conflict_and_staff_card_actual_dates_sanitized():
+async def test_unknown_issuer_and_staff_card_actual_dates_sanitized():
     service, _, bot, *_ = await appeal_core(
         bans=[ban_row(admin_discord_id=None, issued_at=NOW - timedelta(days=1))]
     )
@@ -433,6 +459,9 @@ async def test_unknown_issuer_keeps_name_conflict_and_staff_card_actual_dates_sa
         and str(int((NOW - timedelta(days=1)).timestamp())) in text
     )
     assert case.payload["ban_snapshot"]["admin_name"] == "Issuer"
+    assert all(
+        field["name"] != "Excluded issuer (all actions)" for field in card["fields"]
+    )
     await act(service, case, "history")
 
 

@@ -166,6 +166,7 @@ async def test_cmd_stats_attaches_actions_view() -> None:
     assert len(interaction.response.sent) == 1
     sent = interaction.response.sent[0]
     assert sent["embed"] is not None
+    assert sent["ephemeral"] is True
     assert isinstance(sent["view"], StatsActionsView)
     assert sent["view"].message is interaction._message
     assert len(sent["view"].children) == 4
@@ -201,6 +202,7 @@ async def test_cmd_stats_hides_actions_for_non_admin() -> None:
     sent = interaction.response.sent[0]
     assert sent["embed"] is not None
     assert sent["view"] is None
+    assert sent["ephemeral"] is False
     assert "🔒 Staff notes" not in {field.name for field in sent["embed"].fields}
 
 
@@ -215,10 +217,31 @@ async def test_cmd_stats_without_a_player_opens_the_linked_account() -> None:
     )
     await cmd_stats(bot, cast(Any, interaction))
 
-    embed = interaction.response.sent[0]["embed"]
+    sent = interaction.response.sent[0]
+    assert sent["ephemeral"] is True
+    embed = sent["embed"]
     # the most played of the linked accounts, the other one named below it
     assert embed.title == "Main"
     assert embed.footer.text == "Also linked: #-4 Alt"
+
+
+@pytest.mark.asyncio
+async def test_cmd_stats_own_profile_by_id_is_private() -> None:
+    bot, db = await _stats_bot()
+    await db["players"].update_one({"pid": 123}, {"$set": {"discord_id": "77"}})
+    interaction = _Interaction(
+        id=13,
+        user=_User(id=77, display_name="player", roles=[]),
+        client=bot,
+    )
+
+    await cmd_stats(bot, cast(Any, interaction), 123)
+
+    sent = interaction.response.sent[0]
+    assert sent["ephemeral"] is True
+    fields = {field.name: field.value for field in sent["embed"].fields}
+    assert fields["🔗 Discord"] == "<@77>"
+    assert "🔒 Staff notes" not in fields
 
 
 @pytest.mark.asyncio

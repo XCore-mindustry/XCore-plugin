@@ -56,7 +56,6 @@ def check_opening(settings: Settings, member: object) -> None:
 def conflicted(
     case: Case,
     discord_id: str,
-    linked_names: Iterable[str] = (),
     linked_uuids: Iterable[str] = (),
 ) -> bool:
     def matches(party) -> bool:
@@ -79,13 +78,6 @@ def conflicted(
         return matches(case.subject)
     if case.kind == CaseKind.MAP:
         return matches(case.opener)
-    if case.kind == CaseKind.APPEAL:
-        ban = case.payload.get("ban_snapshot", {})
-        issuer = ban.get("admin_discord_id")
-        if issuer:
-            return str(issuer) == discord_id
-        name = str(ban.get("admin_name") or "").strip().casefold()
-        return bool(name) and name in {n.strip().casefold() for n in linked_names}
     return False
 
 
@@ -95,14 +87,13 @@ def check_access(
     case: Case,
     verb: str,
     *,
-    linked_names: Iterable[str] = (),
     linked_uuids: Iterable[str] = (),
 ) -> None:
     discord_id = str(getattr(member, "id", ""))
     if not discord_id or not has_any_role(member, roles_for(settings, case.kind, verb)):
         raise AccessDenied()
     # There is no senior override for a conflict, including read buttons and commands.
-    if conflicted(case, discord_id, linked_names, linked_uuids):
+    if conflicted(case, discord_id, linked_uuids):
         raise AccessDenied()
     if (
         verb == "release"

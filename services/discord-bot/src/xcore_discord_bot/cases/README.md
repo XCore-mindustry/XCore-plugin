@@ -170,8 +170,8 @@ Action(
   button id
   `xc:1:case:<verb>:<number>`. Which role may press it comes from `access.roles_for(settings,
   kind, verb)`: complaint verbs are senior-only, badge verbs need a general admin, map verbs a
-  map reviewer, everything else an admin. The conflict-of-interest rules (design spec 4.6)
-  apply to every verb.
+  map reviewer, everything else an admin. Conflicts of interest apply to every verb;
+  issuing a ban does not prevent an administrator from reviewing its appeal.
 - `fields` — the form the button opens first: a tuple of up to five `FormField`, or
   `(case, locale) -> fields` when the form depends on the case. The builder runs before the
   press is acknowledged: no I/O in it.

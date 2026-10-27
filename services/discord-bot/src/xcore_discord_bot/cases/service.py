@@ -114,24 +114,15 @@ class CaseService:
 
     async def authorize(self, case: Case, member: Any, verb: str) -> None:
         self.registry.require(case.kind)
-        linked_names: tuple[str, ...] = ()
         linked_uuids: tuple[str, ...] = ()
         if case.kind == CaseKind.REPORT and self.player_store is not None:
             players = await self.player_store.find_players_by_discord_id(str(member.id))
             linked_uuids = tuple(p.uuid for p in players if p.uuid)
-        if (
-            case.kind == CaseKind.APPEAL
-            and not case.payload.get("ban_snapshot", {}).get("admin_discord_id")
-            and self.player_store is not None
-        ):
-            players = await self.player_store.find_players_by_discord_id(str(member.id))
-            linked_names = tuple(p.nickname or p.username or "" for p in players)
         check_access(
             self.settings,
             member,
             case,
             verb,
-            linked_names=linked_names,
             linked_uuids=linked_uuids,
         )
 

@@ -212,8 +212,7 @@ async def _snapshot(service, ban, locale) -> dict:
     current = _row_ban(raw)
     if not _active(current, service.now()) or not _same_subject(ban, current):
         raise ActionFailed(t(locale, "appeals-stale"))
-    # This read can observe another issuer update after lookup. Authorize the actual
-    # snapshot, rather than silently retaining the issuer from an earlier DTO read.
+    # Keep the snapshot's issuer details current if the ban changed after lookup.
     ban = current
     snapshot = {
         "ban_id": ban.ban_id,
@@ -504,13 +503,6 @@ def card_builder(case, locale):
         value=_previous_text(case.evidence.get("earlier_appeals", []), locale),
         inline=False,
     )
-    if snapshot.get("admin_discord_id") or snapshot.get("admin_name"):
-        embed.add_field(
-            name=t(locale, "appeals-conflict"),
-            value=safe_text(snapshot.get("admin_name"), secrets=secrets)
-            or t(locale, "cases-unknown"),
-            inline=False,
-        )
     for flag in ("unverified_identity", "issuer_unknown"):
         if flag in case.flags:
             embed.add_field(
@@ -549,7 +541,7 @@ async def _current(context, claimed):
         )
     ):
         raise ActionFailed(t(context.locale, "appeals-stale"))
-    # Keep the appeal's expected ID/subject intact; refresh issuer before reauthorizing.
+    # Keep the appeal's expected ID/subject intact; refresh the snapshot and recheck access.
     fresh = replace(
         claimed,
         payload={
@@ -572,8 +564,8 @@ async def _current(context, claimed):
 def _still_current(context, claimed, expiry: datetime | None = None):
     """The check a staff action runs right before it changes the appealed ban.
 
-    Re-reads the ban, so the subject and issuer are validated and authorized again just
-    before the write. The write itself keeps the ban-ID guard; this is not an atomic
+    Re-reads the ban and rechecks its subject and the reviewer's access just before
+    the write. The write itself keeps the ban-ID guard; this is not an atomic
     read-and-write against concurrent external editors.
     """
 
@@ -659,7 +651,6 @@ async def shorten(context):
 
 
 async def history(context):
-    # Stored issuer conflict already checked by core; current issuer is checked when present.
     current = await context.service.punishments.find_ban_by_id(
         context.case.payload["ban_id"]
     )
