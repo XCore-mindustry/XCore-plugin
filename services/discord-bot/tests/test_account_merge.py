@@ -139,6 +139,7 @@ TARGET_DOC: dict[str, Any] = {
     "pid": 20,
     "uuid": "target-uuid",
     "nickname": "TargetUser",
+    "last_ip": "5.6.7.8",
     "total_play_time": 50,
     "pvp_rating": 1600,
     "hexed_points": 5,
@@ -465,6 +466,7 @@ async def test_merge_player_accounts_logic() -> None:
     assert audit_doc["audit_id"] == result.audit_id
     assert audit_doc["action"] == "MERGE"
     assert audit_doc["target"]["pid"] == 20
+    assert audit_doc["target"]["ip_snapshot"] == "5.6.7.8"
     merge_extra = audit_doc["details"]["extra"]["merge"]
     assert merge_extra["source_pid"] == 10
     assert merge_extra["surviving_pid"] == 20

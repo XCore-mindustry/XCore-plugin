@@ -62,7 +62,7 @@ async def _action_bot():
             "pid": PLAYER.pid,
             "uuid": PLAYER.uuid,
             "nickname": PLAYER.nickname,
-            "ip": PLAYER.ip,
+            "last_ip": PLAYER.ip,
             "unlocked_badges": [],
             "active_badge": None,
         }
@@ -225,7 +225,7 @@ async def test_perform_sanctions_reject_non_positive_duration(action, duration) 
     "player",
     [
         replace(PLAYER, uuid=None),
-        replace(PLAYER, ip=None, last_ip="5.6.7.8", uuid="  uuid-42  "),
+        replace(PLAYER, ip="  5.6.7.8  ", uuid="  uuid-42  "),
     ],
 )
 async def test_perform_ban_accepts_ip_only_and_normalizes_identifiers(player) -> None:

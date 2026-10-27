@@ -5,25 +5,7 @@ from datetime import UTC, datetime
 import pytest
 from pydantic import ValidationError
 
-from xcore_discord_bot.mongo_store import BanDoc, MuteDoc, PlayerDoc
-
-
-def test_player_doc_allows_extra_fields_and_is_frozen() -> None:
-    doc = PlayerDoc.model_validate(
-        {
-            "pid": 1,
-            "uuid": "u-1",
-            "nickname": "Nick",
-            "discord_id": "123",
-            "custom_field": "value",
-        }
-    )
-
-    dumped = doc.model_dump(mode="python")
-    assert dumped["custom_field"] == "value"
-
-    with pytest.raises(ValidationError):
-        doc.nickname = "Changed"
+from xcore_discord_bot.mongo_store import BanDoc, MuteDoc
 
 
 def test_ban_doc_and_mute_doc_frozen() -> None:

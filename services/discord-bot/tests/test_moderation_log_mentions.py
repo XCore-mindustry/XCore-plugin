@@ -63,7 +63,7 @@ async def test_post_ban_log_for_a_pid_only_event_numbers_the_players_ban() -> No
     bot, channel = await _bot(bans_channel_id=10)
     db = bot.store.database
     await db["players"].insert_one(
-        {"pid": 42, "uuid": "uuid-42", "ip": "1.2.3.4", "nickname": "Target"}
+        {"pid": 42, "uuid": "uuid-42", "last_ip": "1.2.3.4", "nickname": "Target"}
     )
     await db["bans"].insert_one(
         {

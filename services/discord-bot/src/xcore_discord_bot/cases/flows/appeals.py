@@ -189,9 +189,7 @@ async def _lookup(service, reference: str) -> tuple[BanRecord | None, str]:
     player = await service.player_store.find_player_by_pid(number)
     if not _player_valid(player, pid=number):
         return None, "pid"
-    ban = await service.punishments.find_ban(
-        uuid=player.uuid, ip=player.ip or player.last_ip
-    )
+    ban = await service.punishments.find_ban(uuid=player.uuid, ip=player.ip)
     return await _checked(service, ban), "pid"
 
 
@@ -201,7 +199,7 @@ def _secrets(ban, linked=()):
         for v in (
             ban.uuid,
             ban.ip,
-            *(v for p in linked for v in (p.uuid, p.ip, p.last_ip)),
+            *(v for p in linked for v in (p.uuid, p.ip)),
         )
         if v
     )
@@ -446,9 +444,7 @@ async def panel_handler(context: PanelContext):
     for player in await _linked(context.service, str(context.interaction.user.id)):
         ban = await _checked(
             context.service,
-            await context.service.punishments.find_ban(
-                uuid=player.uuid, ip=player.ip or player.last_ip
-            ),
+            await context.service.punishments.find_ban(uuid=player.uuid, ip=player.ip),
         )
         if ban:
             bans[ban.ban_id] = ban

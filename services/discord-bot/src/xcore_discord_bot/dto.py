@@ -22,7 +22,6 @@ class PlayerRecord:
     uuid: str | None = None
     username: str | None = None
     ip: str | None = None
-    last_ip: str | None = None
     custom_nickname: str | None = None
     description: str | None = None
     language: str | None = None
@@ -61,10 +60,9 @@ class BanRecord:
 def record_identifiers(
     record: PlayerRecord | BanRecord,
 ) -> tuple[str | None, str | None]:
-    """The record's UUID and IP, ``None`` when blank. A player falls back to the last IP."""
-    last_ip = record.last_ip if isinstance(record, PlayerRecord) else None
+    """The record's UUID and IP, ``None`` when blank."""
     uuid_value = str(record.uuid or "").strip() or None
-    return uuid_value, str(record.ip or last_ip or "").strip() or None
+    return uuid_value, str(record.ip or "").strip() or None
 
 
 @dataclass(frozen=True, kw_only=True)

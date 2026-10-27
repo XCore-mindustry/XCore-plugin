@@ -16,7 +16,7 @@ def player_row(index=1, *, pid=None, discord_id="42"):
         "nickname": f"[red]Player {index}",
         "discord_id": discord_id,
         "language": "uk",
-        "ip": f"203.0.113.{index}",
+        "last_ip": f"203.0.113.{index}",
     }
 
 

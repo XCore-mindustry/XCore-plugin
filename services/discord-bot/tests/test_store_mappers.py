@@ -14,6 +14,7 @@ def test_player_record_from_doc_normalizes_dirty_values() -> None:
             "pid": "42",
             "nickname": "  Vortex  ",
             "uuid": "  uuid-42 ",
+            "last_ip": " 1.2.3.4 ",
             "custom_nickname": "   ",
             "description": "  hello world  ",
             "local_language": "  ru  ",
@@ -28,12 +29,14 @@ def test_player_record_from_doc_normalizes_dirty_values() -> None:
             "discord_id": " 123456 ",
             "discord_username": "  user#1 ",
             "discord_linked_at": "77",
+            "online": "false",
         }
     )
 
     assert record.pid == 42
     assert record.nickname == "Vortex"
     assert record.uuid == "uuid-42"
+    assert record.ip == "1.2.3.4"
     assert record.custom_nickname is None
     assert record.description == "hello world"
     assert record.language == "ru"
@@ -48,6 +51,7 @@ def test_player_record_from_doc_normalizes_dirty_values() -> None:
     assert record.discord_id == "123456"
     assert record.discord_username == "user#1"
     assert record.discord_linked_at == 77
+    assert record.online is False
 
 
 def test_player_record_from_doc_uses_safe_defaults() -> None:

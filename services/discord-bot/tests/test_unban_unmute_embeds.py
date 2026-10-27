@@ -42,7 +42,7 @@ class _Interaction:
     response: _Response = field(default_factory=_Response)
 
 
-PLAYER = {"pid": 123, "uuid": "uuid-123", "ip": "1.2.3.4", "nickname": "Vortex"}
+PLAYER = {"pid": 123, "uuid": "uuid-123", "last_ip": "1.2.3.4", "nickname": "Vortex"}
 # Written before bans had ids, so the unban assigns one first.
 BAN = {
     "uuid": "uuid-123",

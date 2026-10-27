@@ -39,7 +39,7 @@ def _owned(player: PlayerRecord) -> set[str]:
 def _name(player: PlayerRecord, locale: str) -> str:
     return safe_text(
         player.custom_nickname or player.nickname or player.username or "",
-        secrets=(player.uuid or "", player.ip or "", player.last_ip or ""),
+        secrets=(player.uuid or "", player.ip or ""),
         limit=70,
     ) or t(locale, "cases-unknown")
 
@@ -89,7 +89,7 @@ async def _submit(
         raise ActionFailed(t(context.locale, "badges-already-owned"))
     linked = await linked_players(service, str(user.id))
     secrets = [p.uuid for p in linked if p.uuid]
-    secrets.extend(value for p in linked for value in (p.ip, p.last_ip) if value)
+    secrets.extend(p.ip for p in linked if p.ip)
     subject = _party_snapshot(player, user, context.locale)
     statement = safe_text(
         values.get("statement", ""), secrets=secrets, limit=1000

@@ -46,7 +46,7 @@ def player_rows():
             "discord_id": "201",
             "local_language": "uk",
             "online_server": "hub",
-            "ip": REPORTER_IP,
+            "last_ip": REPORTER_IP,
         },
         {
             "_id": 2,
@@ -55,14 +55,14 @@ def player_rows():
             "nickname": "Target",
             "discord_id": "202",
             "online_server": "survival",
-            "ip": TARGET_IP,
+            "last_ip": TARGET_IP,
         },
         {
             "_id": 3,
             "uuid": SECOND_UUID,
             "pid": 7,
             "nickname": "Second",
-            "ip": "198.51.100.9",
+            "last_ip": "198.51.100.9",
         },
     ]
 

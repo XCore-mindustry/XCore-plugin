@@ -121,7 +121,7 @@ async def test_case_sanction_log_redacts_raw_nickname_reason_and_actor_once(verb
     raw_reason = f"reason {REPORTER_UUID} {TARGET_UUID} {SECOND_UUID} {REPORTER_IP}"
     actor_uuid, actor_ip = "ZFn+OcdYThKXkqd/KCsPyA==", "203.0.113.25"
     service.player_store.database["players"].docs.append(
-        {"uuid": actor_uuid, "pid": 50, "discord_id": str(STAFF), "ip": actor_ip}
+        {"uuid": actor_uuid, "pid": 50, "discord_id": str(STAFF), "last_ip": actor_ip}
     )
     staff = member()
     staff.display_name = f"Admin {SECOND_UUID} {actor_uuid} {actor_ip}"

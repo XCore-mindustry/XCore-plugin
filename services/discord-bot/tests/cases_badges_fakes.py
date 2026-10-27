@@ -19,7 +19,7 @@ def player_row(index=1, *, pid=None, discord_id="42", owned=()):
         "nickname": f"[red]Account {index}",
         "discord_id": discord_id,
         "language": "uk",
-        "ip": "203.0.113.9",
+        "last_ip": "203.0.113.9",
         "unlocked_badges": list(owned),
         "active_badge": None,
     }

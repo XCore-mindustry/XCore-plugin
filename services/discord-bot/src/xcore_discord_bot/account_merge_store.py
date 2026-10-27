@@ -21,9 +21,8 @@ from .dto import (
     MERGE_KEEP_PID_SOURCE,
     MERGE_KEEP_PID_TARGET,
     AccountMergeResult,
-    PlayerRecord,
 )
-from .mongo_store import MongoStore, PlayerDoc, to_int
+from .mongo_store import MongoStore, to_int
 from .punishment_store import PunishmentStore
 from .store_mappers import player_record_from_doc
 
@@ -317,7 +316,7 @@ class AccountMergeStore:
             target_uuid=plan.target_uuid,
             target_pid=plan.surviving_pid,
             target_name=str(target_raw.get("nickname") or "Unknown"),
-            target_ip=str(target_raw.get("ip") or ""),
+            target_ip=str(target_raw.get("last_ip") or ""),
             actor_discord_id=actor_discord_id,
             actor_name=actor_name,
             reason=reason,
@@ -343,11 +342,13 @@ class AccountMergeStore:
         updated_target_raw = await db["players"].find_one(
             {"_id": target_raw["_id"]}, session=session
         )
+        # The merge runs in a transaction, so the target it just updated still exists.
+        assert updated_target_raw is not None
         return AccountMergeResult(
             success=True,
-            source_before=self._player_record(source_raw),
-            target_before=self._player_record(target_raw),
-            target_after=self._player_record(updated_target_raw),
+            source_before=player_record_from_doc(source_raw),
+            target_before=player_record_from_doc(target_raw),
+            target_after=player_record_from_doc(updated_target_raw),
             games_transferred=games_transferred,
             ban_transferred=punishment_transfers["bans"],
             mute_transferred=punishment_transfers["mutes"],
@@ -411,9 +412,3 @@ class AccountMergeStore:
             transferred["ban_id"] = await self._punishments.next_ban_id(session=session)
         await db[collection].insert_one(transferred, session=session)
         return True
-
-    @staticmethod
-    def _player_record(raw: dict[str, Any] | None) -> PlayerRecord:
-        return player_record_from_doc(
-            PlayerDoc.model_validate(raw).model_dump(mode="python")
-        )
