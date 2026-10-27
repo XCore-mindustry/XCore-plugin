@@ -1,0 +1,55 @@
+{
+  "active_badge": "translator",
+  "admin_source": "DISCORD",
+  "badge_symbol_color_mode": "team",
+  "blocked_private_uuids": [
+    "uuid-blocked"
+  ],
+  "can_change_username": true,
+  "created_at": 1700000000003,
+  "custom_nickname": "Custom",
+  "deleted_at": 1700000000005,
+  "description": "About me",
+  "device_token_hashes": [
+    "token-hash"
+  ],
+  "device_tokens": {
+    "token-hash": 1800000000000
+  },
+  "discord_id": "123456789012345678",
+  "discord_linked_at": 1700000000001,
+  "discord_username": "contract#1",
+  "event_votes": {
+    "event-1": true
+  },
+  "hexed_points": 9,
+  "hexed_rank": 3,
+  "identity_display_mode": "USERNAME",
+  "is_admin": true,
+  "is_visible": false,
+  "last_ip": "203.0.113.7",
+  "leaderboard": false,
+  "legacy_pvp_rating": 1500,
+  "local_language": "uk",
+  "map_votes": {
+    "map-1": false
+  },
+  "nickname": "[red]Contract",
+  "online": true,
+  "online_server": "survival",
+  "online_since": 1700000000002,
+  "password_hash": "$2a$10$hash",
+  "pid": 42,
+  "show_discord_relay": false,
+  "show_global_chat": false,
+  "total_play_time": 15,
+  "translator_language": "en",
+  "unlocked_badges": [
+    "translator"
+  ],
+  "updated_at": 1700000000004,
+  "username": "contract_user",
+  "uuid": "uuid-contract",
+  "version": 2,
+  "visible": false
+}
