@@ -117,7 +117,6 @@ class HelpMenuTest {
         registerLegacyCommands("help", "votekick", "msg", "hub", "ban");
 
         // Non-admin player
-        session.player.admin = false;
         when(session.sender.isPlayer()).thenReturn(true);
         when(session.sender.player()).thenReturn(session.player);
 
@@ -129,8 +128,8 @@ class HelpMenuTest {
         // ban must be excluded!
         assertThat(nonAdminItems).noneMatch(c -> c.name().equals("ban"));
 
-        // Admin player
-        session.player.admin = true;
+        // Admin player; a session without a registry reads the wall clock.
+        org.xcore.plugin.permission.RolesWorld.asAdmin(session, java.time.Instant.now());
         var adminItems = helpMenu.buildHelpCommandItems(session, session.sender);
         assertThat(adminItems).anyMatch(c -> c.name().equals("ban") && c.category() == org.xcore.plugin.ui.menu.help.HelpCategory.ADMIN);
     }

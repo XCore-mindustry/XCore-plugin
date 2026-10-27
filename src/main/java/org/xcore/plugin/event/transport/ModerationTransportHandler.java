@@ -13,7 +13,6 @@ import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.permission.Actor;
 import org.xcore.plugin.permission.RemoteConsoleScope;
 import org.xcore.plugin.rating.ladder.LadderService;
-import org.xcore.plugin.service.DiscordAdminAccessService;
 import org.xcore.plugin.service.NetworkService;
 import org.xcore.plugin.service.PlayerDisplayService;
 import org.xcore.plugin.session.SessionService;
@@ -22,9 +21,7 @@ import org.xcore.protocol.generated.messages.identity.IdentityMessages.PlayerBad
 import org.xcore.protocol.generated.messages.identity.IdentityMessages.PlayerBadgeSymbolColorModeChangedCommandV1;
 import org.xcore.protocol.generated.messages.identity.IdentityMessages.PlayerCustomNicknameChangedCommandV1;
 import org.xcore.protocol.generated.messages.server.ServerMessages.PlayerDataCacheReloadCommandV1;
-import org.xcore.protocol.generated.messages.security.SecurityMessages.PlayerPasswordResetCommandV1;
 import org.xcore.protocol.generated.messages.server.ServerMessages.ServerCommandExecuteCommandV1;
-import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordAdminAccessChangedCommandV1;
 import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationKickBannedCommandV1;
 import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationPardonCommandV1;
 
@@ -41,7 +38,6 @@ public class ModerationTransportHandler {
     private final SessionService sessionService;
     private final TomlXcoreConfig config;
     private final PlayerDisplayService playerDisplayService;
-    private final DiscordAdminAccessService discordAdminAccessService;
     private final LadderService ladderService;
     private final Async async;
     private final RemoteConsoleScope remoteConsole;
@@ -51,7 +47,6 @@ public class ModerationTransportHandler {
                                       SessionService sessionService,
                                       TomlXcoreConfig config,
                                       PlayerDisplayService playerDisplayService,
-                                      DiscordAdminAccessService discordAdminAccessService,
                                       LadderService ladderService,
                                       Async async,
                                       RemoteConsoleScope remoteConsole) {
@@ -59,7 +54,6 @@ public class ModerationTransportHandler {
         this.sessionService = sessionService;
         this.config = config;
         this.playerDisplayService = playerDisplayService;
-        this.discordAdminAccessService = discordAdminAccessService;
         this.ladderService = ladderService;
         this.async = async;
         this.remoteConsole = remoteConsole;
@@ -83,27 +77,6 @@ public class ModerationTransportHandler {
                     p -> p.kick(Packets.KickReason.banned)
             );
         }));
-
-        // The repository round trips must not run on the game thread, so the handler does
-        // not marshal. DiscordAdminAccessService owns that decision: it keeps its Mongo
-        // work inline and queues only the game-state tail (Player.admin, the admin
-        // registry, Player.name, client packets). See its javadoc.
-        network.subscribe(DiscordAdminAccessChangedCommandV1.class, e -> {
-            if (e.admin()) {
-                if (discordAdminAccessService.applyDiscordAdminAccess(
-                        e.player().playerUuid(),
-                        e.discord().discordId(),
-                        e.discord().discordUsername()
-                )) {
-                    info("Granted discord admin access: @", e.player().playerUuid());
-                }
-                return;
-            }
-
-            if (discordAdminAccessService.revokeDiscordAdminAccess(e.player().playerUuid())) {
-                info("Revoked discord admin access: @", e.player().playerUuid());
-            }
-        });
 
         // Administration is main-thread state: the admin registry is read during auth
         // and the kick list is scanned on every connection.
@@ -147,16 +120,6 @@ public class ModerationTransportHandler {
                 true,
                 "badge inventory"
         )));
-
-        network.subscribe(PlayerPasswordResetCommandV1.class, e -> async.main(() -> {
-            updatePlayerSession(
-                    e.playerUuid(),
-                    data -> data.password = "",
-                    false,
-                    "password reset"
-            );
-            discordAdminAccessService.onPasswordReset(e.playerUuid());
-        }));
 
         // The cache rebuild walks Groups.player and queries MongoDB per player, so it
         // takes its own snapshot on the game thread and installs the result back onto it.

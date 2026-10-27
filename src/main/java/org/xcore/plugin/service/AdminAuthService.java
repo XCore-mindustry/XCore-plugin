@@ -18,8 +18,6 @@ import java.util.Base64;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-import static mindustry.Vars.netServer;
-
 @Singleton
 public class AdminAuthService {
     public record AuthResult(AuthResultStatus status, String messageKey, String token) {
@@ -38,7 +36,6 @@ public class AdminAuthService {
     private final AdminDataRepository adminDataRepository;
     private final SessionService sessionService;
     private final PlayerDisplayService playerDisplayService;
-    private final DiscordAdminAccessService discordAdminAccessService;
     private final AuthStatusBroadcaster authStatusBroadcaster;
     private final StaffAccess staffAccess;
     private final SecureRandom secureRandom = new SecureRandom();
@@ -69,24 +66,13 @@ public class AdminAuthService {
     public AdminAuthService(AdminDataRepository adminDataRepository,
                             SessionService sessionService,
                             PlayerDisplayService playerDisplayService,
-                            DiscordAdminAccessService discordAdminAccessService,
                             AuthStatusBroadcaster authStatusBroadcaster,
                             StaffAccess staffAccess) {
         this.adminDataRepository = adminDataRepository;
         this.sessionService = sessionService;
         this.playerDisplayService = playerDisplayService;
-        this.discordAdminAccessService = discordAdminAccessService;
         this.authStatusBroadcaster = authStatusBroadcaster;
         this.staffAccess = staffAccess;
-    }
-
-    public AdminAuthService(AdminDataRepository adminDataRepository,
-                            SessionService sessionService,
-                            PlayerDisplayService playerDisplayService,
-                            DiscordAdminAccessService discordAdminAccessService,
-                            AuthStatusBroadcaster authStatusBroadcaster) {
-        this(adminDataRepository, sessionService, playerDisplayService, discordAdminAccessService,
-                authStatusBroadcaster, StaffAccess.legacy());
     }
 
     public static String hashToken(String token) {
@@ -131,9 +117,9 @@ public class AdminAuthService {
         }
         PlayerData data = session.data;
         boolean isLinked = data.discordId != null && !data.discordId.isBlank();
-        boolean hasDiscordAdmin = discordAdminAccessService.hasDiscordAdminAccess(data);
+        boolean mayLogIn = mayLogInAsStaff(data);
         boolean hasPassword = data.password != null && !data.password.isEmpty();
-        return new AuthStatusPacket(isLinked, data.discordUsername, hasDiscordAdmin, hasPassword, player.admin, rev);
+        return new AuthStatusPacket(isLinked, data.discordUsername, mayLogIn, hasPassword, player.admin, rev);
     }
 
     public void pushStatus(Player player) {
@@ -145,9 +131,9 @@ public class AdminAuthService {
         }
         PlayerData data = session.data;
         boolean isLinked = data.discordId != null && !data.discordId.isBlank();
-        boolean hasDiscordAdmin = discordAdminAccessService.hasDiscordAdminAccess(data);
+        boolean mayLogIn = mayLogInAsStaff(data);
         boolean hasPassword = data.password != null && !data.password.isEmpty();
-        authStatusBroadcaster.pushStatus(player, isLinked, data.discordUsername, hasDiscordAdmin, hasPassword, player.admin);
+        authStatusBroadcaster.pushStatus(player, isLinked, data.discordUsername, mayLogIn, hasPassword, player.admin);
     }
 
     public AuthResult authenticate(Player player, String password) {
@@ -196,41 +182,18 @@ public class AdminAuthService {
         }
     }
 
-    /**
-     * Checks if player data has Discord admin role access.
-     */
-    public boolean hasDiscordAdminAccess(PlayerData data) {
-        return discordAdminAccessService.hasDiscordAdminAccess(data);
+    /** Whether the player's grants on this server let them log in as staff. */
+    public boolean mayLogInAsStaff(PlayerData data) {
+        return data != null && staffAccess.mayLogIn(sessionService.get(data.uuid));
     }
 
     /**
-     * Applies admin privileges to a player and updates server state on the Mindustry tick thread.
-     *
-     * <p>This is the admin path for people who do not have the admin mod, so unlike the
-     * Discord-admin grant it is a real registration rather than a revocable session overlay.
-     * That is why {@code logout} takes it back out again: the point of logout is to drop the
-     * privileges, and the password stays in {@code PlayerData.password} so the holder can
-     * grant themselves admin again.
-     *
-     * <p>Note what it deliberately does <em>not</em> do: it never writes
-     * {@code PlayerData.admin}. That flag is the Discord-admin grant, which is a different
-     * source with different rules, and overwriting it here would conflate the two. The
-     * consequence is that this grant lives only in the in-memory {@code netServer.admins}
-     * registry, so it does not survive a reconnect or a restart and the player grants it to
-     * themselves again by logging in. That is the intended trade - the credential is
-     * remembered, the privilege is not.
-     *
-     * <p>With roles on none of that applies: the login is remembered on the session, the
-     * admin flag is computed from the player's grants and the registry is left alone.
+     * Logs the player in as staff on this connection. The login is remembered on the session
+     * only, so it does not survive a reconnect; the admin flag is computed from the player's
+     * grants and the game's own admin list is left alone.
      */
     public void grantAdmin(Player player, Session session) {
-        if (staffAccess.rolesEnabled()) {
-            staffAccess.logIn(session);
-        } else {
-            player.admin(true);
-            String usid = player.getInfo() != null ? player.getInfo().adminUsid : null;
-            netServer.admins.adminPlayer(player.uuid(), usid);
-        }
+        staffAccess.logIn(session);
         playerDisplayService.refresh(session);
     }
 
@@ -241,17 +204,12 @@ public class AdminAuthService {
 
     /** Ends the staff login of this connection. Game thread; the caller refreshes what it shows. */
     public void dropAdmin(Player player, Session session) {
-        if (staffAccess.rolesEnabled()) {
-            staffAccess.logOut(session);
-            return;
-        }
-        player.admin(false);
-        netServer.admins.unAdminPlayer(player.uuid());
+        staffAccess.logOut(session);
     }
 
     /**
      * Everything about a password login that can be decided without hashing: the session, the
-     * length of the password, the rate limit and the Discord approval.
+     * length of the password, the rate limit and whether the grants allow a staff login.
      *
      * @return why the attempt is refused, or null when the password is worth checking
      */
@@ -275,8 +233,8 @@ public class AdminAuthService {
             return new AuthResult(AuthResultStatus.RATE_LIMITED, "error-wrong-admin-password");
         }
 
-        // Security check: Only players with Discord admin role can authenticate or set an admin password
-        if (!hasDiscordAdminAccess(session.data)) {
+        // Only a player whose grants allow a staff login may authenticate or set a password.
+        if (!mayLogInAsStaff(session.data)) {
             return new AuthResult(AuthResultStatus.DISCORD_APPROVAL_REQUIRED, "commands-login-request-approval-discord");
         }
 
@@ -304,7 +262,7 @@ public class AdminAuthService {
 
         PlayerData data = session.data;
         // The approval may have been withdrawn while the password was being hashed.
-        if (!hasDiscordAdminAccess(data)) {
+        if (!mayLogInAsStaff(data)) {
             return new AuthResult(AuthResultStatus.DISCORD_APPROVAL_REQUIRED, "commands-login-request-approval-discord");
         }
 
@@ -419,8 +377,8 @@ public class AdminAuthService {
 
         PlayerData data = session.data;
 
-        // Security check: Must have Discord admin role to resume admin session
-        if (!discordAdminAccessService.hasDiscordAdminAccess(data)) {
+        // The grants must still allow a staff login to resume one.
+        if (!mayLogInAsStaff(data)) {
             return new AuthResult(AuthResultStatus.DISCORD_APPROVAL_REQUIRED, "commands-login-request-approval-discord");
         }
 

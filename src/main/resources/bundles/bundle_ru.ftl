@@ -1455,7 +1455,6 @@ permission-xcore-permissions-inspect = Смотреть, у кого какие 
 permission-xcore-permissions-manage = Менять роли и права
 
 error-target-outranks = [scarlet]⚠ Нельзя применить это к игроку, чья роль не ниже вашей.
-perm-me-legacy = [accent]Роли на этом сервере выключены. Админ: [white]{ $admin }
 perm-me-header = [accent]Ваши роли здесь (вес [white]{ $weight }[accent]):
 perm-me-none = [lightgray] - нет
 perm-me-logged-in = [green]Вы вошли как стафф.

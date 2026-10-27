@@ -1445,7 +1445,6 @@ permission-xcore-permissions-inspect = Vidět, kdo má jaká oprávnění
 permission-xcore-permissions-manage = Měnit role a oprávnění
 
 error-target-outranks = [scarlet]⚠ Tohle nemůžeš udělat hráči, jehož role není nižší než tvoje.
-perm-me-legacy = [accent]Role jsou na tomto serveru vypnuté. Admin: [white]{ $admin }
 perm-me-header = [accent]Tvoje role tady (váha [white]{ $weight }[accent]):
 perm-me-none = [lightgray] - žádné
 perm-me-logged-in = [green]Jsi přihlášen jako člen týmu.

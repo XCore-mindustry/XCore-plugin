@@ -1431,7 +1431,6 @@ permission-xcore-permissions-inspect = Ver quién tiene qué permisos
 permission-xcore-permissions-manage = Cambiar roles y permisos
 
 error-target-outranks = [scarlet]⚠ No puedes hacer eso a un jugador cuyo rol no es inferior al tuyo.
-perm-me-legacy = [accent]Los roles están desactivados en este servidor. Admin: [white]{ $admin }
 perm-me-header = [accent]Tus roles aquí (peso [white]{ $weight }[accent]):
 perm-me-none = [lightgray] - ninguno
 perm-me-logged-in = [green]Has iniciado sesión como staff.

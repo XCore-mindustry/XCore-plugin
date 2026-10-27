@@ -6,9 +6,12 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.xcore.plugin.concurrent.GameThread;
 import org.xcore.plugin.integration.blockhistory.BlockHistorySummary;
+import org.xcore.plugin.permission.RolesWorld;
+import org.xcore.plugin.permission.role.PermissionSet;
 import org.xcore.plugin.session.Session;
 import org.xcore.protocol.generated.messages.cases.CasesMessages.CasesReportSubmittedV1;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletionStage;
@@ -114,9 +117,9 @@ class ReportServiceTest {
     void rejectsSelfUnknownStaffForgedReporterAndInsufficientPlaytime() {
         assertThat(world.reports.submit(reporter, CasesWorld.draft(reporter, reporter)).toCompletableFuture().join())
                 .isInstanceOf(ReportResult.InvalidTarget.class);
-        target.player.admin = true;
+        RolesWorld.asAdmin(target, Instant.now());
         assertResult(new ReportResult.InvalidTarget());
-        target.player.admin = false;
+        target.permissionSet = PermissionSet.EMPTY;
         world.secrets.cases.reports.minPlayTimeMinutes = 5;
         reporter.data.totalPlayTime = 2;
         assertResult(new ReportResult.InsufficientPlaytime(3));
@@ -134,7 +137,7 @@ class ReportServiceTest {
     @Test
     void listsOnlineAndRecentTargetsWithoutReporterStaffOrAddresses() {
         var staff = world.session("staff", 3, "secret");
-        staff.player.admin = true;
+        RolesWorld.asAdmin(staff, Instant.now());
         world.recent.remember("left", 4, "Leaver", "hidden", false);
         world.recent.remember("left-staff", 5, "Staff", "hidden", true);
         assertThat(world.reports.targets(reporter)).extracting(ReportTarget::uuid).containsExactly(target.data.uuid, "left");

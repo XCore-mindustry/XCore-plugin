@@ -1444,7 +1444,6 @@ permission-xcore-permissions-inspect = Ver quem possui quais permissões
 permission-xcore-permissions-manage = Alterar cargos e permissões
 
 error-target-outranks = [scarlet]⚠ Não é possível fazer isso com um jogador cujo cargo não seja inferior ao seu.
-perm-me-legacy = [accent]Cargos desativados neste servidor. Admin: [white]{ $admin }
 perm-me-header = [accent]Seus cargos aqui (peso [white]{ $weight }[accent]):
 perm-me-none = [lightgray] - nenhum
 perm-me-logged-in = [green]Você está conectado como membro da equipe.

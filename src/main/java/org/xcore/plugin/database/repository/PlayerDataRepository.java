@@ -348,28 +348,6 @@ public class PlayerDataRepository extends DataRepository<PlayerData> {
         ));
     }
 
-    public boolean updateAdminStatus(String uuid, boolean admin, String adminSource) {
-        return updateByUuid(uuid, Updates.combine(
-                Updates.set("is_admin", admin),
-                Updates.set("admin_source", normalizeAdminSource(adminSource))
-        ));
-    }
-
-    public java.util.concurrent.CompletionStage<Boolean> updateAdminStatusAsync(String uuid, boolean admin, String adminSource) {
-        return updateByUuidAsync(uuid, Updates.combine(
-                Updates.set("is_admin", admin),
-                Updates.set("admin_source", normalizeAdminSource(adminSource))
-        ));
-    }
-
-    public boolean clearAdminAccess(String uuid) {
-        return updateAdminStatus(uuid, false, "NONE");
-    }
-
-    public java.util.concurrent.CompletionStage<Boolean> clearAdminAccessAsync(String uuid) {
-        return updateAdminStatusAsync(uuid, false, "NONE");
-    }
-
     /** The players whose admin flag was set through their Discord role; for the move to roles. */
     public List<PlayerData> findDiscordRoleAdmins() {
         return collection.find(com.mongodb.client.model.Filters.and(eq("is_admin", true), eq("admin_source", "DISCORD_ROLE")))
@@ -383,10 +361,6 @@ public class PlayerDataRepository extends DataRepository<PlayerData> {
                 Updates.set("device_token_hashes", new ArrayList<String>()),
                 Updates.set("device_tokens", new org.bson.Document())
         ));
-    }
-
-    private String normalizeAdminSource(String adminSource) {
-        return adminSource == null || adminSource.isBlank() ? "NONE" : adminSource;
     }
 
     public boolean updateLanguage(String uuid, String language) {

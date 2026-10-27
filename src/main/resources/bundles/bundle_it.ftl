@@ -1444,7 +1444,6 @@ permission-xcore-permissions-inspect = Visualizzare chi possiede quali permessi
 permission-xcore-permissions-manage = Modificare ruoli e permessi
 
 error-target-outranks = [scarlet]⚠ Non puoi farlo a un giocatore con un ruolo pari o superiore al tuo.
-perm-me-legacy = [accent]I ruoli sono disattivati su questo server. Admin: [white]{ $admin }
 perm-me-header = [accent]I tuoi ruoli qui (peso [white]{ $weight }[accent]):
 perm-me-none = [lightgray] - nessuno
 perm-me-logged-in = [green]Hai effettuato l'accesso come membro dello staff.

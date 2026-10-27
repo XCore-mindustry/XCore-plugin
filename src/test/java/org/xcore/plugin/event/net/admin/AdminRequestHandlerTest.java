@@ -9,7 +9,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.xcore.plugin.integration.AdminModIntegration;
-import org.xcore.plugin.permission.PermissionService;
+import org.xcore.plugin.permission.RolesWorld;
+import org.xcore.plugin.permission.role.PermissionSet;
+import org.xcore.plugin.session.Session;
 import org.xcore.plugin.session.SessionService;
 import org.xcore.plugin.ui.menu.BanMenu;
 
@@ -25,18 +27,22 @@ import static org.mockito.Mockito.when;
 class AdminRequestHandlerTest {
 
     private SessionService sessionService;
+    /** The sessions the permission checks read, apart from the ones the handler itself uses. */
+    private SessionService registry;
     private BanMenu banMenu;
     private AdminRequestHandler handler;
 
     @BeforeEach
     void setUp() {
         sessionService = mock(SessionService.class);
+        registry = mock(SessionService.class);
         banMenu = mock(BanMenu.class);
         handler = new AdminRequestHandler(sessionService, banMenu, mock(AdminModIntegration.class), new Gson(),
-                new PermissionService());
+                RolesWorld.permissions(() -> registry));
     }
 
-    private static Player player(String uuid, boolean admin) {
+    /** An online player; an admin holds the role admin and has logged in. */
+    private Player player(String uuid, boolean admin) {
         Player player = mock(Player.class);
         when(player.uuid()).thenReturn(uuid);
         when(player.plainName()).thenReturn(uuid);
@@ -44,6 +50,13 @@ class AdminRequestHandlerTest {
         player.admin = admin;
         player.con = mock(NetConnection.class);
         player.con.player = player;
+        Session session = mock(Session.class);
+        session.player = player;
+        session.permissionSet = PermissionSet.EMPTY;
+        if (admin) {
+            RolesWorld.asAdmin(session);
+        }
+        when(registry.get(uuid)).thenReturn(session);
         return player;
     }
 

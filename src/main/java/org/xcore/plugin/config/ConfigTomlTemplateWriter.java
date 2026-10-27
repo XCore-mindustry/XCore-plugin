@@ -105,7 +105,6 @@ public final class ConfigTomlTemplateWriter {
         map_id = ""
 
         [permissions]
-        mode = "legacy"
         trust_native_admins = false
 
         [translation]

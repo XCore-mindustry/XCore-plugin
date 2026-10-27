@@ -17,8 +17,8 @@ import java.util.List;
  * The one-off move from the admin flag of the player record to grants: everybody whose flag
  * came from their Discord role gets the role {@code admin}. I/O.
  * <p>
- * The flag itself is left as it is, so switching back to {@code mode = "legacy"} finds
- * everything where it was. Running the move again gives nothing twice.
+ * The flag itself is left as it is; nothing reads it for rights any more. Running the move
+ * again gives nothing twice.
  */
 @Singleton
 public class PermissionMigration {

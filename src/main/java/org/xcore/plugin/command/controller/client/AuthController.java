@@ -134,7 +134,7 @@ public class AuthController implements CloudClientController {
             return;
         }
 
-        if (!adminAuthService.hasDiscordAdminAccess(data)) {
+        if (!adminAuthService.mayLogInAsStaff(data)) {
             inFlightLogins.remove(uuid);
             local.send("commands-login-request-approval-discord", args());
             return;

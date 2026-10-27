@@ -1428,7 +1428,6 @@ permission-xcore-permissions-inspect = Sehen, wer welche Berechtigungen hat
 permission-xcore-permissions-manage = Rollen und Berechtigungen ändern
 
 error-target-outranks = [scarlet]⚠ Das geht nicht bei einem Spieler, dessen Rolle nicht unter deiner liegt.
-perm-me-legacy = [accent]Rollen sind auf diesem Server deaktiviert. Admin: [white]{ $admin }
 perm-me-header = [accent]Deine Rollen hier (Gewicht [white]{ $weight }[accent]):
 perm-me-none = [lightgray] - keine
 perm-me-logged-in = [green]Du bist als Teammitglied angemeldet.

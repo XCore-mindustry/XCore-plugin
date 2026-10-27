@@ -9,7 +9,7 @@ import org.xcore.plugin.config.TomlXcoreConfig;
 import java.time.Clock;
 
 /**
- * The role model this server runs with and the switches around it.
+ * The role model this server runs with and the switch around it.
  * <p>
  * {@code permissions.toml} lives next to {@code secrets.toml} and is shared by every server. It
  * is changed by deploying it, not by commands; {@link #reload()} only reads it again.
@@ -19,7 +19,6 @@ public class PermissionRoles {
 
     public static final String FILE_NAME = "permissions.toml";
 
-    private final boolean enabled;
     private final boolean trustNativeAdmins;
     private final String serverName;
     private final Fi file;
@@ -32,52 +31,32 @@ public class PermissionRoles {
 
     @Inject
     public PermissionRoles(TomlXcoreConfig config, Clock clock) {
-        this(config.permissions.rolesEnabled(),
-                config.permissions.trustNativeAdmins,
+        this(config.permissions.trustNativeAdmins,
                 config.server.name,
                 Fi.get(config.paths.globalConfigDirectory == null || config.paths.globalConfigDirectory.isBlank()
                         ? System.getProperty("user.home")
                         : config.paths.globalConfigDirectory).child(FILE_NAME),
                 clock);
 
-        if (enabled) {
-            // Running with roles and no usable role file would leave the server with no staff
-            // at all, or with whatever was half-read. Refuse to start instead.
-            this.model = read();
-            PLog.infoTag("Permissions", "Roles enabled: @ roles from @", model.roles().size(), file.absolutePath());
-        } else if (file.exists()) {
-            try {
-                this.model = read();
-            } catch (PermissionConfigException e) {
-                PLog.warn("[Permissions] @ is not usable yet (roles are off, so nothing depends on it): @",
-                        file.absolutePath(), e.getMessage());
-            }
-        }
+        // No usable role file would leave the server with no staff at all, or with whatever
+        // was half-read. Refuse to start instead.
+        this.model = read();
+        PLog.infoTag("Permissions", "@ roles from @", model.roles().size(), file.absolutePath());
     }
 
     /** For tests: no file is read until {@link #reload()}. */
-    public PermissionRoles(boolean enabled, boolean trustNativeAdmins, String serverName, Fi file, Clock clock) {
-        this.enabled = enabled;
+    public PermissionRoles(boolean trustNativeAdmins, String serverName, Fi file, Clock clock) {
         this.trustNativeAdmins = trustNativeAdmins;
         this.serverName = serverName;
         this.file = file;
         this.clock = clock;
     }
 
-    /** Roles switched off: every staff node follows the admin flag. */
-    public static PermissionRoles legacy() {
-        return new PermissionRoles(false, false, "server", null, Clock.systemUTC());
-    }
-
-    /** Roles switched on with a model given directly; for tests. */
+    /** A model given directly; for tests. */
     public static PermissionRoles of(PermissionModel model, String serverName, boolean trustNativeAdmins, Clock clock) {
-        PermissionRoles roles = new PermissionRoles(true, trustNativeAdmins, serverName, null, clock);
+        PermissionRoles roles = new PermissionRoles(trustNativeAdmins, serverName, null, clock);
         roles.model = model;
         return roles;
-    }
-
-    public boolean enabled() {
-        return enabled;
     }
 
     public boolean trustNativeAdmins() {

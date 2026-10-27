@@ -13,6 +13,7 @@ import org.xcore.plugin.database.repository.PlayerDataRepository;
 import org.xcore.plugin.gamemode.hexed.HexedRanks;
 import org.xcore.plugin.integration.profile.ProfileSection;
 import org.xcore.plugin.integration.profile.ProfileSectionView;
+import org.xcore.plugin.permission.RolesWorld;
 import org.xcore.plugin.rating.RatingLeague;
 import org.xcore.plugin.model.AggregatedPlayerStats;
 import org.xcore.plugin.model.ModeStatsSummary;
@@ -29,6 +30,7 @@ import org.xcore.plugin.ui.kit.LayoutAssert;
 import org.xcore.plugin.ui.kit.Screen;
 import org.xcore.ui.runtime.UpdateResult;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
@@ -711,6 +713,7 @@ class PlayerProfileUiControllerTest {
                 .contains("action:settings")
                 .doesNotContain("action:audit_history", "action:audit_actions", "action:back", "action:back_to_players");
 
+        RolesWorld.asAdmin(session, Instant.now());
         session.player.admin = true;
         var asAdmin = controller.createInitialModel(PlayerProfileUiController.Tab.STATS, new ProfileDetails(createSampleStats(), 1, List.of()));
         assertThat(LayoutAssert.actions(controller.window(asAdmin, Screen.WIDE)))

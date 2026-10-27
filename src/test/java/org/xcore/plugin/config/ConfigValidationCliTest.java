@@ -29,7 +29,7 @@ class ConfigValidationCliTest {
     @Test
     void rejectedConfigDoesNotEchoItsValues() throws Exception {
         Path file = directory.resolve("candidate.toml");
-        Files.writeString(file, "[permissions]\nmode = \"private-secret-value\"\n");
+        Files.writeString(file, "[permissions]\ntrust_native_admins = \"private-secret-value\"\n");
         var errors = new ByteArrayOutputStream();
         assertThat(ConfigValidationCli.run(new String[]{"xcore", file.toString()}, System.out, new PrintStream(errors))).isEqualTo(1);
         assertThat(errors.toString()).contains("validation failed").doesNotContain("private-secret-value");

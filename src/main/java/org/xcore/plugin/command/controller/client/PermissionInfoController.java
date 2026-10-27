@@ -38,11 +38,6 @@ public class PermissionInfoController implements CloudClientController {
         Session session = resolveSession(sender, sessionService);
         if (session == null || session.player == null) return;
 
-        if (!roles.enabled()) {
-            session.locale().send("perm-me-legacy", args("admin", session.player.admin ? "yes" : "no"));
-            return;
-        }
-
         Instant now = roles.clock().instant();
         PermissionSet set = session.permissionSet;
         List<String> origins = set.origins(now);

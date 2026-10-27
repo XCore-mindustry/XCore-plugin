@@ -8,7 +8,6 @@ import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.service.network.RedisDiscordLinkCodeStore;
 import org.xcore.plugin.session.Session;
 import org.xcore.plugin.session.SessionService;
-import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordAdminAccessChangedCommandV1;
 import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordLinkCodeCreatedV1;
 import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordLinkStatusChangedV1;
 
@@ -31,13 +30,12 @@ class DiscordLinkServiceTest {
         PlayerDataRepository playerDataRepository = mock(PlayerDataRepository.class);
         SessionService sessionService = mock(SessionService.class);
         NetworkService networkService = mock(NetworkService.class);
-        DiscordAdminAccessService discordAdminAccessService = mock(DiscordAdminAccessService.class);
         TomlXcoreConfig config = new TomlXcoreConfig();
         config.server.name = "mini-pvp";
 
         when(codeStore.store(any())).thenReturn(true);
 
-        DiscordLinkService service = new DiscordLinkService(codeStore, playerDataRepository, sessionService, networkService, config, discordAdminAccessService);
+        DiscordLinkService service = new DiscordLinkService(codeStore, playerDataRepository, sessionService, networkService, config);
 
         Session session = mock(Session.class);
         session.data = PlayerData.builder().uuid("uuid-7").pid(7).nickname("Target").build();
@@ -58,13 +56,12 @@ class DiscordLinkServiceTest {
         PlayerDataRepository playerDataRepository = mock(PlayerDataRepository.class);
         SessionService sessionService = mock(SessionService.class);
         NetworkService networkService = mock(NetworkService.class);
-        DiscordAdminAccessService discordAdminAccessService = mock(DiscordAdminAccessService.class);
         TomlXcoreConfig config = new TomlXcoreConfig();
         config.server.name = "mini-pvp";
 
         when(codeStore.store(any())).thenReturn(false);
 
-        DiscordLinkService service = new DiscordLinkService(codeStore, playerDataRepository, sessionService, networkService, config, discordAdminAccessService);
+        DiscordLinkService service = new DiscordLinkService(codeStore, playerDataRepository, sessionService, networkService, config);
 
         Session session = mock(Session.class);
         session.data = PlayerData.builder().uuid("uuid-7").pid(7).nickname("Target").build();
@@ -82,11 +79,10 @@ class DiscordLinkServiceTest {
         PlayerDataRepository playerDataRepository = mock(PlayerDataRepository.class);
         SessionService sessionService = mock(SessionService.class);
         NetworkService networkService = mock(NetworkService.class);
-        DiscordAdminAccessService discordAdminAccessService = mock(DiscordAdminAccessService.class);
         TomlXcoreConfig config = new TomlXcoreConfig();
         config.server.name = "mini-pvp";
 
-        DiscordLinkService service = new DiscordLinkService(codeStore, playerDataRepository, sessionService, networkService, config, discordAdminAccessService);
+        DiscordLinkService service = new DiscordLinkService(codeStore, playerDataRepository, sessionService, networkService, config);
 
         Session session = mock(Session.class);
         session.data = PlayerData.builder()
@@ -110,11 +106,10 @@ class DiscordLinkServiceTest {
         PlayerDataRepository playerDataRepository = mock(PlayerDataRepository.class);
         SessionService sessionService = mock(SessionService.class);
         NetworkService networkService = mock(NetworkService.class);
-        DiscordAdminAccessService discordAdminAccessService = mock(DiscordAdminAccessService.class);
         TomlXcoreConfig config = new TomlXcoreConfig();
         config.server.name = "mini-pvp";
 
-        DiscordLinkService service = new DiscordLinkService(codeStore, playerDataRepository, sessionService, networkService, config, discordAdminAccessService);
+        DiscordLinkService service = new DiscordLinkService(codeStore, playerDataRepository, sessionService, networkService, config);
 
         Session session = mock(Session.class);
         session.data = PlayerData.builder().uuid("uuid-7").pid(7).nickname("Target").build();
@@ -140,13 +135,12 @@ class DiscordLinkServiceTest {
         PlayerDataRepository playerDataRepository = mock(PlayerDataRepository.class);
         SessionService sessionService = mock(SessionService.class);
         NetworkService networkService = mock(NetworkService.class);
-        DiscordAdminAccessService discordAdminAccessService = mock(DiscordAdminAccessService.class);
         TomlXcoreConfig config = new TomlXcoreConfig();
         config.server.name = "mini-pvp";
 
         when(codeStore.store(any())).thenReturn(true);
 
-        DiscordLinkService service = new DiscordLinkService(codeStore, playerDataRepository, sessionService, networkService, config, discordAdminAccessService);
+        DiscordLinkService service = new DiscordLinkService(codeStore, playerDataRepository, sessionService, networkService, config);
 
         Session session = mock(Session.class);
         session.data = PlayerData.builder().uuid("uuid-7").pid(7).nickname("Target").build();
@@ -172,11 +166,10 @@ class DiscordLinkServiceTest {
         PlayerDataRepository playerDataRepository = mock(PlayerDataRepository.class);
         SessionService sessionService = mock(SessionService.class);
         NetworkService networkService = mock(NetworkService.class);
-        DiscordAdminAccessService discordAdminAccessService = mock(DiscordAdminAccessService.class);
         TomlXcoreConfig config = new TomlXcoreConfig();
         config.server.name = "mini-pvp";
 
-        DiscordLinkService service = new DiscordLinkService(codeStore, playerDataRepository, sessionService, networkService, config, discordAdminAccessService);
+        DiscordLinkService service = new DiscordLinkService(codeStore, playerDataRepository, sessionService, networkService, config);
 
         var code = new RedisDiscordLinkCodeStore.LinkCodePayload(
                 "ABC123", "uuid-7", 7, "Target", "mini-pvp", System.currentTimeMillis(), System.currentTimeMillis() + 60_000L
@@ -209,11 +202,10 @@ class DiscordLinkServiceTest {
         PlayerDataRepository playerDataRepository = mock(PlayerDataRepository.class);
         SessionService sessionService = mock(SessionService.class);
         NetworkService networkService = mock(NetworkService.class);
-        DiscordAdminAccessService discordAdminAccessService = mock(DiscordAdminAccessService.class);
         TomlXcoreConfig config = new TomlXcoreConfig();
         config.server.name = "mini-pvp";
 
-        DiscordLinkService service = new DiscordLinkService(codeStore, playerDataRepository, sessionService, networkService, config, discordAdminAccessService);
+        DiscordLinkService service = new DiscordLinkService(codeStore, playerDataRepository, sessionService, networkService, config);
 
         var code = new RedisDiscordLinkCodeStore.LinkCodePayload(
                 "ABC123", "uuid-7", 7, "Target", "mini-pvp", System.currentTimeMillis(), System.currentTimeMillis() + 60_000L
@@ -242,11 +234,10 @@ class DiscordLinkServiceTest {
         PlayerDataRepository playerDataRepository = mock(PlayerDataRepository.class);
         SessionService sessionService = mock(SessionService.class);
         NetworkService networkService = mock(NetworkService.class);
-        DiscordAdminAccessService discordAdminAccessService = mock(DiscordAdminAccessService.class);
         TomlXcoreConfig config = new TomlXcoreConfig();
         config.server.name = "mini-pvp";
 
-        DiscordLinkService service = new DiscordLinkService(codeStore, playerDataRepository, sessionService, networkService, config, discordAdminAccessService);
+        DiscordLinkService service = new DiscordLinkService(codeStore, playerDataRepository, sessionService, networkService, config);
 
         PlayerData playerData = PlayerData.builder()
                 .uuid("uuid-7")
@@ -259,14 +250,11 @@ class DiscordLinkServiceTest {
 
         when(playerDataRepository.findByUuid("uuid-7")).thenReturn(playerData);
         when(playerDataRepository.clearDiscordLink("uuid-7")).thenReturn(true);
-        when(discordAdminAccessService.revokeDiscordAdminAccess("uuid-7")).thenReturn(true);
 
         var result = service.unlink("uuid-7");
 
         assertThat(result).isTrue();
         verify(networkService).post(any(DiscordLinkStatusChangedV1.class));
-        verify(networkService).post(any(DiscordAdminAccessChangedCommandV1.class));
-        verify(discordAdminAccessService).revokeDiscordAdminAccess("uuid-7");
     }
 
     @Test
@@ -276,11 +264,10 @@ class DiscordLinkServiceTest {
         PlayerDataRepository playerDataRepository = mock(PlayerDataRepository.class);
         SessionService sessionService = mock(SessionService.class);
         NetworkService networkService = mock(NetworkService.class);
-        DiscordAdminAccessService discordAdminAccessService = mock(DiscordAdminAccessService.class);
         TomlXcoreConfig config = new TomlXcoreConfig();
         config.server.name = "mini-pvp";
 
-        DiscordLinkService service = new DiscordLinkService(codeStore, playerDataRepository, sessionService, networkService, config, discordAdminAccessService);
+        DiscordLinkService service = new DiscordLinkService(codeStore, playerDataRepository, sessionService, networkService, config);
 
         PlayerData playerData = PlayerData.builder()
                 .uuid("uuid-7")
@@ -304,7 +291,6 @@ class DiscordLinkServiceTest {
         when(playerDataRepository.findByUuid("uuid-7")).thenReturn(playerData);
         when(playerDataRepository.clearDiscordLink("uuid-7")).thenReturn(true);
         when(sessionService.get("uuid-7")).thenReturn(session);
-        when(discordAdminAccessService.revokeDiscordAdminAccess("uuid-7")).thenReturn(true);
 
         var result = service.unlink("uuid-7");
 
@@ -312,8 +298,7 @@ class DiscordLinkServiceTest {
         assertThat(session.data.discordId).isBlank();
         assertThat(session.data.discordUsername).isBlank();
         assertThat(session.data.discordLinkedAt).isZero();
-        verify(networkService).post(any(DiscordAdminAccessChangedCommandV1.class));
-        verify(discordAdminAccessService).revokeDiscordAdminAccess("uuid-7");
+        verify(networkService).post(any(DiscordLinkStatusChangedV1.class));
     }
 
     @Test

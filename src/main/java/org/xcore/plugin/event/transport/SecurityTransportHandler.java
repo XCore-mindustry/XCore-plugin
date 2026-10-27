@@ -85,14 +85,11 @@ public class SecurityTransportHandler {
      */
     public synchronized void start() {
         if (stopped || started) return;
-        if (!roles.enabled()) {
-            return;
-        }
         started = true;
         tasks.every(PermissionSessions.REFRESH_SECONDS, PermissionSessions.REFRESH_SECONDS, sessions::refreshAll);
         tasks.every(PermissionSessions.REAPPLY_SECONDS, PermissionSessions.REAPPLY_SECONDS, sessions::reapplyAll);
 
-        // The game's own admin list gives nothing with roles on. Listing it once lets the
+        // The game's own admin list gives nothing by itself. Listing it once lets the
         // operator hand out roles to those who are meant to keep their rights.
         var nativeAdmins = netServer.admins.getAdmins();
         if (nativeAdmins.size > 0) {
@@ -111,10 +108,6 @@ public class SecurityTransportHandler {
 
     void sync(SecurityStaffSyncRequestV1 request) {
         if (!request.server().equals(roles.serverName())) return;
-        if (!roles.enabled()) {
-            network.respondError(request, UNAVAILABLE, "Roles are switched off on " + roles.serverName());
-            return;
-        }
         try {
             PlayerData target = players.findByUuid(request.playerUuid());
             if (target == null) {

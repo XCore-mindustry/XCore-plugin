@@ -1457,7 +1457,6 @@ permission-xcore-permissions-inspect = Widzieć, kto ma jakie uprawnienia
 permission-xcore-permissions-manage = Zmieniać role i uprawnienia
 
 error-target-outranks = [scarlet]⚠ Nie możesz tego zrobić graczowi, którego rola nie jest niższa od twojej.
-perm-me-legacy = [accent]Role są wyłączone na tym serwerze. Admin: [white]{ $admin }
 perm-me-header = [accent]Twoje role tutaj (waga [white]{ $weight }[accent]):
 perm-me-none = [lightgray] - brak
 perm-me-logged-in = [green]Jesteś zalogowany jako członek administracji.

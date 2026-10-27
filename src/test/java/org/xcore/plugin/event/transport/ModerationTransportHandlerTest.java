@@ -17,7 +17,6 @@ import org.xcore.plugin.concurrent.StorageExecutor;
 import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.rating.ladder.LadderService;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
-import org.xcore.plugin.service.DiscordAdminAccessService;
 import org.xcore.plugin.service.NetworkService;
 import org.xcore.plugin.service.PlayerDisplayService;
 import org.xcore.plugin.service.network.RedisNetworkBackend;
@@ -28,12 +27,6 @@ import org.xcore.protocol.generated.messages.identity.IdentityMessages.PlayerAct
 import org.xcore.protocol.generated.messages.identity.IdentityMessages.PlayerBadgeInventoryChangedCommandV1;
 import org.xcore.protocol.generated.messages.identity.IdentityMessages.PlayerBadgeSymbolColorModeChangedCommandV1;
 import org.xcore.protocol.generated.messages.identity.IdentityMessages.PlayerCustomNicknameChangedCommandV1;
-import org.xcore.protocol.generated.messages.security.SecurityMessages.PlayerPasswordResetCommandV1;
-import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordAdminAccessChangedCommandV1;
-import org.xcore.protocol.generated.shared.ActorRefV1;
-import org.xcore.protocol.generated.shared.ActorRefV1ActorType;
-import org.xcore.protocol.generated.shared.DiscordIdentityRefV1;
-import org.xcore.protocol.generated.shared.PlayerRefV1;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -73,92 +66,17 @@ class ModerationTransportHandlerTest {
     }
 
     @Test
-    @DisplayName("discord admin access command applies persisted admin flags")
-    void discordAdminAccessCommand_appliesPersistedAdminFlags() {
-        NetworkService network = mock(NetworkService.class);
-        SessionService sessionService = mock(SessionService.class);
-        PlayerDisplayService playerDisplayService = mock(PlayerDisplayService.class);
-        DiscordAdminAccessService discordAdminAccessService = mock(DiscordAdminAccessService.class);
-
-        TomlXcoreConfig config = new TomlXcoreConfig();
-        config.server.name = "mini-pvp";
-
-        ModerationTransportHandler handler = new ModerationTransportHandler(
-                network, sessionService, config, playerDisplayService, discordAdminAccessService, mock(LadderService.class), async,
-                new org.xcore.plugin.permission.RemoteConsoleScope());
-
-        Map<Class<?>, Cons<?>> listeners = new HashMap<>();
-        captureListeners(network, listeners);
-
-        when(discordAdminAccessService.applyDiscordAdminAccess("uuid-1", "123", "discord-user")).thenReturn(true);
-
-        handler.registerListeners();
-
-        listener(listeners, DiscordAdminAccessChangedCommandV1.class)
-                .get(new DiscordAdminAccessChangedCommandV1(
-                        new PlayerRefV1("uuid-1", 7, "Player", null),
-                        new DiscordIdentityRefV1("123", "discord-user"),
-                        true,
-                        new ActorRefV1(DiscordAdminAccessService.SOURCE_DISCORD_ROLE, null, ActorRefV1ActorType.SYSTEM),
-                        new ActorRefV1("tester", null, ActorRefV1ActorType.SYSTEM),
-                        "sync",
-                        "mini-pvp",
-                        "2026-04-28T00:00:10Z"
-                ));
-
-        verify(discordAdminAccessService).applyDiscordAdminAccess("uuid-1", "123", "discord-user");
-    }
-
-    @Test
-    @DisplayName("discord admin revoke command clears persisted admin flags")
-    void discordAdminRevokeCommand_clearsPersistedAdminFlags() {
-        NetworkService network = mock(NetworkService.class);
-        SessionService sessionService = mock(SessionService.class);
-        PlayerDisplayService playerDisplayService = mock(PlayerDisplayService.class);
-        DiscordAdminAccessService discordAdminAccessService = mock(DiscordAdminAccessService.class);
-
-        TomlXcoreConfig config = new TomlXcoreConfig();
-        config.server.name = "mini-pvp";
-
-        ModerationTransportHandler handler = new ModerationTransportHandler(
-                network, sessionService, config, playerDisplayService, discordAdminAccessService, mock(LadderService.class), async,
-                new org.xcore.plugin.permission.RemoteConsoleScope());
-
-        Map<Class<?>, Cons<?>> listeners = new HashMap<>();
-        captureListeners(network, listeners);
-
-        when(discordAdminAccessService.revokeDiscordAdminAccess("uuid-1")).thenReturn(true);
-
-        handler.registerListeners();
-
-        listener(listeners, DiscordAdminAccessChangedCommandV1.class)
-                .get(new DiscordAdminAccessChangedCommandV1(
-                        new PlayerRefV1("uuid-1", 7, "Player", null),
-                        new DiscordIdentityRefV1("123", "discord-user"),
-                        false,
-                        new ActorRefV1(DiscordAdminAccessService.SOURCE_DISCORD_ROLE, null, ActorRefV1ActorType.SYSTEM),
-                        new ActorRefV1("tester", null, ActorRefV1ActorType.SYSTEM),
-                        "sync",
-                        "mini-pvp",
-                        "2026-04-28T00:00:11Z"
-                ));
-
-        verify(discordAdminAccessService).revokeDiscordAdminAccess("uuid-1");
-    }
-
-    @Test
     @DisplayName("player session commands update session state and refresh display when needed")
     void playerSessionCommands_updateSessionStateAndRefreshDisplay() {
         NetworkService network = mock(NetworkService.class);
         SessionService sessionService = mock(SessionService.class);
         PlayerDisplayService playerDisplayService = mock(PlayerDisplayService.class);
-        DiscordAdminAccessService discordAdminAccessService = mock(DiscordAdminAccessService.class);
 
         TomlXcoreConfig config = new TomlXcoreConfig();
         config.server.name = "mini-pvp";
 
         ModerationTransportHandler handler = new ModerationTransportHandler(
-                network, sessionService, config, playerDisplayService, discordAdminAccessService, mock(LadderService.class), async,
+                network, sessionService, config, playerDisplayService, mock(LadderService.class), async,
                 new org.xcore.plugin.permission.RemoteConsoleScope());
 
         Map<Class<?>, Cons<?>> listeners = new HashMap<>();
@@ -200,13 +118,12 @@ class ModerationTransportHandlerTest {
         NetworkService network = mock(NetworkService.class);
         SessionService sessionService = mock(SessionService.class);
         PlayerDisplayService playerDisplayService = mock(PlayerDisplayService.class);
-        DiscordAdminAccessService discordAdminAccessService = mock(DiscordAdminAccessService.class);
 
         TomlXcoreConfig config = new TomlXcoreConfig();
         config.server.name = "mini-pvp";
 
         ModerationTransportHandler handler = new ModerationTransportHandler(
-                network, sessionService, config, playerDisplayService, discordAdminAccessService, mock(LadderService.class), async,
+                network, sessionService, config, playerDisplayService, mock(LadderService.class), async,
                 new org.xcore.plugin.permission.RemoteConsoleScope());
 
         Map<Class<?>, Cons<?>> listeners = new HashMap<>();
@@ -237,52 +154,11 @@ class ModerationTransportHandlerTest {
     }
 
     @Test
-    @DisplayName("password reset command clears password without refresh")
-    void passwordResetCommand_clearsPasswordWithoutRefresh() {
-        NetworkService network = mock(NetworkService.class);
-        SessionService sessionService = mock(SessionService.class);
-        PlayerDisplayService playerDisplayService = mock(PlayerDisplayService.class);
-        DiscordAdminAccessService discordAdminAccessService = mock(DiscordAdminAccessService.class);
-
-        TomlXcoreConfig config = new TomlXcoreConfig();
-        config.server.name = "mini-pvp";
-
-        ModerationTransportHandler handler = new ModerationTransportHandler(
-                network, sessionService, config, playerDisplayService, discordAdminAccessService, mock(LadderService.class), async,
-                new org.xcore.plugin.permission.RemoteConsoleScope());
-
-        Map<Class<?>, Cons<?>> listeners = new HashMap<>();
-        captureListeners(network, listeners);
-
-        PlayerData playerData = new PlayerData();
-        playerData.uuid = "uuid-1";
-        playerData.password = "old-hash";
-        Session session = new Session(
-                mock(org.xcore.plugin.config.TomlSecretsConfig.class),
-                mock(Bundle.class),
-                mock(MenuService.class),
-                mock(PlayerDataRepository.class),
-                mock(Player.class),
-                playerData
-        );
-        when(sessionService.get("uuid-1")).thenReturn(session);
-
-        handler.registerListeners();
-
-        listener(listeners, PlayerPasswordResetCommandV1.class)
-                .get(new PlayerPasswordResetCommandV1("uuid-1", "survival"));
-
-        assertThat(session.data.password).isEmpty();
-        verify(playerDisplayService, times(0)).refresh(any());
-    }
-
-    @Test
     @DisplayName("Mindustry mutations are deferred off the subscriber thread until the main thread runs them")
     void mindustryMutations_areMarshalledToMainThread() {
         NetworkService network = mock(NetworkService.class);
         SessionService sessionService = mock(SessionService.class);
         PlayerDisplayService playerDisplayService = mock(PlayerDisplayService.class);
-        DiscordAdminAccessService discordAdminAccessService = mock(DiscordAdminAccessService.class);
 
         TomlXcoreConfig config = new TomlXcoreConfig();
         config.server.name = "mini-pvp";
@@ -293,7 +169,7 @@ class ModerationTransportHandlerTest {
         MainThreadDispatcher deferred = marshalled::add;
 
         ModerationTransportHandler handler = new ModerationTransportHandler(
-                network, sessionService, config, playerDisplayService, discordAdminAccessService,
+                network, sessionService, config, playerDisplayService,
                 mock(LadderService.class), new Async(new StorageExecutor(4), deferred),
                 new org.xcore.plugin.permission.RemoteConsoleScope());
 
@@ -331,52 +207,6 @@ class ModerationTransportHandlerTest {
 
         assertThat(playerData.activeBadge).isEqualTo("translator");
         verify(playerDisplayService, times(1)).refresh(session);
-    }
-
-    @Test
-    @DisplayName("admin access sync is delegated to the service rather than marshalled by the handler")
-    void discordAdminAccess_isDelegatedToServiceInsteadOfMarshalledHere() {
-        NetworkService network = mock(NetworkService.class);
-        SessionService sessionService = mock(SessionService.class);
-        PlayerDisplayService playerDisplayService = mock(PlayerDisplayService.class);
-        DiscordAdminAccessService discordAdminAccessService = mock(DiscordAdminAccessService.class);
-
-        TomlXcoreConfig config = new TomlXcoreConfig();
-        config.server.name = "mini-pvp";
-
-        List<Runnable> marshalled = new ArrayList<>();
-
-        ModerationTransportHandler handler = new ModerationTransportHandler(
-                network, sessionService, config, playerDisplayService, discordAdminAccessService,
-                mock(LadderService.class), new Async(new StorageExecutor(4), marshalled::add),
-                new org.xcore.plugin.permission.RemoteConsoleScope());
-
-        Map<Class<?>, Cons<?>> listeners = new HashMap<>();
-        captureListeners(network, listeners);
-
-        when(discordAdminAccessService.applyDiscordAdminAccess("uuid-1", "123", "discord-user")).thenReturn(true);
-
-        handler.registerListeners();
-
-        listener(listeners, DiscordAdminAccessChangedCommandV1.class)
-                .get(new DiscordAdminAccessChangedCommandV1(
-                        new PlayerRefV1("uuid-1", 7, "Player", null),
-                        new DiscordIdentityRefV1("123", "discord-user"),
-                        true,
-                        new ActorRefV1(DiscordAdminAccessService.SOURCE_DISCORD_ROLE, null, ActorRefV1ActorType.SYSTEM),
-                        new ActorRefV1("tester", null, ActorRefV1ActorType.SYSTEM),
-                        "sync",
-                        "mini-pvp",
-                        "2026-04-28T00:00:10Z"
-                ));
-
-        // The handler does not wrap this one: marshalling the whole callback would drag the
-        // service's Mongo round trips onto the game thread. The service splits the two
-        // itself, and this asserts the handler is not the thing doing it.
-        verify(discordAdminAccessService).applyDiscordAdminAccess("uuid-1", "123", "discord-user");
-        assertThat(marshalled)
-                .as("handler must delegate rather than marshal the whole callback")
-                .isEmpty();
     }
 
     private static void captureListeners(NetworkService network, Map<Class<?>, Cons<?>> listeners) {

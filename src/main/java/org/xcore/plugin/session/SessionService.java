@@ -552,13 +552,6 @@ public class SessionService {
         return persisted;
     }
 
-    public boolean updateAdminStatus(Session session, boolean admin, String adminSource) {
-        return mutateSession(session, data -> {
-            data.admin = admin;
-            data.adminSource = adminSource == null || adminSource.isBlank() ? "NONE" : adminSource;
-        }, () -> playerDataRepository.updateAdminStatus(session.data.uuid, admin, session.data.adminSource));
-    }
-
     public boolean updateLeaderboard(Session session, boolean leaderboard) {
         return mutateSession(session,
                 data -> data.leaderboard = leaderboard,

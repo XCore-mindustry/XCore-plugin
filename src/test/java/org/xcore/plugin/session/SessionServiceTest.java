@@ -47,30 +47,6 @@ class SessionServiceTest {
     }
 
     @Test
-    @DisplayName("updateAdminStatus updates session and persists admin flags")
-    void updateAdminStatus_updatesSessionAndPersistsAdminFlags() {
-        PlayerDataRepository playerDataRepository = mock(PlayerDataRepository.class);
-        when(playerDataRepository.updateAdminStatus("uuid-1", true, "DISCORD_ROLE")).thenReturn(true);
-
-        SessionService service = new SessionService(
-                mock(SessionFactory.class),
-                playerDataRepository
-        );
-
-        Session session = mock(Session.class);
-        session.data = new PlayerData("uuid-1", true);
-        session.data.admin = false;
-        session.data.adminSource = "NONE";
-
-        boolean result = service.updateAdminStatus(session, true, "DISCORD_ROLE");
-
-        assertThat(result).isTrue();
-        assertThat(session.data.admin).isTrue();
-        assertThat(session.data.adminSource).isEqualTo("DISCORD_ROLE");
-        verify(playerDataRepository).updateAdminStatus("uuid-1", true, "DISCORD_ROLE");
-    }
-
-    @Test
     @DisplayName("updateGlobalChatVisible updates session and persists visibility")
     void updateGlobalChatVisible_updatesSessionAndPersistsVisibility() {
         PlayerDataRepository playerDataRepository = mock(PlayerDataRepository.class);

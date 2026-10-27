@@ -1470,7 +1470,6 @@ permission-xcore-permissions-inspect = Бачити, хто має які доз
 permission-xcore-permissions-manage = Змінювати ролі та дозволи
 
 error-target-outranks = [scarlet]⚠ Не можна застосувати це до гравця, чия роль не нижча за вашу.
-perm-me-legacy = [accent]Ролі на цьому сервері вимкнено. Адміністратор: [white]{ $admin }
 perm-me-header = [accent]Ваші ролі тут (вага [white]{ $weight }[accent]):
 perm-me-none = [lightgray] - немає
 perm-me-logged-in = [green]Ви увійшли як стафф.
