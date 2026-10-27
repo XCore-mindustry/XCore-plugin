@@ -6,7 +6,13 @@ import com.ospx.flubundle.Text;
 import fluent.bundle.FluentBundle;
 import mindustry.gen.Player;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
+import java.time.Instant;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
+import java.time.format.FormatStyle;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -37,6 +43,35 @@ public class BundleApiTest {
         Player player = Player.create();
         player.locale = clientLocale;
         return player;
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    void dateFormattersStayInTheirLocaleAcrossSourceAndRegistryUpdates(boolean russianFirst) {
+        Locale russian = Locale.of("ru");
+        List<Locale> locales = russianFirst ? List.of(russian, Locale.ENGLISH) : List.of(Locale.ENGLISH, russian);
+        String ftl = "expires = { DATETIME($date, dateStyle: \"medium\", timeStyle: \"short\") }\n";
+        Bundle bundle = bundleWith(ftl, Locale.ENGLISH);
+        add(bundle, ftl, russian);
+
+        assertLocalizedDates(bundle, locales);
+
+        for (Locale locale : locales) {
+            add(bundle, ftl, locale);
+        }
+        assertLocalizedDates(bundle, locales);
+
+        bundle.registerFormatterExact(StringBuilder.class, (value, scope) -> value.toString());
+        assertLocalizedDates(bundle, locales);
+    }
+
+    private static void assertLocalizedDates(Bundle bundle, List<Locale> locales) {
+        Instant date = Instant.parse("2026-11-01T14:48:00Z");
+        for (Locale locale : locales) {
+            String expected = DateTimeFormatter.ofLocalizedDateTime(FormatStyle.MEDIUM, FormatStyle.SHORT)
+                    .withLocale(locale).withZone(ZoneOffset.UTC).format(date);
+            assertEquals(expected, bundle.format(locale, "expires", Map.of("date", date)), locale.toString());
+        }
     }
 
     @Test

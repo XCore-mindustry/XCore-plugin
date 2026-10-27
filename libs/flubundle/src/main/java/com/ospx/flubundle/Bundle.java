@@ -11,7 +11,6 @@ import com.ospx.flubundle.functions.StripFunction;
 import com.ospx.flubundle.mindustry.ContentNames;
 
 import fluent.bundle.FluentBundle;
-import fluent.bundle.FluentFunctionCache;
 import fluent.bundle.FluentFunctionRegistry;
 import fluent.bundle.FluentResource;
 import fluent.bundle.LRUFunctionCache;
@@ -61,7 +60,6 @@ public class Bundle {
     private final Map<String, Locale> localeAliases = new ConcurrentHashMap<>();
     private final FluentFunctionRegistry.Builder registryBuilder = FluentFunctionRegistry.builder();
     private final Set<String> reportedFormatErrors = ConcurrentHashMap.newKeySet();
-    private FluentFunctionCache functionCache = LRUFunctionCache.of();
     private FluentFunctionRegistry functionRegistry;
     private volatile LocaleResolver localeResolver = LocaleResolver.CLIENT;
     private volatile Consumer<FluentBundle.ErrorContext> formatErrorHandler = this::logFormatError;
@@ -119,14 +117,15 @@ public class Bundle {
         var source = sources.get(locale);
 
         if (source == null) {
-            sources.put(locale, FluentBundle.builder(locale, ensureRegistry(), functionCache)
+            // LRU cache keys omit the locale, so each bundle must own its cache.
+            sources.put(locale, FluentBundle.builder(locale, ensureRegistry(), LRUFunctionCache.of())
                     .withLogger(this::onFormatError)
                     .addResource(resource)
                     .build());
             return;
         }
 
-        sources.put(locale, FluentBundle.builderFrom(source, functionCache)
+        sources.put(locale, FluentBundle.builderFrom(source, LRUFunctionCache.of())
                 .withLogger(this::onFormatError)
                 .addResourceOverriding(resource)
                 .build());
@@ -488,8 +487,7 @@ public class Bundle {
         }
 
         functionRegistry = registryBuilder.build();
-        functionCache = LRUFunctionCache.of();
-        sources.replaceAll((locale, bundle) -> FluentBundle.builderFrom(bundle, functionCache)
+        sources.replaceAll((locale, bundle) -> FluentBundle.builderFrom(bundle, LRUFunctionCache.of())
                 .withRegistry(functionRegistry)
                 .withLogger(this::onFormatError)
                 .build());
