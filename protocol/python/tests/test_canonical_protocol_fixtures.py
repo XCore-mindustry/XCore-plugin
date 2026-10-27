@@ -9,7 +9,6 @@ import pytest
 
 from xcore_protocol.generated import (
     ActorRefV1ActorType,
-    DiscordAdminAccessChangedCommandV1,
     DiscordUnlinkCommandV1,
     MetricsSnapshotV1,
     ServerHeartbeatV1,
@@ -59,13 +58,6 @@ def _assert_no_snake_case_keys(value: Any) -> None:
 CanonicalAssertion = Callable[[Any, dict[str, Any]], None]
 
 
-def _assert_admin_access_semantics(model: DiscordAdminAccessChangedCommandV1, payload: dict[str, Any]) -> None:
-    assert model.source.actorType is ActorRefV1ActorType.SYSTEM
-    assert payload["source"]["actorType"] == "system"
-    assert model.actor.actorType is ActorRefV1ActorType.DISCORD
-    assert model.actor.actorName == payload["actor"]["actorName"]
-
-
 def _assert_unlink_semantics(model: DiscordUnlinkCommandV1, payload: dict[str, Any]) -> None:
     assert model.actor.actorType is ActorRefV1ActorType.DISCORD
     assert model.actor.actorName == payload["actor"]["actorName"]
@@ -84,20 +76,6 @@ def _assert_telemetry_semantics(model: MetricsSnapshotV1, payload: dict[str, Any
 
 
 CANONICAL_CASES: list[tuple[str, Path, Path, type[Any], CanonicalAssertion]] = [
-    (
-        "discord_admin_access_grant",
-        spec_root() / "messages" / "discord" / "discord.admin-access.changed.command.v1.json",
-        CANONICAL_FIXTURES_ROOT / "discord" / "discord.admin-access.changed.command.v1.grant.json",
-        DiscordAdminAccessChangedCommandV1,
-        _assert_admin_access_semantics,
-    ),
-    (
-        "discord_admin_access_revoke",
-        spec_root() / "messages" / "discord" / "discord.admin-access.changed.command.v1.json",
-        CANONICAL_FIXTURES_ROOT / "discord" / "discord.admin-access.changed.command.v1.revoke.json",
-        DiscordAdminAccessChangedCommandV1,
-        _assert_admin_access_semantics,
-    ),
     (
         "discord_unlink",
         spec_root() / "messages" / "discord" / "discord.unlink.command.v1.json",

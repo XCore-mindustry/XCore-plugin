@@ -115,72 +115,6 @@ def _expect_instance(value: Any, field_name: str, expected_type: type[Any]) -> N
         raise TypeError(f"{field_name} must be a {expected_type.__name__}")
 
 @dataclass(frozen=True, slots=True)
-class DiscordAdminAccessChangedCommandV1:
-    player: PlayerRefV1
-    discord: DiscordIdentityRefV1
-    admin: bool
-    source: ActorRefV1
-    actor: ActorRefV1
-    reason: str
-    server: str
-    occurredAt: str
-
-    MESSAGE_TYPE: ClassVar[str] = 'discord.admin-access.changed.command'
-    MESSAGE_VERSION: ClassVar[int] = 1
-    def __post_init__(self) -> None:
-        _expect_instance(self.player, 'player', PlayerRefV1)
-        _expect_instance(self.discord, 'discord', DiscordIdentityRefV1)
-        _expect_bool(self.admin, 'admin')
-        _expect_instance(self.source, 'source', ActorRefV1)
-        _expect_instance(self.actor, 'actor', ActorRefV1)
-        _expect_str(self.reason, 'reason')
-        if len(self.reason) < 1:
-            raise ValueError("reason is too short")
-        _expect_str(self.server, 'server')
-        if len(self.server) < 1:
-            raise ValueError("server is too short")
-        _expect_str(self.occurredAt, 'occurredAt')
-
-    @classmethod
-    def from_payload(cls, payload: Mapping[str, Any]) -> "DiscordAdminAccessChangedCommandV1":
-        mapping = _expect_mapping(payload, "DiscordAdminAccessChangedCommandV1")
-        _expect_exact_keys(
-            mapping,
-            required=frozenset(('messageType', 'messageVersion', 'player', 'discord', 'admin', 'source', 'actor', 'reason', 'server', 'occurredAt')),
-            allowed=frozenset(('messageType', 'messageVersion', 'player', 'discord', 'admin', 'source', 'actor', 'reason', 'server', 'occurredAt')),
-            model_name="DiscordAdminAccessChangedCommandV1",
-        )
-        if mapping['messageType'] != cls.MESSAGE_TYPE:
-            raise ValueError('messageType' + " must equal " + repr(cls.MESSAGE_TYPE))
-        if mapping['messageVersion'] != cls.MESSAGE_VERSION:
-            raise ValueError('messageVersion' + " must equal " + repr(cls.MESSAGE_VERSION))
-        return cls(
-            player=PlayerRefV1.from_payload(_expect_mapping(mapping['player'], 'player')),
-            discord=DiscordIdentityRefV1.from_payload(_expect_mapping(mapping['discord'], 'discord')),
-            admin=_expect_bool(mapping['admin'], 'admin'),
-            source=ActorRefV1.from_payload(_expect_mapping(mapping['source'], 'source')),
-            actor=ActorRefV1.from_payload(_expect_mapping(mapping['actor'], 'actor')),
-            reason=_expect_str(mapping['reason'], 'reason'),
-            server=_expect_str(mapping['server'], 'server'),
-            occurredAt=_expect_str(mapping['occurredAt'], 'occurredAt'),
-        )
-
-    def to_payload(self) -> dict[str, Any]:
-        payload: dict[str, Any] = {
-            'messageType': self.MESSAGE_TYPE,
-            'messageVersion': self.MESSAGE_VERSION,
-        }
-        payload['player'] = self.player.to_payload()
-        payload['discord'] = self.discord.to_payload()
-        payload['admin'] = self.admin
-        payload['source'] = self.source.to_payload()
-        payload['actor'] = self.actor.to_payload()
-        payload['reason'] = self.reason
-        payload['server'] = self.server
-        payload['occurredAt'] = self.occurredAt
-        return payload
-
-@dataclass(frozen=True, slots=True)
 class DiscordLinkCodeCreatedV1:
     code: str
     player: PlayerRefV1
@@ -397,7 +331,6 @@ class DiscordUnlinkCommandV1:
         return payload
 
 __all__ = [
-    "DiscordAdminAccessChangedCommandV1",
     "DiscordLinkCodeCreatedV1",
     "DiscordLinkConfirmCommandV1",
     "DiscordLinkStatusChangedV1",

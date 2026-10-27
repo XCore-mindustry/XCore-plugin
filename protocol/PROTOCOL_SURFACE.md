@@ -4,10 +4,10 @@
 
 ## Overview
 
-- **Protocol Version:** 0.15.0
+- **Protocol Version:** 0.16.0
 - **Message Families:** 11
-- **Total Messages:** 64
-- **Total Routes:** 49
+- **Total Messages:** 62
+- **Total Routes:** 47
 - **Shared Types:** 23
 - **Envelope Schemas:** 6
 
@@ -105,7 +105,6 @@
 
 | Message | Schema File | Fields |
 |---------|-------------|--------|
-| `PlayerPasswordResetCommandV1` | `urn:xcore:protocol:messages:chat:player.password-reset.command:v1` | required: messageType, messageVersion, playerUuid, server |
 | `SecurityPermissionsChangedV1` | `urn:xcore:protocol:messages:security:security.permissions.changed:v1` | required: messageType, messageVersion, playerUuid, revision; optional: sourceServer, occurredAt |
 | `SecurityStaffResetPasswordRequestV1` | `urn:xcore:protocol:messages:security:security.staff.reset-password.request:v1` | required: messageType, messageVersion, server, operationId, playerUuid |
 | `SecurityStaffResetPasswordResponseV1` | `urn:xcore:protocol:messages:security:security.staff.reset-password.response:v1` | required: messageType, messageVersion, server, operationId, changed |
@@ -116,7 +115,6 @@
 
 | Message | Schema File | Fields |
 |---------|-------------|--------|
-| `DiscordAdminAccessChangedCommandV1` | `urn:xcore:protocol:messages:discord:discord.admin-access.changed.command:v1` | required: messageType, messageVersion, player, discord, admin, source, actor, reason, server, occurredAt |
 | `DiscordLinkCodeCreatedV1` | `urn:xcore:protocol:messages:discord:discord.link-code-created:v1` | required: messageType, messageVersion, code, player, server, createdAt, expiresAt |
 | `DiscordLinkConfirmCommandV1` | `urn:xcore:protocol:messages:discord:discord.link.confirm.command:v1` | required: messageType, messageVersion, code, player, discord, server, confirmedAt |
 | `DiscordLinkStatusChangedV1` | `urn:xcore:protocol:messages:discord:discord.link.status-changed:v1` | required: messageType, messageVersion, player, discord, action, server, occurredAt |
@@ -194,7 +192,6 @@
 | `ServerCommandExecuteCommandV1` | command | xcore:cmd:execute-command:broadcast | 120000ms | False | `—` |
 | `PlayerDataCacheReloadCommandV1` | command | xcore:cmd:reload-cache:{server} | 120000ms | False | `—` |
 | `ServerHeartbeatV1` | event | xcore:evt:server:heartbeat | 60000ms | True | `—` |
-| `PlayerPasswordResetCommandV1` | command | xcore:cmd:player-password-reset:{server} | 120000ms | False | `—` |
 | `SecurityPermissionsChangedV1` | event | xcore:evt:security:permissions-changed | 300000ms | True | `—` |
 | `SecurityStaffSyncRequestV1` | rpc-request | xcore:rpc:req:{server} | 10000ms | False | `SecurityStaffSyncResponseV1` |
 | `SecurityStaffResetPasswordRequestV1` | rpc-request | xcore:rpc:req:{server} | 10000ms | False | `SecurityStaffResetPasswordResponseV1` |
@@ -202,7 +199,6 @@
 | `DiscordLinkConfirmCommandV1` | command | xcore:cmd:discord-link-confirm:{server} | 120000ms | False | `—` |
 | `DiscordUnlinkCommandV1` | command | xcore:cmd:discord-unlink:{server} | 120000ms | False | `—` |
 | `DiscordLinkStatusChangedV1` | event | xcore:evt:discord:link-status | 120000ms | True | `—` |
-| `DiscordAdminAccessChangedCommandV1` | command | xcore:cmd:discord-admin-access:{server} | 120000ms | False | `—` |
 | `ModerationBanCreatedV1` | event | xcore:evt:moderation:ban | 120000ms | True | `—` |
 | `ModerationMuteCreatedV1` | event | xcore:evt:moderation:mute | 120000ms | True | `—` |
 | `ModerationVoteKickCreatedV1` | event | xcore:evt:moderation:votekick | 120000ms | True | `—` |

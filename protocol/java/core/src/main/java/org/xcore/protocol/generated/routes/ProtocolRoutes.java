@@ -434,23 +434,6 @@ public final class ProtocolRoutes {
             null
     );
 
-    public static final RouteDescriptor PLAYER_PASSWORD_RESET_COMMAND_V1 = new RouteDescriptor(
-            "security",
-            "playerPasswordResetCommandV1Route",
-            "player.password-reset.command",
-            1,
-            SecurityMessages.PlayerPasswordResetCommandV1.class,
-            "command",
-            "xcore:cmd:player-password-reset:{server}",
-            Map.of("server", "payload.server"),
-            "server",
-            120000,
-            false,
-            true,
-            "player-session",
-            null
-    );
-
     public static final RouteDescriptor SECURITY_PERMISSIONS_CHANGED_V1 = new RouteDescriptor(
             "security",
             "securityPermissionsChangedV1Route",
@@ -579,23 +562,6 @@ public final class ProtocolRoutes {
             true,
             true,
             "discord-linking",
-            null
-    );
-
-    public static final RouteDescriptor DISCORD_ADMIN_ACCESS_CHANGED_COMMAND_V1 = new RouteDescriptor(
-            "discord",
-            "discordAdminAccessChangedCommandV1Route",
-            "discord.admin-access.changed.command",
-            1,
-            DiscordMessages.DiscordAdminAccessChangedCommandV1.class,
-            "command",
-            "xcore:cmd:discord-admin-access:{server}",
-            Map.of("server", "payload.server"),
-            "server",
-            120000,
-            false,
-            true,
-            "discord-admin-access",
             null
     );
 
@@ -986,7 +952,6 @@ public final class ProtocolRoutes {
             entry(key("server-command.execute.command", 1), SERVER_COMMAND_EXECUTE_COMMAND_V1),
             entry(key("player-data-cache.reload.command", 1), PLAYER_DATA_CACHE_RELOAD_COMMAND_V1),
             entry(key("server.heartbeat", 1), SERVER_HEARTBEAT_V1),
-            entry(key("player.password-reset.command", 1), PLAYER_PASSWORD_RESET_COMMAND_V1),
             entry(key("security.permissions.changed", 1), SECURITY_PERMISSIONS_CHANGED_V1),
             entry(key("security.staff.sync.request", 1), SECURITY_STAFF_SYNC_REQUEST_V1),
             entry(key("security.staff.reset-password.request", 1), SECURITY_STAFF_RESET_PASSWORD_REQUEST_V1),
@@ -994,7 +959,6 @@ public final class ProtocolRoutes {
             entry(key("discord.link.confirm.command", 1), DISCORD_LINK_CONFIRM_COMMAND_V1),
             entry(key("discord.unlink.command", 1), DISCORD_UNLINK_COMMAND_V1),
             entry(key("discord.link.status-changed", 1), DISCORD_LINK_STATUS_CHANGED_V1),
-            entry(key("discord.admin-access.changed.command", 1), DISCORD_ADMIN_ACCESS_CHANGED_COMMAND_V1),
             entry(key("moderation.ban.created", 1), MODERATION_BAN_CREATED_V1),
             entry(key("moderation.mute.created", 1), MODERATION_MUTE_CREATED_V1),
             entry(key("moderation.vote-kick.created", 1), MODERATION_VOTE_KICK_CREATED_V1),
@@ -1039,7 +1003,6 @@ public final class ProtocolRoutes {
             entry((Class<? extends ProtocolPayload>) ServerMessages.ServerCommandExecuteCommandV1.class, SERVER_COMMAND_EXECUTE_COMMAND_V1),
             entry((Class<? extends ProtocolPayload>) ServerMessages.PlayerDataCacheReloadCommandV1.class, PLAYER_DATA_CACHE_RELOAD_COMMAND_V1),
             entry((Class<? extends ProtocolPayload>) ServerMessages.ServerHeartbeatV1.class, SERVER_HEARTBEAT_V1),
-            entry((Class<? extends ProtocolPayload>) SecurityMessages.PlayerPasswordResetCommandV1.class, PLAYER_PASSWORD_RESET_COMMAND_V1),
             entry((Class<? extends ProtocolPayload>) SecurityMessages.SecurityPermissionsChangedV1.class, SECURITY_PERMISSIONS_CHANGED_V1),
             entry((Class<? extends ProtocolPayload>) SecurityMessages.SecurityStaffSyncRequestV1.class, SECURITY_STAFF_SYNC_REQUEST_V1),
             entry((Class<? extends ProtocolPayload>) SecurityMessages.SecurityStaffResetPasswordRequestV1.class, SECURITY_STAFF_RESET_PASSWORD_REQUEST_V1),
@@ -1047,7 +1010,6 @@ public final class ProtocolRoutes {
             entry((Class<? extends ProtocolPayload>) DiscordMessages.DiscordLinkConfirmCommandV1.class, DISCORD_LINK_CONFIRM_COMMAND_V1),
             entry((Class<? extends ProtocolPayload>) DiscordMessages.DiscordUnlinkCommandV1.class, DISCORD_UNLINK_COMMAND_V1),
             entry((Class<? extends ProtocolPayload>) DiscordMessages.DiscordLinkStatusChangedV1.class, DISCORD_LINK_STATUS_CHANGED_V1),
-            entry((Class<? extends ProtocolPayload>) DiscordMessages.DiscordAdminAccessChangedCommandV1.class, DISCORD_ADMIN_ACCESS_CHANGED_COMMAND_V1),
             entry((Class<? extends ProtocolPayload>) ModerationMessages.ModerationBanCreatedV1.class, MODERATION_BAN_CREATED_V1),
             entry((Class<? extends ProtocolPayload>) ModerationMessages.ModerationMuteCreatedV1.class, MODERATION_MUTE_CREATED_V1),
             entry((Class<? extends ProtocolPayload>) ModerationMessages.ModerationVoteKickCreatedV1.class, MODERATION_VOTE_KICK_CREATED_V1),

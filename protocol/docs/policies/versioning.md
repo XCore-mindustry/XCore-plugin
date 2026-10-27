@@ -6,6 +6,8 @@ This repository follows semantic versioning:
 - minor = additive protocol changes
 - patch = non-breaking fixes/docs/test updates
 
+While the version is below 1.0.0, a breaking change bumps the minor version instead of the major one, as 0.13.0 and 0.16.0 did. Its CHANGELOG entry must say what breaks and in which order the bot and the game servers are upgraded.
+
 ## Message Versioning
 Each message type has its own explicit version.
 

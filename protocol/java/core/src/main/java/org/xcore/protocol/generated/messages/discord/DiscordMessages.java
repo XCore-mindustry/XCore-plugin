@@ -13,52 +13,6 @@ public final class DiscordMessages {
         throw new AssertionError("No org.xcore.protocol.generated.messages.discord.DiscordMessages instances");
     }
 
-    public record DiscordAdminAccessChangedCommandV1(
-            PlayerRefV1 player,
-            DiscordIdentityRefV1 discord,
-            boolean admin,
-            ActorRefV1 source,
-            ActorRefV1 actor,
-            String reason,
-            String server,
-            String occurredAt
-    ) implements ProtocolPayload {
-    public static final String MESSAGE_TYPE = "discord.admin-access.changed.command";
-    public static final int MESSAGE_VERSION = 1;
-
-        public DiscordAdminAccessChangedCommandV1 {
-            Objects.requireNonNull(player, "player must not be null");
-            Objects.requireNonNull(discord, "discord must not be null");
-            Objects.requireNonNull(source, "source must not be null");
-            Objects.requireNonNull(actor, "actor must not be null");
-            Objects.requireNonNull(reason, "reason must not be null");
-            if (reason.length() < 1) {
-                throw new IllegalArgumentException("reason must be at least 1 characters");
-            }
-            Objects.requireNonNull(server, "server must not be null");
-            if (server.length() < 1) {
-                throw new IllegalArgumentException("server must be at least 1 characters");
-            }
-            Objects.requireNonNull(occurredAt, "occurredAt must not be null");
-        }
-
-        @Override
-        public Map<String, Object> toPayload() {
-            Map<String, Object> payload = new LinkedHashMap<>();
-            payload.put("messageType", MESSAGE_TYPE);
-            payload.put("messageVersion", MESSAGE_VERSION);
-            payload.put("player", player.toPayload());
-            payload.put("discord", discord.toPayload());
-            payload.put("admin", admin);
-            payload.put("source", source.toPayload());
-            payload.put("actor", actor.toPayload());
-            payload.put("reason", reason);
-            payload.put("server", server);
-            payload.put("occurredAt", occurredAt);
-            return payload;
-        }
-    }
-
     public record DiscordLinkCodeCreatedV1(
             String code,
             PlayerRefV1 player,

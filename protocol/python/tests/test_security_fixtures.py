@@ -11,7 +11,6 @@ def _schema(message: str):
 VALID_CASES = [
     (_schema(message), fixtures_root() / "valid" / "security" / f"{fixture}.json")
     for message, fixture in (
-        ("player.password-reset.command", "player.password-reset.command.v1"),
         ("security.permissions.changed", "security.permissions.changed.v1"),
         ("security.permissions.changed", "security.permissions.changed.v1.minimal"),
         ("security.staff.sync.request", "security.staff.sync.request.v1"),
@@ -26,7 +25,6 @@ VALID_CASES = [
 INVALID_CASES = [
     (_schema(message), fixtures_root() / "invalid" / "security" / f"{message}.v1.{case}.json")
     for message, case in (
-        ("player.password-reset.command", "legacy-uuid"),
         ("security.permissions.changed", "negative-revision"),
         ("security.permissions.changed", "legacy-uuid"),
         ("security.staff.sync.request", "missing-complete"),

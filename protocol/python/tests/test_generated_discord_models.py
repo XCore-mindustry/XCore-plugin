@@ -2,12 +2,10 @@ from __future__ import annotations
 
 from xcore_protocol.generated import (
     ActorRefV1ActorType,
-    DISCORD_ADMIN_ACCESS_CHANGED_COMMAND_V1,
     DISCORD_LINK_CODE_CREATED_V1,
     DISCORD_LINK_CONFIRM_COMMAND_V1,
     DISCORD_LINK_STATUS_CHANGED_V1,
     DISCORD_UNLINK_COMMAND_V1,
-    DiscordAdminAccessChangedCommandV1,
     DiscordLinkCodeCreatedV1,
     DiscordLinkConfirmCommandV1,
     DiscordLinkStatusChangedV1Action,
@@ -80,24 +78,6 @@ def test_generated_discord_link_status_changed_roundtrip_matches_fixture() -> No
     )
 
 
-def test_generated_discord_admin_access_changed_roundtrip_matches_fixture() -> None:
-    payload = load_json(
-        fixtures_root() / "valid" / "discord" / "discord.admin-access.changed.command.v1.json"
-    )
-
-    model = DiscordAdminAccessChangedCommandV1.from_payload(payload)
-
-    assert model.source.to_payload() == payload["source"]
-    assert model.source.actorType is ActorRefV1ActorType.SYSTEM
-    assert model.actor.to_payload() == payload["actor"]
-    assert model.actor.actorType is ActorRefV1ActorType.DISCORD
-    assert model.to_payload() == payload
-    validate_instance(
-        spec_root() / "messages" / "discord" / "discord.admin-access.changed.command.v1.json",
-        model.to_payload(),
-    )
-
-
 def test_generated_discord_models_remain_strict() -> None:
     invalid_payload = load_json(
         fixtures_root() / "invalid" / "discord" / "discord.unlink.command.v1.missing-discord.json"
@@ -116,8 +96,9 @@ def test_generated_discord_route_registry_matches_expected_messages() -> None:
     assert DISCORD_LINK_CONFIRM_COMMAND_V1.payloadType is DiscordLinkConfirmCommandV1
     assert DISCORD_UNLINK_COMMAND_V1.payloadType is DiscordUnlinkCommandV1
     assert DISCORD_LINK_STATUS_CHANGED_V1.payloadType is DiscordLinkStatusChangedV1
-    assert DISCORD_ADMIN_ACCESS_CHANGED_COMMAND_V1.payloadType is DiscordAdminAccessChangedCommandV1
     assert ROUTES_BY_MESSAGE[("discord.link-code-created", 1)].stream == "xcore:evt:discord:link-code"
     assert ROUTES_BY_MESSAGE[("discord.link.confirm.command", 1)].stream == "xcore:cmd:discord-link-confirm:{server}"
     assert ROUTES_BY_MESSAGE[("discord.link.status-changed", 1)].kind == "event"
     assert ROUTES_BY_MESSAGE[("discord.link.confirm.command", 1)].bindings == {"server": "payload.server"}
+    # Discord roles reach the game as grants through the staff sync RPC.
+    assert ("discord.admin-access.changed.command", 1) not in ROUTES_BY_MESSAGE

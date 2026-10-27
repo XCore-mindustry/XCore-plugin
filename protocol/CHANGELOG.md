@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.16.0
+
+- Remove `discord.admin-access.changed.command` v1 and `player.password-reset.command` v1, with their routes, generated Java/Python models and fixtures. Staff rights come only from grants: Discord roles reach the servers through `security.staff.sync`, password resets through `security.staff.reset-password`.
+- Breaking for consumers that still reference `DiscordAdminAccessChangedCommandV1`, `PlayerPasswordResetCommandV1` or their route constants; upgrade the bot and the game servers to releases without them first.
+
 ## 0.15.0
 
 - Add the cases family: durable report events, notice wake-up commands and live evidence RPC, with generated Java/Python models and routes.

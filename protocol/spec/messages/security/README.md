@@ -1,7 +1,6 @@
 # Security Messages
 
 Contracts:
-- player.password-reset.command
 - security.permissions.changed
 - security.staff.sync.request / security.staff.sync.response
 - security.staff.reset-password.request / security.staff.reset-password.response
@@ -37,7 +36,7 @@ there was no password to clear.
 ### Errors
 Failures use the RPC response envelope with `status = "error"`:
 - `NOT_FOUND` — the player is unknown, or is not linked to the Discord account in the request.
-- `UNAVAILABLE` — the server cannot reach its store, or does not run with roles enabled.
+- `UNAVAILABLE` — the server cannot reach its store.
 
 ## Field Policy
 - Payload fields use camelCase.

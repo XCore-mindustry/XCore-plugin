@@ -37,23 +37,6 @@ public final class SecurityRoutes {
             RouteResponseDescriptor response
     ) {}
 
-    public static final RouteDescriptor PLAYER_PASSWORD_RESET_COMMAND_V1 = new RouteDescriptor(
-            "security",
-            "playerPasswordResetCommandV1Route",
-            "player.password-reset.command",
-            1,
-            SecurityMessages.PlayerPasswordResetCommandV1.class,
-            "command",
-            "xcore:cmd:player-password-reset:{server}",
-            Map.of("server", "payload.server"),
-            "server",
-            120000,
-            false,
-            true,
-            "player-session",
-            null
-    );
-
     public static final RouteDescriptor SECURITY_PERMISSIONS_CHANGED_V1 = new RouteDescriptor(
             "security",
             "securityPermissionsChangedV1Route",
@@ -118,7 +101,6 @@ public final class SecurityRoutes {
     );
 
     public static final Map<MessageKey, RouteDescriptor> ROUTES_BY_MESSAGE = Map.ofEntries(
-            entry(key("player.password-reset.command", 1), PLAYER_PASSWORD_RESET_COMMAND_V1),
             entry(key("security.permissions.changed", 1), SECURITY_PERMISSIONS_CHANGED_V1),
             entry(key("security.staff.sync.request", 1), SECURITY_STAFF_SYNC_REQUEST_V1),
             entry(key("security.staff.reset-password.request", 1), SECURITY_STAFF_RESET_PASSWORD_REQUEST_V1)

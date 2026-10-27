@@ -49,8 +49,9 @@ This repository contains only **cross-process / cross-service wire protocol arti
 All planned message families are fully migrated and operational:
 
 - **Moderation** — ban, mute, vote-kick, kick-banned, pardon, audit
-- **Discord** — link-confirm, unlink, link-status, admin-access, link-code
+- **Discord** — link-confirm, unlink, link-status, link-code
 - **Maps** — list request/response, remove request/response
+- **Security** — permission changes, staff role sync and staff password reset RPC
 - **Chat/Heartbeat** — chat messages, global chat, heartbeat, join/leave, server actions, player state commands
 - **Telemetry** — Redis TTL snapshot payloads for Prometheus/Gateway telemetry aggregation
 

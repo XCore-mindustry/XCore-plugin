@@ -108,48 +108,6 @@ def _expect_instance(value: Any, field_name: str, expected_type: type[Any]) -> N
         raise TypeError(f"{field_name} must be a {expected_type.__name__}")
 
 @dataclass(frozen=True, slots=True)
-class PlayerPasswordResetCommandV1:
-    playerUuid: str
-    server: str
-
-    MESSAGE_TYPE: ClassVar[str] = 'player.password-reset.command'
-    MESSAGE_VERSION: ClassVar[int] = 1
-    def __post_init__(self) -> None:
-        _expect_str(self.playerUuid, 'playerUuid')
-        if len(self.playerUuid) < 1:
-            raise ValueError("playerUuid is too short")
-        _expect_str(self.server, 'server')
-        if len(self.server) < 1:
-            raise ValueError("server is too short")
-
-    @classmethod
-    def from_payload(cls, payload: Mapping[str, Any]) -> "PlayerPasswordResetCommandV1":
-        mapping = _expect_mapping(payload, "PlayerPasswordResetCommandV1")
-        _expect_exact_keys(
-            mapping,
-            required=frozenset(('messageType', 'messageVersion', 'playerUuid', 'server')),
-            allowed=frozenset(('messageType', 'messageVersion', 'playerUuid', 'server')),
-            model_name="PlayerPasswordResetCommandV1",
-        )
-        if mapping['messageType'] != cls.MESSAGE_TYPE:
-            raise ValueError('messageType' + " must equal " + repr(cls.MESSAGE_TYPE))
-        if mapping['messageVersion'] != cls.MESSAGE_VERSION:
-            raise ValueError('messageVersion' + " must equal " + repr(cls.MESSAGE_VERSION))
-        return cls(
-            playerUuid=_expect_str(mapping['playerUuid'], 'playerUuid'),
-            server=_expect_str(mapping['server'], 'server'),
-        )
-
-    def to_payload(self) -> dict[str, Any]:
-        payload: dict[str, Any] = {
-            'messageType': self.MESSAGE_TYPE,
-            'messageVersion': self.MESSAGE_VERSION,
-        }
-        payload['playerUuid'] = self.playerUuid
-        payload['server'] = self.server
-        return payload
-
-@dataclass(frozen=True, slots=True)
 class SecurityPermissionsChangedV1:
     playerUuid: str
     revision: int
@@ -419,7 +377,6 @@ class SecurityStaffSyncResponseV1:
         return payload
 
 __all__ = [
-    "PlayerPasswordResetCommandV1",
     "SecurityPermissionsChangedV1",
     "SecurityStaffResetPasswordRequestV1",
     "SecurityStaffResetPasswordResponseV1",

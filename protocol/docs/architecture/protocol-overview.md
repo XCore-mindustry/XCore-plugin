@@ -18,8 +18,20 @@ Define the official communication model used between XCore components.
 - chat and heartbeat
 - telemetry snapshots
 - rating seasons (season events, season administration, prize administration and account-merge RPC)
-- security (password reset, permission changes, staff role sync and staff password reset RPC)
+- security (permission changes, staff role sync and staff password reset RPC)
 - cases (durable reports, notice delivery wake-ups and live evidence RPC)
+
+## Protocol 0.16.0
+
+`discord.admin-access.changed.command` and `player.password-reset.command` are removed with their
+routes, generated models and fixtures. They served the flag-based admin model that the game
+servers no longer run. Discord roles reach the servers as grants through `security.staff.sync`,
+and a password reset travels as `security.staff.reset-password` and is stored with the player's
+grants, so every server sees it on its next read.
+
+Upgrade the bot and the game servers to releases that no longer send or read the two commands
+before moving them to 0.16.0. Messages still waiting on the old streams expire after their
+two-minute TTL.
 
 ## Protocol 0.15.0
 

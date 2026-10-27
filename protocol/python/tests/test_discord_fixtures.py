@@ -21,16 +21,6 @@ VALID_CASES = [
         spec_root() / "messages" / "discord" / "discord.link.status-changed.v1.json",
         fixtures_root() / "valid" / "discord" / "discord.link.status-changed.v1.json",
     ),
-    (
-        spec_root()
-        / "messages"
-        / "discord"
-        / "discord.admin-access.changed.command.v1.json",
-        fixtures_root()
-        / "valid"
-        / "discord"
-        / "discord.admin-access.changed.command.v1.json",
-    ),
 ]
 
 
@@ -52,16 +42,6 @@ INVALID_CASES = [
         / "invalid"
         / "discord"
         / "discord.unlink.command.v1.missing-discord.json",
-    ),
-    (
-        spec_root()
-        / "messages"
-        / "discord"
-        / "discord.admin-access.changed.command.v1.json",
-        fixtures_root()
-        / "invalid"
-        / "discord"
-        / "discord.admin-access.changed.command.v1.missing-reason.json",
     ),
 ]
 

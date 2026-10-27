@@ -13,7 +13,6 @@ Chat, global chat, and heartbeat-related contracts belong here.
 - `player.active-badge.changed.command` — cross-server player active badge sync command.
 - `player.badge-inventory.changed.command` — cross-server player badge inventory sync command.
 - `player.badge-symbol-color-mode.changed.command` — cross-server player badge symbol color mode sync command.
-- `player.password-reset.command` — cross-server player password reset sync command.
 - `server.heartbeat` — canonical server status heartbeat event.
 
 ## Field Policy

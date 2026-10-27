@@ -1,13 +1,13 @@
 # Discord Messages
 
-Discord linking and admin-access related protocol contracts belong here.
+Discord linking protocol contracts belong here. Discord roles reach the game servers as grants
+through `security.staff.sync` (see `../security/README.md`).
 
 ## Canonical V1 Messages
 - `discord.link-code-created` — link-code creation event.
 - `discord.link.confirm.command` — confirm a Discord link for one server context.
 - `discord.unlink.command` — unlink a Discord identity from a player.
 - `discord.link.status-changed` — broadcast that a link became active/inactive.
-- `discord.admin-access.changed.command` — change Discord-driven admin access state.
 
 ## Field Policy
 - Payload fields use camelCase.
