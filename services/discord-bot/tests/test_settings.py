@@ -3,6 +3,7 @@ from __future__ import annotations
 import traceback
 
 import pytest
+from bot_fakes import PERMISSIONS_SETTINGS
 from pydantic import ValidationError
 
 from xcore_discord_bot.settings import Settings
@@ -27,6 +28,8 @@ ENV_KEYS = [
     "RPC_TIMEOUT_MS",
     "CASES_PANEL_CHANNEL_ID",
     "MAPS_TAG_PROFILES",
+    "PERMISSIONS_CONFIG_PATH",
+    "PERMISSIONS_RPC_SERVER",
 ]
 
 
@@ -40,6 +43,23 @@ def _set_required_env(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("DISCORD_BOT_TOKEN", "token")
     monkeypatch.setenv("DISCORD_ADMIN_ROLE_ID", "10")
     monkeypatch.setenv("DISCORD_PRIVATE_CHANNEL_ID", "20")
+    for name, value in PERMISSIONS_SETTINGS.items():
+        monkeypatch.setenv(name.upper(), str(value))
+
+
+@pytest.mark.parametrize(
+    "name", ["DISCORD_GUILD_ID", "PERMISSIONS_CONFIG_PATH", "PERMISSIONS_RPC_SERVER"]
+)
+def test_settings_from_env_requires_the_role_configuration(
+    monkeypatch: pytest.MonkeyPatch, name: str
+) -> None:
+    _set_required_env(monkeypatch)
+    monkeypatch.setenv(name, " ")
+
+    with pytest.raises(
+        RuntimeError, match=f"Missing required environment variable: {name}"
+    ):
+        Settings.from_env()
 
 
 def test_settings_from_env_required_token_error(
@@ -111,8 +131,9 @@ def test_settings_from_env_rpc_timeout_positive(
 def test_settings_from_env_hides_values_of_other_variables(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    _set_required_env(monkeypatch)
     monkeypatch.setenv("DISCORD_BOT_TOKEN", "secret-token")
-    monkeypatch.setenv("DISCORD_PRIVATE_CHANNEL_ID", "20")
+    monkeypatch.delenv("DISCORD_ADMIN_ROLE_ID")
 
     with pytest.raises(RuntimeError) as raised:
         Settings.from_env()
@@ -149,6 +170,7 @@ def test_settings_is_frozen_model() -> None:
         discord_bot_token="token",
         discord_admin_role_id=10,
         discord_private_channel_id=20,
+        **PERMISSIONS_SETTINGS,
     )
 
     with pytest.raises(ValidationError):

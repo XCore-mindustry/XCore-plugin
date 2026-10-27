@@ -124,17 +124,37 @@ def test_build_servers_embed_includes_address_when_available() -> None:
 
 
 class _FakeTree:
+    """Records calls and, like the real tree, forgets global commands on clear."""
+
     def __init__(self) -> None:
         self.calls: list[tuple[str, int | None]] = []
+        self.global_commands: list[str] = ["stats", "ban"]
+        self.synced: dict[int | None, list[str]] = {}
+        self._copied: list[str] = []
+
+    def get_commands(self, *, guild=None) -> list[str]:
+        return list(self.global_commands)
+
+    def add_command(self, command: str) -> None:
+        self.global_commands.append(command)
 
     def clear_commands(self, *, guild=None) -> None:
         self.calls.append(("clear", getattr(guild, "id", None)))
+        if guild is None:
+            self.global_commands = []
+        else:
+            self._copied = []
 
     def copy_global_to(self, *, guild) -> None:
         self.calls.append(("copy", getattr(guild, "id", None)))
+        self._copied = list(self.global_commands)
 
     async def sync(self, *, guild=None):
-        self.calls.append(("sync", getattr(guild, "id", None)))
+        guild_id = getattr(guild, "id", None)
+        self.calls.append(("sync", guild_id))
+        self.synced[guild_id] = (
+            list(self.global_commands) if guild is None else list(self._copied)
+        )
         return []
 
 
@@ -142,6 +162,8 @@ def _record_command_sync(bot):
     tree = _FakeTree()
     bot.tree.clear_commands = tree.clear_commands
     bot.tree.copy_global_to = tree.copy_global_to
+    bot.tree.get_commands = tree.get_commands
+    bot.tree.add_command = tree.add_command
     bot.tree.sync = tree.sync
     return tree
 
@@ -165,6 +187,8 @@ async def test_sync_application_commands_clears_global_and_guild_when_enabled() 
         ("copy", 123),
         ("sync", 123),
     ]
+    # Global commands are gone; the guild still gets every command.
+    assert tree.synced == {None: [], 123: ["stats", "ban"]}
 
 
 @pytest.mark.asyncio
@@ -182,24 +206,6 @@ async def test_sync_application_commands_only_syncs_guild_by_default() -> None:
     assert tree.calls == [
         ("copy", 123),
         ("sync", 123),
-    ]
-
-
-@pytest.mark.asyncio
-async def test_sync_application_commands_clears_global_only_without_guild() -> None:
-    bot = make_bot(
-        settings=make_settings(
-            discord_guild_id=0,
-            discord_clear_stale_commands=True,
-        )
-    )
-    tree = _record_command_sync(bot)
-
-    await XCoreDiscordBot._sync_application_commands(bot)
-
-    assert tree.calls == [
-        ("clear", None),
-        ("sync", None),
     ]
 
 

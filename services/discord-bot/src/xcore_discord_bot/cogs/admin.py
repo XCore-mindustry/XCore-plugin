@@ -199,13 +199,6 @@ class AdminCog(commands.Cog):
         await handlers_admin_access.cmd_remove_admin(self.bot, interaction, player_id)
 
     @admin_group.command(
-        name="list", description="List Discord-linked admins (general admin)"
-    )
-    @general_admin_check()
-    async def cmd_admin_list(self, interaction: Interaction) -> None:
-        await handlers_admin_access.cmd_list_admins(self.bot, interaction)
-
-    @admin_group.command(
         name="sync",
         description="Reconcile Discord admin role with plugin state (general admin)",
     )

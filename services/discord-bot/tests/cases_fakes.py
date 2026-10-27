@@ -5,6 +5,7 @@ from types import SimpleNamespace
 
 import discord
 from backends import connected_bus, connected_store
+from bot_fakes import PERMISSIONS_SETTINGS
 
 from xcore_discord_bot.cases.notify import CaseNotifier
 from xcore_discord_bot.cases.registry import FlowRegistry
@@ -359,7 +360,7 @@ def settings(**kwargs):
         "discord_general_admin_role_id": 20,
         "discord_map_reviewer_role_id": 30,
         "discord_private_channel_id": 50,
-        "discord_guild_id": 123,
+        **PERMISSIONS_SETTINGS,
         "cases_panel_channel_id": 100,
         "cases_staff_forum_id": 200,
         "cases_senior_forum_id": 300,

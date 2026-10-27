@@ -25,7 +25,6 @@ from .dto import (
 )
 from .mongo_store import MongoStore, PlayerDoc, to_int
 from .punishment_store import PunishmentStore
-from .settings import Settings
 from .store_mappers import player_record_from_doc
 
 logger = logging.getLogger(__name__)
@@ -66,12 +65,10 @@ class AccountMergeStore:
         store: MongoStore,
         punishments: PunishmentStore,
         audit: AuditStore,
-        settings: Settings,
     ) -> None:
         self._store = store
         self._punishments = punishments
         self._audit = audit
-        self._settings = settings
 
     async def merge_player_accounts(
         self,
@@ -212,8 +209,8 @@ class AccountMergeStore:
             "description": f"Merged into PID #{surviving_pid} ({target_raw.get('nickname')})",
         }
         if source_discord_id:
-            # The closed account must not keep a live Discord link, otherwise admin
-            # sync and link lookups would resolve to a dead player.
+            # The closed account must not keep a live Discord link, otherwise staff
+            # role sync and link lookups would resolve to a dead player.
             source_updates["discord_id"] = ""
             source_updates["discord_username"] = ""
             source_updates["discord_linked_at"] = 0
@@ -278,11 +275,6 @@ class AccountMergeStore:
             "device_token_hashes": union("device_token_hashes"),
             "blocked_private_uuids": union("blocked_private_uuids"),
         }
-        if self._settings.permissions_mode != "roles":
-            fields["is_admin"] = bool(
-                target_raw.get("is_admin") or source_raw.get("is_admin")
-            )
-            fields["admin_source"] = first("admin_source", "NONE")
         return fields
 
     async def _apply_merge(

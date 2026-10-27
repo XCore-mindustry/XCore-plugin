@@ -7,7 +7,6 @@ link-code-expired = Термін дії цього коду прив'язки м
 link-player-not-found = Гравця з цим кодом не знайдено.
 link-taken = Цей акаунт Mindustry вже прив'язано до іншого акаунта Discord.
 link-done = Акаунт `{ $name }` (`pid={ $pid }`) прив'язано. Можна повертатися до гри.
-link-done-admin = Акаунт `{ $name }` (`pid={ $pid }`) прив'язано. Права адміністратора надано!
 link-dm-sent = Запит на прив'язку `{ $name }` (`pid={ $pid }`) надіслано.
 link-status-none = До цього акаунта Discord не прив'язано жодного акаунта Mindustry.
 link-status-title = Прив'язані акаунти Mindustry

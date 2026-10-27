@@ -97,8 +97,6 @@ VORTEX = {
     "leaderboard": False,
     "unlocked_badges": ["developer", "translator"],
     "active_badge": "translator",
-    "is_admin": False,
-    "admin_source": "NONE",
     "created_at": 0,
     "updated_at": 0,
 }

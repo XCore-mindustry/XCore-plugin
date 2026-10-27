@@ -90,42 +90,6 @@ async def test_cmd_link_publishes_confirm_event() -> None:
 
 
 @pytest.mark.asyncio
-async def test_cmd_link_instantly_grants_admin_if_user_has_role() -> None:
-    bot = await _bot()
-    bot.container.admin_sync_daemon.get_discord_admin_member_ids = AsyncMock(
-        return_value={"555"}
-    )
-
-    interaction = _Interaction()
-    await cmd_link(cast(Any, bot), cast(Any, interaction), "abc123")
-
-    player = await bot.store.find_player_by_uuid("uuid-7")
-    assert player.is_admin and player.admin_source == "DISCORD_ROLE"
-    (changed,) = await published(bot.bus, "xcore:cmd:discord-admin-access:mini-pvp")
-    assert changed["admin"] is True
-    assert (
-        interaction.response.sent[0][0]
-        == "Account linked to `Target` (`pid=7`). Admin access granted!"
-    )
-
-
-@pytest.mark.asyncio
-async def test_cmd_link_does_not_claim_admin_access_it_could_not_grant() -> None:
-    bot = await _bot()
-    bot.container.admin_sync_daemon.get_discord_admin_member_ids = AsyncMock(
-        return_value={"555"}
-    )
-    bot.store.set_admin_access = AsyncMock(side_effect=RuntimeError("mongo down"))
-
-    interaction = _Interaction()
-    await cmd_link(cast(Any, bot), cast(Any, interaction), "abc123")
-
-    assert interaction.response.sent == [
-        ("Account linked to `Target` (`pid=7`). Return in-game in a moment.", True)
-    ]
-
-
-@pytest.mark.asyncio
 async def test_cmd_unlink_publishes_with_display_name() -> None:
     bot = await _bot()
     interaction = _Interaction()

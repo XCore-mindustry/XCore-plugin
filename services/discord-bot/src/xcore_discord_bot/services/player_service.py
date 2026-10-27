@@ -3,10 +3,8 @@ from __future__ import annotations
 from dataclasses import replace
 
 from ..account_merge_store import AccountMergeStore
-from ..bus.accounts import AccountsBus
 from ..bus.moderation import ModerationBus
 from ..dto import MERGE_KEEP_PID_TARGET, AccountMergeResult
-from ..mongo_store import MongoStore
 from ..rpc.mindustry_rpc import MindustryRpcClient
 from ..settings import Settings
 from .rating_service import RatingService
@@ -15,18 +13,14 @@ from .rating_service import RatingService
 class PlayerService:
     def __init__(
         self,
-        store: MongoStore,
-        ratings: RatingService | None = None,
-        settings: Settings | None = None,
-        rpc: MindustryRpcClient | None = None,
         *,
-        accounts: AccountsBus,
+        settings: Settings,
+        rpc: MindustryRpcClient,
         moderation: ModerationBus,
         merges: AccountMergeStore,
+        ratings: RatingService | None = None,
     ) -> None:
-        self._store = store
         self._merges = merges
-        self._accounts = accounts
         self._moderation = moderation
         self._ratings = ratings
         self._settings = settings
@@ -75,15 +69,10 @@ class PlayerService:
         return result
 
     async def reset_password(self, *, uuid: str) -> bool:
-        if self._settings is not None and self._settings.permissions_mode == "roles":
-            assert self._rpc is not None
-            response = await self._rpc.reset_staff_password(
-                server=self._settings.permissions_rpc_server,
-                player_uuid=uuid,
-                timeout_ms=self._settings.rpc_timeout_ms,
-            )
-            return response.changed
-        updated = await self._store.reset_password(uuid=uuid)
-        if updated:
-            await self._accounts.publish_player_password_reset(uuid_value=uuid)
-        return updated
+        """The game server clears the staff password and remembered devices."""
+        response = await self._rpc.reset_staff_password(
+            server=self._settings.permissions_rpc_server,
+            player_uuid=uuid,
+            timeout_ms=self._settings.rpc_timeout_ms,
+        )
+        return response.changed

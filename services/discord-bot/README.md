@@ -41,23 +41,22 @@ Standalone Discord bot for XCore transport migration.
 - Moderation/admin slash commands (Mongo-backed):
   - `/stats`, `/search`, `/bans`
   - `/ban`, `/unban`, `/mute`, `/unmute`
-  - `/admin add|remove|list|sync`, `/reset-password`
+  - `/admin add|remove|sync`, `/reset-password`
   - `/badge grant|revoke`
-- Admin request approvals:
-  - consumes `xcore:evt:admin:request`
-  - sends confirmation event to `xcore:cmd:admin-confirm:<server>`
 
 ## Environment variables
 
 Required:
 
 - `DISCORD_BOT_TOKEN`
+- `DISCORD_GUILD_ID` (must match `discord.guildId` in `permissions.toml`; slash commands sync to this guild)
 - `DISCORD_ADMIN_ROLE_ID`
 - `DISCORD_PRIVATE_CHANNEL_ID`
+- `PERMISSIONS_CONFIG_PATH` (path to the shared `permissions.toml`)
+- `PERMISSIONS_RPC_SERVER` (exact name of the server answering security RPCs)
 
 Optional:
 
-- `DISCORD_GUILD_ID` (default: `0`; set non-zero for fast guild-scoped slash sync)
 - `DISCORD_CLEAR_STALE_COMMANDS` (default: `false`; one-shot cleanup of stale global/guild slash commands before sync)
 - `DISCORD_GENERAL_ADMIN_ROLE_ID` (default: `DISCORD_ADMIN_ROLE_ID`)
 - `DISCORD_MAP_REVIEWER_ROLE_ID` (default: `DISCORD_ADMIN_ROLE_ID`)
@@ -66,27 +65,21 @@ Optional:
 - `REDIS_GROUP_PREFIX` (default: `xcore:cg`)
 - `REDIS_CONSUMER_NAME` (default: `discord-bot`)
 - `RPC_TIMEOUT_MS` (default: `5000`)
-- `PERMISSIONS_MODE` (`legacy` by default, or `roles`)
-- `PERMISSIONS_CONFIG_PATH` (required in `roles`; path to the shared `permissions.toml`)
-- `PERMISSIONS_RPC_SERVER` (required in `roles`; exact name of the server answering security RPCs)
 - `MONGO_URI` (default: `mongodb://127.0.0.1:27017`). Account merges write in one transaction, so
   they need a replica set (`...?replicaSet=rs0`); against a standalone server a merge is refused
   and nothing is changed
 - `MONGO_DB_NAME` (default: `xcore`)
 
-## Permission roles rollout
+## Permission roles
 
-Leave `PERMISSIONS_MODE=legacy` until the plugin and shared role configuration are deployed.
-Legacy mode keeps the existing admin reconciliation and Mongo password reset behavior; the
-permissions file and RPC target are not required.
+Game staff access comes from roles: the bot reports each linked member's Discord roles to the game
+and the plugin turns them into grants. Set `PERMISSIONS_CONFIG_PATH=/path/to/permissions.toml`
+and `PERMISSIONS_RPC_SERVER=mini-pvp` (use your server's exact name), and set `DISCORD_GUILD_ID`
+to the file's `discord.guildId`; a mismatch or invalid/missing configuration fails startup. The
+target server must have roles enabled: a server without them answers sync with `UNAVAILABLE`.
+Both security RPCs target this server; it writes shared grants and notifies the other servers.
 
-To switch the bot, set `PERMISSIONS_MODE=roles`, `PERMISSIONS_CONFIG_PATH=/path/to/permissions.toml`,
-and `PERMISSIONS_RPC_SERVER=mini-pvp` (use your server's exact name). Set `DISCORD_GUILD_ID` to the
-file's `discord.guildId`; a mismatch or invalid/missing configuration fails startup. The target
-server must have roles enabled: a legacy server answers sync with `UNAVAILABLE`. Both security
-RPCs target this server; it writes shared grants and notifies the other servers.
-
-In roles mode, the bot sends only IDs listed in `discord.bindings`, with duplicates removed.
+The bot sends only IDs listed in `discord.bindings`, with duplicates removed.
 It syncs role changes, confirmed account links (including DM links), confirmed unlinks for the
 old UUID, explicit guild departures, and all linked accounts every 10 minutes. Requests are
 serialized and limited to four attempts per second; RPC retries reuse the same `operationId`,
@@ -106,14 +99,12 @@ and departure events arrive.
 
 `/reset-password` uses `security.staff.reset-password.request`. The plugin clears staff credentials
 and remembered devices. The bot does not write `is_admin`, `admin_source`, `password_hash`, or
-`permission_grants` in roles mode, including during account merges. `/admin add|remove` continues
-to update the configured Discord admin role and then syncs the member's game roles; include that
-Discord role in the shared bindings if it should grant game access. `/admin sync` fetches all linked
-accounts. `/admin list` still displays legacy stored admin flags during rollout.
+`permission_grants`, including during account merges. `/admin add|remove` updates the configured
+Discord admin role and then syncs the member's game roles; include that Discord role in the shared
+bindings if it should grant game access. `/admin sync` fetches all linked accounts.
 
 Slash-command access remains controlled by the existing `DISCORD_*_ROLE_ID` settings. Game roles
-never grant bot command access or log a player into the game. Roll back by setting
-`PERMISSIONS_MODE=legacy`; the plugin's grants are left alone.
+never grant bot command access or log a player into the game.
 
 ## Local setup
 
@@ -137,10 +128,15 @@ The bot automatically loads environment variables from a local `.env` file on st
 
 ## Docker smoke run
 
+The bot does not start without the shared `permissions.toml`; mount it at
+`PERMISSIONS_CONFIG_PATH` and set `DISCORD_GUILD_ID` in `.env` to its `discord.guildId`.
+
 ```bash
 cp .env.example .env
-docker compose up --build -d
-docker compose logs -f bot
+docker build -t xcore-discord-bot .
+docker run --rm --env-file .env \
+  -v /path/to/permissions.toml:/config/permissions.toml:ro \
+  xcore-discord-bot
 ```
 
 ## Tests

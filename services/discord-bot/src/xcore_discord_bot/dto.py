@@ -34,8 +34,6 @@ class PlayerRecord:
     unlocked_badges: tuple[str, ...] = ()
     active_badge: str | None = None
     blocked_private_uuids: tuple[str, ...] = ()
-    is_admin: bool = False
-    admin_source: str | None = None
     discord_id: str | None = None
     discord_username: str | None = None
     discord_linked_at: int | None = None

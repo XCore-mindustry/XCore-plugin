@@ -21,7 +21,6 @@ from .cases.registry import flow_registry
 from .cases.service import CaseService
 from .cases.store import CaseStore
 from .cases.threads import CaseThreads
-from .daemons.admin_sync_daemon import AdminSyncDaemon
 from .daemons.cases_reconcile_daemon import CasesReconcileDaemon
 from .daemons.presence_daemon import PresenceDaemon
 from .daemons.rating_merge_daemon import RatingMergeDaemon
@@ -66,14 +65,12 @@ class ServiceContainer:
     game_stats: GameStatsStore
     rating_service: RatingService
     presence_daemon: PresenceDaemon
-    admin_sync_daemon: AdminSyncDaemon
     rating_merge_daemon: RatingMergeDaemon
     stream_supervisor: StreamSupervisor
     cases: CaseService
     case_panel: CasePanel
     cases_reconcile_daemon: CasesReconcileDaemon
-    # Only roles mode syncs game roles; legacy mode reconciles admins instead.
-    staff_sync_daemon: StaffSyncDaemon | None = None
+    staff_sync_daemon: StaffSyncDaemon
 
     @classmethod
     def create(
@@ -109,19 +106,14 @@ class ServiceContainer:
             store=ratings, rpc=rpc, timeout_ms=settings.rpc_timeout_ms
         )
         players = PlayerService(
-            store=store,
-            ratings=rating_service,
             settings=settings,
             rpc=rpc,
-            accounts=accounts_bus,
             moderation=moderation_bus,
-            merges=AccountMergeStore(store, punishments, audit, settings),
+            merges=AccountMergeStore(store, punishments, audit),
+            ratings=rating_service,
         )
 
         presence_daemon = PresenceDaemon(bot=bot)
-        admin_sync_daemon = AdminSyncDaemon(
-            bot=bot, store=store, accounts=accounts_bus, settings=settings
-        )
         rating_merge_daemon = RatingMergeDaemon(bot=bot, ratings=rating_service)
         stream_supervisor = StreamSupervisor(bot=bot)
         case_store = CaseStore(store)
@@ -158,15 +150,10 @@ class ServiceContainer:
             game_stats=GameStatsStore(store),
             rating_service=rating_service,
             presence_daemon=presence_daemon,
-            admin_sync_daemon=admin_sync_daemon,
             rating_merge_daemon=rating_merge_daemon,
             stream_supervisor=stream_supervisor,
             cases=cases,
             case_panel=case_panel,
             cases_reconcile_daemon=CasesReconcileDaemon(bot, cases, case_panel),
-            staff_sync_daemon=(
-                StaffSyncDaemon(bot, store, rpc, settings)
-                if settings.permissions_mode == "roles"
-                else None
-            ),
+            staff_sync_daemon=StaffSyncDaemon(bot, store, rpc, settings),
         )

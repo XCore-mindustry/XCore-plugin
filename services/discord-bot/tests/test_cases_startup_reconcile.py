@@ -6,6 +6,7 @@ from types import SimpleNamespace
 
 import discord
 import pytest
+from bot_fakes import PERMISSIONS_SETTINGS
 from cases_dummy_flow import DUMMY_FLOW
 from cases_fakes import NOW, core, member
 from test_cases_service import opened
@@ -536,6 +537,7 @@ async def test_reconcile_paginates_beyond_first_200_rows():
 )
 def test_blank_new_channel_role_ids_are_zero(field):
     cfg = Settings(
+        **PERMISSIONS_SETTINGS,
         DISCORD_BOT_TOKEN="fake",
         DISCORD_ADMIN_ROLE_ID=10,
         DISCORD_PRIVATE_CHANNEL_ID=20,

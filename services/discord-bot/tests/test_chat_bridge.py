@@ -1,6 +1,7 @@
 from unittest.mock import AsyncMock
 
 import pytest
+from bot_fakes import PERMISSIONS_SETTINGS
 
 from xcore_discord_bot.bus.chat import ChatBus
 from xcore_discord_bot.bus.transport import RedisTransport
@@ -17,6 +18,7 @@ def mock_redis():
 @pytest.fixture
 def settings():
     return Settings(
+        **PERMISSIONS_SETTINGS,
         discord_bot_token="fake",
         discord_admin_role_id=1,
         discord_general_admin_role_id=1,

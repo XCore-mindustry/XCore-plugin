@@ -6,7 +6,7 @@ from pathlib import Path
 
 def load_discord_permissions(path: str, guild_id: int) -> frozenset[str]:
     if not path:
-        raise ValueError("PERMISSIONS_CONFIG_PATH is required in roles mode")
+        raise ValueError("PERMISSIONS_CONFIG_PATH is required")
     with Path(path).open("rb") as file:
         config = tomllib.load(file)
     discord = config.get("discord", {})

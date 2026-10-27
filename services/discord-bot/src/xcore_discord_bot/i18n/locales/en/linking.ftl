@@ -7,7 +7,6 @@ link-code-expired = This link code has expired.
 link-player-not-found = Player for this code was not found.
 link-taken = This Mindustry account is already linked to another Discord account.
 link-done = Account linked to `{ $name }` (`pid={ $pid }`). Return in-game in a moment.
-link-done-admin = Account linked to `{ $name }` (`pid={ $pid }`). Admin access granted!
 link-dm-sent = Link request sent for `{ $name }` (`pid={ $pid }`).
 link-status-none = No Mindustry accounts are linked to this Discord account.
 link-status-title = Linked Mindustry accounts

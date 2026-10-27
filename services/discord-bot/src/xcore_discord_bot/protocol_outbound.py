@@ -8,7 +8,6 @@ from xcore_protocol.generated.chat import (
     ChatDiscordIngressCommandV1,
 )
 from xcore_protocol.generated.discord import (
-    DiscordAdminAccessChangedCommandV1,
     DiscordLinkConfirmCommandV1,
     DiscordUnlinkCommandV1,
 )
@@ -35,9 +34,6 @@ from xcore_protocol.generated.rating import (
     RatingSeasonPrizesSetRequestV1Operation,
     RatingSeasonRescheduleRequestV1,
     RatingSeasonRescheduleRequestV1Operation,
-)
-from xcore_protocol.generated.security import (
-    PlayerPasswordResetCommandV1,
 )
 from xcore_protocol.generated.sentinel import (
     SentinelSubnetRulesCheckRequestV1,
@@ -193,47 +189,6 @@ def build_discord_unlink_command(
     )
 
 
-def build_discord_admin_access_changed_command(
-    player_uuid: str,
-    player_pid: int,
-    player_name: str,
-    discord_id: str,
-    discord_username: str | None,
-    admin: bool,
-    source_name: str,
-    source_type: ActorRefV1ActorType,
-    actor_name: str,
-    actor_discord_id: str | None,
-    actor_type: ActorRefV1ActorType,
-    reason: str,
-    server: str,
-) -> DiscordAdminAccessChangedCommandV1:
-    return DiscordAdminAccessChangedCommandV1(
-        player=PlayerRefV1(
-            playerUuid=player_uuid,
-            playerPid=player_pid,
-            playerName=player_name,
-        ),
-        discord=DiscordIdentityRefV1(
-            discordId=discord_id,
-            discordUsername=discord_username,
-        ),
-        admin=admin,
-        source=ActorRefV1(
-            actorName=source_name,
-            actorType=source_type,
-        ),
-        actor=ActorRefV1(
-            actorName=actor_name,
-            actorDiscordId=actor_discord_id,
-            actorType=actor_type,
-        ),
-        reason=reason,
-        server=server,
-        occurredAt=utc_now_iso8601(),
-    )
-
-
 def build_player_active_badge_changed_command(
     uuid_value: str,
     active_badge: str,
@@ -256,16 +211,6 @@ def build_player_badge_inventory_changed_command(
         playerUuid=uuid_value,
         activeBadge=active_badge,
         unlockedBadges=tuple(unlocked_badges),
-        server=server,
-    )
-
-
-def build_player_password_reset_command(
-    uuid_value: str,
-    server: str,
-) -> PlayerPasswordResetCommandV1:
-    return PlayerPasswordResetCommandV1(
-        playerUuid=uuid_value,
         server=server,
     )
 

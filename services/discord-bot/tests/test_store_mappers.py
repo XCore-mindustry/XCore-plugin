@@ -25,7 +25,6 @@ def test_player_record_from_doc_normalizes_dirty_values() -> None:
             "unlocked_badges": [" translator ", "developer", "translator", ""],
             "active_badge": "  translator  ",
             "blocked_private_uuids": [" uuid-1 ", "uuid-2", "uuid-1"],
-            "is_admin": 1,
             "discord_id": " 123456 ",
             "discord_username": "  user#1 ",
             "discord_linked_at": "77",
@@ -46,7 +45,6 @@ def test_player_record_from_doc_normalizes_dirty_values() -> None:
     assert record.unlocked_badges == ("translator", "developer")
     assert record.active_badge == "translator"
     assert record.blocked_private_uuids == ("uuid-1", "uuid-2")
-    assert record.is_admin is True
     assert record.discord_id == "123456"
     assert record.discord_username == "user#1"
     assert record.discord_linked_at == 77

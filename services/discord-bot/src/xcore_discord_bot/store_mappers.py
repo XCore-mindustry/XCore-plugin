@@ -80,8 +80,6 @@ def player_record_from_doc(doc: Mapping[str, object]) -> PlayerRecord:
         unlocked_badges=_normalized_str_tuple(doc.get("unlocked_badges")),
         active_badge=_normalized_optional_str(doc.get("active_badge")),
         blocked_private_uuids=_normalized_str_tuple(doc.get("blocked_private_uuids")),
-        is_admin=bool(doc.get("is_admin", False)),
-        admin_source=_normalized_optional_str(doc.get("admin_source")),
         discord_id=_normalized_optional_str(doc.get("discord_id")),
         discord_username=_normalized_optional_str(doc.get("discord_username")),
         discord_linked_at=(

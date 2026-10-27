@@ -53,24 +53,17 @@ class XCoreDiscordBot(commands.Bot):
     async def on_member_update(
         self, before: discord.Member, after: discord.Member
     ) -> None:
-        if (
-            self.settings.roles_mode
-            and after.guild.id == self.settings.discord_guild_id
-            and {role.id for role in before.roles} != {role.id for role in after.roles}
-        ):
-            daemon = self.container.staff_sync_daemon
-            assert daemon is not None
-            await daemon.sync_member(str(after.id))
+        if after.guild.id == self.settings.discord_guild_id and {
+            role.id for role in before.roles
+        } != {role.id for role in after.roles}:
+            await self.container.staff_sync_daemon.sync_member(str(after.id))
 
     async def on_raw_member_remove(self, payload: discord.RawMemberRemoveEvent) -> None:
         # Raw events include removals for members absent from the member cache.
-        if (
-            self.settings.roles_mode
-            and payload.guild_id == self.settings.discord_guild_id
-        ):
-            daemon = self.container.staff_sync_daemon
-            assert daemon is not None
-            await daemon.sync_member(str(payload.user.id), removed=True)
+        if payload.guild_id == self.settings.discord_guild_id:
+            await self.container.staff_sync_daemon.sync_member(
+                str(payload.user.id), removed=True
+            )
 
     async def set_discord_admin_role(
         self,
@@ -80,10 +73,6 @@ class XCoreDiscordBot(commands.Bot):
         reason: str,
     ) -> bool:
         guild_id = self.settings.discord_guild_id
-        if guild_id <= 0:
-            raise RuntimeError(
-                "DISCORD_GUILD_ID must be configured for /admin add/remove"
-            )
 
         guild = self.get_guild(guild_id)
         if guild is None:
@@ -157,53 +146,33 @@ class XCoreDiscordBot(commands.Bot):
 
         self.container.stream_supervisor.start()
         self.container.presence_daemon.start()
-        if container.staff_sync_daemon is not None:
-            container.staff_sync_daemon.start()
-        else:
-            container.admin_sync_daemon.start()
+        container.staff_sync_daemon.start()
         self.container.rating_merge_daemon.start()
 
         await self._sync_application_commands()
 
     async def _sync_application_commands(self) -> None:
-        guild_id = self.settings.discord_guild_id
-        clear_stale = self.settings.discord_clear_stale_commands
-
-        if guild_id:
-            guild_obj = discord.Object(id=guild_id)
-            if clear_stale:
-                logger.warning(
-                    "Clearing stale global and guild slash commands before sync"
-                )
-                self.tree.clear_commands(guild=None)
-                await self.tree.sync()
-                self.tree.clear_commands(guild=guild_obj)
-            self.tree.copy_global_to(guild=guild_obj)
-            await self.tree.sync(guild=guild_obj)
-        else:
-            if clear_stale:
-                logger.warning("Clearing stale global slash commands before sync")
-                self.tree.clear_commands(guild=None)
+        guild_obj = discord.Object(id=self.settings.discord_guild_id)
+        if self.settings.discord_clear_stale_commands:
+            logger.warning("Clearing stale global and guild slash commands before sync")
+            # Clearing empties the tree too; put the commands back for the guild sync.
+            commands = self.tree.get_commands(guild=None)
+            self.tree.clear_commands(guild=None)
             await self.tree.sync()
+            self.tree.clear_commands(guild=guild_obj)
+            for command in commands:
+                self.tree.add_command(command)
+        self.tree.copy_global_to(guild=guild_obj)
+        await self.tree.sync(guild=guild_obj)
 
     async def on_ready(self) -> None:
         logger.info("Discord bot connected as %s", self.user)
         await self.container.presence_daemon.update_presence_once()
         try:
-            staff_sync = self.container.staff_sync_daemon
-            if staff_sync is not None:
-                # The pass logs its own summary.
-                await staff_sync.reconcile()
-            else:
-                result = await self.container.admin_sync_daemon.reconcile()
-                logger.info(
-                    "Startup admin reconcile complete: applied=%s revoked=%s discord_admins=%s",
-                    len(result.applied),
-                    len(result.revoked),
-                    result.discord_admins,
-                )
+            # The pass logs its own summary.
+            await self.container.staff_sync_daemon.reconcile()
         except Exception:  # the periodic pass retries it
-            logger.exception("Startup admin reconcile failed")
+            logger.exception("Startup staff role sync failed")
 
     async def on_message(self, message: discord.Message) -> None:
         """Used for game chat bridge and DM-based account linking."""
@@ -296,9 +265,7 @@ class XCoreDiscordBot(commands.Bot):
     async def close(self) -> None:
         await self.container.cases_reconcile_daemon.stop()
         self.container.presence_daemon.stop()
-        self.container.admin_sync_daemon.stop()
-        if self.container.staff_sync_daemon is not None:
-            await self.container.staff_sync_daemon.stop()
+        await self.container.staff_sync_daemon.stop()
         self.container.rating_merge_daemon.stop()
         await self.container.stream_supervisor.stop()
 

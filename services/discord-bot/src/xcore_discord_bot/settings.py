@@ -21,9 +21,9 @@ class Settings(BaseSettings):
         extra="ignore", frozen=True, hide_input_in_errors=True
     )
 
-    permissions_mode: Literal["legacy", "roles"] = "legacy"
-    permissions_config_path: str = ""
-    permissions_rpc_server: str = ""
+    # The shared permissions.toml and the server that answers the security RPCs.
+    permissions_config_path: str
+    permissions_rpc_server: str
 
     discord_bot_token: str
     discord_admin_role_id: int
@@ -42,10 +42,10 @@ class Settings(BaseSettings):
     discord_mutes_channel_id: int = 0
     discord_votekicks_channel_id: int = 0
     discord_seasons_channel_id: int = 0
-    discord_guild_id: int = 0  # 0 = global slash command sync (slower)
+    # Must match discord.guildId in permissions.toml; commands sync to this guild.
+    discord_guild_id: int = Field(gt=0)
     discord_clear_stale_commands: bool = False
     discord_error_log_channel_id: int | None = None
-    admin_reconcile_interval_seconds: int = Field(default=300, gt=0)
 
     cases_reports_enabled: bool = False
     cases_appeals_enabled: bool = False
@@ -98,18 +98,9 @@ class Settings(BaseSettings):
         return values
 
     @model_validator(mode="after")
-    def _validate_roles_mode(self) -> Settings:
-        if self.permissions_mode == "roles":
-            if not self.permissions_rpc_server.strip():
-                raise ValueError("PERMISSIONS_RPC_SERVER is required in roles mode")
-            load_discord_permissions(
-                self.permissions_config_path, self.discord_guild_id
-            )
+    def _validate_permissions(self) -> Settings:
+        load_discord_permissions(self.permissions_config_path, self.discord_guild_id)
         return self
-
-    @property
-    def roles_mode(self) -> bool:
-        return self.permissions_mode == "roles"
 
     @property
     def cases_enabled(self) -> bool:

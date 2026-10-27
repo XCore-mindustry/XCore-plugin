@@ -56,8 +56,6 @@ class PlayerDoc(_MongoDoc):
     unlocked_badges: list[str] | None = None
     active_badge: str | None = None
     blocked_private_uuids: list[str] | None = None
-    is_admin: bool | None = None
-    admin_source: str | None = None
     discord_id: str | None = None
     discord_username: str | None = None
     discord_linked_at: int | None = None
@@ -248,20 +246,6 @@ class MongoStore:
             for row in rows
         ]
 
-    async def find_discord_admin_players(self) -> list[PlayerRecord]:
-        cursor = (
-            self._db_required()["players"]
-            .find({"is_admin": True, "admin_source": "DISCORD_ROLE"})
-            .sort("pid", DESCENDING)
-        )
-        rows = await cursor.to_list(length=None)
-        return [
-            player_record_from_doc(
-                PlayerDoc.model_validate(row).model_dump(mode="python")
-            )
-            for row in rows
-        ]
-
     async def search_players(
         self, query: str, limit: int = 6, page: int = 0
     ) -> list[PlayerRecord]:
@@ -344,26 +328,6 @@ class MongoStore:
             )
         except PyMongoError:
             return 0
-
-    async def set_admin_access(
-        self, *, uuid: str, is_admin: bool, admin_source: str
-    ) -> tuple[bool, bool]:
-        if self._settings.permissions_mode == "roles":
-            raise RuntimeError("Direct admin writes are disabled in roles mode")
-        result = await self._db_required()["players"].update_one(
-            {"uuid": uuid},
-            {"$set": {"is_admin": is_admin, "admin_source": admin_source}},
-        )
-        return result.matched_count > 0, result.modified_count > 0
-
-    async def reset_password(self, *, uuid: str) -> bool:
-        if self._settings.permissions_mode == "roles":
-            raise RuntimeError("Direct password writes are disabled in roles mode")
-        result = await self._db_required()["players"].update_one(
-            {"uuid": uuid},
-            {"$set": {"password_hash": ""}},
-        )
-        return result.modified_count > 0
 
     async def grant_badge(self, *, uuid: str, badge_id: str) -> bool:
         result = await self._db_required()["players"].update_one(

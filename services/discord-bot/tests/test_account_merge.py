@@ -8,7 +8,6 @@ from unittest.mock import MagicMock
 import discord
 import pytest
 from backends import GameServer, connected_store, real_bot
-from bot_fakes import make_settings
 from mongo_fakes import Collection, Database
 from pymongo.errors import OperationFailure, PyMongoError
 
@@ -214,9 +213,7 @@ async def _merge(store: MongoStore, **overrides: Any) -> AccountMergeResult:
         "reason": "Device migration",
     }
     kwargs.update(overrides)
-    merges = AccountMergeStore(
-        store, PunishmentStore(store), AuditStore(store), make_settings()
-    )
+    merges = AccountMergeStore(store, PunishmentStore(store), AuditStore(store))
     return await merges.merge_player_accounts(**kwargs)
 
 

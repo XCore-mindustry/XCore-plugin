@@ -24,11 +24,9 @@ from xcore_protocol.generated.security import (
 )
 from xcore_protocol.generated.shared import DiscordIdentityRefV1, PlayerRefV1
 
-from xcore_discord_bot.bus.transport import RedisTransport, RpcFailed
-from xcore_discord_bot.container import ServiceContainer
+from xcore_discord_bot.bus.transport import RpcFailed
 from xcore_discord_bot.daemons.staff_sync_daemon import StaffSyncDaemon, StaffSyncResult
 from xcore_discord_bot.dto import PlayerRecord
-from xcore_discord_bot.mongo_store import MongoStore
 from xcore_discord_bot.rpc.mindustry_rpc import MindustryRpcClient
 from xcore_discord_bot.settings import Settings
 
@@ -84,7 +82,6 @@ role = "admin"
         discord_admin_role_id=99,
         discord_private_channel_id=1,
         discord_guild_id=123,
-        permissions_mode="roles",
         permissions_config_path=str(path),
         permissions_rpc_server="mini-pvp",
     )
@@ -252,9 +249,7 @@ async def test_scheduled_check_every_linked_account_rate_limited(setup, monkeypa
     assert daemon.CHECK_INTERVAL_SECONDS == 600
 
 
-@pytest.mark.parametrize("mode", ["legacy", "roles"])
-async def test_password_reset_both_modes(settings, mode):
-    settings = settings.model_copy(update={"permissions_mode": mode})
+async def test_password_reset_uses_rpc(settings):
     bot, db = await real_bot(settings=settings)
     game = GameServer(bot)
     game.answers[RESET] = reset_answer
@@ -263,19 +258,10 @@ async def test_password_reset_both_modes(settings, mode):
     assert await bot.container.players.reset_password(uuid="uuid-1")
 
     player = await db["players"].find_one({"uuid": "uuid-1"})
-    if mode == "legacy":
-        assert player["password_hash"] == ""
-        assert [
-            command["playerUuid"]
-            for command in await game.commands("player-password-reset")
-        ] == ["uuid-1"]
-        assert game.sent(RESET) == []
-    else:
-        assert player["password_hash"] == "hash"
-        assert await game.commands("player-password-reset") == []
-        [request] = game.sent(RESET)
-        assert (request["server"], request["playerUuid"]) == ("mini-pvp", "uuid-1")
-        assert game.requests[0]["timeout_ms"] == "5000"
+    assert player["password_hash"] == "hash"
+    [request] = game.sent(RESET)
+    assert (request["server"], request["playerUuid"]) == ("mini-pvp", "uuid-1")
+    assert game.requests[0]["timeout_ms"] == "5000"
 
 
 async def test_password_reset_retry_reuses_request(settings):
@@ -289,26 +275,6 @@ async def test_password_reset_retry_reuses_request(settings):
 
     first, second = game.sent(RESET)
     assert first == second
-
-
-async def test_roles_direct_mongo_writes_forbidden(settings):
-    store = MongoStore(settings)
-    with pytest.raises(RuntimeError, match="Direct admin writes"):
-        await store.set_admin_access(
-            uuid="uuid", is_admin=True, admin_source="DISCORD_ROLE"
-        )
-    with pytest.raises(RuntimeError, match="Direct password writes"):
-        await store.reset_password(uuid="uuid")
-
-
-def test_legacy_container_does_not_load_roles_config(settings):
-    legacy = settings.model_copy(
-        update={"permissions_mode": "legacy", "permissions_config_path": "/missing"}
-    )
-    container = ServiceContainer.create(
-        legacy, MagicMock(), store=MongoStore(legacy), bus=RedisTransport(legacy)
-    )
-    assert container.staff_sync_daemon is None
 
 
 async def test_generated_rpc_wire_payload_and_response(settings):
@@ -363,38 +329,7 @@ async def test_link_status_consumer_reconnects_the_bus(setup, monkeypatch):
     bus.reconnect.assert_awaited_once()
 
 
-async def test_roles_command_link_does_not_write_admin(settings):
-    from datetime import UTC, datetime
-
-    from xcore_discord_bot.handlers_linking import cmd_link
-
-    bot = MagicMock()
-    bot.settings.roles_mode = True
-    bot.bus.claim_idempotency = AsyncMock(return_value=True)
-    bot.container.accounts_bus.get_discord_link_code = AsyncMock(
-        return_value={"playerUuid": "uuid-1"}
-    )
-    bot.store.now_utc = lambda: datetime.now(UTC)
-    bot.store.find_player_by_uuid = AsyncMock(
-        return_value=PlayerRecord(pid=1, uuid="uuid-1", nickname="p")
-    )
-    bot.container.accounts_bus.publish_discord_link_confirm = AsyncMock()
-    bot.store.set_admin_access = AsyncMock()
-    bot.container.admin_sync_daemon.get_discord_admin_member_ids = AsyncMock(
-        return_value={"456"}
-    )
-    interaction = SimpleNamespace(
-        id=99,
-        user=SimpleNamespace(id=456, display_name="user"),
-        response=SimpleNamespace(send_message=AsyncMock()),
-    )
-    await cmd_link(bot, interaction, "CODE")
-    bot.container.accounts_bus.publish_discord_link_confirm.assert_awaited_once()
-    bot.container.admin_sync_daemon.get_discord_admin_member_ids.assert_not_awaited()
-    bot.store.set_admin_access.assert_not_awaited()
-
-
-async def test_roles_password_command_uses_rpc_without_legacy_event(settings):
+async def test_password_command_uses_rpc(settings):
     from xcore_discord_bot.handlers_admin_access import cmd_reset_password
 
     bot, db = await real_bot(settings=settings)
@@ -411,7 +346,6 @@ async def test_roles_password_command_uses_rpc_without_legacy_event(settings):
 
     assert len(game.sent(RESET)) == 1
     assert (await db["players"].find_one({"pid": 1}))["password_hash"] == "hash"
-    assert await game.commands("player-password-reset") == []
     interaction.followup.send.assert_awaited_once_with("Password reset for `p`")
 
 
@@ -629,13 +563,11 @@ async def test_roles_deferred_command_reports_rpc_failure(command, error, expect
 
     player = PlayerRecord(pid=1, uuid="uuid-1", nickname="p", discord_id="456")
     bot = MagicMock()
-    bot.settings.roles_mode = True
     bot.store.find_player_by_pid = AsyncMock(return_value=player)
     bot.bus.claim_idempotency = AsyncMock(return_value=True)
     bot.store.find_players_by_discord_id = AsyncMock(return_value=[player])
     bot.set_discord_admin_role = AsyncMock(return_value=True)
     bot.container.players.reset_password = AsyncMock(side_effect=error)
-    bot.container.accounts_bus.publish_player_password_reset = AsyncMock()
     daemon = SimpleNamespace(
         sync_member=AsyncMock(side_effect=error), reconcile=AsyncMock(side_effect=error)
     )
@@ -657,7 +589,6 @@ async def test_roles_deferred_command_reports_rpc_failure(command, error, expect
     interaction.response.defer.assert_awaited_once()
     interaction.followup.send.assert_awaited_once()
     assert expected in interaction.followup.send.await_args.args[0]
-    bot.container.accounts_bus.publish_player_password_reset.assert_not_awaited()
 
 
 @pytest.mark.parametrize("command", ["add", "remove", "sync"])
@@ -673,7 +604,6 @@ async def test_roles_commands_report_sync_outcome(command, synced, skipped, erro
 
     player = PlayerRecord(pid=1, uuid="uuid-1", nickname="p", discord_id="456")
     bot = MagicMock()
-    bot.settings.roles_mode = True
     bot.store.find_player_by_pid = AsyncMock(return_value=player)
     bot.bus.claim_idempotency = AsyncMock(return_value=True)
     bot.store.find_players_by_discord_id = AsyncMock(return_value=[player])

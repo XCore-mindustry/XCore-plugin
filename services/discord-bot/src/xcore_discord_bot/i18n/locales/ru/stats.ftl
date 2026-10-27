@@ -11,7 +11,6 @@ stats-lookup-by-user-admin-only = Искать игрока по аккаунт�
 stats-unknown = Неизвестно
 stats-unavailable = Сейчас недоступно
 stats-no-id = нет ID
-stats-admin = 🛡️ Админ
 stats-online = 🟢 **В сети**
 stats-online-on = 🟢 **В сети** на `{ $server }`
 stats-joined = вход { $since }
@@ -94,7 +93,6 @@ stats-punishment-none = нет
 stats-punishment =
     до { $until }
     └ `{ $reason }` — { $admin }
-stats-admin-source = 🛡️ Источник админки: `{ $source }`
 stats-language = 🌐 Язык: `{ $language }` · переводчик: `{ $translator }`
 stats-hidden = 🙈 Скрыт из таблиц лидеров
 

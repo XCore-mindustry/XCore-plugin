@@ -101,8 +101,6 @@ def _identity(player: PlayerRecord, locale: str) -> str:
     badge = get_badge(player.active_badge or "")
     if badge is not None and not badge.system:
         parts.append(f"🎖️ {_badge_name(badge.id, locale)}")
-    if player.is_admin:
-        parts.append(t(locale, "stats-admin"))
     return " · ".join(parts)
 
 
@@ -273,9 +271,6 @@ def _staff(player: PlayerRecord, notes: StaffNotes, locale: str) -> str:
         lines.append(t(locale, "stats-mute", state=_punishment(notes.mute, locale)))
     else:
         lines.append(t(locale, "stats-punishments-unavailable"))
-    if player.is_admin:
-        source = str(player.admin_source or "").strip() or "NONE"
-        lines.append(t(locale, "stats-admin-source", source=source))
     # The stored values themselves (a language code, "auto", "off") are left as they are.
     language = str(player.language or "").strip() or "auto"
     translator = str(player.translator_language or "").strip() or "off"

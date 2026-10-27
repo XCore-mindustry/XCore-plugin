@@ -69,7 +69,6 @@ def test_stats_embed_of_an_active_player() -> None:
         hexed_points=22,
         unlocked_badges=("developer", "mystery"),
         active_badge="developer",
-        is_admin=True,
         discord_id="4242",
         discord_linked_at=1_700_000_000_000,
         online=True,
@@ -103,7 +102,7 @@ def test_stats_embed_of_an_active_player() -> None:
     # colour tags are gone and the markdown of a name does not format the embed
     assert embed.title == "Vor\\*tex"
     assert embed.description.split("\n") == [
-        "`#-12` · `@vortex` · 🎖️ Developer · 🛡️ Admin",
+        "`#-12` · `@vortex` · 🎖️ Developer",
         "> Hello \\_there\\_",
         "🟢 **Online** on `mini-pvp` · joined <t:1750000000:R>",
     ]
@@ -184,7 +183,7 @@ def test_discord_link_is_shown_only_when_asked_for() -> None:
 
 
 def test_staff_notes_show_only_the_punishments_still_running() -> None:
-    player = PlayerRecord(pid=5, nickname="Ann", admin_source="DISCORD_ROLE")
+    player = PlayerRecord(pid=5, nickname="Ann")
     ban = BanRecord(
         name="Ann",
         admin_name="Mod_1",
@@ -208,8 +207,6 @@ def test_staff_notes_show_only_the_punishments_still_running() -> None:
     assert "🔨 Ban: until <t:" in notes
     assert "└ `grief 'core'` by Mod\\_1" in notes
     assert "🔇 Mute: none" in notes
-    # the source says nothing about a player who is not an admin
-    assert "Admin source" not in notes
 
     failed = _fields(
         build_stats_embed(StatsView(player=player, staff=StaffNotes(loaded=False)))

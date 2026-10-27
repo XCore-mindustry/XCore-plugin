@@ -1,11 +1,9 @@
 from __future__ import annotations
 
-import logging
 from typing import TYPE_CHECKING
 
 import discord
 from discord import Interaction
-from xcore_protocol.generated.shared import ActorRefV1ActorType
 
 from .command_helpers import claim_mutation, get_player_or_reply, reply_locale
 from .i18n import t
@@ -13,8 +11,6 @@ from .utils.mindustry_colors import strip_mindustry_colors
 
 if TYPE_CHECKING:
     from .bot import XCoreDiscordBot
-
-logger = logging.getLogger(__name__)
 
 
 def _clean_player_name(name: str | None) -> str:
@@ -24,7 +20,7 @@ def _clean_player_name(name: str | None) -> str:
     return cleaned or name
 
 
-async def cmd_link(bot: XCoreDiscordBot, interaction: Interaction, code: str) -> None:  # noqa: C901
+async def cmd_link(bot: XCoreDiscordBot, interaction: Interaction, code: str) -> None:
     locale = reply_locale(bot, interaction)
     if not code or not code.strip():
         await interaction.response.send_message(
@@ -86,40 +82,10 @@ async def cmd_link(bot: XCoreDiscordBot, interaction: Interaction, code: str) ->
         discord_username=discord_username,
     )
 
-    is_admin = False
-    try:
-        if not bot.settings.roles_mode:
-            discord_admin_ids = (
-                await bot.container.admin_sync_daemon.get_discord_admin_member_ids()
-            )
-            if discord_id in discord_admin_ids:
-                await bot.store.set_admin_access(
-                    uuid=player.uuid,
-                    is_admin=True,
-                    admin_source="DISCORD_ROLE",
-                )
-                await bot.container.accounts_bus.publish_discord_admin_access_changed(
-                    player_uuid=player.uuid,
-                    player_pid=player.pid,
-                    player_name=player.nickname,
-                    discord_id=discord_id,
-                    discord_username=discord_username,
-                    admin=True,
-                    source_name="DISCORD_ROLE",
-                    source_type=ActorRefV1ActorType.DISCORD,
-                    actor_name=discord_username,
-                    actor_discord_id=discord_id,
-                    actor_type=ActorRefV1ActorType.DISCORD,
-                    reason="discord admin linked account",
-                )
-                is_admin = True
-    except Exception:  # the periodic admin reconcile grants it later
-        logger.exception("Failed to grant instant admin access after link")
-
     await interaction.response.send_message(
         t(
             locale,
-            "link-done-admin" if is_admin else "link-done",
+            "link-done",
             name=_clean_player_name(player.nickname),
             pid=player.pid,
         ),

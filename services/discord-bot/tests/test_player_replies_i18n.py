@@ -82,7 +82,6 @@ def test_stats_embed_in_russian() -> None:
         hexed_points=22,
         unlocked_badges=("developer", "mystery"),
         active_badge="developer",
-        is_admin=True,
         discord_id="4242",
         discord_linked_at=1_700_000_000_000,
         online=True,
@@ -117,7 +116,7 @@ def test_stats_embed_in_russian() -> None:
     )
 
     assert embed.description.split("\n") == [
-        "`#-12` · 🎖️ Разработчик · 🛡️ Админ",
+        "`#-12` · 🎖️ Разработчик",
         "🟢 **В сети** на `mini-pvp` · вход <t:1750000000:R>",
     ]
     fields = _fields(embed)
@@ -140,7 +139,6 @@ def test_stats_embed_in_russian() -> None:
     assert fields["🔒 Заметки для персонала"].split("\n") == [
         "🔨 Бан: нет",
         "🔇 Мут: нет",
-        "🛡️ Источник админки: `NONE`",
         "🌐 Язык: `auto` · переводчик: `off`",
         "🙈 Скрыт из таблиц лидеров",
     ]

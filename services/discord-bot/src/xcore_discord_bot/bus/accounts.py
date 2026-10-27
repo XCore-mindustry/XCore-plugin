@@ -1,4 +1,4 @@
-"""Player accounts: Discord link codes, link and unlink, admin access, password resets and badge inventories."""
+"""Player accounts: Discord link codes, link and unlink, and badge inventories."""
 
 from __future__ import annotations
 
@@ -6,18 +6,14 @@ import json
 from collections.abc import Awaitable, Callable
 from typing import cast
 
-from xcore_protocol.generated.shared import ActorRefV1ActorType
-
 from ..contracts import (
     DiscordLinkStatusChangedV1,
     parse_discord_link_status_payload,
 )
 from ..protocol_outbound import (
-    build_discord_admin_access_changed_command,
     build_discord_link_confirm_command,
     build_discord_unlink_command,
     build_player_badge_inventory_changed_command,
-    build_player_password_reset_command,
 )
 from ..registry import LiveServerRegistry
 from .transport import RedisTransport
@@ -107,58 +103,6 @@ class AccountsBus:
                 discord_username=discord_username,
                 actor_name=actor_name,
                 actor_discord_id=actor_discord_id,
-                server=server,
-            ).to_payload(),
-        )
-
-    async def publish_discord_admin_access_changed(
-        self,
-        *,
-        player_uuid: str,
-        player_pid: int,
-        player_name: str,
-        discord_id: str,
-        discord_username: str | None,
-        admin: bool,
-        source_name: str,
-        source_type: ActorRefV1ActorType,
-        actor_name: str,
-        actor_discord_id: str | None,
-        actor_type: ActorRefV1ActorType,
-        reason: str,
-    ) -> None:
-        await self._transport.publish_to_all_servers(
-            servers=self._servers.names(),
-            stream_prefix="xcore:cmd:discord-admin-access",
-            event_type="discord.admin-access.changed.command",
-            ttl_ms=120_000,
-            idempotency_prefix="discord.admin_access_changed",
-            payload_builder=lambda server: build_discord_admin_access_changed_command(
-                player_uuid=player_uuid,
-                player_pid=player_pid,
-                player_name=player_name,
-                discord_id=discord_id,
-                discord_username=discord_username,
-                admin=admin,
-                source_name=source_name,
-                source_type=source_type,
-                actor_name=actor_name,
-                actor_discord_id=actor_discord_id,
-                actor_type=actor_type,
-                reason=reason,
-                server=server,
-            ).to_payload(),
-        )
-
-    async def publish_player_password_reset(self, *, uuid_value: str) -> None:
-        await self._transport.publish_to_all_servers(
-            servers=self._servers.names(),
-            stream_prefix="xcore:cmd:player-password-reset",
-            event_type="player.password-reset.command",
-            ttl_ms=120_000,
-            idempotency_prefix="player.password_reset",
-            payload_builder=lambda server: build_player_password_reset_command(
-                uuid_value=uuid_value,
                 server=server,
             ).to_payload(),
         )

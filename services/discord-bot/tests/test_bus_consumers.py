@@ -4,6 +4,7 @@ import json
 from unittest.mock import AsyncMock
 
 import pytest
+from bot_fakes import PERMISSIONS_SETTINGS
 from xcore_protocol.generated.discord import (
     DiscordLinkStatusChangedV1,
     DiscordLinkStatusChangedV1Action,
@@ -37,6 +38,7 @@ from xcore_discord_bot.settings import Settings
 @pytest.fixture
 def settings() -> Settings:
     return Settings(
+        **PERMISSIONS_SETTINGS,
         discord_bot_token="fake",
         discord_admin_role_id=1,
         discord_general_admin_role_id=1,

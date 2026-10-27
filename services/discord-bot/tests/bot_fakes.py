@@ -1,5 +1,6 @@
 """Construct the Discord client normally, without opening external connections."""
 
+from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
 
 from xcore_discord_bot.bot import XCoreDiscordBot
@@ -14,6 +15,13 @@ from xcore_discord_bot.registry import LiveServerRegistry
 from xcore_discord_bot.rpc.mindustry_rpc import MindustryRpcClient
 from xcore_discord_bot.settings import Settings
 
+# The guild and role configuration every test bot starts with.
+PERMISSIONS_SETTINGS = {
+    "discord_guild_id": 123,
+    "permissions_config_path": str(Path(__file__).with_name("permissions.toml")),
+    "permissions_rpc_server": "mini-pvp",
+}
+
 
 def make_settings(**overrides) -> Settings:
     return Settings(
@@ -21,6 +29,7 @@ def make_settings(**overrides) -> Settings:
             "discord_bot_token": "test-token",
             "discord_admin_role_id": 5,
             "discord_private_channel_id": 0,
+            **PERMISSIONS_SETTINGS,
             **overrides,
         }
     )

@@ -11,7 +11,6 @@ stats-lookup-by-user-admin-only = Only admins can look a player up by their Disc
 stats-unknown = Unknown
 stats-unavailable = Unavailable right now
 stats-no-id = no ID
-stats-admin = 🛡️ Admin
 stats-online = 🟢 **Online**
 stats-online-on = 🟢 **Online** on `{ $server }`
 stats-joined = joined { $since }
@@ -79,7 +78,6 @@ stats-punishment-none = none
 stats-punishment =
     until { $until }
     └ `{ $reason }` by { $admin }
-stats-admin-source = 🛡️ Admin source: `{ $source }`
 stats-language = 🌐 Language: `{ $language }` · translator: `{ $translator }`
 stats-hidden = 🙈 Hidden from the leaderboards
 

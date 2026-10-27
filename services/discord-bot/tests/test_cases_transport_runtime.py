@@ -16,7 +16,7 @@ from backends import (
     real_bot,
     run_until,
 )
-from bot_fakes import make_bot, make_rpc, make_settings
+from bot_fakes import PERMISSIONS_SETTINGS, make_bot, make_rpc, make_settings
 from test_cases_redis_transport import report_payload
 from xcore_protocol.generated.moderation import ModerationBanCreatedV1
 from xcore_protocol.generated.shared import ActorRefV1, PlayerRefV1
@@ -231,6 +231,7 @@ async def test_bot_installs_adapter_after_container_creation_and_wires_notifier(
     monkeypatch.setattr("xcore_discord_bot.bot.ServiceContainer.create", factory)
     settings = Settings(
         _env_file=None,
+        **PERMISSIONS_SETTINGS,
         discord_bot_token="fake",
         discord_admin_role_id=10,
         discord_private_channel_id=20,
