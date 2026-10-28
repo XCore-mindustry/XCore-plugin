@@ -6,17 +6,38 @@ import json
 from collections.abc import Awaitable, Callable
 from typing import cast
 
+from xcore_protocol.generated import DISCORD_ACCOUNT_OPERATION_REQUEST_V1
+from xcore_protocol.generated.discord import (
+    DiscordAccountOperationRequestV1,
+    DiscordAccountOperationResponseV1,
+)
+from xcore_protocol.generated.discord import (
+    DiscordAccountOperationResponseV1Status as Status,
+)
+
 from ..contracts import (
     DiscordLinkStatusChangedV1,
     parse_discord_link_status_payload,
 )
-from ..protocol_outbound import (
-    build_discord_link_confirm_command,
-    build_discord_unlink_command,
-    build_player_badge_inventory_changed_command,
-)
+from ..protocol_outbound import build_player_badge_inventory_changed_command
 from ..registry import LiveServerRegistry
-from .transport import RedisTransport
+from ..retry import TRANSIENT_EXCEPTIONS
+from .transport import RedisTransport, RpcError, RpcRejected
+
+# How long the bot waits for an answer. A request also expires after it, so a server that
+# reads it late does not act on it.
+ACCOUNT_OPERATION_TIMEOUT_MS = DISCORD_ACCOUNT_OPERATION_REQUEST_V1.ttlMs
+
+
+def _outcome(
+    request: DiscordAccountOperationRequestV1, status: Status, reason: str | None
+) -> DiscordAccountOperationResponseV1:
+    return DiscordAccountOperationResponseV1(
+        server=request.server,
+        operationId=request.operationId,
+        status=status,
+        reason=reason or None,
+    )
 
 
 class AccountsBus:
@@ -51,61 +72,32 @@ class AccountsBus:
             callback=callback,
         )
 
-    async def publish_discord_link_confirm(
-        self,
-        *,
-        code: str,
-        player_uuid: str,
-        player_pid: int,
-        player_name: str,
-        discord_id: str,
-        discord_username: str,
-    ) -> None:
-        await self._transport.publish_to_all_servers(
-            servers=self._servers.names(),
-            stream_prefix="xcore:cmd:discord-link-confirm",
-            event_type="discord.link.confirm.command",
-            ttl_ms=120_000,
-            idempotency_prefix="discord.link_confirm",
-            payload_builder=lambda server: build_discord_link_confirm_command(
-                code=code,
-                player_uuid=player_uuid,
-                player_pid=player_pid,
-                player_name=player_name,
-                discord_id=discord_id,
-                discord_username=discord_username,
-                server=server,
-            ).to_payload(),
-        )
-
-    async def publish_discord_unlink(
-        self,
-        *,
-        player_uuid: str,
-        player_pid: int,
-        player_name: str,
-        discord_id: str,
-        discord_username: str,
-        actor_name: str,
-        actor_discord_id: str,
-    ) -> None:
-        await self._transport.publish_to_all_servers(
-            servers=self._servers.names(),
-            stream_prefix="xcore:cmd:discord-unlink",
-            event_type="discord.unlink.command",
-            ttl_ms=120_000,
-            idempotency_prefix="discord.unlink",
-            payload_builder=lambda server: build_discord_unlink_command(
-                player_uuid=player_uuid,
-                player_pid=player_pid,
-                player_name=player_name,
-                discord_id=discord_id,
-                discord_username=discord_username,
-                actor_name=actor_name,
-                actor_discord_id=actor_discord_id,
-                server=server,
-            ).to_payload(),
-        )
+    async def rpc_account_operation(
+        self, request: DiscordAccountOperationRequestV1
+    ) -> DiscordAccountOperationResponseV1:
+        """Sends one link or unlink to ``request.server`` alone. An answer that does not
+        prove the outcome comes back UNKNOWN, and the bot never sends it again on its own."""
+        try:
+            body = await self._transport.rpc_request(
+                server=request.server,
+                rpc_type=request.MESSAGE_TYPE,
+                payload=request.to_payload(),
+                timeout_ms=ACCOUNT_OPERATION_TIMEOUT_MS,
+            )
+            response = DiscordAccountOperationResponseV1.from_payload(
+                json.loads(body.get("payload_json", "{}"))
+            )
+        except RpcRejected as error:  # refused before the server touched the account
+            return _outcome(request, Status.REJECTED, error.error_message)
+        except (RpcError, ValueError, *TRANSIENT_EXCEPTIONS):
+            # A timeout or broken answer says nothing about whether the write happened.
+            return _outcome(request, Status.UNKNOWN, None)
+        if (
+            response.server != request.server
+            or response.operationId != request.operationId
+        ):
+            return _outcome(request, Status.UNKNOWN, None)
+        return response
 
     async def publish_player_badge_inventory_changed(
         self,

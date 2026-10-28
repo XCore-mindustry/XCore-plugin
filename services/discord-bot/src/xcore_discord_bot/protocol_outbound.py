@@ -1,15 +1,16 @@
 from __future__ import annotations
 
+import json
 from datetime import UTC, datetime
-from uuid import uuid4
+from uuid import NAMESPACE_URL, uuid4, uuid5
 
 from xcore_protocol.generated.cases import CasesEvidenceRequestV1, CasesNoticeCommandV1
 from xcore_protocol.generated.chat import (
     ChatDiscordIngressCommandV1,
 )
 from xcore_protocol.generated.discord import (
-    DiscordLinkConfirmCommandV1,
-    DiscordUnlinkCommandV1,
+    DiscordAccountOperationRequestV1,
+    DiscordAccountOperationRequestV1Action,
 )
 from xcore_protocol.generated.identity import (
     PlayerActiveBadgeChangedCommandV1,
@@ -134,42 +135,39 @@ def build_moderation_pardon_command(
     )
 
 
-def build_discord_link_confirm_command(
-    code: str,
+def build_discord_account_operation_request(
+    *,
+    action: DiscordAccountOperationRequestV1Action,
+    server: str,
+    source_id: int,
     player_uuid: str,
     player_pid: int,
     player_name: str,
     discord_id: str,
     discord_username: str,
-    server: str,
-) -> DiscordLinkConfirmCommandV1:
-    return DiscordLinkConfirmCommandV1(
-        code=code,
-        player=PlayerRefV1(
-            playerUuid=player_uuid,
-            playerPid=player_pid,
-            playerName=player_name,
-        ),
-        discord=DiscordIdentityRefV1(
-            discordId=discord_id,
-            discordUsername=discord_username,
-        ),
-        server=server,
-        confirmedAt=utc_now_iso8601(),
+    issued_at: int,
+    timeout_ms: int,
+    code: str | None = None,
+    expected_linked_at: int | None = None,
+) -> DiscordAccountOperationRequestV1:
+    # One Discord interaction or message is one intent: its operation ID depends only on it
+    # and the exact request, so the same intent gets the same ID and a later one a new ID.
+    # The target server is part of it: a request sent to another server is a new operation.
+    intent = json.dumps(
+        [
+            action.value,
+            source_id,
+            server,
+            discord_id,
+            player_uuid,
+            code,
+            expected_linked_at,
+        ]
     )
-
-
-def build_discord_unlink_command(
-    player_uuid: str,
-    player_pid: int,
-    player_name: str,
-    discord_id: str,
-    discord_username: str,
-    actor_name: str,
-    actor_discord_id: str,
-    server: str,
-) -> DiscordUnlinkCommandV1:
-    return DiscordUnlinkCommandV1(
+    return DiscordAccountOperationRequestV1(
+        server=server,
+        operationId=str(uuid5(NAMESPACE_URL, f"xcore:discord-bot:account:{intent}")),
+        action=action,
         player=PlayerRefV1(
             playerUuid=player_uuid,
             playerPid=player_pid,
@@ -179,13 +177,10 @@ def build_discord_unlink_command(
             discordId=discord_id,
             discordUsername=discord_username,
         ),
-        actor=ActorRefV1(
-            actorName=actor_name,
-            actorDiscordId=actor_discord_id,
-            actorType=ActorRefV1ActorType.DISCORD,
-        ),
-        server=server,
-        requestedAt=utc_now_iso8601(),
+        issuedAt=issued_at,
+        expiresAt=issued_at + timeout_ms,
+        code=code,
+        expectedLinkedAt=expected_linked_at,
     )
 
 

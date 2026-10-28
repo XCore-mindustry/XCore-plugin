@@ -17,6 +17,7 @@ from .cogs import AdminCog, InfoCog, LinkingCog, MapsCog, SeasonsCog, SubnetCog
 from .cogs.cases import CasesCog
 from .command_helpers import reply_locale
 from .container import ServiceContainer
+from .handlers_linking import find_code_player, link_with_code
 from .i18n import XCoreTranslator, resolve_dm_locale, t
 from .mongo_store import MongoStore
 from .settings import Settings
@@ -184,43 +185,23 @@ class XCoreDiscordBot(commands.Bot):
             code = message.content.strip().upper()
             if code:
                 code_doc = await self.container.accounts_bus.get_discord_link_code(code)
-                player = None
                 if code_doc is not None:
-                    player = await self.store.find_player_by_uuid(
-                        str(
-                            code_doc.get("playerUuid")
-                            or code_doc.get("player_uuid")
-                            or ""
-                        )
-                    )
-                if (
-                    player is not None
-                    and player.uuid is not None
-                    and code_doc is not None
-                ):
+                    player = await find_code_player(self, code_doc)
                     locale = await resolve_dm_locale(
-                        message.author.id, self.container.cases.store, player.language
-                    )
-                    if player.discord_id and player.discord_id != str(
-                        message.author.id
-                    ):
-                        await message.channel.send(t(locale, "link-taken"))
-                        return
-
-                    await self.container.accounts_bus.publish_discord_link_confirm(
-                        code=code,
-                        player_uuid=player.uuid,
-                        player_pid=player.pid,
-                        player_name=player.nickname,
-                        discord_id=str(message.author.id),
-                        discord_username=message.author.display_name,
+                        message.author.id,
+                        self.container.cases.store,
+                        player.language if player is not None else None,
                     )
                     await message.channel.send(
-                        t(
-                            locale,
-                            "link-dm-sent",
-                            name=player.nickname or "",
-                            pid=player.pid,
+                        await link_with_code(
+                            self,
+                            code=code,
+                            code_doc=code_doc,
+                            player=player,
+                            source_id=message.id,
+                            discord_id=str(message.author.id),
+                            discord_username=message.author.display_name,
+                            locale=locale,
                         )
                     )
                     return

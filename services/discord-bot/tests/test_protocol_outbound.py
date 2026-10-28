@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from xcore_protocol.generated.chat import (
     ChatDiscordIngressCommandV1,
 )
+from xcore_protocol.generated.discord import DiscordAccountOperationRequestV1
 from xcore_protocol.generated.discord import (
-    DiscordLinkConfirmCommandV1,
-    DiscordUnlinkCommandV1,
+    DiscordAccountOperationRequestV1Action as Action,
 )
 from xcore_protocol.generated.identity import (
     PlayerActiveBadgeChangedCommandV1,
@@ -26,8 +28,7 @@ from xcore_protocol.generated.shared import MapFileSourceV1
 
 from xcore_discord_bot.protocol_outbound import (
     build_chat_discord_ingress_command,
-    build_discord_link_confirm_command,
-    build_discord_unlink_command,
+    build_discord_account_operation_request,
     build_maps_list_request,
     build_maps_load_command,
     build_maps_remove_request,
@@ -64,50 +65,48 @@ def test_moderation_pardon_round_trip() -> None:
     assert parsed.server == "mini-pvp"
 
 
-def test_discord_link_confirm_round_trip() -> None:
-    command = build_discord_link_confirm_command(
-        code="ABC123",
-        player_uuid="uuid-7",
-        player_pid=7,
-        player_name="Target",
-        discord_id="123456",
-        discord_username="osp54",
-        server="mini-pvp",
-    )
-    wire = command.to_payload()
-    parsed = DiscordLinkConfirmCommandV1.from_payload(wire)
-    assert parsed == command
+def _account_request(**overrides: object) -> DiscordAccountOperationRequestV1:
+    fields: dict[str, Any] = {
+        "action": Action.LINK,
+        "server": "mini-pvp",
+        "source_id": 77,
+        "player_uuid": "uuid-7",
+        "player_pid": 7,
+        "player_name": "Target",
+        "discord_id": "123456",
+        "discord_username": "osp54",
+        "issued_at": 1_000,
+        "timeout_ms": 10_000,
+        "code": "ABC123",
+    }
+    fields.update(overrides)
+    return build_discord_account_operation_request(**fields)
+
+
+def test_discord_account_operation_round_trip() -> None:
+    request = _account_request()
+
+    parsed = DiscordAccountOperationRequestV1.from_payload(request.to_payload())
+
+    assert parsed == request
+    assert parsed.action is Action.LINK
     assert parsed.code == "ABC123"
-    assert parsed.player.playerUuid == "uuid-7"
+    assert parsed.expectedLinkedAt is None
     assert parsed.player.playerPid == 7
-    assert parsed.player.playerName == "Target"
-    assert parsed.discord.discordId == "123456"
     assert parsed.discord.discordUsername == "osp54"
-    assert parsed.server == "mini-pvp"
+    assert (parsed.issuedAt, parsed.expiresAt) == (1_000, 11_000)
 
 
-def test_discord_unlink_round_trip() -> None:
-    command = build_discord_unlink_command(
-        player_uuid="uuid-7",
-        player_pid=7,
-        player_name="Target",
-        discord_id="123456",
-        discord_username="osp54",
-        actor_name="boss",
-        actor_discord_id="42",
-        server="mini-pvp",
-    )
-    wire = command.to_payload()
-    parsed = DiscordUnlinkCommandV1.from_payload(wire)
-    assert parsed == command
-    assert parsed.player.playerUuid == "uuid-7"
-    assert parsed.player.playerPid == 7
-    assert parsed.player.playerName == "Target"
-    assert parsed.discord.discordId == "123456"
-    assert parsed.discord.discordUsername == "osp54"
-    assert parsed.actor.actorName == "boss"
-    assert parsed.actor.actorDiscordId == "42"
-    assert parsed.server == "mini-pvp"
+def test_one_intent_keeps_its_operation_id_and_another_gets_a_new_one() -> None:
+    first = _account_request()
+
+    assert _account_request(issued_at=2_000).operationId == first.operationId
+    assert _account_request(source_id=78).operationId != first.operationId
+    assert _account_request(code="XYZ789").operationId != first.operationId
+    assert _account_request(server="other").operationId != first.operationId
+    unlink = _account_request(action=Action.UNLINK, code=None, expected_linked_at=5)
+    relinked = _account_request(action=Action.UNLINK, code=None, expected_linked_at=6)
+    assert unlink.operationId != relinked.operationId
 
 
 def test_player_active_badge_changed_round_trip() -> None:
