@@ -1,6 +1,6 @@
 // Source validation across the workspace before publishing a protocol release.
 // Usage: ./gradlew --init-script gradle/local-protocol.init.gradle test shadowJar
-// CI can select a nested checkout with -PxcoreProtocolDir=xcore-protocol.
+// Use -PxcoreProtocolDir=<path> for a checkout elsewhere.
 settingsEvaluated { settings ->
     if (settings.gradle.parent != null) return
     def protocolDirectory = new File(settings.settingsDir,

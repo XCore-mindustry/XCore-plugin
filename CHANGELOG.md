@@ -4,11 +4,22 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [5.2.0] - 2026-10-28
+
 ### Breaking changes
 - The legacy permissions mode is removed: staff rights come from roles only. `permissions.toml` is required, a server without a usable one does not start, and `[permissions] mode` is ignored. `PlayerData.admin` and the native admin list give nothing by themselves (`trust_native_admins` still lets the native list stand in on dev servers). Grant roles to existing admins with `perm migrate --apply`; see `docs/migrations/permission-roles.md`.
 - `DiscordAdminAccessService` is removed and the plugin no longer sends or handles `discord.admin-access.changed.command.v1` and `player.password-reset.command.v1`. Discord roles reach the plugin as grants; password resets travel with the grants.
 
+### Changed
+- Updated `xcore-protocol` to 0.17.0: staff rights only through grants (0.16.0) and the `discord.account.operation` RPC (0.17.0).
+
+### Added
+- Discord accounts can be linked and unlinked from the website or the bot through the `discord.account.operation` RPC. Each operation is acknowledged once by its `operationId`: a retry gets the stored answer, a reused id with a different request is rejected, and receipts (`account_operation_receipts`) expire after an hour. An unlink must name the link time it expects, so a stale request cannot remove a newer link. `discord.link.confirm.command` and `discord.unlink.command` still work.
+- Optional `discord.website_link_url`: the Discord link menu and command point players to the account website.
+
 ### Fixed
+- Account merges read the current Discord binding from the database first, so a player whose session missed a link event can merge again.
+- In match history, a free-for-all place's "of N" counts every participant (a Hexed round no longer shows "#19 of 15").
 - Unlinking a Discord account publishes the `unlinked` link status again; with roles on it used to stop before that, so the bot never removed the Discord-bound roles.
 
 ## [5.1.0] - 2026-10-23
@@ -382,7 +393,8 @@ No changelog entries were recorded in the Unreleased section.
 ### Security
 - Added ingress-based connection verification to harden request entry points.
 
-[Unreleased]: https://github.com/XCore-mindustry/XCore-plugin/compare/v5.1.0...HEAD
+[Unreleased]: https://github.com/XCore-mindustry/XCore-plugin/compare/v5.2.0...HEAD
+[5.2.0]: https://github.com/XCore-mindustry/XCore-plugin/compare/v5.1.0...v5.2.0
 [5.1.0]: https://github.com/XCore-mindustry/XCore-plugin/compare/v5.0.0...v5.1.0
 [5.0.0]: https://github.com/XCore-mindustry/XCore-plugin/compare/v4.7.0...v5.0.0
 [4.2.0]: https://github.com/XCore-mindustry/XCore-plugin/compare/v4.1.0...v4.2.0
