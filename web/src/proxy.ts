@@ -10,6 +10,5 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  // Everything except Next internals and files with an extension (sprites, icons).
-  matcher: ["/((?!_next/|.*\\.[a-z0-9]+$).*)"],
+  matcher: ["/((?!api(?:/|$)|discord/link(?:/|$)|_next/|.*\\.[a-z0-9]+$).*)"],
 };
