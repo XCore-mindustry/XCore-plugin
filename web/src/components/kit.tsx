@@ -1,6 +1,6 @@
 import Image from "next/image";
 import type { CSSProperties, ReactNode } from "react";
-import { accents, type Accent } from "@/content";
+import { accents, type Accent, type badges } from "@/content";
 
 /** The colour of a topic, for everything inside the element: --ac for text and lines, --band for its surfaces. */
 export const accent = (a: Accent) => ({ "--ac": accents[a][0], "--band": accents[a][1] }) as CSSProperties;
@@ -33,3 +33,10 @@ export const Band = ({ title, cmds, as: Tag = "h3" }: { title: ReactNode; cmds?:
     )}
   </div>
 );
+
+/** A badge's mark: its glyph, item sprite or a mask of a status sprite, as on the in-game badge menu. */
+export function BadgeMark({ badge }: { badge: (typeof badges)[number] }) {
+  if (badge.glyph) return <Glyph c={badge.glyph} />;
+  if (badge.sprite) return <Sprite src={badge.sprite} size={32} />;
+  return <span aria-hidden="true" className="mask" style={{ maskImage: `url(${badge.mask})`, WebkitMaskImage: `url(${badge.mask})` }} />;
+}

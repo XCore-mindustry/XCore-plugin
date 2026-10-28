@@ -4,20 +4,15 @@ import type { CSSProperties } from "react";
 import { notFound } from "next/navigation";
 import { CopyName } from "@/components/copy-name";
 import { Dock } from "@/components/dock";
-import { accent, Band, Cmd, Glyph, Sprite } from "@/components/kit";
+import { accent, Band, BadgeMark, Cmd, Glyph, Sprite } from "@/components/kit";
 import { ModeBoard } from "@/components/mode-board";
 import { PassModes } from "@/components/pass-modes";
 import { badges, glyph, leagues, libraries, links, modes, sample } from "@/content";
 import { getDictionary, type Dictionary } from "@/i18n";
 import { hasLocale, locales } from "@/i18n/config";
+import { communityCopy } from "@/i18n/community";
 
 const menuLanguages = ["en", "ru", "uk", "be", "pl", "cs", "de", "es", "fr"];
-
-function BadgeMark({ badge }: { badge: (typeof badges)[number] }) {
-  if (badge.glyph) return <Glyph c={badge.glyph} />;
-  if (badge.sprite) return <Sprite src={badge.sprite} size={32} />;
-  return <span aria-hidden="true" className="mask" style={{ maskImage: `url(${badge.mask})`, WebkitMaskImage: `url(${badge.mask})` }} />;
-}
 
 function Route({ t }: { t: Dictionary["route"] }) {
   return (
@@ -68,6 +63,7 @@ export default async function Page({ params }: PageProps<"/[lang]">) {
                 </h1>
               </div>
               <p className="tagline">{t.pass.tagline}</p>
+              <Link className="btn" href={`/${lang}/me`}>{communityCopy(lang).me}</Link>
               <nav className="lang" aria-label={t.langLabel}>
                 {locales.map((l) => (
                   <Link key={l} href={`/${l}`} hrefLang={l} lang={l} aria-current={l === lang ? "page" : undefined}>
