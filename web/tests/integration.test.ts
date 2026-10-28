@@ -262,6 +262,34 @@ describe.skipIf(process.env.XCORE_WEB_INTEGRATION !== "1")(
       }
     });
 
+    test("special PIDs link like any other and empty games stay out of the feed", async () => {
+      const db = await getGameDb();
+      const uuid = "fixture-private-special-pid";
+      const emptyId = "20000000-0000-4000-8000-000000000004";
+      const before = await listMatches({ pageSize: 1 });
+      await db.collection("players").insertOne({ uuid, pid: -1488, nickname: "QA Special", total_play_time: 999_999 });
+      await db.collection("games_v2").insertOne({
+        match_id: emptyId, stats_category: "EVENT", counted_in_stats: true,
+        started_at: Date.now(), ended_at: Date.now() + 12_000, player_stats: [],
+      });
+      try {
+        const [top, profile, found, all] = await Promise.all([
+          getLeaderboard("playtime"),
+          getPlayerProfile(-1488),
+          searchPlayers("-1488"),
+          listMatches({ pageSize: 1 }),
+        ]);
+        expect(top.items[0]?.pid).toBe(-1488);
+        expect(profile?.nickname).toBe("QA Special");
+        expect(found.items.map((row) => row.pid)).toEqual([-1488]);
+        expect(all.total).toBe(before.total);
+        expect(all.items[0]?.matchId).not.toBe(emptyId);
+      } finally {
+        await db.collection("players").deleteOne({ uuid });
+        await db.collection("games_v2").deleteOne({ match_id: emptyId });
+      }
+    });
+
     test("a different session cannot submit another user's confirmation; unlink captures ownership generation", async () => {
       const own = await previewUnlink(session, 101);
       const stranger = (await createSession("999999999999999999", "Other"))

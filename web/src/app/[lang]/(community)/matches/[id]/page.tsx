@@ -110,7 +110,7 @@ async function Match({
             {match.participants.map((player, index) => (
               <tr key={`${player.pid ?? "unknown"}-${index}`} data-win={player.win || undefined}>
                 <th scope="row" className="cx-top-name">
-                  {player.pid ? (
+                  {player.pid !== null ? (
                     <Link href={`/${lang}/players/${player.pid}`}><GameText text={player.name} /></Link>
                   ) : (
                     <GameText text={player.name} />

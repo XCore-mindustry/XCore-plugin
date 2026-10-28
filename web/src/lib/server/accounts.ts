@@ -8,6 +8,7 @@ import type {
 import { getGameDb } from "./db";
 import { sessionDb, rateLimit, type WebSession } from "./session";
 import { RequestError } from "./security";
+import { isPid } from "@/lib/pid";
 
 type Intent = {
   _id: string;
@@ -165,7 +166,7 @@ export async function previewUnlink(
   pid: number,
 ): Promise<IntentView> {
   await rateLimit("unlink-preview", session.discordId, 15);
-  if (!Number.isSafeInteger(pid) || pid < 1)
+  if (!isPid(pid))
     throw new RequestError(400, "invalid-player");
   const player = await (
     await getGameDb()

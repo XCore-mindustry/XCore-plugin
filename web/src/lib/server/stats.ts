@@ -15,6 +15,7 @@ import type {
   PublicMatchParticipant,
   PublicMatchSummary,
 } from "./stats-types";
+import { isPid, NO_PID, parsePid } from "@/lib/pid";
 
 const MAX_PAGE_SIZE = 50;
 const DEFAULT_PAGE_SIZE = 25;
@@ -130,15 +131,15 @@ export async function searchPlayers(
     };
   }
 
-  const pidNumber = Number(sanitized);
-  const isNumeric = Number.isSafeInteger(pidNumber) && pidNumber > 0;
+  const pidNumber = parsePid(sanitized);
+  const isNumeric = pidNumber !== null;
   const escaped = escapeRegex(sanitized);
   const rx = new RegExp(escaped, "i");
 
   const filter = isNumeric
     ? {
         $and: [
-          { pid: { $gt: 0 } },
+          { pid: { $gt: NO_PID } },
           {
             $or: [
               { pid: pidNumber },
@@ -150,7 +151,7 @@ export async function searchPlayers(
       }
             : {
         $and: [
-          { pid: { $gt: 0 } },
+          { pid: { $gt: NO_PID } },
           {
             $or: [
               { nickname: { $regex: rx } },
@@ -217,7 +218,7 @@ const EMPTY_MODE_STATS: ModeStatsSummaryDTO = {
  * and current ladder standings from rating_standings.
  */
 export async function getPlayerProfile(pid: number, db?: Db): Promise<PlayerProfile | null> {
-  if (!Number.isSafeInteger(pid) || pid <= 0) return null;
+  if (!isPid(pid)) return null;
 
   const database = await resolveDb(db);
   const playersCol = database.collection("players");
@@ -449,7 +450,7 @@ export async function getLeaderboard(
 
   if (category === "playtime" || category === "hexed") {
     const playersCol = database.collection("players");
-    const filter = { pid: { $gt: 0 } };
+    const filter = { pid: { $gt: NO_PID } };
 
     const total = await playersCol.countDocuments(filter);
     const totalPages = Math.ceil(total / clampedSize);
@@ -544,7 +545,7 @@ export async function getLeaderboard(
     playerDocs.map((p) => [
       String(p.uuid),
       {
-        pid: safeInt(p.pid) > 0 ? safeInt(p.pid) : null,
+        pid: isPid(p.pid) ? p.pid : null,
         nickname: String(p.nickname ?? "Unknown"),
         username: p.username ? String(p.username) : null,
         activeBadge: p.active_badge ? String(p.active_badge) : null,
@@ -605,7 +606,7 @@ export async function listMatches(
 
   let targetUuid: string | null = null;
   if (filters.pid !== undefined) {
-    if (!Number.isSafeInteger(filters.pid) || filters.pid <= 0) {
+    if (!isPid(filters.pid)) {
       return {
         items: [],
         page: clampedPage,
@@ -759,7 +760,8 @@ export async function listMatches(
   }
 
   // Deduplicate the full history before pagination; time out rather than return partial results.
-  const gameQuery: Record<string, unknown> = {};
+  // A server with nobody online can still cycle through games; those are not matches anyone played.
+  const gameQuery: Record<string, unknown> = { "player_stats.0": { $exists: true } };
   if (targetUuid) {
     gameQuery["player_stats.uuid"] = targetUuid;
   }
@@ -1012,7 +1014,7 @@ export async function getMatchDetail(
     playerDocs.map((p) => [
       String(p.uuid),
       {
-        pid: safeInt(p.pid) > 0 ? safeInt(p.pid) : null,
+        pid: isPid(p.pid) ? p.pid : null,
         nickname: String(p.nickname ?? "Unknown"),
         username: p.username ? String(p.username) : null,
         activeBadge: p.active_badge ? String(p.active_badge) : null,
