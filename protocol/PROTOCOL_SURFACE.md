@@ -4,10 +4,10 @@
 
 ## Overview
 
-- **Protocol Version:** 0.16.0
+- **Protocol Version:** 0.17.0
 - **Message Families:** 11
-- **Total Messages:** 62
-- **Total Routes:** 47
+- **Total Messages:** 64
+- **Total Routes:** 48
 - **Shared Types:** 23
 - **Envelope Schemas:** 6
 
@@ -115,6 +115,8 @@
 
 | Message | Schema File | Fields |
 |---------|-------------|--------|
+| `DiscordAccountOperationRequestV1` | `urn:xcore:protocol:messages:discord:discord.account.operation.request:v1` | required: messageType, messageVersion, server, operationId, action, player, discord, issuedAt, expiresAt; optional: code, expectedLinkedAt |
+| `DiscordAccountOperationResponseV1` | `urn:xcore:protocol:messages:discord:discord.account.operation.response:v1` | required: messageType, messageVersion, server, operationId, status; optional: reason, linkedAt |
 | `DiscordLinkCodeCreatedV1` | `urn:xcore:protocol:messages:discord:discord.link-code-created:v1` | required: messageType, messageVersion, code, player, server, createdAt, expiresAt |
 | `DiscordLinkConfirmCommandV1` | `urn:xcore:protocol:messages:discord:discord.link.confirm.command:v1` | required: messageType, messageVersion, code, player, discord, server, confirmedAt |
 | `DiscordLinkStatusChangedV1` | `urn:xcore:protocol:messages:discord:discord.link.status-changed:v1` | required: messageType, messageVersion, player, discord, action, server, occurredAt |
@@ -199,6 +201,7 @@
 | `DiscordLinkConfirmCommandV1` | command | xcore:cmd:discord-link-confirm:{server} | 120000ms | False | `—` |
 | `DiscordUnlinkCommandV1` | command | xcore:cmd:discord-unlink:{server} | 120000ms | False | `—` |
 | `DiscordLinkStatusChangedV1` | event | xcore:evt:discord:link-status | 120000ms | True | `—` |
+| `DiscordAccountOperationRequestV1` | rpc-request | xcore:rpc:req:{server} | 10000ms | False | `DiscordAccountOperationResponseV1` |
 | `ModerationBanCreatedV1` | event | xcore:evt:moderation:ban | 120000ms | True | `—` |
 | `ModerationMuteCreatedV1` | event | xcore:evt:moderation:mute | 120000ms | True | `—` |
 | `ModerationVoteKickCreatedV1` | event | xcore:evt:moderation:votekick | 120000ms | True | `—` |

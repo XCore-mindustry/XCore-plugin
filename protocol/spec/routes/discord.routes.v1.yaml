@@ -41,3 +41,20 @@ messages:
     replayable: true
     idempotentConsumerRecommended: true
     owner: discord-linking
+  - messageType: discord.account.operation.request
+    messageVersion: 1
+    kind: rpc-request
+    stream: xcore:rpc:req:{server}
+    bindings:
+      server: payload.server
+    targetScope: server
+    ttlMs: 10000
+    replayable: false
+    idempotentConsumerRecommended: true
+    owner: discord-linking
+    response:
+      messageType: discord.account.operation.response
+      messageVersion: 1
+      stream: xcore:rpc:resp:{requester}
+      bindings:
+        requester: rpc.requester

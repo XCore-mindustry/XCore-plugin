@@ -21,6 +21,22 @@ VALID_CASES = [
         spec_root() / "messages" / "discord" / "discord.link.status-changed.v1.json",
         fixtures_root() / "valid" / "discord" / "discord.link.status-changed.v1.json",
     ),
+    (
+        spec_root() / "messages" / "discord" / "discord.account.operation.request.v1.json",
+        fixtures_root() / "valid" / "discord" / "discord.account.operation.request.v1.link.json",
+    ),
+    (
+        spec_root() / "messages" / "discord" / "discord.account.operation.request.v1.json",
+        fixtures_root() / "valid" / "discord" / "discord.account.operation.request.v1.unlink.json",
+    ),
+    (
+        spec_root() / "messages" / "discord" / "discord.account.operation.response.v1.json",
+        fixtures_root() / "valid" / "discord" / "discord.account.operation.response.v1.json",
+    ),
+    (
+        spec_root() / "messages" / "discord" / "discord.account.operation.response.v1.json",
+        fixtures_root() / "valid" / "discord" / "discord.account.operation.response.v1.rejected.json",
+    ),
 ]
 
 
@@ -42,6 +58,26 @@ INVALID_CASES = [
         / "invalid"
         / "discord"
         / "discord.unlink.command.v1.missing-discord.json",
+    ),
+    (
+        spec_root() / "messages" / "discord" / "discord.account.operation.request.v1.json",
+        fixtures_root() / "invalid" / "discord" / "discord.account.operation.request.v1.link-missing-code.json",
+    ),
+    (
+        spec_root() / "messages" / "discord" / "discord.account.operation.request.v1.json",
+        fixtures_root() / "invalid" / "discord" / "discord.account.operation.request.v1.unlink-missing-expected-linked-at.json",
+    ),
+    (
+        spec_root() / "messages" / "discord" / "discord.account.operation.request.v1.json",
+        fixtures_root() / "invalid" / "discord" / "discord.account.operation.request.v1.bad-operation-id.json",
+    ),
+    (
+        spec_root() / "messages" / "discord" / "discord.account.operation.request.v1.json",
+        fixtures_root() / "invalid" / "discord" / "discord.account.operation.request.v1.bad-action.json",
+    ),
+    (
+        spec_root() / "messages" / "discord" / "discord.account.operation.response.v1.json",
+        fixtures_root() / "invalid" / "discord" / "discord.account.operation.response.v1.bad-status.json",
     ),
 ]
 

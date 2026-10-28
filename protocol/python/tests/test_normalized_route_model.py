@@ -148,6 +148,8 @@ def test_generation_plan_supports_discord_family_with_nested_shared_refs() -> No
         "PlayerRefV1",
     ]
     assert [schema.title for schema in plan.discord_schemas] == [
+        "DiscordAccountOperationRequestV1",
+        "DiscordAccountOperationResponseV1",
         "DiscordLinkCodeCreatedV1",
         "DiscordLinkConfirmCommandV1",
         "DiscordLinkStatusChangedV1",
@@ -158,12 +160,14 @@ def test_generation_plan_supports_discord_family_with_nested_shared_refs() -> No
         "discord.link.confirm.command",
         "discord.unlink.command",
         "discord.link.status-changed",
+        "discord.account.operation.request",
     ]
     assert [route.constant_name for route in plan.discord_routes] == [
         "DISCORD_LINK_CODE_CREATED_V1",
         "DISCORD_LINK_CONFIRM_COMMAND_V1",
         "DISCORD_UNLINK_COMMAND_V1",
         "DISCORD_LINK_STATUS_CHANGED_V1",
+        "DISCORD_ACCOUNT_OPERATION_REQUEST_V1",
     ]
 
 

@@ -114,6 +114,160 @@ def _expect_instance(value: Any, field_name: str, expected_type: type[Any]) -> N
     if not isinstance(value, expected_type):
         raise TypeError(f"{field_name} must be a {expected_type.__name__}")
 
+class DiscordAccountOperationRequestV1Action(StrEnum):
+    LINK = 'link'
+    UNLINK = 'unlink'
+
+@dataclass(frozen=True, slots=True)
+class DiscordAccountOperationRequestV1:
+    server: str
+    operationId: str
+    action: DiscordAccountOperationRequestV1Action
+    player: PlayerRefV1
+    discord: DiscordIdentityRefV1
+    issuedAt: int
+    expiresAt: int
+    code: str | None = None
+    expectedLinkedAt: int | None = None
+
+    MESSAGE_TYPE: ClassVar[str] = 'discord.account.operation.request'
+    MESSAGE_VERSION: ClassVar[int] = 1
+    def __post_init__(self) -> None:
+        _expect_str(self.server, 'server')
+        if len(self.server) < 1:
+            raise ValueError("server is too short")
+        _expect_str(self.operationId, 'operationId')
+        if re.search('^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$', self.operationId) is None:
+            raise ValueError("operationId does not match its pattern")
+        _expect_instance(self.action, 'action', DiscordAccountOperationRequestV1Action)
+        _expect_instance(self.player, 'player', PlayerRefV1)
+        _expect_instance(self.discord, 'discord', DiscordIdentityRefV1)
+        _expect_int(self.issuedAt, 'issuedAt')
+        if self.issuedAt < 0:
+            raise ValueError("issuedAt must be >= 0")
+        _expect_int(self.expiresAt, 'expiresAt')
+        if self.expiresAt < 0:
+            raise ValueError("expiresAt must be >= 0")
+        if self.code is not None:
+            _expect_str(self.code, 'code')
+            if len(self.code) < 1:
+                raise ValueError("code is too short")
+        if self.expectedLinkedAt is not None:
+            _expect_int(self.expectedLinkedAt, 'expectedLinkedAt')
+            if self.expectedLinkedAt < 0:
+                raise ValueError("expectedLinkedAt must be >= 0")
+
+    @classmethod
+    def from_payload(cls, payload: Mapping[str, Any]) -> "DiscordAccountOperationRequestV1":
+        mapping = _expect_mapping(payload, "DiscordAccountOperationRequestV1")
+        _expect_exact_keys(
+            mapping,
+            required=frozenset(('messageType', 'messageVersion', 'server', 'operationId', 'action', 'player', 'discord', 'issuedAt', 'expiresAt')),
+            allowed=frozenset(('messageType', 'messageVersion', 'server', 'operationId', 'action', 'player', 'discord', 'issuedAt', 'expiresAt', 'code', 'expectedLinkedAt')),
+            model_name="DiscordAccountOperationRequestV1",
+        )
+        if mapping['messageType'] != cls.MESSAGE_TYPE:
+            raise ValueError('messageType' + " must equal " + repr(cls.MESSAGE_TYPE))
+        if mapping['messageVersion'] != cls.MESSAGE_VERSION:
+            raise ValueError('messageVersion' + " must equal " + repr(cls.MESSAGE_VERSION))
+        return cls(
+            server=_expect_str(mapping['server'], 'server'),
+            operationId=_expect_str(mapping['operationId'], 'operationId'),
+            action=_expect_enum(mapping['action'], 'action', DiscordAccountOperationRequestV1Action),
+            player=PlayerRefV1.from_payload(_expect_mapping(mapping['player'], 'player')),
+            discord=DiscordIdentityRefV1.from_payload(_expect_mapping(mapping['discord'], 'discord')),
+            issuedAt=_expect_int(mapping['issuedAt'], 'issuedAt'),
+            expiresAt=_expect_int(mapping['expiresAt'], 'expiresAt'),
+            code=(_expect_str(mapping['code'], 'code') if 'code' in mapping else None),
+            expectedLinkedAt=(_expect_int(mapping['expectedLinkedAt'], 'expectedLinkedAt') if 'expectedLinkedAt' in mapping else None),
+        )
+
+    def to_payload(self) -> dict[str, Any]:
+        payload: dict[str, Any] = {
+            'messageType': self.MESSAGE_TYPE,
+            'messageVersion': self.MESSAGE_VERSION,
+        }
+        payload['server'] = self.server
+        payload['operationId'] = self.operationId
+        payload['action'] = str(self.action)
+        payload['player'] = self.player.to_payload()
+        payload['discord'] = self.discord.to_payload()
+        payload['issuedAt'] = self.issuedAt
+        payload['expiresAt'] = self.expiresAt
+        if self.code is not None:
+            payload['code'] = self.code
+        if self.expectedLinkedAt is not None:
+            payload['expectedLinkedAt'] = self.expectedLinkedAt
+        return payload
+
+class DiscordAccountOperationResponseV1Status(StrEnum):
+    SUCCESS = 'success'
+    REJECTED = 'rejected'
+    FAILED = 'failed'
+    UNKNOWN = 'unknown'
+
+@dataclass(frozen=True, slots=True)
+class DiscordAccountOperationResponseV1:
+    server: str
+    operationId: str
+    status: DiscordAccountOperationResponseV1Status
+    reason: str | None = None
+    linkedAt: int | None = None
+
+    MESSAGE_TYPE: ClassVar[str] = 'discord.account.operation.response'
+    MESSAGE_VERSION: ClassVar[int] = 1
+    def __post_init__(self) -> None:
+        _expect_str(self.server, 'server')
+        if len(self.server) < 1:
+            raise ValueError("server is too short")
+        _expect_str(self.operationId, 'operationId')
+        if re.search('^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$', self.operationId) is None:
+            raise ValueError("operationId does not match its pattern")
+        _expect_instance(self.status, 'status', DiscordAccountOperationResponseV1Status)
+        if self.reason is not None:
+            _expect_str(self.reason, 'reason')
+            if len(self.reason) < 1:
+                raise ValueError("reason is too short")
+        if self.linkedAt is not None:
+            _expect_int(self.linkedAt, 'linkedAt')
+            if self.linkedAt < 0:
+                raise ValueError("linkedAt must be >= 0")
+
+    @classmethod
+    def from_payload(cls, payload: Mapping[str, Any]) -> "DiscordAccountOperationResponseV1":
+        mapping = _expect_mapping(payload, "DiscordAccountOperationResponseV1")
+        _expect_exact_keys(
+            mapping,
+            required=frozenset(('messageType', 'messageVersion', 'server', 'operationId', 'status')),
+            allowed=frozenset(('messageType', 'messageVersion', 'server', 'operationId', 'status', 'reason', 'linkedAt')),
+            model_name="DiscordAccountOperationResponseV1",
+        )
+        if mapping['messageType'] != cls.MESSAGE_TYPE:
+            raise ValueError('messageType' + " must equal " + repr(cls.MESSAGE_TYPE))
+        if mapping['messageVersion'] != cls.MESSAGE_VERSION:
+            raise ValueError('messageVersion' + " must equal " + repr(cls.MESSAGE_VERSION))
+        return cls(
+            server=_expect_str(mapping['server'], 'server'),
+            operationId=_expect_str(mapping['operationId'], 'operationId'),
+            status=_expect_enum(mapping['status'], 'status', DiscordAccountOperationResponseV1Status),
+            reason=(_expect_str(mapping['reason'], 'reason') if 'reason' in mapping else None),
+            linkedAt=(_expect_int(mapping['linkedAt'], 'linkedAt') if 'linkedAt' in mapping else None),
+        )
+
+    def to_payload(self) -> dict[str, Any]:
+        payload: dict[str, Any] = {
+            'messageType': self.MESSAGE_TYPE,
+            'messageVersion': self.MESSAGE_VERSION,
+        }
+        payload['server'] = self.server
+        payload['operationId'] = self.operationId
+        payload['status'] = str(self.status)
+        if self.reason is not None:
+            payload['reason'] = self.reason
+        if self.linkedAt is not None:
+            payload['linkedAt'] = self.linkedAt
+        return payload
+
 @dataclass(frozen=True, slots=True)
 class DiscordLinkCodeCreatedV1:
     code: str
@@ -331,9 +485,13 @@ class DiscordUnlinkCommandV1:
         return payload
 
 __all__ = [
+    "DiscordAccountOperationRequestV1",
+    "DiscordAccountOperationResponseV1",
     "DiscordLinkCodeCreatedV1",
     "DiscordLinkConfirmCommandV1",
     "DiscordLinkStatusChangedV1",
     "DiscordUnlinkCommandV1",
+    "DiscordAccountOperationRequestV1Action",
+    "DiscordAccountOperationResponseV1Status",
     "DiscordLinkStatusChangedV1Action",
 ]

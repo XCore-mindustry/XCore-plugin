@@ -9,6 +9,7 @@ from .discovery import load_generation_plan
 from .families import default_family_name, family_argument_help
 from .java_writer import check_java_outputs, write_java_outputs
 from .python_writer import check_python_outputs, write_python_outputs
+from .typescript_writer import check_typescript_outputs, write_typescript_outputs
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -24,7 +25,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     generate_parser.add_argument(
         "--language",
-        choices=("python", "java", "all"),
+        choices=("python", "java", "typescript", "all"),
         default="all",
         help="Limit generation to one language or generate all outputs.",
     )
@@ -40,7 +41,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     check_parser.add_argument(
         "--language",
-        choices=("python", "java", "all"),
+        choices=("python", "java", "typescript", "all"),
         default="all",
         help="Limit stale-file checks to one language or inspect all outputs.",
     )
@@ -73,6 +74,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             write_python_outputs(plan)
         if args.language in {"java", "all"}:
             write_java_outputs(plan)
+        if args.language in {"typescript", "all"}:
+            write_typescript_outputs(plan)
         return 0
     if args.command == "check":
         plan = load_generation_plan(family=args.family)
@@ -81,6 +84,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             stale_paths += check_python_outputs(plan)
         if args.language in {"java", "all"}:
             stale_paths += check_java_outputs(plan)
+        if args.language in {"typescript", "all"}:
+            stale_paths += check_typescript_outputs(plan)
         if stale_paths:
             stale_display = "\n".join(str(path) for path in stale_paths)
             parser.exit(status=1, message=f"Stale generated outputs:\n{stale_display}\n")

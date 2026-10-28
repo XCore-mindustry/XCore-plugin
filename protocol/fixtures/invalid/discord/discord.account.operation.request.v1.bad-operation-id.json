@@ -1,0 +1,19 @@
+{
+  "messageType": "discord.account.operation.request",
+  "messageVersion": 1,
+  "server": "mini-pvp",
+  "operationId": "not-a-uuid",
+  "action": "link",
+  "player": {
+    "playerUuid": "uuid-1",
+    "playerPid": 10,
+    "playerName": "LinkedPlayer"
+  },
+  "discord": {
+    "discordId": "1234567890",
+    "discordUsername": "linked-user"
+  },
+  "issuedAt": 1777000000000,
+  "expiresAt": 1777000010000,
+  "code": "ABC123"
+}
