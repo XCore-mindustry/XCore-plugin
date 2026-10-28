@@ -9,6 +9,10 @@ on:
         description: Existing release tag in vX.Y.Z format
         required: true
         type: string
+      publish_java:
+        description: Publish Maven artifacts (disable only to recover a partially published release)
+        type: boolean
+        default: true
 
 permissions:
   contents: write
@@ -73,6 +77,7 @@ jobs:
         run: uv run --isolated --with "$GITHUB_WORKSPACE"/dist/*.whl python -c 'import xcore_protocol'
 
       - name: Publish Java package
+        if: github.event_name != 'workflow_dispatch' || inputs.publish_java
         run: ./gradlew publishMavenJavaPublicationToXcoreRepositoryReleasesRepository -PxcorePublishVersion="$XCORE_PUBLISH_VERSION"
         env:
           ORG_GRADLE_PROJECT_xcoreRepositoryReleasesUsername: ${{ secrets.XCORE_USERNAME }}
