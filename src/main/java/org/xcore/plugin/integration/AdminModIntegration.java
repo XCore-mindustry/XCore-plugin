@@ -200,21 +200,18 @@ public class AdminModIntegration {
         netServer.addPacketHandler("adm_discord_link_req", (player, content) -> {
             if (player == null) return;
             var session = sessionService.get(player);
-            boolean hasMod = session != null && session.data != null && session.data.adminModVersion != null;
-            if (session != null && player.con != null) {
-                var res = discordLinkService.getOrCreateActiveCode(session);
-                if (res.success()) {
-                    var packet = new DiscordLinkInfoPacket(true, res.code(), res.expiresAt(), null);
-                    Call.clientPacketReliable(player.con, "adm_discord_link_info", rawGson.toJson(packet));
-                } else {
-                    var packet = new DiscordLinkInfoPacket(false, "", 0L, res.errorKey());
-                    Call.clientPacketReliable(player.con, "adm_discord_link_info", rawGson.toJson(packet));
-                }
-            }
-            // Only show intrusive server dialog for vanilla/mobile players without the modern mod UI
-            if (!hasMod) {
-                discordMenu.linking(player.uuid(), false);
-            }
+            if (session == null || session.data == null || player.con == null) return;
+            boolean hasMod = session.data.adminModVersion != null;
+            discordLinkService.requestCode(session, false, res -> {
+                if (player.con == null) return;
+                var packet = res.success()
+                        ? new DiscordLinkInfoPacket(true, res.code(), res.expiresAt(), null)
+                        : new DiscordLinkInfoPacket(false, "", 0L, res.errorKey());
+                Call.clientPacketReliable(player.con, "adm_discord_link_info", rawGson.toJson(packet));
+                // Only show intrusive server dialog for vanilla/mobile players without the modern mod UI.
+                // Opened after the first request finishes so both reuse one pending code.
+                if (!hasMod) discordMenu.linking(player.uuid(), false);
+            });
         });
 
         netServer.addPacketHandler("adm_auth_login", (player, content) -> {

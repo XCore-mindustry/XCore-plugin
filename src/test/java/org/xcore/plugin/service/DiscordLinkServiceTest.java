@@ -17,15 +17,23 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class DiscordLinkServiceTest {
+    private final org.xcore.plugin.concurrent.StorageExecutor executor = org.mockito.Mockito.mock(org.xcore.plugin.concurrent.StorageExecutor.class);
+    private final org.xcore.plugin.concurrent.Async async = new org.xcore.plugin.concurrent.Async(executor, Runnable::run);
+    {
+        org.mockito.Mockito.doAnswer(call -> {
+            java.util.concurrent.Callable<?> task = call.getArgument(0);
+            return java.util.concurrent.CompletableFuture.completedFuture(task.call());
+        }).when(executor).supply(any());
+    }
+
 
     @Test
-    @DisplayName("createCode invalidates old codes and publishes creation event")
-    void createCode_invalidatesOldCodesAndPublishesCreationEvent() {
+    @DisplayName("createCode reserves a code and publishes creation event")
+    void createCode_reservesCodeAndPublishesCreationEvent() {
         RedisDiscordLinkCodeStore codeStore = mock(RedisDiscordLinkCodeStore.class);
         PlayerDataRepository playerDataRepository = mock(PlayerDataRepository.class);
         SessionService sessionService = mock(SessionService.class);
@@ -35,7 +43,7 @@ class DiscordLinkServiceTest {
 
         when(codeStore.store(any())).thenReturn(true);
 
-        DiscordLinkService service = new DiscordLinkService(codeStore, playerDataRepository, sessionService, networkService, config);
+        DiscordLinkService service = new DiscordLinkService(codeStore, playerDataRepository, sessionService, networkService, config, async);
 
         Session session = mock(Session.class);
         session.data = PlayerData.builder().uuid("uuid-7").pid(7).nickname("Target").build();
@@ -44,7 +52,7 @@ class DiscordLinkServiceTest {
 
         assertThat(result.success()).isTrue();
         assertThat(result.code()).hasSize(6);
-        verify(codeStore).invalidatePendingByPlayerUuid("uuid-7");
+        verify(codeStore, never()).invalidatePendingByPlayerUuid("uuid-7");
         verify(codeStore).store(any());
         verify(networkService).post(any(DiscordLinkCodeCreatedV1.class));
     }
@@ -61,7 +69,7 @@ class DiscordLinkServiceTest {
 
         when(codeStore.store(any())).thenReturn(false);
 
-        DiscordLinkService service = new DiscordLinkService(codeStore, playerDataRepository, sessionService, networkService, config);
+        DiscordLinkService service = new DiscordLinkService(codeStore, playerDataRepository, sessionService, networkService, config, async);
 
         Session session = mock(Session.class);
         session.data = PlayerData.builder().uuid("uuid-7").pid(7).nickname("Target").build();
@@ -82,7 +90,7 @@ class DiscordLinkServiceTest {
         TomlXcoreConfig config = new TomlXcoreConfig();
         config.server.name = "mini-pvp";
 
-        DiscordLinkService service = new DiscordLinkService(codeStore, playerDataRepository, sessionService, networkService, config);
+        DiscordLinkService service = new DiscordLinkService(codeStore, playerDataRepository, sessionService, networkService, config, async);
 
         Session session = mock(Session.class);
         session.data = PlayerData.builder()
@@ -109,7 +117,7 @@ class DiscordLinkServiceTest {
         TomlXcoreConfig config = new TomlXcoreConfig();
         config.server.name = "mini-pvp";
 
-        DiscordLinkService service = new DiscordLinkService(codeStore, playerDataRepository, sessionService, networkService, config);
+        DiscordLinkService service = new DiscordLinkService(codeStore, playerDataRepository, sessionService, networkService, config, async);
 
         Session session = mock(Session.class);
         session.data = PlayerData.builder().uuid("uuid-7").pid(7).nickname("Target").build();
@@ -129,8 +137,8 @@ class DiscordLinkServiceTest {
     }
 
     @Test
-    @DisplayName("getOrCreateActiveCode clears expired code before creating new one")
-    void getOrCreateActiveCode_clearsExpiredCodeBeforeCreatingNewOne() {
+    @DisplayName("getOrCreateActiveCode replaces expired code through atomic reservation")
+    void getOrCreateActiveCode_replacesExpiredCodeAtomically() {
         RedisDiscordLinkCodeStore codeStore = mock(RedisDiscordLinkCodeStore.class);
         PlayerDataRepository playerDataRepository = mock(PlayerDataRepository.class);
         SessionService sessionService = mock(SessionService.class);
@@ -140,7 +148,7 @@ class DiscordLinkServiceTest {
 
         when(codeStore.store(any())).thenReturn(true);
 
-        DiscordLinkService service = new DiscordLinkService(codeStore, playerDataRepository, sessionService, networkService, config);
+        DiscordLinkService service = new DiscordLinkService(codeStore, playerDataRepository, sessionService, networkService, config, async);
 
         Session session = mock(Session.class);
         session.data = PlayerData.builder().uuid("uuid-7").pid(7).nickname("Target").build();
@@ -155,7 +163,7 @@ class DiscordLinkServiceTest {
 
         assertThat(result.success()).isTrue();
         assertThat(result.code()).hasSize(6);
-        verify(codeStore, atLeastOnce()).invalidatePendingByPlayerUuid("uuid-7");
+        verify(codeStore, never()).invalidatePendingByPlayerUuid("uuid-7");
         verify(codeStore).store(any());
     }
 
@@ -169,7 +177,7 @@ class DiscordLinkServiceTest {
         TomlXcoreConfig config = new TomlXcoreConfig();
         config.server.name = "mini-pvp";
 
-        DiscordLinkService service = new DiscordLinkService(codeStore, playerDataRepository, sessionService, networkService, config);
+        DiscordLinkService service = new DiscordLinkService(codeStore, playerDataRepository, sessionService, networkService, config, async);
 
         var code = new RedisDiscordLinkCodeStore.LinkCodePayload(
                 "ABC123", "uuid-7", 7, "Target", "mini-pvp", System.currentTimeMillis(), System.currentTimeMillis() + 60_000L
@@ -184,8 +192,13 @@ class DiscordLinkServiceTest {
 
         when(codeStore.findByCode("ABC123")).thenReturn(code);
         when(playerDataRepository.findByUuid("uuid-7")).thenReturn(playerData);
-        when(playerDataRepository.updateDiscordLink(eq("uuid-7"), eq("123"), eq("discord-user"), anyLong())).thenReturn(true);
-        when(codeStore.consumeCode(eq("ABC123"))).thenReturn(true);
+        when(playerDataRepository.updateDiscordLink(eq("uuid-7"), eq(7), eq("123"), eq("discord-user"), anyLong())).thenAnswer(call -> {
+            playerData.discordId = call.getArgument(2);
+            playerData.discordUsername = call.getArgument(3);
+            playerData.discordLinkedAt = call.getArgument(4);
+            return playerData;
+        });
+        when(codeStore.claimCode(code)).thenReturn(code);
 
         var result = service.confirmLink("ABC123", "uuid-7", 7, "123", "discord-user");
 
@@ -205,7 +218,7 @@ class DiscordLinkServiceTest {
         TomlXcoreConfig config = new TomlXcoreConfig();
         config.server.name = "mini-pvp";
 
-        DiscordLinkService service = new DiscordLinkService(codeStore, playerDataRepository, sessionService, networkService, config);
+        DiscordLinkService service = new DiscordLinkService(codeStore, playerDataRepository, sessionService, networkService, config, async);
 
         var code = new RedisDiscordLinkCodeStore.LinkCodePayload(
                 "ABC123", "uuid-7", 7, "Target", "mini-pvp", System.currentTimeMillis(), System.currentTimeMillis() + 60_000L
@@ -237,7 +250,7 @@ class DiscordLinkServiceTest {
         TomlXcoreConfig config = new TomlXcoreConfig();
         config.server.name = "mini-pvp";
 
-        DiscordLinkService service = new DiscordLinkService(codeStore, playerDataRepository, sessionService, networkService, config);
+        DiscordLinkService service = new DiscordLinkService(codeStore, playerDataRepository, sessionService, networkService, config, async);
 
         PlayerData playerData = PlayerData.builder()
                 .uuid("uuid-7")
@@ -249,9 +262,9 @@ class DiscordLinkServiceTest {
                 .build();
 
         when(playerDataRepository.findByUuid("uuid-7")).thenReturn(playerData);
-        when(playerDataRepository.clearDiscordLink("uuid-7")).thenReturn(true);
+        when(playerDataRepository.clearDiscordLink("uuid-7", "123", 50L)).thenReturn(true);
 
-        var result = service.unlink("uuid-7");
+        var result = service.unlink("uuid-7", "123", 50L);
 
         assertThat(result).isTrue();
         verify(networkService).post(any(DiscordLinkStatusChangedV1.class));
@@ -267,7 +280,7 @@ class DiscordLinkServiceTest {
         TomlXcoreConfig config = new TomlXcoreConfig();
         config.server.name = "mini-pvp";
 
-        DiscordLinkService service = new DiscordLinkService(codeStore, playerDataRepository, sessionService, networkService, config);
+        DiscordLinkService service = new DiscordLinkService(codeStore, playerDataRepository, sessionService, networkService, config, async);
 
         PlayerData playerData = PlayerData.builder()
                 .uuid("uuid-7")
@@ -288,11 +301,11 @@ class DiscordLinkServiceTest {
                 .discordLinkedAt(50L)
                 .build();
 
-        when(playerDataRepository.findByUuid("uuid-7")).thenReturn(playerData);
-        when(playerDataRepository.clearDiscordLink("uuid-7")).thenReturn(true);
+        when(playerDataRepository.findByUuid("uuid-7")).thenReturn(playerData, PlayerData.builder().uuid("uuid-7").build());
+        when(playerDataRepository.clearDiscordLink("uuid-7", "123", 50L)).thenReturn(true);
         when(sessionService.get("uuid-7")).thenReturn(session);
 
-        var result = service.unlink("uuid-7");
+        var result = service.unlink("uuid-7", "123", 50L);
 
         assertThat(result).isTrue();
         assertThat(session.data.discordId).isBlank();
@@ -318,4 +331,57 @@ class DiscordLinkServiceTest {
 
         assertThat(status.displayName()).isEqualTo("123");
     }
+    @Test
+    void readOnlyDoesNotReadOrConsumeProof() {
+        var codes = mock(RedisDiscordLinkCodeStore.class);
+        var players = mock(PlayerDataRepository.class);
+        when(players.isReadOnly()).thenReturn(true);
+        var service = new DiscordLinkService(codes, players, mock(SessionService.class), mock(NetworkService.class), new TomlXcoreConfig(), async);
+        assertThat(service.confirmLink("ABC123", "one", 7, "123", "Discord").errorKey()).isEqualTo("read-only");
+        org.mockito.Mockito.verifyNoInteractions(codes);
+    }
+
+    @Test
+    void cacheRefreshPatchesOnlyBindingOnMainThread() {
+        var queue = new org.xcore.testkit.core.DeterministicQueue();
+        var mainAsync = new org.xcore.plugin.concurrent.Async(executor, queue::post);
+        var players = mock(PlayerDataRepository.class);
+        var sessions = mock(SessionService.class);
+        var session = mock(Session.class);
+        session.data = PlayerData.builder().uuid("one").pid(7).totalPlayTime(999).nickname("Unsaved name").build();
+        when(sessions.get("one")).thenReturn(session);
+        when(players.findByUuid("one")).thenReturn(PlayerData.builder().uuid("one").pid(7).totalPlayTime(10)
+                .discordId("123").discordUsername("Discord").discordLinkedAt(50L).build());
+        var service = new DiscordLinkService(mock(RedisDiscordLinkCodeStore.class), players, sessions,
+                mock(NetworkService.class), new TomlXcoreConfig(), mainAsync);
+        service.refreshCachedBinding("one");
+        assertThat(session.data.discordId).isEmpty();
+        queue.runTurn();
+        assertThat(session.data.discordId).isEqualTo("123");
+        assertThat(session.data.totalPlayTime).isEqualTo(999);
+        assertThat(session.data.nickname).isEqualTo("Unsaved name");
+    }
+
+    @Test
+    void foreignOrStaleUnlinkDoesNotIssueWrite() {
+        var players = mock(PlayerDataRepository.class);
+        when(players.findByUuid("one")).thenReturn(PlayerData.builder().uuid("one").discordId("123").discordLinkedAt(50L).build());
+        var service = new DiscordLinkService(mock(RedisDiscordLinkCodeStore.class), players, mock(SessionService.class),
+                mock(NetworkService.class), new TomlXcoreConfig(), async);
+        assertThat(service.unlink("one", "foreign", 50L)).isFalse();
+        assertThat(service.unlink("one", "123", 49L)).isFalse();
+        verify(players, never()).clearDiscordLink(any(), any(), anyLong());
+    }
+
+    @Test
+    void websiteLinkIsDisabledByDefaultAndEncodesServer() {
+        var config = new TomlXcoreConfig();
+        var service = new DiscordLinkService(mock(RedisDiscordLinkCodeStore.class), mock(PlayerDataRepository.class),
+                mock(SessionService.class), mock(NetworkService.class), config, async);
+        assertThat(service.websiteLinkUrl("ABC123")).isEmpty();
+        config.discord.websiteLinkUrl = "https://accounts.example/link";
+        config.server.name = "mini pvp";
+        assertThat(service.websiteLinkUrl("ABC123")).isEqualTo("https://accounts.example/link?code=ABC123&server=mini+pvp");
+    }
+
 }

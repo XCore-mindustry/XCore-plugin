@@ -44,7 +44,7 @@ class DiscordLinkTransportHandlerTest {
         DiscordLinkService discordLinkService = mock(DiscordLinkService.class);
         SessionService sessionService = mock(SessionService.class);
 
-        DiscordLinkTransportHandler handler = new DiscordLinkTransportHandler(network, discordLinkService, sessionService, async);
+        DiscordLinkTransportHandler handler = new DiscordLinkTransportHandler(network, discordLinkService, sessionService, async, mock(org.xcore.plugin.service.DiscordAccountOperationService.class), config());
         Map<Class<?>, Cons<?>> listeners = new HashMap<>();
 
         doAnswer(invocation -> {
@@ -81,7 +81,7 @@ class DiscordLinkTransportHandlerTest {
         DiscordLinkService discordLinkService = mock(DiscordLinkService.class);
         SessionService sessionService = mock(SessionService.class);
 
-        DiscordLinkTransportHandler handler = new DiscordLinkTransportHandler(network, discordLinkService, sessionService, async);
+        DiscordLinkTransportHandler handler = new DiscordLinkTransportHandler(network, discordLinkService, sessionService, async, mock(org.xcore.plugin.service.DiscordAccountOperationService.class), config());
         Map<Class<?>, Cons<?>> listeners = new HashMap<>();
 
         doAnswer(invocation -> {
@@ -89,7 +89,7 @@ class DiscordLinkTransportHandlerTest {
             return null;
         }).when(network).subscribe(any(), any());
 
-        when(discordLinkService.unlink(eq("uuid-7"))).thenReturn(true);
+        when(discordLinkService.unlinkLegacy(eq("uuid-7"), eq("123"), org.mockito.ArgumentMatchers.anyLong())).thenReturn(true);
 
         handler.registerListeners();
 
@@ -98,11 +98,45 @@ class DiscordLinkTransportHandlerTest {
                         new PlayerRefV1("uuid-7", 7, "Target", null),
                         new DiscordIdentityRefV1("123", "discord"),
                         new ActorRefV1("discord", null, ActorRefV1ActorType.SYSTEM),
-                        "mini-other",
+                        "mini-pvp",
                         "2026-04-28T00:00:01Z"
                 ));
 
-        verify(discordLinkService).unlink("uuid-7");
+        verify(discordLinkService).unlinkLegacy(eq("uuid-7"), eq("123"), org.mockito.ArgumentMatchers.anyLong());
+    }
+
+    @Test
+    void accountRpcRespondsToOriginalRequestAndRejectsMalformedIdentity() {
+        var network = mock(NetworkService.class);
+        var operations = mock(org.xcore.plugin.service.DiscordAccountOperationService.class);
+        var handler = new DiscordLinkTransportHandler(network, mock(DiscordLinkService.class), mock(SessionService.class), async, operations, config());
+        Map<Class<?>, Cons<?>> listeners = new HashMap<>();
+        doAnswer(call -> { listeners.put(call.getArgument(0), call.getArgument(1)); return null; })
+                .when(network).subscribe(any(), any());
+        long now = System.currentTimeMillis();
+        var request = new org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordAccountOperationRequestV1(
+                "mini-pvp", java.util.UUID.randomUUID().toString(),
+                org.xcore.protocol.generated.messages.discord.DiscordAccountOperationRequestV1Action.LINK,
+                new PlayerRefV1("uuid-7", 7, "Target", null), new DiscordIdentityRefV1("123", "Discord"), now, now + 10_000L, "ABC123", null);
+        var response = new org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordAccountOperationResponseV1(
+                "mini-pvp", request.operationId(), org.xcore.protocol.generated.messages.discord.DiscordAccountOperationResponseV1Status.UNKNOWN,
+                "operation-in-progress", null);
+        when(network.requester(request)).thenReturn("web");
+        when(operations.execute(request, "web")).thenReturn(response);
+        handler.registerListeners();
+        listener(listeners, org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordAccountOperationRequestV1.class).get(request);
+        verify(network).respond(request, response);
+        var malformed = new org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordAccountOperationRequestV1(
+                "mini-pvp", "bad-id", request.action(), request.player(), request.discord(), now, now + 10_000L, "ABC123", null);
+        listener(listeners, org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordAccountOperationRequestV1.class).get(malformed);
+        verify(network).respondError(malformed, "REJECTED", "invalid-operation-id");
+        verify(operations, org.mockito.Mockito.never()).execute(eq(malformed), any());
+    }
+
+    private static org.xcore.plugin.config.TomlXcoreConfig config() {
+        var config = new org.xcore.plugin.config.TomlXcoreConfig();
+        config.server.name = "mini-pvp";
+        return config;
     }
 
     @SuppressWarnings("unchecked")

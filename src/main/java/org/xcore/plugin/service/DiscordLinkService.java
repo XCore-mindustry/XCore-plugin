@@ -1,5 +1,6 @@
 package org.xcore.plugin.service;
 
+import org.xcore.plugin.concurrent.Async;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import org.xcore.plugin.config.TomlXcoreConfig;
@@ -12,7 +13,7 @@ import org.xcore.plugin.session.Session;
 import org.xcore.plugin.session.SessionService;
 
 import java.security.SecureRandom;
-import java.util.Locale;
+
 
 @Singleton
 public class DiscordLinkService {
@@ -26,6 +27,8 @@ public class DiscordLinkService {
     private final SessionService sessionService;
     private final NetworkService networkService;
     private final TomlXcoreConfig config;
+    private final Async async;
+    private final java.util.concurrent.ConcurrentMap<String, Object> refreshes = new java.util.concurrent.ConcurrentHashMap<>();
     private final SecureRandom secureRandom = new SecureRandom();
 
     @Inject
@@ -33,16 +36,20 @@ public class DiscordLinkService {
                               PlayerDataRepository playerDataRepository,
                               SessionService sessionService,
                                NetworkService networkService,
-                               TomlXcoreConfig config) {
+                               TomlXcoreConfig config, Async async) {
         this.discordLinkCodeStore = discordLinkCodeStore;
         this.playerDataRepository = playerDataRepository;
         this.sessionService = sessionService;
         this.networkService = networkService;
         this.config = config;
+        this.async = async;
     }
 
     public LinkCodeResult createCode(Session session) {
-        PlayerData data = playerData(session);
+        return createCode(playerData(session));
+    }
+
+    private LinkCodeResult createCode(PlayerData data) {
         if (data == null) {
             return LinkCodeResult.error("session-missing");
         }
@@ -51,7 +58,9 @@ public class DiscordLinkService {
             return LinkCodeResult.error("already-linked");
         }
 
-        discordLinkCodeStore.invalidatePendingByPlayerUuid(data.uuid);
+        if (playerDataRepository.isReadOnly()) return LinkCodeResult.error("read-only");
+        PlayerData authoritative = playerDataRepository.findByUuid(data.uuid);
+        if (isLinked(authoritative)) return LinkCodeResult.error("already-linked");
 
         String code = nextCode();
         long now = System.currentTimeMillis();
@@ -67,8 +76,11 @@ public class DiscordLinkService {
                 expiresAt
         );
 
-        if (!discordLinkCodeStore.store(linkCode)) {
-            return LinkCodeResult.error("save-failed");
+        for (int attempt = 0; !discordLinkCodeStore.store(linkCode); attempt++) {
+            if (attempt >= 9) return LinkCodeResult.error("save-failed");
+            code = nextCode();
+            linkCode = new RedisDiscordLinkCodeStore.LinkCodePayload(code, data.uuid, data.pid, data.nickname,
+                    config.server.name, now, expiresAt);
         }
 
         networkService.post(DiscordProtocolMapper.toLinkCodeCreated(
@@ -85,7 +97,10 @@ public class DiscordLinkService {
     }
 
     public LinkCodeResult getOrCreateActiveCode(Session session) {
-        PlayerData data = playerData(session);
+        return getOrCreateActiveCode(playerData(session));
+    }
+
+    private LinkCodeResult getOrCreateActiveCode(PlayerData data) {
         if (data == null) {
             return LinkCodeResult.error("session-missing");
         }
@@ -97,14 +112,31 @@ public class DiscordLinkService {
         long now = System.currentTimeMillis();
         var pending = discordLinkCodeStore.findPendingByPlayerUuid(data.uuid);
         if (pending != null) {
-            if (pending.expiresAt() <= now) {
-                discordLinkCodeStore.invalidatePendingByPlayerUuid(data.uuid);
-            } else {
-                return LinkCodeResult.success(pending.code(), pending.expiresAt());
-            }
+            if (pending.expiresAt() > now) return LinkCodeResult.success(pending.code(), pending.expiresAt());
         }
 
-        return createCode(session);
+        return createCode(data);
+    }
+
+    public void requestCode(Session session, boolean regenerate, java.util.function.Consumer<LinkCodeResult> callback) {
+        var source = session.data;
+        var snapshot = PlayerData.builder().uuid(source.uuid).pid(source.pid).nickname(source.nickname)
+                .discordId(source.discordId).build();
+        async.supply(() -> regenerate ? createCode(snapshot) : getOrCreateActiveCode(snapshot)).thenMain((result, error) -> {
+            if (sessionService.get(snapshot.uuid) == session) callback.accept(error == null ? result : LinkCodeResult.error("save-failed"));
+        });
+    }
+
+    public void requestUnlink(Session session, java.util.function.Consumer<Boolean> callback) {
+        String uuid = session.data.uuid;
+        String owner = session.data.discordId;
+        long linkedAt = session.data.discordLinkedAt;
+        async.supply(() -> unlink(uuid, owner, linkedAt)).thenMain((result, error) -> {
+            if (sessionService.get(uuid) != session) return;
+            boolean success = error == null && Boolean.TRUE.equals(result);
+            if (success && owner.equals(session.data.discordId) && linkedAt == session.data.discordLinkedAt) clearDiscordState(session.data);
+            callback.accept(success);
+        });
     }
 
     public LinkStatusResult status(Session session) {
@@ -117,44 +149,33 @@ public class DiscordLinkService {
     }
 
     public boolean unlink(Session session) {
-        PlayerData data = playerData(session);
-        if (data == null || !isLinked(data)) {
-            return false;
-        }
+        PlayerData cached = playerData(session);
+        return cached != null && unlink(cached.uuid, cached.discordId, cached.discordLinkedAt);
+    }
 
-        String discordId = data.discordId;
-        if (!playerDataRepository.clearDiscordLink(data.uuid)) {
-            return false;
-        }
+    public boolean unlink(String playerUuid, String expectedDiscordId, long expectedLinkedAt) {
+        return unlink(playerUuid, expectedDiscordId, expectedLinkedAt, Long.MAX_VALUE);
+    }
 
+    public boolean unlink(String playerUuid, String expectedDiscordId, long expectedLinkedAt, long deadline) {
+        if (playerDataRepository.isReadOnly()) return false;
+        PlayerData data = playerDataRepository.findByUuid(playerUuid);
+        if (!isLinked(data) || !data.discordId.equals(expectedDiscordId) || data.discordLinkedAt != expectedLinkedAt) return false;
+        if (System.currentTimeMillis() >= deadline) return false;
+        if (!playerDataRepository.clearDiscordLink(playerUuid, expectedDiscordId, expectedLinkedAt)) return false;
+        refreshCachedBinding(playerUuid);
         clearDiscordState(data);
-        publishStatusChanged(data, discordId, "", "unlinked", System.currentTimeMillis());
+        publishStatusChanged(data, expectedDiscordId, "", "unlinked", System.currentTimeMillis());
         return true;
     }
 
-    public boolean unlink(String playerUuid) {
-        if (playerUuid == null || playerUuid.isBlank()) {
-            return false;
-        }
-
+    /** Legacy commands lack a generation: only accept an intent issued after the current binding. */
+    public boolean unlinkLegacy(String playerUuid, String expectedDiscordId, long issuedAt) {
         PlayerData data = playerDataRepository.findByUuid(playerUuid);
-        if (data == null || !isLinked(data)) {
-            return false;
-        }
-
-        String discordId = data.discordId;
-        if (!playerDataRepository.clearDiscordLink(playerUuid)) {
-            return false;
-        }
-
-        var session = sessionService.get(playerUuid);
-        if (session != null) {
-            clearDiscordState(session.data);
-        }
-
-        clearDiscordState(data);
-        publishStatusChanged(data, discordId, "", "unlinked", System.currentTimeMillis());
-        return true;
+        long now = System.currentTimeMillis();
+        return issuedAt <= now + 5_000L && now - issuedAt <= CODE_TTL_MILLIS
+                && isLinked(data) && issuedAt >= data.discordLinkedAt
+                && unlink(playerUuid, expectedDiscordId, data.discordLinkedAt);
     }
 
     public ConfirmResult confirmLink(String code,
@@ -162,16 +183,21 @@ public class DiscordLinkService {
                                      int playerPid,
                                      String discordId,
                                      String discordUsername) {
+        return confirmLink(code, playerUuid, playerPid, discordId, discordUsername, Long.MAX_VALUE);
+    }
+
+    public ConfirmResult confirmLink(String code, String playerUuid, int playerPid, String discordId,
+                                     String discordUsername, long deadline) {
+        if (playerDataRepository.isReadOnly()) return ConfirmResult.error("read-only");
+        if (discordId == null || discordId.isBlank()) return ConfirmResult.error("discord-missing");
         long now = System.currentTimeMillis();
 
         var linkCode = discordLinkCodeStore.findByCode(code);
         if (linkCode == null) {
             return ConfirmResult.error("not-found");
         }
-        if (linkCode.expiresAt() <= now) {
-            discordLinkCodeStore.consumeCode(code);
-            return ConfirmResult.error("expired");
-        }
+        if (!config.server.name.equals(linkCode.server())) return ConfirmResult.error("wrong-server");
+        if (linkCode.expiresAt() <= now) return ConfirmResult.error("expired");
         if (!linkCode.playerUuid().equals(playerUuid) || linkCode.playerPid() != playerPid) {
             return ConfirmResult.error("player-mismatch");
         }
@@ -180,26 +206,23 @@ public class DiscordLinkService {
         if (data == null) {
             return ConfirmResult.error("player-not-found");
         }
-        if (isLinked(data) && !data.discordId.equals(discordId)) {
-            return ConfirmResult.error("already-linked-other-discord");
-        }
+        if (data.pid != playerPid) return ConfirmResult.error("player-mismatch");
+        if (isLinked(data)) return ConfirmResult.error("already-linked-other-discord");
 
-        boolean consumed = discordLinkCodeStore.consumeCode(code);
-        if (!consumed) {
+        if (System.currentTimeMillis() >= Math.min(linkCode.expiresAt(), deadline)) return ConfirmResult.error("expired");
+        var claimed = discordLinkCodeStore.claimCode(linkCode);
+        if (claimed == null) {
             return ConfirmResult.error("consume-failed");
         }
 
-        boolean linked = playerDataRepository.updateDiscordLink(playerUuid, discordId, discordUsername, now);
-        if (!linked) {
+        PlayerData linked = playerDataRepository.updateDiscordLink(playerUuid, playerPid, discordId, discordUsername, now);
+        if (linked == null) {
             return ConfirmResult.error("link-failed");
         }
 
-        applyDiscordLink(data, discordId, discordUsername, now);
-        sessionService.update(data);
-
-        publishStatusChanged(data, discordId, data.discordUsername, "linked", now);
-
-        return ConfirmResult.success(data);
+        refreshCachedBinding(playerUuid);
+        publishStatusChanged(linked, discordId, linked.discordUsername, "linked", linked.discordLinkedAt);
+        return ConfirmResult.success(linked);
     }
 
     private PlayerData playerData(Session session) {
@@ -255,18 +278,30 @@ public class DiscordLinkService {
     }
 
     private String nextCode() {
-        for (int attempt = 0; attempt < 10; attempt++) {
-            StringBuilder builder = new StringBuilder(CODE_LENGTH);
-            for (int i = 0; i < CODE_LENGTH; i++) {
-                builder.append(CODE_ALPHABET.charAt(secureRandom.nextInt(CODE_ALPHABET.length())));
-            }
-            String code = builder.toString().toUpperCase(Locale.ROOT);
-            if (discordLinkCodeStore.findByCode(code) == null) {
-                return code;
-            }
-        }
+        StringBuilder builder = new StringBuilder(CODE_LENGTH);
+        for (int i = 0; i < CODE_LENGTH; i++) builder.append(CODE_ALPHABET.charAt(secureRandom.nextInt(CODE_ALPHABET.length())));
+        return builder.toString();
+    }
 
-        throw new IllegalStateException("Failed to generate unique Discord link code");
+    public void refreshCachedBinding(String uuid) {
+        Object token = new Object();
+        refreshes.put(uuid, token);
+        // Read on storage executor, then patch only binding fields on the game thread.
+        async.supply(() -> playerDataRepository.findByUuid(uuid)).thenMain((latest, error) -> {
+            if (!refreshes.remove(uuid, token) || error != null) return;
+            var session = sessionService.get(uuid);
+            if (latest != null && session != null && session.data != null) {
+                applyDiscordLink(session.data, latest.discordId, latest.discordUsername, latest.discordLinkedAt);
+            }
+        });
+    }
+
+    public String websiteLinkUrl(String code) {
+        String base = config.discord.websiteLinkUrl;
+        if (base == null || base.isBlank()) return "";
+        return base + (base.contains("?") ? "&" : "?") + "code="
+                + java.net.URLEncoder.encode(code, java.nio.charset.StandardCharsets.UTF_8) + "&server="
+                + java.net.URLEncoder.encode(config.server.name, java.nio.charset.StandardCharsets.UTF_8);
     }
 
     public record LinkCodeResult(boolean success, String code, long expiresAt, String errorKey) {

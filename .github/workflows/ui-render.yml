@@ -14,12 +14,24 @@ on:
 permissions:
   contents: read
 
+# Keep aligned with build.yml until protocol 0.17.0 is published.
+env:
+  XCORE_PROTOCOL_REF: '5a1a86536087396df0fe0a752844068cfecad177'
+
 jobs:
   render:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
+      - name: Checkout protocol source
+        if: env.XCORE_PROTOCOL_REF != ''
+        uses: actions/checkout@v7
+        with:
+          repository: XCore-mindustry/xcore-protocol
+          ref: ${{ env.XCORE_PROTOCOL_REF }}
+          path: xcore-protocol
+          persist-credentials: false
       # The renderer lives in mindustry-testkit; its own CI proves it catches broken menus.
       - uses: actions/checkout@v7
         with:
@@ -32,7 +44,13 @@ jobs:
           java-version: '25'
       - uses: gradle/actions/setup-gradle@v5
       - name: Render every menu fixture in the phone, android1080 and pc profiles
-        run: tools/ui-render/render
+        run: |
+          if [[ -n "$XCORE_PROTOCOL_REF" ]]; then
+            ./gradlew --init-script gradle/local-protocol.init.gradle -PxcoreProtocolDir=xcore-protocol exportUiFixtures --console=plain --refresh-dependencies
+            mindustry-testkit/render/render --out build/ui-render/results build/ui-render/packets
+          else
+            tools/ui-render/render
+          fi
         env:
           MINDUSTRY_TESTKIT: mindustry-testkit
       - name: Upload packets, screenshots and diagnostics

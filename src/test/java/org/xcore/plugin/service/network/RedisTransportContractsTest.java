@@ -10,11 +10,13 @@ import org.xcore.protocol.generated.messages.identity.IdentityMessages.PlayerAct
 import org.xcore.protocol.generated.messages.identity.IdentityMessages.PlayerBadgeInventoryChangedCommandV1;
 import org.xcore.protocol.generated.messages.identity.IdentityMessages.PlayerBadgeSymbolColorModeChangedCommandV1;
 import org.xcore.protocol.generated.messages.identity.IdentityMessages.PlayerCustomNicknameChangedCommandV1;
-import org.xcore.protocol.generated.messages.security.SecurityMessages.PlayerPasswordResetCommandV1;
+import org.xcore.protocol.generated.messages.security.SecurityMessages.SecurityStaffResetPasswordRequestV1;
+import org.xcore.protocol.generated.messages.security.SecurityMessages.SecurityStaffSyncResponseV1;
+import org.xcore.protocol.generated.messages.security.SecurityMessages.SecurityStaffResetPasswordResponseV1;
 import org.xcore.protocol.generated.messages.identity.IdentityMessages.PlayerJoinLeaveV1;
 import org.xcore.protocol.generated.messages.server.ServerMessages.ServerActionV1;
 import org.xcore.protocol.generated.messages.server.ServerMessages.ServerHeartbeatV1;
-import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordAdminAccessChangedCommandV1;
+import org.xcore.protocol.generated.messages.security.SecurityMessages.SecurityStaffSyncRequestV1;
 import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordLinkCodeCreatedV1;
 import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordLinkStatusChangedV1;
 import org.xcore.protocol.generated.messages.maps.MapsMessages.MapsListRequestV1;
@@ -48,7 +50,7 @@ class RedisTransportContractsTest {
     void stableStreamPrefixesAndPatternsRemainCompatible() {
         // Arrange
         String eventStream = "xcore:evt:chat:message";
-        String commandStream = "xcore:cmd:player-password-reset:mini-pvp";
+        String commandStream = "xcore:cmd:player-active-badge:mini-pvp";
         String rpcRequestStream = "xcore:rpc:req:mini-pvp";
         String rpcResponseStream = "xcore:rpc:resp:discord-bot";
 
@@ -174,9 +176,9 @@ class RedisTransportContractsTest {
         RedisProtocolRouteCatalog.RouteSpec customNicknameCommandRoute = RedisProtocolRouteCatalog.routeFor(PlayerCustomNicknameChangedCommandV1.class);
         RedisProtocolRouteCatalog.RouteSpec activeBadgeCommandRoute = RedisProtocolRouteCatalog.routeFor(PlayerActiveBadgeChangedCommandV1.class);
         RedisProtocolRouteCatalog.RouteSpec badgeSymbolColorModeCommandRoute = RedisProtocolRouteCatalog.routeFor(PlayerBadgeSymbolColorModeChangedCommandV1.class);
-        RedisProtocolRouteCatalog.RouteSpec commandRoute = RedisProtocolRouteCatalog.routeFor(PlayerPasswordResetCommandV1.class);
+        RedisProtocolRouteCatalog.RouteSpec resetPasswordRpcRoute = RedisProtocolRouteCatalog.routeFor(SecurityStaffResetPasswordRequestV1.class);
         RedisProtocolRouteCatalog.RouteSpec mapsLoadCommandRoute = RedisProtocolRouteCatalog.routeFor(MapsLoadCommandV1.class);
-        RedisProtocolRouteCatalog.RouteSpec discordAdminCommandRoute = RedisProtocolRouteCatalog.routeFor(DiscordAdminAccessChangedCommandV1.class);
+        RedisProtocolRouteCatalog.RouteSpec staffSyncRpcRoute = RedisProtocolRouteCatalog.routeFor(SecurityStaffSyncRequestV1.class);
         RedisProtocolRouteCatalog.RouteSpec broadcastCommandRoute = RedisProtocolRouteCatalog.routeFor(ServerCommandExecuteCommandV1.class);
         RedisProtocolRouteCatalog.RouteSpec rpcRoute = RedisProtocolRouteCatalog.routeFor(MapsListRequestV1.class);
         RedisProtocolRouteCatalog.RouteSpec removeRpcRoute = RedisProtocolRouteCatalog.routeFor(MapsRemoveRequestV1.class);
@@ -197,9 +199,9 @@ class RedisTransportContractsTest {
         RedisProtocolRouteCatalog.RouteSpec stableCustomNicknameCommandRoute = customNicknameCommandRoute;
         RedisProtocolRouteCatalog.RouteSpec stableActiveBadgeCommandRoute = activeBadgeCommandRoute;
         RedisProtocolRouteCatalog.RouteSpec stableBadgeSymbolColorModeCommandRoute = badgeSymbolColorModeCommandRoute;
-        RedisProtocolRouteCatalog.RouteSpec stableCommandRoute = commandRoute;
+        RedisProtocolRouteCatalog.RouteSpec stableResetPasswordRpcRoute = resetPasswordRpcRoute;
         RedisProtocolRouteCatalog.RouteSpec stableMapsLoadCommandRoute = mapsLoadCommandRoute;
-        RedisProtocolRouteCatalog.RouteSpec stableDiscordAdminCommandRoute = discordAdminCommandRoute;
+        RedisProtocolRouteCatalog.RouteSpec stableStaffSyncRpcRoute = staffSyncRpcRoute;
         RedisProtocolRouteCatalog.RouteSpec stableBroadcastCommandRoute = broadcastCommandRoute;
         RedisProtocolRouteCatalog.RouteSpec stableRpcRoute = rpcRoute;
         RedisProtocolRouteCatalog.RouteSpec stableRemoveRpcRoute = removeRpcRoute;
@@ -316,13 +318,19 @@ class RedisTransportContractsTest {
         assertThat(stableBadgeSymbolColorModeCommandRoute.readOnly()).isFalse();
         assertThat(stableBadgeSymbolColorModeCommandRoute.rpcRequest()).isFalse();
 
-        assertThat(stableCommandRoute).isNotNull();
-        assertThat(stableCommandRoute.streamPattern()).isEqualTo("xcore:cmd:player-password-reset:{server}");
-        assertThat(stableCommandRoute.messageType()).isEqualTo("player.password-reset.command");
-        assertThat(stableCommandRoute.deliveryMode()).isEqualTo(RedisDeliveryMode.COMMAND);
-        assertThat(stableCommandRoute.serverScope()).isEqualTo(RedisProtocolRouteCatalog.ServerScope.PAYLOAD_SERVER);
-        assertThat(stableCommandRoute.readOnly()).isFalse();
-        assertThat(stableCommandRoute.rpcRequest()).isFalse();
+        assertThat(stableResetPasswordRpcRoute).isNotNull();
+        assertThat(stableResetPasswordRpcRoute.streamPattern()).isEqualTo("xcore:rpc:req:{server}");
+        assertThat(stableResetPasswordRpcRoute.messageType()).isEqualTo("security.staff.reset-password.request");
+        assertThat(stableResetPasswordRpcRoute.deliveryMode()).isEqualTo(RedisDeliveryMode.RPC_REQUEST);
+        assertThat(stableResetPasswordRpcRoute.serverScope()).isEqualTo(RedisProtocolRouteCatalog.ServerScope.PAYLOAD_SERVER);
+        assertThat(stableResetPasswordRpcRoute.readOnly()).isFalse();
+        assertThat(stableResetPasswordRpcRoute.rpcRequest()).isTrue();
+        assertThat(stableResetPasswordRpcRoute.streamBindings()).containsEntry("server", "payload.server");
+        assertThat(stableResetPasswordRpcRoute.responseType()).isEqualTo(SecurityStaffResetPasswordResponseV1.class);
+        assertThat(stableResetPasswordRpcRoute.responseStreamPattern()).isEqualTo("xcore:rpc:resp:{requester}");
+        assertThat(stableResetPasswordRpcRoute.responseStreamBindings()).containsEntry("requester", "rpc.requester");
+        assertThat(stableResetPasswordRpcRoute.ttlMillis()).isEqualTo(10_000L);
+        assertThat(stableResetPasswordRpcRoute.idempotentConsumerRecommended()).isTrue();
 
         assertThat(stableMapsLoadCommandRoute).isNotNull();
         assertThat(stableMapsLoadCommandRoute.streamPattern()).isEqualTo("xcore:cmd:maps-load:{server}");
@@ -332,13 +340,19 @@ class RedisTransportContractsTest {
         assertThat(stableMapsLoadCommandRoute.readOnly()).isFalse();
         assertThat(stableMapsLoadCommandRoute.rpcRequest()).isFalse();
 
-        assertThat(stableDiscordAdminCommandRoute).isNotNull();
-        assertThat(stableDiscordAdminCommandRoute.streamPattern()).isEqualTo("xcore:cmd:discord-admin-access:{server}");
-        assertThat(stableDiscordAdminCommandRoute.messageType()).isEqualTo("discord.admin-access.changed.command");
-        assertThat(stableDiscordAdminCommandRoute.deliveryMode()).isEqualTo(RedisDeliveryMode.COMMAND);
-        assertThat(stableDiscordAdminCommandRoute.serverScope()).isEqualTo(RedisProtocolRouteCatalog.ServerScope.PAYLOAD_SERVER);
-        assertThat(stableDiscordAdminCommandRoute.readOnly()).isFalse();
-        assertThat(stableDiscordAdminCommandRoute.rpcRequest()).isFalse();
+        assertThat(stableStaffSyncRpcRoute).isNotNull();
+        assertThat(stableStaffSyncRpcRoute.streamPattern()).isEqualTo("xcore:rpc:req:{server}");
+        assertThat(stableStaffSyncRpcRoute.messageType()).isEqualTo("security.staff.sync.request");
+        assertThat(stableStaffSyncRpcRoute.deliveryMode()).isEqualTo(RedisDeliveryMode.RPC_REQUEST);
+        assertThat(stableStaffSyncRpcRoute.serverScope()).isEqualTo(RedisProtocolRouteCatalog.ServerScope.PAYLOAD_SERVER);
+        assertThat(stableStaffSyncRpcRoute.readOnly()).isFalse();
+        assertThat(stableStaffSyncRpcRoute.rpcRequest()).isTrue();
+        assertThat(stableStaffSyncRpcRoute.streamBindings()).containsEntry("server", "payload.server");
+        assertThat(stableStaffSyncRpcRoute.responseType()).isEqualTo(SecurityStaffSyncResponseV1.class);
+        assertThat(stableStaffSyncRpcRoute.responseStreamPattern()).isEqualTo("xcore:rpc:resp:{requester}");
+        assertThat(stableStaffSyncRpcRoute.responseStreamBindings()).containsEntry("requester", "rpc.requester");
+        assertThat(stableStaffSyncRpcRoute.ttlMillis()).isEqualTo(10_000L);
+        assertThat(stableStaffSyncRpcRoute.idempotentConsumerRecommended()).isTrue();
 
         assertThat(stableBroadcastCommandRoute).isNotNull();
         assertThat(stableBroadcastCommandRoute.streamPattern()).isEqualTo("xcore:cmd:execute-command:broadcast");
@@ -381,15 +395,15 @@ class RedisTransportContractsTest {
     void registryAndRouterRemainAlignedWithExplicitTransportTopology() {
         // Arrange
         RedisProtocolRouteCatalog.RouteSpec playerSessionSpec = RedisProtocolRouteCatalog.routeFor(PlayerCustomNicknameChangedCommandV1.class);
-        RedisProtocolRouteCatalog.RouteSpec commandSpec = RedisProtocolRouteCatalog.routeFor(PlayerPasswordResetCommandV1.class);
+        RedisProtocolRouteCatalog.RouteSpec resetPasswordSpec = RedisProtocolRouteCatalog.routeFor(SecurityStaffResetPasswordRequestV1.class);
         RedisProtocolRouteCatalog.RouteSpec rpcSpec = RedisProtocolRouteCatalog.routeFor(MapsListRequestV1.class);
         RedisRouteDescriptor playerSessionDescriptor = routeAdapter.routeDescriptorFor(PlayerCustomNicknameChangedCommandV1.class);
-        RedisRouteDescriptor commandDescriptor = routeAdapter.routeDescriptorFor(PlayerPasswordResetCommandV1.class);
+        RedisRouteDescriptor resetPasswordDescriptor = routeAdapter.routeDescriptorFor(SecurityStaffResetPasswordRequestV1.class);
         RedisRouteDescriptor rpcDescriptor = routeAdapter.routeDescriptorFor(MapsListRequestV1.class);
 
         // Act
         var playerSessionRoute = router.route(new PlayerCustomNicknameChangedCommandV1("uuid-7", "Commander", "survival"), "mini-pvp");
-        var commandRoute = router.route(new PlayerPasswordResetCommandV1("uuid-7", "survival"), "mini-pvp");
+        var resetPasswordRpcRoute = router.route(new SecurityStaffResetPasswordRequestV1("survival", "reset-7", "uuid-7"), "mini-pvp");
         List<String> rpcSubscriptions = router.subscribeStreamsFor(MapsListRequestV1.class, "mini-pvp");
 
         // Assert
@@ -402,14 +416,16 @@ class RedisTransportContractsTest {
         assertThat(playerSessionRoute.messageType()).isEqualTo("player.custom-nickname.changed.command");
         assertThat(playerSessionRoute.streamKey()).doesNotStartWith("xcore:evt:");
 
-        assertThat(commandDescriptor).isNotNull();
-        assertThat(commandDescriptor.streamPattern()).isEqualTo(commandSpec.streamPattern());
-        assertThat(commandDescriptor.messageType()).isEqualTo(commandSpec.messageType());
-        assertThat(commandDescriptor.isMutating()).isTrue();
-        assertThat(commandDescriptor.isReadOnly()).isFalse();
-        assertThat(commandRoute.streamKey()).isEqualTo("xcore:cmd:player-password-reset:survival");
-        assertThat(commandRoute.messageType()).isEqualTo("player.password-reset.command");
-        assertThat(commandRoute.streamKey()).doesNotStartWith("xcore:evt:");
+        assertThat(resetPasswordDescriptor).isNotNull();
+        assertThat(resetPasswordDescriptor.streamPattern()).isEqualTo(resetPasswordSpec.streamPattern());
+        assertThat(resetPasswordDescriptor.messageType()).isEqualTo(resetPasswordSpec.messageType());
+        assertThat(resetPasswordDescriptor.isMutating()).isFalse();
+        assertThat(resetPasswordDescriptor.isRpcRequest()).isTrue();
+        assertThat(resetPasswordDescriptor.responseType()).isEqualTo(SecurityStaffResetPasswordResponseV1.class);
+        assertThat(resetPasswordDescriptor.isReadOnly()).isFalse();
+        assertThat(resetPasswordRpcRoute.streamKey()).isEqualTo("xcore:rpc:req:survival");
+        assertThat(resetPasswordRpcRoute.messageType()).isEqualTo("security.staff.reset-password.request");
+        assertThat(resetPasswordRpcRoute.streamKey()).doesNotStartWith("xcore:evt:");
 
         assertThat(rpcDescriptor).isNotNull();
         assertThat(rpcDescriptor.streamPattern()).isEqualTo(rpcSpec.streamPattern());

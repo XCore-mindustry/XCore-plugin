@@ -1,7 +1,7 @@
 package org.xcore.plugin.service.network;
 
 import com.google.gson.Gson;
-import io.lettuce.core.SetArgs;
+import io.lettuce.core.ScriptOutputType;
 import jakarta.inject.Inject;
 import jakarta.inject.Named;
 import jakarta.inject.Singleton;
@@ -16,6 +16,47 @@ import java.util.concurrent.TimeUnit;
 public class RedisDiscordLinkCodeStore {
 
     private static final long CODE_TTL_SECONDS = 10 * 60L;
+    static final String RESERVE_SCRIPT = """
+            if not redis.call('SET', KEYS[1], ARGV[1], 'NX', 'EX', ARGV[3]) then return 0 end
+            local old = redis.call('GET', KEYS[2])
+            if old and old ~= ARGV[2] then
+              local key = 'xcore:discord-link:code:' .. old
+              local value = redis.call('GET', key)
+              if value then
+                local p = cjson.decode(value)
+                local n = cjson.decode(ARGV[1])
+                if p.playerUuid == n.playerUuid and p.server == n.server then redis.call('DEL', key) end
+              end
+            end
+            redis.call('SET', KEYS[2], ARGV[2], 'EX', ARGV[3])
+            return 1
+            """;
+    static final String CLAIM_SCRIPT = """
+            local value = redis.call('GET', KEYS[1])
+            if not value then return nil end
+            local p = cjson.decode(value)
+            local expected = cjson.decode(ARGV[1])
+            if p.code ~= expected.code or p.playerNickname ~= expected.playerNickname
+              or p.playerUuid ~= expected.playerUuid or p.playerPid ~= expected.playerPid
+              or p.server ~= expected.server or p.createdAt ~= expected.createdAt
+              or p.expiresAt ~= expected.expiresAt then return nil end
+            redis.call('DEL', KEYS[1])
+            local reverse = 'xcore:discord-link:player:' .. p.server .. ':' .. p.playerUuid
+            if redis.call('GET', reverse) == ARGV[2] then redis.call('DEL', reverse) end
+            return value
+            """;
+    static final String INVALIDATE_SCRIPT = """
+            local code = redis.call('GET', KEYS[1])
+            if not code then return 0 end
+            local key = 'xcore:discord-link:code:' .. code
+            local value = redis.call('GET', key)
+            if value then
+              local p = cjson.decode(value)
+              if p.playerUuid == ARGV[1] and p.server == ARGV[2] then redis.call('DEL', key) end
+            end
+            redis.call('DEL', KEYS[1])
+            return 1
+            """;
 
     private final RedisNetworkBackend backend;
     private final Gson redisGson;
@@ -41,21 +82,13 @@ public class RedisDiscordLinkCodeStore {
             return CompletableFuture.completedFuture(false);
         }
 
-        String code = normalizeCode(payload.code());
-        String playerKey = playerKey(payload.playerUuid());
-        String codeKey = codeKey(code);
-        String json = redisGson.toJson(payload);
-
-        return backend.withAsyncCommands(commands ->
-                deleteKeysAsync(commands, payload.playerUuid())
-                        .thenCompose(ignored -> commands.set(codeKey, json, SetArgs.Builder.ex(CODE_TTL_SECONDS)).toCompletableFuture())
-                        .thenCompose(ignored -> commands.set(playerKey, code, SetArgs.Builder.ex(CODE_TTL_SECONDS)).toCompletableFuture())
-                        .thenApply("OK"::equals)
-                        .toCompletableFuture()
-                        .orTimeout(500, TimeUnit.MILLISECONDS)
-                        .exceptionally(err -> false),
-                false
-        );
+        if (payload.server() == null || !payload.server().equals(config.server.name)) {
+            return CompletableFuture.completedFuture(false);
+        }
+        return backend.withAsyncCommands(commands -> commands.<Long>eval(RESERVE_SCRIPT, ScriptOutputType.INTEGER,
+                        new String[]{codeKey(payload.code()), playerKey(payload.playerUuid())},
+                        redisGson.toJson(payload), normalizeCode(payload.code()), Long.toString(CODE_TTL_SECONDS))
+                .toCompletableFuture().orTimeout(500, TimeUnit.MILLISECONDS).thenApply(value -> value == 1L), false);
     }
 
     public LinkCodePayload findByCode(String code) {
@@ -114,7 +147,7 @@ public class RedisDiscordLinkCodeStore {
                                     .orTimeout(500, TimeUnit.MILLISECONDS)
                                     .thenCompose(payloadJson -> {
                                         if (payloadJson == null || payloadJson.isBlank()) {
-                                            return commands.del(playerKey).toCompletableFuture().thenApply(ignored -> null);
+                                            return CompletableFuture.completedFuture(null);
                                         }
                                         return CompletableFuture.completedFuture(redisGson.fromJson(payloadJson, LinkCodePayload.class));
                                     });
@@ -137,65 +170,29 @@ public class RedisDiscordLinkCodeStore {
             return CompletableFuture.completedFuture(false);
         }
 
-        return backend.withAsyncCommands(commands ->
-                deleteKeysAsync(commands, playerUuid)
-                        .thenApply(ignored -> true)
-                        .toCompletableFuture()
-                        .orTimeout(500, TimeUnit.MILLISECONDS)
-                        .exceptionally(err -> false),
-                false
-        );
+        return backend.withAsyncCommands(commands -> commands.<Long>eval(INVALIDATE_SCRIPT, ScriptOutputType.INTEGER,
+                new String[]{playerKey(playerUuid)}, playerUuid, config.server.name)
+                .toCompletableFuture().orTimeout(500, TimeUnit.MILLISECONDS).thenApply(value -> value == 1L), false);
+    }
+
+    public LinkCodePayload claimCode(LinkCodePayload expected) {
+        return claimCodeAsync(expected).toCompletableFuture().join();
+    }
+
+    public CompletionStage<LinkCodePayload> claimCodeAsync(LinkCodePayload expected) {
+        if (expected == null) return CompletableFuture.completedFuture(null);
+        return backend.withAsyncCommands(commands -> commands.<String>eval(CLAIM_SCRIPT, ScriptOutputType.VALUE,
+                new String[]{codeKey(expected.code())}, redisGson.toJson(expected), normalizeCode(expected.code()))
+                .toCompletableFuture().orTimeout(500, TimeUnit.MILLISECONDS)
+                .thenApply(json -> json == null ? null : redisGson.fromJson(json, LinkCodePayload.class)), null);
     }
 
     public boolean consumeCode(String code) {
-        if (code == null || code.isBlank()) {
-            return false;
-        }
-
         return consumeCodeAsync(code).toCompletableFuture().join();
     }
 
     public CompletionStage<Boolean> consumeCodeAsync(String code) {
-        if (code == null || code.isBlank()) {
-            return CompletableFuture.completedFuture(false);
-        }
-
-        String codeKey = codeKey(code);
-        return backend.withAsyncCommands(commands ->
-                commands.get(codeKey)
-                        .toCompletableFuture()
-                        .orTimeout(500, TimeUnit.MILLISECONDS)
-                        .thenCompose(payloadJson -> {
-                            if (payloadJson == null || payloadJson.isBlank()) {
-                                return CompletableFuture.completedFuture(false);
-                            }
-                            LinkCodePayload payload = redisGson.fromJson(payloadJson, LinkCodePayload.class);
-                            var delCodeFuture = commands.del(codeKey).toCompletableFuture();
-                            if (payload != null && payload.playerUuid() != null && !payload.playerUuid().isBlank()) {
-                                return delCodeFuture.thenCompose(ignored ->
-                                        commands.del(playerKey(payload.playerUuid())).toCompletableFuture().thenApply(res -> true)
-                                );
-                            }
-                            return delCodeFuture.thenApply(res -> true);
-                        })
-                        .exceptionally(err -> false),
-                false
-        );
-    }
-
-    private CompletionStage<Void> deleteKeysAsync(io.lettuce.core.api.async.RedisAsyncCommands<String, String> commands, String playerUuid) {
-        String playerKey = playerKey(playerUuid);
-        return commands.get(playerKey)
-                .toCompletableFuture()
-                .thenCompose(existingCode -> {
-                    if (existingCode != null && !existingCode.isBlank()) {
-                        return commands.del(codeKey(existingCode))
-                                .toCompletableFuture()
-                                .thenCompose(ignored -> commands.del(playerKey).toCompletableFuture())
-                                .thenApply(ignored -> null);
-                    }
-                    return commands.del(playerKey).toCompletableFuture().thenApply(ignored -> null);
-                });
+        return findByCodeAsync(code).thenCompose(payload -> claimCodeAsync(payload).thenApply(value -> value != null));
     }
 
     private String codeKey(String code) {

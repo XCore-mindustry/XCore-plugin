@@ -1,5 +1,6 @@
 package org.xcore.plugin.service.network;
 
+import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordAccountOperationRequestV1;
 import arc.func.Cons;
 import arc.util.Log;
 import com.google.gson.Gson;
@@ -266,7 +267,7 @@ public final class RedisNetworkBackend {
                 : derivedReplyTo;
         String correlationId = UUID.randomUUID().toString();
         long now = System.currentTimeMillis();
-        long timeoutMs = 5000L;
+        long timeoutMs = request instanceof DiscordAccountOperationRequestV1 ? 10_000L : 5_000L;
 
         CountDownLatch listenerReady = new CountDownLatch(1);
         Thread awaitThread = Thread.ofVirtual().name("redis-rpc-await-" + request.getClass().getSimpleName()).start(() ->
@@ -298,6 +299,10 @@ public final class RedisNetworkBackend {
         }
 
         return requestHandle;
+    }
+
+    public String requester(Object request) {
+        return rpcTracker.requester(request);
     }
 
     public void respond(Object request, Object response) {
@@ -578,9 +583,13 @@ public final class RedisNetworkBackend {
             }
         }
 
+        if (type == DiscordAccountOperationRequestV1.class
+                && !RedisTransportContracts.isAllowedAccountReply(message.getBody().get("requested_by"),
+                        message.getBody().get("reply_to"))) return true;
+
         String idempotencyRedisKey = null;
         boolean idempotencyClaimed = false;
-        if (router.shouldClaimIdempotency(type)) {
+        if (router.shouldClaimIdempotency(type) && type != DiscordAccountOperationRequestV1.class) {
             String idempotencyKey = message.getBody().getOrDefault("idempotency_key", "");
             if (!idempotencyKey.isBlank()) {
                 long ttlSeconds = envelopeFactory.resolveIdempotencyTtlSeconds(expiresAt);
@@ -608,7 +617,8 @@ public final class RedisNetworkBackend {
                 String correlationId = message.getBody().getOrDefault("correlation_id", "");
                 String replyTo = message.getBody().getOrDefault("reply_to", "xcore:rpc:resp:" + config.server.name);
                 String rpcType = message.getBody().getOrDefault("rpc_type", "rpc.unknown");
-                rpcTracker.registerInbound(event, correlationId, replyTo, rpcType, System.currentTimeMillis());
+                rpcTracker.registerInbound(event, correlationId, replyTo, rpcType, System.currentTimeMillis(),
+                        message.getBody().getOrDefault("requested_by", ""));
             }
             consumedEvents.incrementAndGet();
             listener.get(event);

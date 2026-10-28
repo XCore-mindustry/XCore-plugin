@@ -65,7 +65,7 @@ class AccountMergeServiceTest {
         config = new TomlXcoreConfig();
         config.server.name = "test-server";
 
-        when(playerDataRepository.save(any(PlayerData.class))).thenReturn(true);
+        when(playerDataRepository.saveMergedPlayer(isNull(), any(PlayerData.class), any(PlayerData.class))).thenReturn(true);
         when(banDataRepository.save(any(BanData.class))).thenReturn(true);
         when(muteDataRepository.save(any(MuteData.class))).thenReturn(true);
 
@@ -131,13 +131,15 @@ class AccountMergeServiceTest {
 
         // Check source closed
         ArgumentCaptor<PlayerData> sourceCaptor = ArgumentCaptor.forClass(PlayerData.class);
-        verify(playerDataRepository, atLeastOnce()).save(sourceCaptor.capture());
+        verify(playerDataRepository, atLeastOnce()).saveMergedPlayer(isNull(), any(PlayerData.class), sourceCaptor.capture());
 
         PlayerData savedSource = sourceCaptor.getAllValues().stream()
                 .filter(p -> p.pid == 10)
                 .findFirst()
                 .orElseThrow();
         assertThat(savedSource.uuid).isEqualTo("merged:uuid-source");
+        assertThat(savedSource.discordId).isEmpty();
+        verify(playerDataRepository, never()).save(any(PlayerData.class));
         assertThat(savedSource.totalPlayTime).isEqualTo(0);
 
         // Verify audit log
@@ -286,7 +288,7 @@ class AccountMergeServiceTest {
             return body.execute();
         });
 
-        when(playerDataRepository.save(eq(session), any(PlayerData.class))).thenReturn(true);
+        when(playerDataRepository.saveMergedPlayer(eq(session), any(PlayerData.class), any(PlayerData.class))).thenReturn(true);
         when(banDataRepository.save(eq(session), any(BanData.class))).thenReturn(true);
         when(muteDataRepository.save(eq(session), any(MuteData.class))).thenReturn(true);
         when(gameDataRepository.reassignPlayerMatches(eq(session), anyString(), anyString())).thenReturn(3L);
@@ -319,7 +321,7 @@ class AccountMergeServiceTest {
         assertThat(result.gamesTransferred()).isEqualTo(3L);
 
         // Verify session passed to repositories
-        verify(playerDataRepository, times(2)).save(eq(session), any(PlayerData.class));
+        verify(playerDataRepository, times(2)).saveMergedPlayer(eq(session), any(PlayerData.class), any(PlayerData.class));
         verify(gameDataRepository).reassignPlayerMatches(eq(session), eq("uuid-source"), eq("uuid-target"));
         verify(auditService).append(eq(session), any(AuditAppendCommand.class));
         verify(session).close();
@@ -337,8 +339,8 @@ class AccountMergeServiceTest {
         });
 
         // Simulate target save failure in transaction
-        when(playerDataRepository.save(eq(session), argThat(p -> p.pid == 10))).thenReturn(true);
-        when(playerDataRepository.save(eq(session), argThat(p -> p.pid == 20))).thenReturn(false);
+        when(playerDataRepository.saveMergedPlayer(eq(session), argThat(b -> b != null && "uuid-source".equals(b.uuid)), argThat(p -> p.pid == 10))).thenReturn(true);
+        when(playerDataRepository.saveMergedPlayer(eq(session), argThat(b -> b != null && "uuid-target".equals(b.uuid)), argThat(p -> p.pid == 20))).thenReturn(false);
 
         AccountMergeService txService = new AccountMergeService(
                 mongoClient,

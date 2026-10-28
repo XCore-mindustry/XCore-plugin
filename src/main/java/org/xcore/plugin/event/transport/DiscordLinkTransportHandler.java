@@ -4,6 +4,10 @@ import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import org.xcore.plugin.concurrent.Async;
 import org.xcore.plugin.service.DiscordLinkService;
+import org.xcore.plugin.service.DiscordAccountOperationService;
+import org.xcore.plugin.config.TomlXcoreConfig;
+import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordAccountOperationRequestV1;
+import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordLinkStatusChangedV1;
 import org.xcore.plugin.service.NetworkService;
 import org.xcore.plugin.session.SessionService;
 import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordLinkConfirmCommandV1;
@@ -18,24 +22,38 @@ public class DiscordLinkTransportHandler {
     private final DiscordLinkService discordLinkService;
     private final SessionService sessionService;
     private final Async async;
+    private final DiscordAccountOperationService operations;
+    private final TomlXcoreConfig config;
 
     @Inject
     public DiscordLinkTransportHandler(NetworkService network,
                                        DiscordLinkService discordLinkService,
                                        SessionService sessionService,
-                                       Async async) {
+                                       Async async, DiscordAccountOperationService operations, TomlXcoreConfig config) {
         this.network = network;
         this.discordLinkService = discordLinkService;
         this.sessionService = sessionService;
         this.async = async;
+        this.operations = operations;
+        this.config = config;
     }
 
     public void registerListeners() {
-        // confirmLink and unlink are database work and must stay on the Redis subscriber
-        // thread; the confirmation and unlink messages below are chat packets and must not.
-        // DiscordLinkService applies its own game-state changes through Async, so only the
-        // locale send is left to marshal here.
+        network.subscribe(DiscordAccountOperationRequestV1.class, request -> {
+            try {
+                if (!java.util.UUID.fromString(request.operationId()).toString().equalsIgnoreCase(request.operationId())) {
+                    throw new IllegalArgumentException("Invalid operation ID");
+                }
+            } catch (RuntimeException invalid) {
+                network.respondError(request, "REJECTED", "invalid-operation-id");
+                return;
+            }
+            network.respond(request, operations.execute(request, network.requester(request)));
+        });
+        network.subscribe(DiscordLinkStatusChangedV1.class, event ->
+                discordLinkService.refreshCachedBinding(event.player().playerUuid()));
         network.subscribe(DiscordLinkConfirmCommandV1.class, e -> {
+            if (!config.server.name.equals(e.server())) return;
             Integer playerPid = e.player().playerPid();
             if (playerPid == null) {
                 return;
@@ -52,19 +70,24 @@ public class DiscordLinkTransportHandler {
                 return;
             }
 
-            var session = sessionService.get(e.player().playerUuid());
-            if (session != null) {
-                async.main(() -> session.locale().send("commands-discord-link-confirmed", args(
-                        "discordUsername", e.discord().discordUsername()
-                )));
-            }
+            async.main(() -> {
+                var session = sessionService.get(e.player().playerUuid());
+                if (session != null) session.locale().send("commands-discord-link-confirmed", args(
+                        "discordUsername", e.discord().discordUsername()));
+            });
         });
 
         network.subscribe(DiscordUnlinkCommandV1.class, e -> {
+            if (!config.server.name.equals(e.server())) return;
             String playerUuid = e.player().playerUuid();
-            var session = sessionService.get(playerUuid);
-            if (discordLinkService.unlink(playerUuid) && session != null) {
-                async.main(() -> session.locale().send("commands-discord-unlink-success", args()));
+            long issuedAt;
+            try { issuedAt = java.time.Instant.parse(e.requestedAt()).toEpochMilli(); }
+            catch (RuntimeException invalid) { return; }
+            if (discordLinkService.unlinkLegacy(playerUuid, e.discord().discordId(), issuedAt)) {
+                async.main(() -> {
+                    var session = sessionService.get(playerUuid);
+                    if (session != null) session.locale().send("commands-discord-unlink-success", args());
+                });
             }
         });
     }

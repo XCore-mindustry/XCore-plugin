@@ -90,6 +90,7 @@ public final class ServerLocalConfigPathEditor {
         bind(bindings, "server.auto_start_gamemode", ValueType.STRING);
 
         bind(bindings, "paths.global_config_directory", ValueType.STRING);
+        bind(bindings, "discord.website_link_url", ValueType.STRING);
         bind(bindings, "discord.channel_id", ValueType.DISCORD_SNOWFLAKE);
 
         bind(bindings, "transport.redis.url", ValueType.STRING);

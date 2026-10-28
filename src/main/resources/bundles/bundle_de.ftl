@@ -1484,3 +1484,6 @@ map-upload-submitter = Über Discord hinzugefügt: { $person }
 map-upload-date = Hochgeladen: [lightgray]{ $date }[] (UTC)
 
 map-upload-current-creator = [accent]{ $map }[] — { $creator }
+
+discord-link-menu-website = Kontowebseite öffnen
+commands-discord-link-website = [accent]Bestätige die Verknüpfung auf der Webseite:[] { $url }

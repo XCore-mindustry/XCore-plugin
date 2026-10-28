@@ -78,6 +78,8 @@ public final class ConfigTomlTemplateWriter {
         global_config_directory = ""
 
         [discord]
+        # Optional account confirmation page; blank disables the website link.
+        website_link_url = ""
         # Discord snowflakes are identifiers, keep them quoted to avoid TOML integer parser bugs.
         channel_id = "0"
 

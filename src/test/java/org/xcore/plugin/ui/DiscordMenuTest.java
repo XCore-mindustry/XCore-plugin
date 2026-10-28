@@ -54,6 +54,14 @@ class DiscordMenuTest {
         discordLinkService = mock(DiscordLinkService.class);
         discordMenu = new DiscordMenu(secretsConfig, sessionService, discordLinkService, menuService);
         discordMenu.init();
+        org.mockito.Mockito.doAnswer(call -> {
+            Session target = call.getArgument(0);
+            boolean regenerate = call.getArgument(1);
+            java.util.function.Consumer<DiscordLinkService.LinkCodeResult> callback = call.getArgument(2);
+            callback.accept(regenerate ? discordLinkService.createCode(target) : discordLinkService.getOrCreateActiveCode(target));
+            return null;
+        }).when(discordLinkService).requestCode(any(), org.mockito.ArgumentMatchers.anyBoolean(), any());
+        when(discordLinkService.websiteLinkUrl(anyString())).thenReturn("");
 
         session = session();
         when(sessionService.get("viewer-1")).thenReturn(session);
@@ -133,6 +141,14 @@ class DiscordMenuTest {
         inOrder.verify(gateway).hideFollowUpMenu(eq(session.player), eq(menuService.getMenuId()));
         inOrder.verify(gateway).menu(eq(session.player), eq(menuService.getMenuId()), any(), any(), any());
         assertThat(session.activeScreen().mode()).isEqualTo(MenuMode.NORMAL);
+    }
+
+    @Test
+    void configuredWebsiteButtonOpensConfirmationUrl() {
+        when(discordLinkService.websiteLinkUrl("ABCD12")).thenReturn("https://accounts.example/link?code=ABCD12&server=issuer");
+        discordMenu.linking("viewer-1", false);
+        menuService.onMenuOption(session, 6);
+        verify(gateway).openUri(eq(session.player), eq("https://accounts.example/link?code=ABCD12&server=issuer"));
     }
 
     private Session session() {
