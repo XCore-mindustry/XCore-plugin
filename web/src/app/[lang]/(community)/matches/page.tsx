@@ -14,6 +14,7 @@ import { MatchList } from "@/components/match-list";
 import { glyph } from "@/content";
 import { listMatches } from "@/lib/server/stats";
 import { pageNumber } from "@/lib/server/security";
+import { parsePid } from "@/lib/pid";
 
 export const metadata = { title: "XCore — Matches" };
 
@@ -26,12 +27,7 @@ async function Matches({
 }) {
   const t = communityCopy(lang),
     query = await searchParams;
-  const pid =
-    typeof query.pid === "string" &&
-    /^\d{1,10}$/.test(query.pid) &&
-    Number(query.pid) > 0
-      ? Number(query.pid)
-      : undefined;
+  const pid = parsePid(query.pid) ?? undefined;
   const ladder =
     query.ladder === "pvp" || query.ladder === "minipvp" || query.ladder === "hexed"
       ? query.ladder === "pvp" ? "minipvp" : query.ladder
@@ -53,7 +49,7 @@ async function Matches({
         page={result.page}
         pages={result.totalPages}
         pathname={`/${lang}/matches`}
-        query={{ pid: pid ? String(pid) : undefined, ladder }}
+        query={{ pid: pid !== undefined ? String(pid) : undefined, ladder }}
       />
     </>
   ) : (
@@ -61,7 +57,7 @@ async function Matches({
   );
   return (
     <CommunityWindow
-      title={pid ? `${t.playerMatches} · PID ${pid}` : t.allMatches}
+      title={pid !== undefined ? `${t.playerMatches} · PID ${pid}` : t.allMatches}
       command="/matches"
       description={t.dataHint}
       tone="orange"
@@ -90,7 +86,7 @@ async function Matches({
         <button className="btn" type="submit">
           {t.filter}
         </button>
-        {pid ? (
+        {pid !== undefined ? (
           <Link className="text-link" href={`/${lang}/players/${pid}`}>
             {t.openPlayer}
             <Glyph c={glyph.right} />

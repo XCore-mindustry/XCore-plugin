@@ -95,7 +95,7 @@ async function Top({
                 <tr key={`${entry.pid ?? "unknown"}-${index}`} data-podium={entry.rank <= 3 || undefined}>
                   <td className="cx-rank">{entry.rank}</td>
                   <td className="cx-top-name">
-                    {entry.pid ? (
+                    {entry.pid !== null ? (
                       <Link href={`/${lang}/players/${entry.pid}`}><GameText text={entry.nickname} /></Link>
                     ) : (
                       <GameText text={entry.nickname} />

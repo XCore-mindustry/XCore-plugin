@@ -24,6 +24,7 @@ import type {
   PublicMatchSummary,
 } from "@/lib/server/stats-types";
 import { GameText } from "@/components/game-text";
+import { parsePid } from "@/lib/pid";
 
 export const metadata = { title: "XCore — Player profile" };
 
@@ -242,16 +243,11 @@ export default async function Page({
   params,
 }: PageProps<"/[lang]/players/[pid]">) {
   const { lang, pid } = await params;
-  if (
-    !hasLocale(lang) ||
-    !/^\d{1,10}$/.test(pid) ||
-    Number(pid) < 1 ||
-    !Number.isSafeInteger(Number(pid))
-  )
-    notFound();
+  const number = parsePid(pid);
+  if (!hasLocale(lang) || number === null) notFound();
   return (
     <Suspense fallback={<WindowLoading label={communityCopy(lang).loading} />}>
-      <Player lang={lang} pid={Number(pid)} />
+      <Player lang={lang} pid={number} />
     </Suspense>
   );
 }
