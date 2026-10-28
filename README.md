@@ -85,19 +85,11 @@ Multifunctional plugin for XCore Mindustry servers. Provides player profiles, cr
    ./gradlew shadowJar
    ```
 
-   Until `xcore-protocol` 0.17.0 is published, validate against the sibling checkout
-   at commit `5a1a86536087396df0fe0a752844068cfecad177`
-   ([protocol PR #10](https://github.com/XCore-mindustry/xcore-protocol/pull/10)):
+   To try unreleased `xcore-protocol` changes, build against a sibling `../xcore-protocol` checkout:
 
    ```bash
    ./gradlew --init-script gradle/local-protocol.init.gradle test shadowJar
    ```
-
-   Build and menu-render CI check out this exact protocol commit and use the same composite build.
-   Snapshot publishing stays disabled while `XCORE_PROTOCOL_REF` is set in `.github/workflows/build.yml`.
-   Release builds require the published `org.xcore:xcore-protocol-java:0.17.0` artifact;
-   after publication, clear `XCORE_PROTOCOL_REF` in both CI workflows to restore Maven resolution
-   and snapshot publishing on default-branch pushes.
 4. Copy the resulting `.jar` file from `build/libs/` to your Mindustry server's `config/mods` folder.
 5. Configure your MongoDB and Redis connections in `<server>/config/xcore.toml` (server-local) and `secrets.toml` (global/shared, in your home directory by default). Default templates are automatically generated on first startup.
 
