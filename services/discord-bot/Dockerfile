@@ -9,12 +9,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-# Until xcore-protocol v0.17.0 is released, pyproject.toml builds it from ../xcore-protocol.
-# Pass that checkout as the `xcore_protocol` build context; only what its wheel needs is copied.
-# uv installs it non-editably, so the runtime image needs nothing from /xcore-protocol.
-COPY --from=xcore_protocol pyproject.toml README.md /xcore-protocol/
-COPY --from=xcore_protocol python/xcore_protocol /xcore-protocol/python/xcore_protocol
-
 COPY pyproject.toml uv.lock README.md ./
 COPY src ./src
 

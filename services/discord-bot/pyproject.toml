@@ -20,11 +20,8 @@ dependencies = [
 ]
 
 [tool.uv.sources]
-# shortcut: 0.17.0 is not released, so build the sibling checkout non-editably; CI pins its
-# exact commit. Docker supplies it as the `xcore_protocol` build context (see README).
-# Once 0.17.0 is published, pin its verified release tag, refresh uv.lock, and remove the
-# temporary CI checkout and Docker build context. Release tag pins lock the resolved commit.
-xcore-protocol = { path = "../xcore-protocol", editable = false }
+# Pin the release tag; uv.lock also records its resolved commit for reproducible builds.
+xcore-protocol = { git = "https://github.com/XCore-mindustry/xcore-protocol.git", tag = "v0.17.0" }
 
 [project.scripts]
 xcore-discord-bot = "xcore_discord_bot.main:main"
