@@ -16,17 +16,15 @@ dependencies = [
     "python-dotenv>=1.1.0",
     "redis>=5.2.1",
     "tenacity>=9.1.2",
-    "xcore-protocol==0.15.0",
+    "xcore-protocol==0.17.0",
 ]
 
 [tool.uv.sources]
-# Pinned to a release tag, not a branch: a branch pin makes every build resolve a different
-# commit of the protocol. v0.10.0 is the first tag carrying the `rating` family (seasons, prizes,
-# request ids) this bot imports; v0.11.0 lets a player PID be zero or negative; v0.12.0 adds the
-# staff sync and password reset RPCs of permission roles; v0.13.0 adds optional Discord
-# map submission attribution; v0.15.0 adds the cases family and map inspection.
-# uv records the commit the tag resolves to, so the build stays reproducible.
-xcore-protocol = { git = "https://github.com/XCore-mindustry/xcore-protocol.git", tag = "v0.15.0" }
+# shortcut: 0.17.0 is not released, so build the sibling checkout non-editably; CI pins its
+# exact commit. Docker supplies it as the `xcore_protocol` build context (see README).
+# Once 0.17.0 is published, pin its verified release tag, refresh uv.lock, and remove the
+# temporary CI checkout and Docker build context. Release tag pins lock the resolved commit.
+xcore-protocol = { path = "../xcore-protocol", editable = false }
 
 [project.scripts]
 xcore-discord-bot = "xcore_discord_bot.main:main"

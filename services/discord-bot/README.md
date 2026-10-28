@@ -53,7 +53,8 @@ Required:
 - `DISCORD_ADMIN_ROLE_ID`
 - `DISCORD_PRIVATE_CHANNEL_ID`
 - `PERMISSIONS_CONFIG_PATH` (path to the shared `permissions.toml`)
-- `PERMISSIONS_RPC_SERVER` (exact name of the server answering security RPCs)
+- `PERMISSIONS_RPC_SERVER` (exact name of the server answering security RPCs; it also unlinks
+  accounts of offline players)
 
 Optional:
 
@@ -69,6 +70,17 @@ Optional:
   they need a replica set (`...?replicaSet=rs0`); against a standalone server a merge is refused
   and nothing is changed
 - `MONGO_DB_NAME` (default: `xcore`)
+
+## Account links
+
+`/link` and a code sent to the bot in a DM ask the server that issued the code, and only it, to
+link the account (`discord.account.operation.request` RPC). If that server is offline, the code
+is not redeemed anywhere else. `/unlink` goes to the server the player is on, or to
+`PERMISSIONS_RPC_SERVER` when they are offline. If the player's server refuses with `read-only`,
+which it does before changing anything, the unlink goes to `PERMISSIONS_RPC_SERVER` as a new
+operation; no other answer is sent anywhere else. The reply is what the server answered: linked,
+refused or failed. With no answer within 10 seconds the result is unknown; the bot says so and
+does not send the request again. Roles follow the `discord.link.status-changed` events as before.
 
 ## Permission roles
 
@@ -124,16 +136,29 @@ uv sync
 uv run xcore-discord-bot
 ```
 
+Until xcore-protocol 0.17.0 is released, `uv sync` builds it from the sibling checkout
+`../xcore-protocol` (a non-editable install). CI pins that checkout to commit
+`5a1a86536087396df0fe0a752844068cfecad177`, from
+[xcore-protocol PR #10](https://github.com/XCore-mindustry/xcore-protocol/pull/10).
+Use the same commit for local and Docker builds. After changing that checkout, refresh it with
+`uv sync --locked --reinstall-package xcore-protocol`.
+
+After protocol 0.17.0 is published, replace the path source in `pyproject.toml` with its verified
+release tag and refresh `uv.lock`. Then remove the protocol checkout/move steps from CI and the
+protocol `COPY` instructions and named build context from Docker builds.
+
 The bot automatically loads environment variables from a local `.env` file on startup.
 
 ## Docker smoke run
 
+The build needs BuildKit (the `docker buildx` plugin) and, until the bot is pinned to a released
+protocol again, the sibling `../xcore-protocol` checkout as the `xcore_protocol` build context.
 The bot does not start without the shared `permissions.toml`; mount it at
 `PERMISSIONS_CONFIG_PATH` and set `DISCORD_GUILD_ID` in `.env` to its `discord.guildId`.
 
 ```bash
 cp .env.example .env
-docker build -t xcore-discord-bot .
+docker build --build-context xcore_protocol=../xcore-protocol -t xcore-discord-bot .
 docker run --rm --env-file .env \
   -v /path/to/permissions.toml:/config/permissions.toml:ro \
   xcore-discord-bot
