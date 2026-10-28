@@ -13,6 +13,7 @@ import mindustry.gen.Groups;
 import mindustry.gen.Player;
 import org.jspecify.annotations.Nullable;
 import org.xcore.plugin.common.PLog;
+import org.xcore.plugin.concurrent.MainThreadDispatcher;
 import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.database.repository.BanDataRepository;
 import org.xcore.plugin.database.repository.GameDataRepository;
@@ -181,13 +182,20 @@ public class AccountMergeService {
             return MergeResult.failure("Source player #" + source.pid + " was already merged into another account.");
         }
 
-        // Snapshots before merge
+        // Only the binding comes from Mongo; keep unsaved progress from the session cache.
+        PlayerData sourceBinding = playerDataRepository.findByUuid(source.uuid);
+        PlayerData targetBinding = playerDataRepository.findByUuid(target.uuid);
+        if (sourceBinding == null || targetBinding == null) {
+            return MergeResult.failure("Player data changed before merge; retry the merge.");
+        }
         PlayerData sourceBefore = clonePlayerData(source);
         PlayerData targetBefore = clonePlayerData(target);
+        copyDiscordBinding(sourceBefore, sourceBinding);
+        copyDiscordBinding(targetBefore, targetBinding);
 
         // Working copies for atomic persistence
-        PlayerData sourceWorking = clonePlayerData(source);
-        PlayerData targetWorking = clonePlayerData(target);
+        PlayerData sourceWorking = clonePlayerData(sourceBefore);
+        PlayerData targetWorking = clonePlayerData(targetBefore);
 
         // 1. Data consolidation
         consolidateData(sourceWorking, targetWorking);
@@ -216,8 +224,10 @@ public class AccountMergeService {
         }
 
         // 3. Reflect successful merge in in-memory objects (e.g. session cache references)
-        applyMergedState(source, sourceWorking);
-        applyMergedState(target, targetWorking);
+        MainThreadDispatcher.mindustry().execute(() -> {
+            applyMergedState(source, sourceWorking);
+            applyMergedState(target, targetWorking);
+        });
 
         // 4. Handle online sessions on this server
         handleOnlinePlayers(oldSourceUuid, targetWorking);
@@ -425,7 +435,7 @@ public class AccountMergeService {
         }
 
         // 2. Persist PlayerData
-        // Snapshots come from the session cache, outside the transaction: a binding changed since then aborts the merge.
+        // Bindings were refreshed before the transaction; a later change still aborts the merge.
         if (!playerDataRepository.saveMergedPlayer(session, sourceBefore, sourceWorking)
                 || !playerDataRepository.saveMergedPlayer(session, targetBefore, targetWorking)) {
             throw new IllegalStateException("Player data changed during merge (Discord link or unlink?); retry the merge.");
@@ -492,6 +502,12 @@ public class AccountMergeService {
                 || lower.contains("sessions are not supported")
                 || lower.contains("replica set")
                 || ex instanceof MongoClientException;
+    }
+
+    private static void copyDiscordBinding(PlayerData dest, PlayerData src) {
+        dest.discordId = src.discordId;
+        dest.discordUsername = src.discordUsername;
+        dest.discordLinkedAt = src.discordLinkedAt;
     }
 
     private void applyMergedState(PlayerData dest, PlayerData src) {
