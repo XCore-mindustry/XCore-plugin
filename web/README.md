@@ -121,6 +121,12 @@ cd Mindustry && ./gradlew tools:pack
 # icons: core/assets-raw/sprites_out/generated/unit-<name>-full.png, block-<name>-full.png
 ```
 
+Icons inside player and map names (the private-use characters the game maps in `icons/icons.properties`) come from one sheet, `public/sprites/glyphs.webp`. Rebuild it and `src/lib/glyph-cells.ts` from the game jar after a Mindustry update:
+
+```bash
+python3 -I scripts/glyph-atlas.py ~/.gradle/caches/toxopid/github-assets/Anuken/Mindustry/v160/Mindustry.jar
+```
+
 Team colours are swapped the way the game tints a unit's cell: `#ffa664` becomes the team colour, `#d06b53` the team colour times `#dcc6c6`. Every raster carries its origin in PNG metadata.
 
 Mindustry and its art are by Anuken, GPL-3.0.

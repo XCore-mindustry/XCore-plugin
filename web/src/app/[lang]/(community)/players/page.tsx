@@ -17,6 +17,7 @@ import { Glyph } from "@/components/kit";
 import { glyph } from "@/content";
 import { searchPlayers } from "@/lib/server/stats";
 import { pageNumber } from "@/lib/server/security";
+import { GameText } from "@/components/game-text";
 
 export const metadata = { title: "XCore — Players" };
 
@@ -45,7 +46,7 @@ async function Players({
                 <Link className="cx-row cx-player" href={`/${lang}/players/${player.pid}`}>
                   <Avatar />
                   <span className="cx-row-main">
-                    <span className="cx-row-title">{player.nickname}</span>
+                    <span className="cx-row-title"><GameText text={player.nickname} /></span>
                     <span className="cx-row-meta">
                       <span className="cx-code">PID {player.pid}</span>
                       {player.username ? ` · @${player.username}` : ""}

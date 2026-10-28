@@ -6,6 +6,7 @@ import type { PublicMatchSummary } from "@/lib/server/stats-types";
 import { accent, Glyph } from "./kit";
 import { glyph } from "@/content";
 import { Ghost, ladderOf } from "./community";
+import { GameText } from "./game-text";
 
 /** Matches as log rows: the whole row opens the match, its left edge carries the mode's colour. */
 export function MatchList({
@@ -32,7 +33,7 @@ export function MatchList({
             >
               <span className="cx-row-main">
                 <span className="cx-row-title">
-                  {match.map ?? `${t.match} ${match.matchId.slice(0, 8)}`}
+                  {match.map ? <GameText text={match.map} /> : `${t.match} ${match.matchId.slice(0, 8)}`}
                 </span>
                 <span className="cx-row-meta">
                   <span className="cx-mode">{mode.label}</span>

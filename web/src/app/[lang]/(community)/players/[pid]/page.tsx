@@ -23,6 +23,7 @@ import type {
   PlayerProfile,
   PublicMatchSummary,
 } from "@/lib/server/stats-types";
+import { GameText } from "@/components/game-text";
 
 export const metadata = { title: "XCore — Player profile" };
 
@@ -74,7 +75,7 @@ async function Player({ lang, pid }: { lang: Locale; pid: number }) {
   const other = profile.unlockedBadges.filter((id) => !badges.some((b) => b.id === id));
   return (
     <CommunityWindow
-      title={profile.nickname}
+      title={<GameText text={profile.nickname} />}
       description={
         <span className="cx-meta">
           <span className="cx-code">PID {profile.pid}</span>

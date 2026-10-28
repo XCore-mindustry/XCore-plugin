@@ -17,6 +17,7 @@ import { glyph, type Accent } from "@/content";
 import { getLeaderboard } from "@/lib/server/stats";
 import { pageNumber } from "@/lib/server/security";
 import type { LeaderboardCategory } from "@/lib/server/stats-types";
+import { GameText } from "@/components/game-text";
 
 export const metadata = { title: "XCore — Top players" };
 
@@ -95,9 +96,9 @@ async function Top({
                   <td className="cx-rank">{entry.rank}</td>
                   <td className="cx-top-name">
                     {entry.pid ? (
-                      <Link href={`/${lang}/players/${entry.pid}`}>{entry.nickname}</Link>
+                      <Link href={`/${lang}/players/${entry.pid}`}><GameText text={entry.nickname} /></Link>
                     ) : (
-                      entry.nickname
+                      <GameText text={entry.nickname} />
                     )}
                     {seasonal ? (
                       <span className="cx-show-sm muted">

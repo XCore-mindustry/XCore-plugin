@@ -93,6 +93,32 @@ a {
   image-rendering: pixelated;
 }
 
+/* A content icon inside game text, cut from the sheet scripts/glyph-atlas.py builds (32 columns). */
+.game-icon {
+  --sheet: url(/sprites/glyphs.webp);
+  --size: 1.1em;
+  display: inline-block;
+  width: var(--size);
+  height: var(--size);
+  vertical-align: -0.2em;
+  background: var(--sheet) no-repeat;
+  background-size: calc(32 * var(--size)) auto;
+  background-position: calc(var(--gx) * -1 * var(--size)) calc(var(--gy) * -1 * var(--size));
+  image-rendering: pixelated;
+}
+
+/* The game multiplies icons by the text colour; the mask keeps the icon's own shape. */
+.game-icon[data-tint] {
+  background-color: var(--tint);
+  background-blend-mode: multiply;
+  mask: var(--sheet) no-repeat;
+  mask-size: calc(32 * var(--size)) auto;
+  mask-position: calc(var(--gx) * -1 * var(--size)) calc(var(--gy) * -1 * var(--size));
+  -webkit-mask: var(--sheet) no-repeat;
+  -webkit-mask-size: calc(32 * var(--size)) auto;
+  -webkit-mask-position: calc(var(--gx) * -1 * var(--size)) calc(var(--gy) * -1 * var(--size));
+}
+
 .mask {
   display: block;
   width: 32px;
