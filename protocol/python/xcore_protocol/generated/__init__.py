@@ -45,10 +45,14 @@ from .security import (
     SecurityStaffSyncResponseV1,
 )
 from .discord import (
+    DiscordAccountOperationRequestV1,
+    DiscordAccountOperationResponseV1,
     DiscordLinkCodeCreatedV1,
     DiscordLinkConfirmCommandV1,
     DiscordLinkStatusChangedV1,
     DiscordUnlinkCommandV1,
+    DiscordAccountOperationRequestV1Action,
+    DiscordAccountOperationResponseV1Status,
     DiscordLinkStatusChangedV1Action,
 )
 from .moderation import (
@@ -130,6 +134,7 @@ from .routes import (
     DISCORD_LINK_CONFIRM_COMMAND_V1,
     DISCORD_UNLINK_COMMAND_V1,
     DISCORD_LINK_STATUS_CHANGED_V1,
+    DISCORD_ACCOUNT_OPERATION_REQUEST_V1,
     MODERATION_BAN_CREATED_V1,
     MODERATION_MUTE_CREATED_V1,
     MODERATION_VOTE_KICK_CREATED_V1,
@@ -255,6 +260,8 @@ __all__ = [
     "SecurityStaffResetPasswordResponseV1",
     "SecurityStaffSyncRequestV1",
     "SecurityStaffSyncResponseV1",
+    "DiscordAccountOperationRequestV1",
+    "DiscordAccountOperationResponseV1",
     "DiscordLinkCodeCreatedV1",
     "DiscordLinkConfirmCommandV1",
     "DiscordLinkStatusChangedV1",
@@ -287,6 +294,8 @@ __all__ = [
     "RatingSeasonRescheduledV1",
     "RatingSeasonStartedV1",
     "MapsInspectResponseV1Status",
+    "DiscordAccountOperationRequestV1Action",
+    "DiscordAccountOperationResponseV1Status",
     "DiscordLinkStatusChangedV1Action",
     "ModerationAuditAppendedV1EntryType",
     "SentinelSubnetRulesCommandV1Operation",
@@ -321,6 +330,7 @@ __all__ = [
     "DISCORD_LINK_CONFIRM_COMMAND_V1",
     "DISCORD_UNLINK_COMMAND_V1",
     "DISCORD_LINK_STATUS_CHANGED_V1",
+    "DISCORD_ACCOUNT_OPERATION_REQUEST_V1",
     "MODERATION_BAN_CREATED_V1",
     "MODERATION_MUTE_CREATED_V1",
     "MODERATION_VOTE_KICK_CREATED_V1",

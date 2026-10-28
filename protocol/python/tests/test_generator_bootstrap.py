@@ -119,3 +119,19 @@ def test_family_scoped_java_generation_preserves_nullable_map_values() -> None:
     assert "details = Map.copyOf(details);" not in moderation_messages
     assert "At least one of playerUuid, ip must be provided" in player_command_target
     assert "At least one of playerUuid, ip must be provided" in moderation_target_ref
+
+
+def test_typescript_account_types_follow_the_discord_specs() -> None:
+    from generators.typescript_writer import check_typescript_outputs, render_typescript_outputs
+
+    plan = load_generation_plan(family="maps")
+    (output,) = render_typescript_outputs(plan)
+
+    assert output.path.name == "discord-accounts.ts"
+    assert check_typescript_outputs(plan) == ()
+    assert 'messageType: "discord.account.operation.request";' in output.content
+    assert "  code?: string;\n  expectedLinkedAt?: number;\n}" in output.content
+    assert '= ["success", "rejected", "failed", "unknown"] as const;' in output.content
+    assert 'responseStream: "xcore:rpc:resp:{requester}",' in output.content
+    assert "export interface PlayerRefV1 {" in output.content
+    assert "ActorRefV1" not in output.content

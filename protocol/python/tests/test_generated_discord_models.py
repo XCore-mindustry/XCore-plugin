@@ -2,6 +2,11 @@ from __future__ import annotations
 
 from xcore_protocol.generated import (
     ActorRefV1ActorType,
+    DISCORD_ACCOUNT_OPERATION_REQUEST_V1,
+    DiscordAccountOperationRequestV1,
+    DiscordAccountOperationRequestV1Action,
+    DiscordAccountOperationResponseV1,
+    DiscordAccountOperationResponseV1Status,
     DISCORD_LINK_CODE_CREATED_V1,
     DISCORD_LINK_CONFIRM_COMMAND_V1,
     DISCORD_LINK_STATUS_CHANGED_V1,
@@ -102,3 +107,57 @@ def test_generated_discord_route_registry_matches_expected_messages() -> None:
     assert ROUTES_BY_MESSAGE[("discord.link.confirm.command", 1)].bindings == {"server": "payload.server"}
     # Discord roles reach the game as grants through the staff sync RPC.
     assert ("discord.admin-access.changed.command", 1) not in ROUTES_BY_MESSAGE
+
+
+def test_generated_discord_account_operation_roundtrips_match_fixtures() -> None:
+    for name, model_type in (
+        ("discord.account.operation.request.v1.link", DiscordAccountOperationRequestV1),
+        ("discord.account.operation.request.v1.unlink", DiscordAccountOperationRequestV1),
+        ("discord.account.operation.response.v1", DiscordAccountOperationResponseV1),
+        ("discord.account.operation.response.v1.rejected", DiscordAccountOperationResponseV1),
+    ):
+        payload = load_json(fixtures_root() / "valid" / "discord" / f"{name}.json")
+        model = model_type.from_payload(payload)
+        assert model.to_payload() == payload
+        validate_instance(
+            spec_root() / "messages" / "discord" / f"{model_type.MESSAGE_TYPE}.v1.json",
+            model.to_payload(),
+        )
+
+    link = DiscordAccountOperationRequestV1.from_payload(
+        load_json(fixtures_root() / "valid" / "discord" / "discord.account.operation.request.v1.link.json")
+    )
+    assert link.action is DiscordAccountOperationRequestV1Action.LINK
+    assert link.code == "ABC123"
+    assert link.expectedLinkedAt is None
+    rejected = DiscordAccountOperationResponseV1.from_payload(
+        load_json(fixtures_root() / "valid" / "discord" / "discord.account.operation.response.v1.rejected.json")
+    )
+    assert rejected.status is DiscordAccountOperationResponseV1Status.REJECTED
+
+
+def test_generated_discord_account_operation_rejects_a_non_uuid_operation_id() -> None:
+    payload = load_json(
+        fixtures_root() / "invalid" / "discord" / "discord.account.operation.request.v1.bad-operation-id.json"
+    )
+
+    try:
+        DiscordAccountOperationRequestV1.from_payload(payload)
+    except ValueError as error:
+        assert "operationId" in str(error)
+    else:
+        raise AssertionError("Expected a non-UUID operationId to be rejected")
+
+
+def test_generated_discord_account_operation_route_is_targeted_rpc() -> None:
+    route = ROUTES_BY_MESSAGE[("discord.account.operation.request", 1)]
+
+    assert route is DISCORD_ACCOUNT_OPERATION_REQUEST_V1
+    assert route.payloadType is DiscordAccountOperationRequestV1
+    assert route.kind == "rpc-request"
+    assert route.stream == "xcore:rpc:req:{server}"
+    assert route.bindings == {"server": "payload.server"}
+    assert route.ttlMs == 10000
+    assert route.response is not None
+    assert route.response.payloadType is DiscordAccountOperationResponseV1
+    assert route.response.stream == "xcore:rpc:resp:{requester}"

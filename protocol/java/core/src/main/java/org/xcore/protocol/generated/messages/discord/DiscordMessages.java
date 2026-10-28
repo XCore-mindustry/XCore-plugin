@@ -13,6 +13,122 @@ public final class DiscordMessages {
         throw new AssertionError("No org.xcore.protocol.generated.messages.discord.DiscordMessages instances");
     }
 
+    public record DiscordAccountOperationRequestV1(
+            String server,
+            String operationId,
+            DiscordAccountOperationRequestV1Action action,
+            PlayerRefV1 player,
+            DiscordIdentityRefV1 discord,
+            long issuedAt,
+            long expiresAt,
+            String code,
+            Long expectedLinkedAt
+    ) implements ProtocolPayload {
+    public static final String MESSAGE_TYPE = "discord.account.operation.request";
+    public static final int MESSAGE_VERSION = 1;
+
+        public DiscordAccountOperationRequestV1 {
+            Objects.requireNonNull(server, "server must not be null");
+            if (server.length() < 1) {
+                throw new IllegalArgumentException("server must be at least 1 characters");
+            }
+            Objects.requireNonNull(operationId, "operationId must not be null");
+            Objects.requireNonNull(action, "action must not be null");
+            Objects.requireNonNull(player, "player must not be null");
+            Objects.requireNonNull(discord, "discord must not be null");
+            if (issuedAt < 0) {
+                throw new IllegalArgumentException("issuedAt must be >= 0");
+            }
+            if (expiresAt < 0) {
+                throw new IllegalArgumentException("expiresAt must be >= 0");
+            }
+            if (code != null) {
+                Objects.requireNonNull(code, "code must not be null");
+                if (code.length() < 1) {
+                    throw new IllegalArgumentException("code must be at least 1 characters");
+                }
+            }
+            if (expectedLinkedAt != null) {
+                if (expectedLinkedAt < 0) {
+                    throw new IllegalArgumentException("expectedLinkedAt must be >= 0");
+                }
+            }
+        }
+
+        @Override
+        public Map<String, Object> toPayload() {
+            Map<String, Object> payload = new LinkedHashMap<>();
+            payload.put("messageType", MESSAGE_TYPE);
+            payload.put("messageVersion", MESSAGE_VERSION);
+            payload.put("server", server);
+            payload.put("operationId", operationId);
+            if (action != null) {
+                payload.put("action", action.toString());
+            }
+            payload.put("player", player.toPayload());
+            payload.put("discord", discord.toPayload());
+            payload.put("issuedAt", issuedAt);
+            payload.put("expiresAt", expiresAt);
+            if (code != null) {
+                payload.put("code", code);
+            }
+            if (expectedLinkedAt != null) {
+                payload.put("expectedLinkedAt", expectedLinkedAt);
+            }
+            return payload;
+        }
+    }
+
+    public record DiscordAccountOperationResponseV1(
+            String server,
+            String operationId,
+            DiscordAccountOperationResponseV1Status status,
+            String reason,
+            Long linkedAt
+    ) implements ProtocolPayload {
+    public static final String MESSAGE_TYPE = "discord.account.operation.response";
+    public static final int MESSAGE_VERSION = 1;
+
+        public DiscordAccountOperationResponseV1 {
+            Objects.requireNonNull(server, "server must not be null");
+            if (server.length() < 1) {
+                throw new IllegalArgumentException("server must be at least 1 characters");
+            }
+            Objects.requireNonNull(operationId, "operationId must not be null");
+            Objects.requireNonNull(status, "status must not be null");
+            if (reason != null) {
+                Objects.requireNonNull(reason, "reason must not be null");
+                if (reason.length() < 1) {
+                    throw new IllegalArgumentException("reason must be at least 1 characters");
+                }
+            }
+            if (linkedAt != null) {
+                if (linkedAt < 0) {
+                    throw new IllegalArgumentException("linkedAt must be >= 0");
+                }
+            }
+        }
+
+        @Override
+        public Map<String, Object> toPayload() {
+            Map<String, Object> payload = new LinkedHashMap<>();
+            payload.put("messageType", MESSAGE_TYPE);
+            payload.put("messageVersion", MESSAGE_VERSION);
+            payload.put("server", server);
+            payload.put("operationId", operationId);
+            if (status != null) {
+                payload.put("status", status.toString());
+            }
+            if (reason != null) {
+                payload.put("reason", reason);
+            }
+            if (linkedAt != null) {
+                payload.put("linkedAt", linkedAt);
+            }
+            return payload;
+        }
+    }
+
     public record DiscordLinkCodeCreatedV1(
             String code,
             PlayerRefV1 player,

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.17.0
+
+- Add the `discord.account.operation.request` / `discord.account.operation.response` v1 RPC: one targeted link or unlink on `xcore:rpc:req:{server}` with a UUID business `operationId`, epoch-millisecond `issuedAt`/`expiresAt`, `code` (required for link) and `expectedLinkedAt` (required for unlink). The response carries `status` `success`/`rejected`/`failed`/`unknown`, an optional `reason` and the stored `linkedAt`.
+- Generate TypeScript types for these messages into `typescript/discord-accounts.ts`; `generate`/`check` cover them (`--language typescript`).
+- `discord.link.confirm.command` and `discord.unlink.command` stay for servers that have not moved to the RPC yet.
+
 ## 0.16.0
 
 - Remove `discord.admin-access.changed.command` v1 and `player.password-reset.command` v1, with their routes, generated Java/Python models and fixtures. Staff rights come only from grants: Discord roles reach the servers through `security.staff.sync`, password resets through `security.staff.reset-password`.

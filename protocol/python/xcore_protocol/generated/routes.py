@@ -59,6 +59,8 @@ from .discord import (
     DiscordLinkConfirmCommandV1,
     DiscordUnlinkCommandV1,
     DiscordLinkStatusChangedV1,
+    DiscordAccountOperationRequestV1,
+    DiscordAccountOperationResponseV1,
 )
 
 from .moderation import (
@@ -640,6 +642,29 @@ DISCORD_LINK_STATUS_CHANGED_V1 = RouteDescriptor(
     response=None,
 )
 
+DISCORD_ACCOUNT_OPERATION_REQUEST_V1 = RouteDescriptor(
+    family='discord',
+    methodName='discordAccountOperationRequestV1Route',
+    messageType='discord.account.operation.request',
+    messageVersion=1,
+    payloadType=DiscordAccountOperationRequestV1,
+    kind='rpc-request',
+    stream='xcore:rpc:req:{server}',
+    bindings={'server': 'payload.server'},
+    targetScope='server',
+    ttlMs=10000,
+    replayable=False,
+    idempotentConsumerRecommended=True,
+    owner='discord-linking',
+    response=RouteResponseDescriptor(
+        messageType='discord.account.operation.response',
+        messageVersion=1,
+        payloadType=DiscordAccountOperationResponseV1,
+        stream='xcore:rpc:resp:{requester}',
+        bindings={'requester': 'rpc.requester'},
+    ),
+)
+
 MODERATION_BAN_CREATED_V1 = RouteDescriptor(
     family='moderation',
     methodName='moderationBanCreatedV1Route',
@@ -1034,6 +1059,7 @@ ROUTES_BY_MESSAGE: dict[tuple[str, int], RouteDescriptor] = {
     ('discord.link.confirm.command', 1): DISCORD_LINK_CONFIRM_COMMAND_V1,
     ('discord.unlink.command', 1): DISCORD_UNLINK_COMMAND_V1,
     ('discord.link.status-changed', 1): DISCORD_LINK_STATUS_CHANGED_V1,
+    ('discord.account.operation.request', 1): DISCORD_ACCOUNT_OPERATION_REQUEST_V1,
     ('moderation.ban.created', 1): MODERATION_BAN_CREATED_V1,
     ('moderation.mute.created', 1): MODERATION_MUTE_CREATED_V1,
     ('moderation.vote-kick.created', 1): MODERATION_VOTE_KICK_CREATED_V1,
@@ -1088,6 +1114,7 @@ __all__ = [
     "DISCORD_LINK_CONFIRM_COMMAND_V1",
     "DISCORD_UNLINK_COMMAND_V1",
     "DISCORD_LINK_STATUS_CHANGED_V1",
+    "DISCORD_ACCOUNT_OPERATION_REQUEST_V1",
     "MODERATION_BAN_CREATED_V1",
     "MODERATION_MUTE_CREATED_V1",
     "MODERATION_VOTE_KICK_CREATED_V1",
