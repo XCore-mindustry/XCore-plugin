@@ -471,6 +471,39 @@ async def test_an_unanswered_unlink_is_unknown(monkeypatch: pytest.MonkeyPatch) 
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "server_answer",
+    [
+        lambda payload: cast(Any, []),
+        answer("success", linkedAt="not-a-timestamp"),
+        lambda payload: {},
+    ],
+    ids=["json-array", "wrong-field-type", "missing-fields"],
+)
+async def test_malformed_unlink_response_is_unknown_and_not_retried(
+    server_answer: RpcAnswer,
+) -> None:
+    bot, games = await _bot(dict(TARGET, online=True, online_server="other"))
+    games["other"].answers[OPERATION] = server_answer
+
+    interaction = await _unlink(bot)
+
+    assert interaction.response.deferred is True
+    assert interaction.replies == [
+        (
+            (
+                "`other` did not confirm the unlink of `Target`, so it is not known "
+                "whether it happened. Check /link-status before trying again."
+            ),
+            True,
+        )
+    ]
+    assert len(games["other"].requests) == 1
+    assert games["mini-pvp"].requests == []
+    assert await _no_fanout(bot, games)
+
+
+@pytest.mark.asyncio
 async def test_unlink_refuses_someone_elses_player_in_the_users_language() -> None:
     bot, games = await _bot(TARGET)
 

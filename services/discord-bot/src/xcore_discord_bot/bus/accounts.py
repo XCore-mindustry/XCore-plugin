@@ -84,13 +84,17 @@ class AccountsBus:
                 payload=request.to_payload(),
                 timeout_ms=ACCOUNT_OPERATION_TIMEOUT_MS,
             )
-            response = DiscordAccountOperationResponseV1.from_payload(
-                json.loads(body.get("payload_json", "{}"))
-            )
         except RpcRejected as error:  # refused before the server touched the account
             return _outcome(request, Status.REJECTED, error.error_message)
         except (RpcError, ValueError, *TRANSIENT_EXCEPTIONS):
             # A timeout or broken answer says nothing about whether the write happened.
+            return _outcome(request, Status.UNKNOWN, None)
+        try:
+            response = DiscordAccountOperationResponseV1.from_payload(
+                json.loads(body.get("payload_json", "{}"))
+            )
+        except (TypeError, ValueError):
+            # A malformed answer says nothing about whether the write happened.
             return _outcome(request, Status.UNKNOWN, None)
         if (
             response.server != request.server

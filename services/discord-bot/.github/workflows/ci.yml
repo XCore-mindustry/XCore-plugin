@@ -6,11 +6,16 @@ on:
   pull_request:
     branches: [main]
 
+permissions:
+  contents: read
+
 jobs:
   test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
       # shortcut: until xcore-protocol 0.17.0 is released, pyproject.toml builds the protocol from
       # ../xcore-protocol. Drop this step when the bot is pinned to the release tag again.
@@ -20,6 +25,7 @@ jobs:
           repository: XCore-mindustry/xcore-protocol
           ref: 5a1a86536087396df0fe0a752844068cfecad177
           path: xcore-protocol
+          persist-credentials: false
 
       - name: Move xcore-protocol next to the bot
         run: mv xcore-protocol ../xcore-protocol
