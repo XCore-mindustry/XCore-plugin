@@ -17,19 +17,6 @@ jobs:
         with:
           persist-credentials: false
 
-      # shortcut: until xcore-protocol 0.17.0 is released, pyproject.toml builds the protocol from
-      # ../xcore-protocol. Drop this step when the bot is pinned to the release tag again.
-      - name: Check out xcore-protocol
-        uses: actions/checkout@v7
-        with:
-          repository: XCore-mindustry/xcore-protocol
-          ref: 5a1a86536087396df0fe0a752844068cfecad177
-          path: xcore-protocol
-          persist-credentials: false
-
-      - name: Move xcore-protocol next to the bot
-        run: mv xcore-protocol ../xcore-protocol
-
       - name: Install uv
         uses: astral-sh/setup-uv@v10.3.0
 

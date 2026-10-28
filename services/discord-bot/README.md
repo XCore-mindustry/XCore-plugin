@@ -136,29 +136,21 @@ uv sync
 uv run xcore-discord-bot
 ```
 
-Until xcore-protocol 0.17.0 is released, `uv sync` builds it from the sibling checkout
-`../xcore-protocol` (a non-editable install). CI pins that checkout to commit
-`5a1a86536087396df0fe0a752844068cfecad177`, from
-[xcore-protocol PR #10](https://github.com/XCore-mindustry/xcore-protocol/pull/10).
-Use the same commit for local and Docker builds. After changing that checkout, refresh it with
-`uv sync --locked --reinstall-package xcore-protocol`.
-
-After protocol 0.17.0 is published, replace the path source in `pyproject.toml` with its verified
-release tag and refresh `uv.lock`. Then remove the protocol checkout/move steps from CI and the
-protocol `COPY` instructions and named build context from Docker builds.
+The protocol dependency is pinned to the
+[v0.17.0 release](https://github.com/XCore-mindustry/xcore-protocol/releases/tag/v0.17.0).
+`uv.lock` records the resolved commit. Local, CI and Docker builds use the same release
+without a sibling protocol checkout.
 
 The bot automatically loads environment variables from a local `.env` file on startup.
 
 ## Docker smoke run
 
-The build needs BuildKit (the `docker buildx` plugin) and, until the bot is pinned to a released
-protocol again, the sibling `../xcore-protocol` checkout as the `xcore_protocol` build context.
 The bot does not start without the shared `permissions.toml`; mount it at
 `PERMISSIONS_CONFIG_PATH` and set `DISCORD_GUILD_ID` in `.env` to its `discord.guildId`.
 
 ```bash
 cp .env.example .env
-docker build --build-context xcore_protocol=../xcore-protocol -t xcore-discord-bot .
+docker build -t xcore-discord-bot .
 docker run --rm --env-file .env \
   -v /path/to/permissions.toml:/config/permissions.toml:ro \
   xcore-discord-bot
