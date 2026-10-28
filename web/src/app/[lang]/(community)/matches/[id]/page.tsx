@@ -14,6 +14,7 @@ import { Glyph } from "@/components/kit";
 import { glyph } from "@/content";
 import { getMatchDetail } from "@/lib/server/stats";
 import { formatDate, formatDuration } from "@/lib/format";
+import { GameText } from "@/components/game-text";
 
 export const metadata = { title: "XCore — Match" };
 
@@ -68,7 +69,7 @@ async function Match({
   const rated = match.participants.some((p) => p.delta !== null);
   return (
     <CommunityWindow
-      title={match.map ?? t.details}
+      title={match.map ? <GameText text={match.map} /> : t.details}
       description={
         <span className="cx-meta">
           <span>{formatDate(match.endedAt ?? match.startedAt, lang)}</span>
@@ -110,9 +111,9 @@ async function Match({
               <tr key={`${player.pid ?? "unknown"}-${index}`} data-win={player.win || undefined}>
                 <th scope="row" className="cx-top-name">
                   {player.pid ? (
-                    <Link href={`/${lang}/players/${player.pid}`}>{player.name}</Link>
+                    <Link href={`/${lang}/players/${player.pid}`}><GameText text={player.name} /></Link>
                   ) : (
-                    player.name
+                    <GameText text={player.name} />
                   )}
                 </th>
                 <td data-label={t.result}>

@@ -21,6 +21,7 @@ import {
   type IntentView,
 } from "@/lib/server/accounts";
 import { publicError } from "@/lib/server/security";
+import { GameText } from "@/components/game-text";
 
 export const metadata = {
   title: "XCore — Link profile",
@@ -113,7 +114,7 @@ async function LinkProfile({
           <div className="cx-confirm-who">
             <Avatar scale={2} />
             <div>
-              <p className="cx-name cx-name-lg">{intent.nickname}</p>
+              <p className="cx-name cx-name-lg"><GameText text={intent.nickname} /></p>
               <p className="cx-code">PID {intent.pid}</p>
             </div>
           </div>

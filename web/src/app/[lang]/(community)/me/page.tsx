@@ -20,6 +20,7 @@ import { getLinkedProfiles } from "@/lib/server/stats";
 import { getSession } from "@/lib/server/session";
 import { oauthConfigured } from "@/lib/server/oauth";
 import { getIntentResult } from "@/lib/server/accounts";
+import { GameText } from "@/components/game-text";
 
 export const metadata = {
   title: "XCore — My profiles",
@@ -172,7 +173,7 @@ async function Profiles({
                 <li className="cx-profile" key={profile.pid}>
                   <Avatar />
                   <div className="cx-profile-id">
-                    <h3 className="cx-name">{profile.nickname}</h3>
+                    <h3 className="cx-name"><GameText text={profile.nickname} /></h3>
                     <p className="cx-meta">
                       <span className="cx-code">PID {profile.pid}</span>
                       <span>{hours(profile.totalPlayTime, lang, t)}</span>
