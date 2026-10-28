@@ -134,6 +134,10 @@ public class NetworkService {
                 typeName);
     }
 
+    public String requester(Object request) {
+        return backend.requester(request);
+    }
+
     public void respond(Object request, Object response) {
         backend.respond(request, response);
     }

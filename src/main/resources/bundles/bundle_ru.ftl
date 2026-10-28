@@ -1511,3 +1511,6 @@ map-upload-submitter = Добавил через Discord: { $person }
 map-upload-date = Загружена: [lightgray]{ $date }[] (UTC)
 
 map-upload-current-creator = [accent]{ $map }[] — { $creator }
+
+discord-link-menu-website = Открыть сайт аккаунта
+commands-discord-link-website = [accent]Подтвердите привязку на сайте:[] { $url }

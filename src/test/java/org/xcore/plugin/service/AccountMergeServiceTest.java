@@ -1,5 +1,7 @@
 package org.xcore.plugin.service;
 
+import arc.Application;
+import arc.Core;
 import com.mongodb.MongoCommandException;
 import com.mongodb.ServerAddress;
 import com.mongodb.client.ClientSession;
@@ -11,6 +13,8 @@ import org.bson.BsonString;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.database.repository.BanDataRepository;
@@ -22,11 +26,16 @@ import org.xcore.plugin.model.*;
 import org.xcore.plugin.rating.ladder.LadderService;
 import org.xcore.plugin.service.moderation.AuditService;
 import org.xcore.plugin.session.SessionService;
+import org.xcore.plugin.session.Session;
+import org.xcore.plugin.session.SessionFactory;
 import org.xcore.protocol.generated.messages.server.ServerMessages.PlayerDataCacheReloadCommandV1;
+import org.xcore.testkit.core.DeterministicQueue;
 
 import java.time.Instant;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.Objects;
+import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.*;
@@ -65,7 +74,7 @@ class AccountMergeServiceTest {
         config = new TomlXcoreConfig();
         config.server.name = "test-server";
 
-        when(playerDataRepository.save(any(PlayerData.class))).thenReturn(true);
+        when(playerDataRepository.saveMergedPlayer(isNull(), any(PlayerData.class), any(PlayerData.class))).thenReturn(true);
         when(banDataRepository.save(any(BanData.class))).thenReturn(true);
         when(muteDataRepository.save(any(MuteData.class))).thenReturn(true);
 
@@ -93,7 +102,123 @@ class AccountMergeServiceTest {
         data.hexedPoints = points;
         data.hexedRank = HexedRanks.HexedRank.newbie.ordinal();
         data.unlockedBadges = new HashSet<>();
+        when(playerDataRepository.findByUuid(uuid)).thenReturn(data);
         return data;
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    @DisplayName("Stale online bindings are refreshed in merge copies while cached progress survives")
+    void mergeAsync_staleOnlineBindings_useStoredBindingsAndCachedProgress(boolean targetLinked) throws Exception {
+        PlayerData source = createPlayer(10, "uuid-source", "Cached source", 120, 1400, 15);
+        source.discordId = "stale-source";
+        source.discordUsername = "stale-source-name";
+        source.discordLinkedAt = 10L;
+        source.unlockedBadges.add("source-badge");
+        PlayerData target = createPlayer(20, "uuid-target", "Cached target", 30, 1600, 10);
+        target.discordId = "stale-target";
+        target.discordUsername = "stale-target-name";
+        target.discordLinkedAt = 20L;
+        target.unlockedBadges.add("target-badge");
+
+        PlayerData storedSource = createPlayer(10, source.uuid, "Stored source", 1, 1000, 1);
+        storedSource.discordId = "current-source";
+        storedSource.discordUsername = "current-source-name";
+        storedSource.discordLinkedAt = 100L;
+        PlayerData storedTarget = createPlayer(20, target.uuid, "Stored target", 2, 1000, 2);
+        if (targetLinked) {
+            storedTarget.discordId = "current-target";
+            storedTarget.discordUsername = "current-target-name";
+            storedTarget.discordLinkedAt = 200L;
+        }
+        PlayerData expectedBinding = targetLinked ? storedTarget : storedSource;
+
+        var onlineSessions = new SessionService(mock(SessionFactory.class), playerDataRepository);
+        Session sourceSession = mock(Session.class);
+        sourceSession.data = source;
+        onlineSessions.update(sourceSession);
+        Session targetSession = mock(Session.class);
+        targetSession.data = target;
+        onlineSessions.update(targetSession);
+        var onlineService = new AccountMergeService(playerDataRepository, gameDataRepository,
+                banDataRepository, muteDataRepository, auditService, onlineSessions, playerDisplayService,
+                networkService, new FindService(onlineSessions, null), topMenuCacheService, ladderService, config);
+        when(playerDataRepository.saveMergedPlayer(isNull(), any(PlayerData.class), any(PlayerData.class)))
+                .thenAnswer(invocation -> {
+                    PlayerData before = invocation.getArgument(1);
+                    PlayerData current = before.pid == source.pid ? storedSource : storedTarget;
+                    return Objects.equals(before.discordId, current.discordId)
+                            && before.discordLinkedAt == current.discordLinkedAt;
+                });
+
+        Application previous = Core.app;
+        var queue = new DeterministicQueue();
+        var app = mock(Application.class);
+        doAnswer(invocation -> {
+            queue.post(invocation.getArgument(0));
+            return null;
+        }).when(app).post(any(Runnable.class));
+        Core.app = app;
+        try {
+            var result = onlineService.mergeAccountsAsync(source.uuid, target.uuid).get(5, TimeUnit.SECONDS);
+
+            assertThat(result.success()).isTrue();
+            assertThat(result.sourceBefore().discordId).isEqualTo(storedSource.discordId);
+            assertThat(result.sourceBefore().discordUsername).isEqualTo(storedSource.discordUsername);
+            assertThat(result.sourceBefore().discordLinkedAt).isEqualTo(storedSource.discordLinkedAt);
+            assertThat(result.targetBefore().discordId).isEqualTo(storedTarget.discordId);
+            assertThat(result.targetBefore().discordUsername).isEqualTo(storedTarget.discordUsername);
+            assertThat(result.targetBefore().discordLinkedAt).isEqualTo(storedTarget.discordLinkedAt);
+            assertThat(result.sourceBefore().totalPlayTime).isEqualTo(120);
+            assertThat(result.targetBefore().totalPlayTime).isEqualTo(30);
+            assertThat(result.targetAfter().totalPlayTime).isEqualTo(150);
+            assertThat(result.targetAfter().hexedPoints).isEqualTo(25);
+            assertThat(result.targetAfter().nickname).isEqualTo("Cached target");
+            assertThat(result.targetAfter().unlockedBadges).containsExactlyInAnyOrder("source-badge", "target-badge");
+            assertThat(result.targetAfter().discordId).isEqualTo(expectedBinding.discordId);
+            assertThat(result.targetAfter().discordUsername).isEqualTo(expectedBinding.discordUsername);
+            assertThat(result.targetAfter().discordLinkedAt).isEqualTo(expectedBinding.discordLinkedAt);
+
+            var writes = ArgumentCaptor.forClass(PlayerData.class);
+            verify(playerDataRepository, times(2)).saveMergedPlayer(isNull(), any(PlayerData.class), writes.capture());
+            assertThat(writes.getAllValues().getFirst().discordId).isEmpty();
+            assertThat(writes.getAllValues().getLast().discordId).isEqualTo(expectedBinding.discordId);
+            assertThat(writes.getAllValues().getLast().discordLinkedAt).isEqualTo(expectedBinding.discordLinkedAt);
+
+            // The storage worker must not refresh or apply the merge to live session objects.
+            assertThat(sourceSession.data).isSameAs(source);
+            assertThat(source.uuid).isEqualTo("uuid-source");
+            assertThat(source.discordId).isEqualTo("stale-source");
+            assertThat(source.totalPlayTime).isEqualTo(120);
+            assertThat(targetSession.data).isSameAs(target);
+            assertThat(target.discordId).isEqualTo("stale-target");
+            assertThat(target.totalPlayTime).isEqualTo(30);
+            queue.runNext();
+            assertThat(source.uuid).isEqualTo("merged:uuid-source");
+            assertThat(target.discordId).isEqualTo(expectedBinding.discordId);
+            assertThat(target.totalPlayTime).isEqualTo(150);
+        } finally {
+            Core.app = previous;
+        }
+    }
+
+    @Test
+    @DisplayName("A deleted stored player aborts before merge writes or cached-state changes")
+    void merge_missingStoredPlayer_aborts() {
+        PlayerData source = createPlayer(10, "uuid-source", "Source", 120, 1400, 15);
+        PlayerData target = createPlayer(20, "uuid-target", "Target", 30, 1600, 10);
+        when(findService.playerData("10")).thenReturn(source);
+        when(findService.playerData("20")).thenReturn(target);
+        when(playerDataRepository.findByUuid(source.uuid)).thenReturn(null);
+
+        var result = service.merge(new AccountMergeService.MergeRequest("10", "20", "Merge", null));
+
+        assertThat(result.success()).isFalse();
+        assertThat(result.message()).contains("changed before merge");
+        verify(playerDataRepository, never()).saveMergedPlayer(any(), any(), any());
+        verifyNoInteractions(gameDataRepository, networkService);
+        assertThat(source.totalPlayTime).isEqualTo(120);
+        assertThat(target.totalPlayTime).isEqualTo(30);
     }
 
     @Test
@@ -131,13 +256,15 @@ class AccountMergeServiceTest {
 
         // Check source closed
         ArgumentCaptor<PlayerData> sourceCaptor = ArgumentCaptor.forClass(PlayerData.class);
-        verify(playerDataRepository, atLeastOnce()).save(sourceCaptor.capture());
+        verify(playerDataRepository, atLeastOnce()).saveMergedPlayer(isNull(), any(PlayerData.class), sourceCaptor.capture());
 
         PlayerData savedSource = sourceCaptor.getAllValues().stream()
                 .filter(p -> p.pid == 10)
                 .findFirst()
                 .orElseThrow();
         assertThat(savedSource.uuid).isEqualTo("merged:uuid-source");
+        assertThat(savedSource.discordId).isEmpty();
+        verify(playerDataRepository, never()).save(any(PlayerData.class));
         assertThat(savedSource.totalPlayTime).isEqualTo(0);
 
         // Verify audit log
@@ -286,7 +413,7 @@ class AccountMergeServiceTest {
             return body.execute();
         });
 
-        when(playerDataRepository.save(eq(session), any(PlayerData.class))).thenReturn(true);
+        when(playerDataRepository.saveMergedPlayer(eq(session), any(PlayerData.class), any(PlayerData.class))).thenReturn(true);
         when(banDataRepository.save(eq(session), any(BanData.class))).thenReturn(true);
         when(muteDataRepository.save(eq(session), any(MuteData.class))).thenReturn(true);
         when(gameDataRepository.reassignPlayerMatches(eq(session), anyString(), anyString())).thenReturn(3L);
@@ -319,26 +446,31 @@ class AccountMergeServiceTest {
         assertThat(result.gamesTransferred()).isEqualTo(3L);
 
         // Verify session passed to repositories
-        verify(playerDataRepository, times(2)).save(eq(session), any(PlayerData.class));
+        verify(playerDataRepository, times(2)).saveMergedPlayer(eq(session), any(PlayerData.class), any(PlayerData.class));
         verify(gameDataRepository).reassignPlayerMatches(eq(session), eq("uuid-source"), eq("uuid-target"));
         verify(auditService).append(eq(session), any(AuditAppendCommand.class));
         verify(session).close();
     }
 
     @Test
-    @DisplayName("Transaction rollback on failure aborts and preserves original player data in memory")
+    @DisplayName("A binding generation changed after refresh aborts without changing cached player data")
     void merge_transactionFailure_rollsBackAndPreservesMemoryState() {
         MongoClient mongoClient = mock(MongoClient.class);
         ClientSession session = mock(ClientSession.class);
+        PlayerData currentTarget = new PlayerData("uuid-target", true);
+        currentTarget.discordId = "current-target";
+        currentTarget.discordLinkedAt = 50L;
         when(mongoClient.startSession()).thenReturn(session);
         when(session.withTransaction(any())).thenAnswer(invocation -> {
+            // The merge already read generation 50; a concurrent relink advances it before the CAS.
+            currentTarget.discordLinkedAt = 51L;
             TransactionBody<?> body = invocation.getArgument(0);
             return body.execute();
         });
 
-        // Simulate target save failure in transaction
-        when(playerDataRepository.save(eq(session), argThat(p -> p.pid == 10))).thenReturn(true);
-        when(playerDataRepository.save(eq(session), argThat(p -> p.pid == 20))).thenReturn(false);
+        when(playerDataRepository.saveMergedPlayer(eq(session), argThat(b -> b != null && "uuid-source".equals(b.uuid)), argThat(p -> p.pid == 10))).thenReturn(true);
+        when(playerDataRepository.saveMergedPlayer(eq(session), argThat(b -> b != null && "uuid-target".equals(b.uuid)), argThat(p -> p.pid == 20)))
+                .thenAnswer(invocation -> invocation.<PlayerData>getArgument(1).discordLinkedAt == currentTarget.discordLinkedAt);
 
         AccountMergeService txService = new AccountMergeService(
                 mongoClient,
@@ -358,6 +490,9 @@ class AccountMergeServiceTest {
 
         PlayerData source = createPlayer(10, "uuid-source", "SourcePlayer", 100, 1500, 10);
         PlayerData target = createPlayer(20, "uuid-target", "TargetPlayer", 50, 1600, 20);
+        target.discordId = "stale-target";
+        target.discordLinkedAt = 10L;
+        when(playerDataRepository.findByUuid(target.uuid)).thenReturn(currentTarget);
 
         when(findService.playerData("10")).thenReturn(source);
         when(findService.playerData("20")).thenReturn(target);
@@ -374,6 +509,13 @@ class AccountMergeServiceTest {
         // Verify target in-memory data was NOT modified
         assertThat(target.totalPlayTime).isEqualTo(50);
         assertThat(target.hexedPoints).isEqualTo(20);
+        assertThat(target.discordId).isEqualTo("stale-target");
+        assertThat(target.discordLinkedAt).isEqualTo(10L);
+        assertThat(currentTarget.discordLinkedAt).isEqualTo(51L);
+        var beforeWrite = ArgumentCaptor.forClass(PlayerData.class);
+        verify(playerDataRepository).saveMergedPlayer(eq(session), beforeWrite.capture(), argThat(p -> p.pid == 20));
+        assertThat(beforeWrite.getValue().discordId).isEqualTo("current-target");
+        assertThat(beforeWrite.getValue().discordLinkedAt).isEqualTo(50L);
 
         // Verify external notifications were NOT sent
         verifyNoInteractions(networkService);

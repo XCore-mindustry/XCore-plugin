@@ -47,23 +47,15 @@ public class DiscordMenu extends Menu {
         if (session == null || session.data == null) return;
         session.clear();
 
-        var result = regenerate
-                ? discordLinkService.createCode(session)
-                : discordLinkService.getOrCreateActiveCode(session);
-
-        if (!result.success()) {
-            var local = session.locale();
-            if (result.isError("already-linked")) {
-                local.send("commands-discord-link-already-linked", args());
-            } else {
-                local.send("commands-discord-link-error", args());
+        discordLinkService.requestCode(session, regenerate, result -> {
+            if (!result.success()) {
+                session.locale().send(result.isError("already-linked")
+                        ? "commands-discord-link-already-linked" : "commands-discord-link-error", args());
+                main(uuid);
+                return;
             }
-            session.menuService.close(session);
-            main(uuid);
-            return;
-        }
-
-        session.setDraft(DiscordFlows.LinkingState.class, new DiscordFlows.LinkingState(result));
-        session.menuService.renderRoute(session, MenuRoute.of(DiscordFlows.ROUTE_LINKING).withParam("regenerate", String.valueOf(regenerate)));
+            session.setDraft(DiscordFlows.LinkingState.class, new DiscordFlows.LinkingState(result));
+            session.menuService.renderRoute(session, MenuRoute.of(DiscordFlows.ROUTE_LINKING));
+        });
     }
 }

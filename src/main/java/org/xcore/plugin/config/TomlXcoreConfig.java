@@ -148,6 +148,7 @@ public class TomlXcoreConfig implements SelfNormalizing {
     }
 
     public static class DiscordConfig {
+        public String websiteLinkUrl = "";
         public String channelId = "0";
 
         public void normalize() {

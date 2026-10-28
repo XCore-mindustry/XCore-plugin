@@ -79,43 +79,89 @@ public class PlayerDataRepository extends DataRepository<PlayerData> {
 
     @Override
     public boolean save(com.mongodb.client.ClientSession session, PlayerData data) {
-        if (!PlayerPids.isAssigned(data.pid) && !isReadOnly()) {
-            data.pid = generatePid(session);
+        if (data == null || isReadOnly()) return false;
+        if (!PlayerPids.isAssigned(data.pid)) data.pid = generatePid(session);
+        Bson update = playerSaveUpdate(data);
+        boolean persisted = data.id != null;
+        var options = new com.mongodb.client.model.UpdateOptions().upsert(!persisted);
+        var result = session != null ? collection.updateOne(session, saveFilter(data), update, options)
+                : collection.updateOne(saveFilter(data), update, options);
+        if (persisted) return result.getMatchedCount() == 1;
+        if (result.getUpsertedId() != null) data.id = result.getUpsertedId().asObjectId().getValue();
+        else {
+            PlayerData stored = findByUuid(session, data.uuid);
+            if (stored != null) data.id = stored.id;
         }
+        return true;
+    }
 
-        if (data.id == null && data.uuid != null && !data.uuid.isBlank()) {
-            PlayerData existing = findByUuid(session, data.uuid);
-            if (existing != null && existing.id != null) {
-                data.id = existing.id;
-            }
-        }
-
-        return super.save(session, data);
+    /** A persisted snapshot only updates its own document, so a stale copy of a merged account cannot re-insert its pid. */
+    private static Bson saveFilter(PlayerData data) {
+        return data.id == null ? eq("uuid", data.uuid) : Filters.and(eq("_id", data.id), eq("uuid", data.uuid));
     }
 
     @Override
     public java.util.concurrent.CompletionStage<Boolean> saveAsync(PlayerData data) {
-        if (data == null) return java.util.concurrent.CompletableFuture.completedFuture(false);
-        if (isReadOnly()) return java.util.concurrent.CompletableFuture.completedFuture(false);
-
-        java.util.concurrent.CompletionStage<PlayerData> pidStage = !PlayerPids.isAssigned(data.pid)
-                ? generatePidAsync().thenApply(pid -> {
-                    data.pid = pid;
-                    return data;
-                })
-                : java.util.concurrent.CompletableFuture.completedFuture(data);
-
-        return pidStage.thenCompose(target -> {
-            if (target.id == null && target.uuid != null && !target.uuid.isBlank()) {
-                return findByUuidAsync(target.uuid).thenCompose(existing -> {
-                    if (existing != null && existing.id != null) {
-                        target.id = existing.id;
-                    }
-                    return super.saveAsync(target);
+        if (data == null || isReadOnly()) return java.util.concurrent.CompletableFuture.completedFuture(false);
+        if (reactiveCollection == null) return java.util.concurrent.CompletableFuture.failedFuture(
+                new IllegalStateException("Reactive MongoDB store is required for saveAsync"));
+        var pid = !PlayerPids.isAssigned(data.pid) ? generatePidAsync()
+                : java.util.concurrent.CompletableFuture.completedFuture(data.pid);
+        return pid.thenCompose(value -> {
+            data.pid = value;
+            boolean persisted = data.id != null;
+            Bson update = playerSaveUpdate(data);
+            return MongoAsync.first(reactiveCollection.updateOne(saveFilter(data), update,
+                    new com.mongodb.client.model.UpdateOptions().upsert(!persisted))).thenCompose(result -> {
+                if (persisted) return java.util.concurrent.CompletableFuture.completedFuture(result.getMatchedCount() == 1);
+                if (result.getUpsertedId() != null) {
+                    data.id = result.getUpsertedId().asObjectId().getValue();
+                    return java.util.concurrent.CompletableFuture.completedFuture(true);
+                }
+                return findByUuidAsync(data.uuid).thenApply(stored -> {
+                    if (stored != null) data.id = stored.id;
+                    return true;
                 });
-            }
-            return super.saveAsync(target);
+            });
         });
+    }
+
+    private Bson playerSaveUpdate(PlayerData data) {
+        if (data.uuid == null || data.uuid.isBlank()) throw new IllegalArgumentException("Player UUID is required");
+        if (data.createdModelTime == 0) data.createdModelTime = System.currentTimeMillis();
+        data.editModelTime = System.currentTimeMillis();
+        var document = new org.bson.BsonDocument();
+        collection.getCodecRegistry().get(PlayerData.class).encode(new org.bson.BsonDocumentWriter(document), data,
+                org.bson.codecs.EncoderContext.builder().build());
+        document.remove("_id");
+        // Bindings belong exclusively to account operations; never copy a cached binding into Mongo.
+        document.keySet().removeIf(key -> key.startsWith("discord_"));
+        return new org.bson.BsonDocument("$set", document);
+    }
+
+    /**
+     * Administrative merge is the explicit exception to ordinary saves preserving account bindings.
+     * {@code before} is the snapshot the merge was computed from; a binding changed since then rejects the write.
+     */
+    public boolean saveMergedPlayer(com.mongodb.client.ClientSession session, PlayerData before, PlayerData data) {
+        if (data == null || before == null || before.uuid == null || before.uuid.isBlank() || isReadOnly()) return false;
+        String originalUuid = before.uuid;
+        var update = (org.bson.BsonDocument) playerSaveUpdate(data);
+        var fields = update.getDocument("$set");
+        fields.put("discord_id", new org.bson.BsonString(data.discordId == null ? "" : data.discordId));
+        fields.put("discord_username", new org.bson.BsonString(data.discordUsername == null ? "" : data.discordUsername));
+        fields.put("discord_linked_at", new org.bson.BsonInt64(data.discordLinkedAt));
+        fields.put("password_hash", new org.bson.BsonString(data.password == null ? "" : data.password));
+        update.put("$max", new org.bson.BsonDocument("discord_link_generation", new org.bson.BsonInt64(data.discordLinkedAt)));
+        // Legacy documents may lack discord fields entirely; eq(null) matches missing and null.
+        var filter = Filters.and(eq("uuid", originalUuid),
+                before.discordId == null || before.discordId.isBlank()
+                        ? or(eq("discord_id", ""), eq("discord_id", null)) : eq("discord_id", before.discordId),
+                before.discordLinkedAt == 0L
+                        ? or(eq("discord_linked_at", 0L), eq("discord_linked_at", null)) : eq("discord_linked_at", before.discordLinkedAt));
+        var result = session == null ? collection.updateOne(filter, update)
+                : collection.updateOne(session, filter, update);
+        return result.getMatchedCount() == 1;
     }
 
     public java.util.concurrent.CompletionStage<Integer> generatePidAsync() {
@@ -288,34 +334,39 @@ public class PlayerDataRepository extends DataRepository<PlayerData> {
     }
 
     public boolean updateDiscordLink(String uuid, String discordId, String discordUsername, long linkedAt) {
-        if (uuid == null || uuid.isBlank() || discordId == null || discordId.isBlank() || isReadOnly()) {
-            return false;
-        }
-
-        return collection.updateOne(
-                Filters.and(
-                        eq("uuid", uuid),
-                        or(
-                                eq("discord_id", ""),
-                                eq("discord_id", discordId),
-                                Filters.exists("discord_id", false)
-                        )
-                ),
-                Updates.combine(
-                        Updates.set("discord_id", discordId),
-                        Updates.set("discord_username", discordUsername == null ? "" : discordUsername),
-                        Updates.set("discord_linked_at", linkedAt),
-                        Updates.set("updated_at", System.currentTimeMillis())
-                )
-        ).getMatchedCount() > 0;
+        return writeDiscordLink(uuid, null, discordId, discordUsername, linkedAt) != null;
     }
 
-    public boolean clearDiscordLink(String uuid) {
-        return updateByUuid(uuid, Updates.combine(
-                Updates.set("discord_id", ""),
-                Updates.set("discord_username", ""),
-                Updates.set("discord_linked_at", 0L)
-        ));
+    public PlayerData updateDiscordLink(String uuid, int expectedPid, String discordId, String discordUsername, long linkedAt) {
+        return writeDiscordLink(uuid, expectedPid, discordId, discordUsername, linkedAt);
+    }
+
+    private PlayerData writeDiscordLink(String uuid, Integer expectedPid, String discordId, String discordUsername, long linkedAt) {
+        if (uuid == null || uuid.isBlank() || discordId == null || discordId.isBlank() || isReadOnly()) return null;
+        var filter = Filters.and(eq("uuid", uuid), or(eq("discord_id", ""), Filters.exists("discord_id", false)));
+        if (expectedPid != null) filter = Filters.and(filter, eq("pid", expectedPid));
+        // Preserve a monotonic timestamp across unlink/relink, including different servers in the same millisecond.
+        var generation = new Document("$max", List.of(linkedAt,
+                new Document("$add", List.of(new Document("$ifNull", List.of("$discord_link_generation", 0L)), 1L))));
+        var values = new Document("discord_id", new Document("$literal", discordId))
+                .append("discord_username", new Document("$literal", discordUsername == null ? "" : discordUsername))
+                .append("discord_linked_at", generation).append("discord_link_generation", generation)
+                .append("updated_at", System.currentTimeMillis());
+        return collection.findOneAndUpdate(filter, List.of(new Document("$set", values)),
+                new FindOneAndUpdateOptions().returnDocument(ReturnDocument.AFTER));
+    }
+
+    public boolean clearDiscordLink(String uuid, String expectedDiscordId, long expectedLinkedAt) {
+        if (uuid == null || uuid.isBlank() || expectedDiscordId == null || expectedDiscordId.isBlank() || isReadOnly()) return false;
+        var generation = new Document("$max", List.of(
+                new Document("$ifNull", List.of("$discord_link_generation", 0L)),
+                new Document("$ifNull", List.of("$discord_linked_at", 0L))));
+        return collection.updateOne(Filters.and(eq("uuid", uuid), eq("discord_id", expectedDiscordId),
+                        expectedLinkedAt == 0 ? or(eq("discord_linked_at", 0L), Filters.exists("discord_linked_at", false))
+                                : eq("discord_linked_at", expectedLinkedAt)),
+                List.of(new Document("$set", new Document("discord_id", "").append("discord_username", "")
+                        .append("discord_linked_at", 0L).append("discord_link_generation", generation)
+                        .append("updated_at", System.currentTimeMillis())))).getMatchedCount() > 0;
     }
 
     public boolean incrementPlayTime(String uuid, int delta) {

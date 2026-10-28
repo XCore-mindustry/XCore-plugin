@@ -30,10 +30,19 @@ final class RedisRpcTracker {
     }
 
     void registerInbound(Object request, String correlationId, String replyTo, String rpcType, long createdAtMillis) {
+        registerInbound(request, correlationId, replyTo, rpcType, createdAtMillis, "");
+    }
+
+    void registerInbound(Object request, String correlationId, String replyTo, String rpcType, long createdAtMillis, String requester) {
         synchronized (inboundRpcContexts) {
             cleanupExpired(createdAtMillis, DEFAULT_CONTEXT_TTL_MILLIS);
-            inboundRpcContexts.put(request, new RpcInboundContext(correlationId, replyTo, rpcType, createdAtMillis));
+            inboundRpcContexts.put(request, new RpcInboundContext(correlationId, replyTo, rpcType, createdAtMillis, requester));
         }
+    }
+
+    String requester(Object request) {
+        var context = inboundRpcContexts.get(request);
+        return context == null ? "" : context.requester();
     }
 
     RpcInboundContext take(Object request) {
@@ -150,6 +159,6 @@ final class RedisRpcTracker {
         }
     }
 
-    record RpcInboundContext(String correlationId, String replyTo, String rpcType, long createdAtMillis) {
+    record RpcInboundContext(String correlationId, String replyTo, String rpcType, long createdAtMillis, String requester) {
     }
 }

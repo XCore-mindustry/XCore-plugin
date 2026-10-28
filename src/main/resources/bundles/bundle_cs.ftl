@@ -1501,3 +1501,6 @@ map-upload-submitter = Přidal přes Discord: { $person }
 map-upload-date = Nahráno: [lightgray]{ $date }[] (UTC)
 
 map-upload-current-creator = [accent]{ $map }[] — { $creator }
+
+discord-link-menu-website = Otevřít web účtu
+commands-discord-link-website = [accent]Potvrďte propojení na webu:[] { $url }

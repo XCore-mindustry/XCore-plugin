@@ -109,6 +109,11 @@ public final class RedisTransportContracts {
             "xcore:rpc:resp:*"
     );
 
+    public static boolean isAllowedAccountReply(String requester, String replyTo) {
+        return "web".equals(requester) && "xcore:rpc:resp:web".equals(replyTo)
+                || "discord-bot".equals(requester) && "xcore:rpc:resp:discord".equals(replyTo);
+    }
+
     private RedisTransportContracts() {
     }
 

@@ -1500,3 +1500,5 @@ map-upload-submitter = Aggiunta tramite Discord: { $person }
 map-upload-date = Caricata il: [lightgray]{ $date }[] (UTC)
 
 map-upload-current-creator = [accent]{ $map }[] — { $creator }
+discord-link-menu-website = Apri il sito dell’account
+commands-discord-link-website = [accent]Conferma il collegamento sul sito:[] { $url }

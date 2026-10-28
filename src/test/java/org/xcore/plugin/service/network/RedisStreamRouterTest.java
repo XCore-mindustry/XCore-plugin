@@ -10,11 +10,13 @@ import org.xcore.protocol.generated.messages.identity.IdentityMessages.PlayerAct
 import org.xcore.protocol.generated.messages.identity.IdentityMessages.PlayerBadgeInventoryChangedCommandV1;
 import org.xcore.protocol.generated.messages.identity.IdentityMessages.PlayerBadgeSymbolColorModeChangedCommandV1;
 import org.xcore.protocol.generated.messages.identity.IdentityMessages.PlayerCustomNicknameChangedCommandV1;
-import org.xcore.protocol.generated.messages.security.SecurityMessages.PlayerPasswordResetCommandV1;
+import org.xcore.protocol.generated.messages.security.SecurityMessages.SecurityStaffResetPasswordRequestV1;
+import org.xcore.protocol.generated.messages.security.SecurityMessages.SecurityStaffSyncResponseV1;
+import org.xcore.protocol.generated.messages.security.SecurityMessages.SecurityStaffResetPasswordResponseV1;
 import org.xcore.protocol.generated.messages.identity.IdentityMessages.PlayerJoinLeaveV1;
 import org.xcore.protocol.generated.messages.server.ServerMessages.ServerActionV1;
 import org.xcore.protocol.generated.messages.server.ServerMessages.ServerHeartbeatV1;
-import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordAdminAccessChangedCommandV1;
+import org.xcore.protocol.generated.messages.security.SecurityMessages.SecurityStaffSyncRequestV1;
 import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordLinkCodeCreatedV1;
 import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordLinkConfirmCommandV1;
 import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordLinkStatusChangedV1;
@@ -167,7 +169,7 @@ class RedisStreamRouterTest {
         var activeBadgeRoute = router.route(new PlayerActiveBadgeChangedCommandV1("uuid-7", "translator", "mini-hexed"), "mini-pvp");
         var badgeRoute = router.route(new PlayerBadgeInventoryChangedCommandV1("uuid-7", "translator", List.of("translator"), "mini-pvp"), "mini-pvp");
         var badgeColorModeRoute = router.route(new PlayerBadgeSymbolColorModeChangedCommandV1("uuid-7", "player-color", "hexed"), "mini-pvp");
-        var passwordRoute = router.route(new PlayerPasswordResetCommandV1("uuid-7", "mini-pvp"), "mini-pvp");
+        var passwordRoute = router.route(new SecurityStaffResetPasswordRequestV1("mini-pvp", "reset-7", "uuid-7"), "mini-pvp");
         var discordLinkConfirmRoute = router.route(
                 new DiscordLinkConfirmCommandV1(
                         "ABC123",
@@ -189,16 +191,7 @@ class RedisStreamRouterTest {
                 "mini-pvp"
         );
         var discordAdminAccessRoute = router.route(
-                new DiscordAdminAccessChangedCommandV1(
-                        new PlayerRefV1("uuid-7", 7, "Nick", null),
-                        new DiscordIdentityRefV1("123", "discord-user"),
-                        true,
-                        new ActorRefV1("DISCORD_ROLE", null, ActorRefV1ActorType.SYSTEM),
-                        new ActorRefV1("tester", null, ActorRefV1ActorType.SYSTEM),
-                        "sync",
-                        "mini-pvp",
-                        Instant.parse("2026-04-26T00:00:11Z").toString()
-                ),
+                new SecurityStaffSyncRequestV1("mini-pvp", "sync-7", "uuid-7", "123", List.of("staff-role"), true),
                 "mini-pvp"
         );
         var discordUnlinkRoute = router.route(
@@ -224,31 +217,22 @@ class RedisStreamRouterTest {
         assertThat(badgeRoute.messageType()).isEqualTo("player.badge-inventory.changed.command");
         assertThat(badgeColorModeRoute.streamKey()).isEqualTo("xcore:cmd:player-badge-symbol-color-mode:hexed");
         assertThat(badgeColorModeRoute.messageType()).isEqualTo("player.badge-symbol-color-mode.changed.command");
-        assertThat(passwordRoute.streamKey()).isEqualTo("xcore:cmd:player-password-reset:mini-pvp");
-        assertThat(passwordRoute.messageType()).isEqualTo("player.password-reset.command");
+        assertThat(passwordRoute.streamKey()).isEqualTo("xcore:rpc:req:mini-pvp");
+        assertThat(passwordRoute.messageType()).isEqualTo("security.staff.reset-password.request");
         assertThat(discordLinkConfirmRoute.streamKey()).isEqualTo("xcore:cmd:discord-link-confirm:mini-hexed");
         assertThat(discordLinkConfirmRoute.messageType()).isEqualTo("discord.link.confirm.command");
         assertThat(discordLinkStatusRoute.streamKey()).isEqualTo("xcore:evt:discord:link-status");
         assertThat(discordLinkStatusRoute.messageType()).isEqualTo("discord.link.status-changed");
-        assertThat(discordAdminAccessRoute.streamKey()).isEqualTo("xcore:cmd:discord-admin-access:mini-pvp");
-        assertThat(discordAdminAccessRoute.messageType()).isEqualTo("discord.admin-access.changed.command");
+        assertThat(discordAdminAccessRoute.streamKey()).isEqualTo("xcore:rpc:req:mini-pvp");
+        assertThat(discordAdminAccessRoute.messageType()).isEqualTo("security.staff.sync.request");
         assertThat(discordUnlinkRoute.streamKey()).isEqualTo("xcore:cmd:discord-unlink:mini-hexed");
         assertThat(discordUnlinkRoute.messageType()).isEqualTo("discord.unlink.command");
 
         var discordAdminAccessOtherServerRoute = router.route(
-                new DiscordAdminAccessChangedCommandV1(
-                        new PlayerRefV1("uuid-8", 8, "Other", null),
-                        new DiscordIdentityRefV1("456", "other-user"),
-                        false,
-                        new ActorRefV1("NONE", null, ActorRefV1ActorType.SYSTEM),
-                        new ActorRefV1("tester", null, ActorRefV1ActorType.SYSTEM),
-                        "sync",
-                        "survival",
-                        Instant.parse("2026-04-26T00:00:12Z").toString()
-                ),
+                new SecurityStaffSyncRequestV1("survival", "sync-8", "uuid-8", "456", List.of(), true),
                 "mini-pvp"
         );
-        assertThat(discordAdminAccessOtherServerRoute.streamKey()).isEqualTo("xcore:cmd:discord-admin-access:survival");
+        assertThat(discordAdminAccessOtherServerRoute.streamKey()).isEqualTo("xcore:rpc:req:survival");
     }
 
     @Test
@@ -293,8 +277,8 @@ class RedisStreamRouterTest {
         assertThat(router.subscribeStreamsFor(PlayerBadgeSymbolColorModeChangedCommandV1.class, "mini-pvp"))
                 .containsExactly("xcore:cmd:player-badge-symbol-color-mode:mini-pvp");
 
-        assertThat(router.subscribeStreamsFor(PlayerPasswordResetCommandV1.class, "mini-pvp"))
-                .containsExactly("xcore:cmd:player-password-reset:mini-pvp");
+        assertThat(router.subscribeStreamsFor(SecurityStaffResetPasswordRequestV1.class, "mini-pvp"))
+                .containsExactly("xcore:rpc:req:mini-pvp");
 
         assertThat(router.subscribeStreamsFor(DiscordLinkConfirmCommandV1.class, "mini-pvp"))
                 .containsExactly("xcore:cmd:discord-link-confirm:mini-pvp");
@@ -305,8 +289,8 @@ class RedisStreamRouterTest {
         assertThat(router.subscribeStreamsFor(DiscordLinkStatusChangedV1.class, "mini-pvp"))
                 .containsExactly("xcore:evt:discord:link-status");
 
-        assertThat(router.subscribeStreamsFor(DiscordAdminAccessChangedCommandV1.class, "mini-pvp"))
-                .containsExactly("xcore:cmd:discord-admin-access:mini-pvp");
+        assertThat(router.subscribeStreamsFor(SecurityStaffSyncRequestV1.class, "mini-pvp"))
+                .containsExactly("xcore:rpc:req:mini-pvp");
 
         assertThat(router.subscribeStreamsFor(DiscordUnlinkCommandV1.class, "mini-pvp"))
                 .containsExactly("xcore:cmd:discord-unlink:mini-pvp");
@@ -342,11 +326,13 @@ class RedisStreamRouterTest {
         assertThat(router.isReadOnlyType(ModerationMuteCreatedV1.class)).isTrue();
         assertThat(router.isReadOnlyType(ModerationVoteKickCreatedV1.class)).isTrue();
         assertThat(router.isReadOnlyType(ModerationAuditAppendedV1.class)).isTrue();
-        assertThat(router.isReadOnlyType(DiscordAdminAccessChangedCommandV1.class)).isFalse();
+        assertThat(router.isReadOnlyType(SecurityStaffSyncRequestV1.class)).isFalse();
         assertThat(router.isMutatingType(ModerationKickBannedCommandV1.class)).isTrue();
         assertThat(router.isMutatingType(ModerationPardonCommandV1.class)).isTrue();
 
-        assertThat(router.isMutatingType(PlayerPasswordResetCommandV1.class)).isTrue();
+        assertThat(router.isMutatingType(SecurityStaffResetPasswordRequestV1.class)).isFalse();
+        assertThat(router.isReadOnlyType(SecurityStaffResetPasswordRequestV1.class)).isFalse();
+        assertThat(router.isRpcRequestType(SecurityStaffResetPasswordRequestV1.class)).isTrue();
         assertThat(router.isMutatingType(PlayerCustomNicknameChangedCommandV1.class)).isTrue();
         assertThat(router.isMutatingType(PlayerActiveBadgeChangedCommandV1.class)).isTrue();
         assertThat(router.isMutatingType(PlayerBadgeSymbolColorModeChangedCommandV1.class)).isTrue();
@@ -354,10 +340,17 @@ class RedisStreamRouterTest {
         assertThat(router.isMutatingType(ChatDiscordIngressCommandV1.class)).isTrue();
         assertThat(router.isMutatingType(DiscordLinkConfirmCommandV1.class)).isTrue();
         assertThat(router.isMutatingType(DiscordUnlinkCommandV1.class)).isTrue();
-        assertThat(router.isMutatingType(DiscordAdminAccessChangedCommandV1.class)).isTrue();
+        assertThat(router.isMutatingType(SecurityStaffSyncRequestV1.class)).isFalse();
+        assertThat(router.isRpcRequestType(SecurityStaffSyncRequestV1.class)).isTrue();
         assertThat(router.isReadOnlyType(ChatGlobalV1.class)).isTrue();
         assertThat(router.isMutatingType(ChatMessageV1.class)).isFalse();
 
+        assertThat(router.responseTypeForRequest(SecurityStaffResetPasswordRequestV1.class)).isEqualTo(SecurityStaffResetPasswordResponseV1.class);
+        assertThat(router.responseTypeForRequest(SecurityStaffSyncRequestV1.class)).isEqualTo(SecurityStaffSyncResponseV1.class);
+        assertThat(router.shouldClaimIdempotency(SecurityStaffResetPasswordRequestV1.class)).isTrue();
+        assertThat(router.shouldClaimIdempotency(SecurityStaffSyncRequestV1.class)).isTrue();
+        assertThat(router.responseStreamKeyForRequest(new SecurityStaffResetPasswordRequestV1("survival", "reset-7", "uuid-7"), "mini-pvp", "discord-bot"))
+                .isEqualTo("xcore:rpc:resp:discord-bot");
         assertThat(router.isRpcRequestType(MapsListRequestV1.class)).isTrue();
         assertThat(router.isRpcRequestType(ChatMessageV1.class)).isFalse();
 

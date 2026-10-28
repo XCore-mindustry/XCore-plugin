@@ -1513,3 +1513,6 @@ map-upload-submitter = Дадаў праз Discord: { $person }
 map-upload-date = Загружана: [lightgray]{ $date }[] (UTC)
 
 map-upload-current-creator = [accent]{ $map }[] — { $creator }
+
+discord-link-menu-website = Адкрыць сайт акаўнта
+commands-discord-link-website = [accent]Пацвердзіце прывязку на сайце:[] { $url }

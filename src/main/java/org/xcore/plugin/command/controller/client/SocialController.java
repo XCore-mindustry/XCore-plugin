@@ -103,21 +103,20 @@ public class SocialController implements CloudClientController {
         if (session == null || session.data == null) return;
 
         Localization local = session.locale();
-        var result = discordLinkService.createCode(session);
-        if (!result.success()) {
-            if (result.isError("already-linked")) {
-                local.send("commands-discord-link-already-linked", args());
-            } else {
-                local.send("commands-discord-link-error", args());
+        discordLinkService.requestCode(session, true, result -> {
+            if (!result.success()) {
+                local.send(result.isError("already-linked") ? "commands-discord-link-already-linked" : "commands-discord-link-error", args());
+                return;
             }
-            return;
-        }
-
-        local.send("commands-discord-link-created", args(
-                "code", result.code(),
-                "expireMinutes", result.remainingMinutes(System.currentTimeMillis()),
-                "discordUrl", secretsConfig.externalLinks.discordUrl
-        ));
+            local.send("commands-discord-link-created", args("code", result.code(),
+                    "expireMinutes", result.remainingMinutes(System.currentTimeMillis()),
+                    "discordUrl", secretsConfig.externalLinks.discordUrl));
+            String url = discordLinkService.websiteLinkUrl(result.code());
+            if (!url.isBlank()) {
+                local.send("commands-discord-link-website", args("url", url));
+                session.menuService.openUri(session, url);
+            }
+        });
     }
 
     @Command("discord status")
@@ -144,12 +143,8 @@ public class SocialController implements CloudClientController {
         if (session == null || session.data == null) return;
 
         Localization local = session.locale();
-        if (!discordLinkService.unlink(session)) {
-            local.send("commands-discord-unlink-not-linked", args());
-            return;
-        }
-
-        local.send("commands-discord-unlink-success", args());
+        discordLinkService.requestUnlink(session, success -> local.send(success
+                ? "commands-discord-unlink-success" : "commands-discord-unlink-not-linked", args()));
     }
 
     @Command("tr <language>")

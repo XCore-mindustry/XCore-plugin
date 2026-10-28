@@ -13,6 +13,7 @@ import mindustry.gen.Groups;
 import mindustry.gen.Player;
 import org.jspecify.annotations.Nullable;
 import org.xcore.plugin.common.PLog;
+import org.xcore.plugin.concurrent.MainThreadDispatcher;
 import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.database.repository.BanDataRepository;
 import org.xcore.plugin.database.repository.GameDataRepository;
@@ -181,13 +182,20 @@ public class AccountMergeService {
             return MergeResult.failure("Source player #" + source.pid + " was already merged into another account.");
         }
 
-        // Snapshots before merge
+        // Only the binding comes from Mongo; keep unsaved progress from the session cache.
+        PlayerData sourceBinding = playerDataRepository.findByUuid(source.uuid);
+        PlayerData targetBinding = playerDataRepository.findByUuid(target.uuid);
+        if (sourceBinding == null || targetBinding == null) {
+            return MergeResult.failure("Player data changed before merge; retry the merge.");
+        }
         PlayerData sourceBefore = clonePlayerData(source);
         PlayerData targetBefore = clonePlayerData(target);
+        copyDiscordBinding(sourceBefore, sourceBinding);
+        copyDiscordBinding(targetBefore, targetBinding);
 
         // Working copies for atomic persistence
-        PlayerData sourceWorking = clonePlayerData(source);
-        PlayerData targetWorking = clonePlayerData(target);
+        PlayerData sourceWorking = clonePlayerData(sourceBefore);
+        PlayerData targetWorking = clonePlayerData(targetBefore);
 
         // 1. Data consolidation
         consolidateData(sourceWorking, targetWorking);
@@ -197,6 +205,9 @@ public class AccountMergeService {
         sourceWorking.username = "";
         sourceWorking.canChangeUsername = false;
         revokeCredentials(sourceWorking);
+        sourceWorking.discordId = "";
+        sourceWorking.discordUsername = "";
+        sourceWorking.discordLinkedAt = 0L;
         sourceWorking.totalPlayTime = 0;
         sourceWorking.description = "Merged into PID #" + targetWorking.pid + " (" + targetWorking.nickname + ")";
 
@@ -207,14 +218,16 @@ public class AccountMergeService {
                 .build();
 
         // 2. Execute atomic transactional merge with MongoDB ClientSession
-        MergeExecutionOutcome outcome = executeAtomicMerge(oldSourceUuid, sourceBefore, sourceWorking, targetWorking, request, actor);
+        MergeExecutionOutcome outcome = executeAtomicMerge(oldSourceUuid, sourceBefore, targetBefore, sourceWorking, targetWorking, request, actor);
         if (!outcome.success()) {
             return MergeResult.failure(outcome.errorMessage());
         }
 
         // 3. Reflect successful merge in in-memory objects (e.g. session cache references)
-        applyMergedState(source, sourceWorking);
-        applyMergedState(target, targetWorking);
+        MainThreadDispatcher.mindustry().execute(() -> {
+            applyMergedState(source, sourceWorking);
+            applyMergedState(target, targetWorking);
+        });
 
         // 4. Handle online sessions on this server
         handleOnlinePlayers(oldSourceUuid, targetWorking);
@@ -314,6 +327,7 @@ public class AccountMergeService {
     private MergeExecutionOutcome executeAtomicMerge(
             String oldSourceUuid,
             PlayerData sourceBefore,
+            PlayerData targetBefore,
             PlayerData sourceWorking,
             PlayerData targetWorking,
             MergeRequest request,
@@ -322,11 +336,11 @@ public class AccountMergeService {
         if (mongoClient != null) {
             try (ClientSession session = mongoClient.startSession()) {
                 try {
-                    return session.withTransaction(() -> executeMergeInSession(session, oldSourceUuid, sourceBefore, sourceWorking, targetWorking, request, actor));
+                    return session.withTransaction(() -> executeMergeInSession(session, oldSourceUuid, sourceBefore, targetBefore, sourceWorking, targetWorking, request, actor));
                 } catch (MongoException ex) {
                     if (isTransactionUnsupportedException(ex)) {
                         Log.warn("[AccountMerge] MongoDB transactions unsupported (standalone mode?); falling back to non-transactional merge: @", ex.getMessage());
-                        return executeMergeInSession(null, oldSourceUuid, sourceBefore, sourceWorking, targetWorking, request, actor);
+                        return executeMergeInSession(null, oldSourceUuid, sourceBefore, targetBefore, sourceWorking, targetWorking, request, actor);
                     }
                     PLog.errTag("AccountMerge", "Failed to merge accounts @ -> @. Transaction aborted: @", oldSourceUuid, targetWorking.uuid, ex.getMessage(), ex);
                     return MergeExecutionOutcome.failure("Transaction aborted: " + ex.getMessage());
@@ -337,20 +351,21 @@ public class AccountMergeService {
             } catch (MongoException ex) {
                 if (isTransactionUnsupportedException(ex)) {
                     Log.warn("[AccountMerge] MongoDB sessions unsupported; falling back to non-transactional merge: @", ex.getMessage());
-                    return executeMergeInSession(null, oldSourceUuid, sourceBefore, sourceWorking, targetWorking, request, actor);
+                    return executeMergeInSession(null, oldSourceUuid, sourceBefore, targetBefore, sourceWorking, targetWorking, request, actor);
                 }
                 PLog.errTag("AccountMerge", "Failed to start MongoDB session for @ -> @: @", oldSourceUuid, targetWorking.uuid, ex.getMessage(), ex);
                 return MergeExecutionOutcome.failure("Failed to start MongoDB session: " + ex.getMessage());
             }
         }
 
-        return executeMergeInSession(null, oldSourceUuid, sourceBefore, sourceWorking, targetWorking, request, actor);
+        return executeMergeInSession(null, oldSourceUuid, sourceBefore, targetBefore, sourceWorking, targetWorking, request, actor);
     }
 
     private MergeExecutionOutcome executeMergeInSession(
             @Nullable ClientSession session,
             String oldSourceUuid,
             PlayerData sourceBefore,
+            PlayerData targetBefore,
             PlayerData sourceWorking,
             PlayerData targetWorking,
             MergeRequest request,
@@ -420,16 +435,10 @@ public class AccountMergeService {
         }
 
         // 2. Persist PlayerData
-        boolean sourceSaved = (session != null)
-                ? playerDataRepository.save(session, sourceWorking)
-                : playerDataRepository.save(sourceWorking);
-
-        boolean targetSaved = (session != null)
-                ? playerDataRepository.save(session, targetWorking)
-                : playerDataRepository.save(targetWorking);
-
-        if (!sourceSaved || !targetSaved) {
-            throw new IllegalStateException("Failed to persist merged player data to database.");
+        // Bindings were refreshed before the transaction; a later change still aborts the merge.
+        if (!playerDataRepository.saveMergedPlayer(session, sourceBefore, sourceWorking)
+                || !playerDataRepository.saveMergedPlayer(session, targetBefore, targetWorking)) {
+            throw new IllegalStateException("Player data changed during merge (Discord link or unlink?); retry the merge.");
         }
 
         // 3. Reassign matches in games_v2
@@ -493,6 +502,12 @@ public class AccountMergeService {
                 || lower.contains("sessions are not supported")
                 || lower.contains("replica set")
                 || ex instanceof MongoClientException;
+    }
+
+    private static void copyDiscordBinding(PlayerData dest, PlayerData src) {
+        dest.discordId = src.discordId;
+        dest.discordUsername = src.discordUsername;
+        dest.discordLinkedAt = src.discordLinkedAt;
     }
 
     private void applyMergedState(PlayerData dest, PlayerData src) {

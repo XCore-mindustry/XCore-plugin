@@ -33,16 +33,14 @@ final class DiscordFlows {
             action("status", ctx -> ctx.render());
             action("link", ctx -> {
                 ctx.session().clearDraft(LinkingState.class);
-                ctx.openRoute(MenuRoute.of(ROUTE_LINKING).withParam("regenerate", "false"));
+                menu.linking(ctx.session().data.uuid, false);
             });
             action("unlink", ctx -> {
                 var local = ctx.session().locale();
-                if (!discordLinkService.unlink(ctx.session())) {
-                    local.send("commands-discord-unlink-not-linked", args());
-                } else {
-                    local.send("commands-discord-unlink-success", args());
-                }
-                ctx.render();
+                discordLinkService.requestUnlink(ctx.session(), success -> {
+                    local.send(success ? "commands-discord-unlink-success" : "commands-discord-unlink-not-linked", args());
+                    ctx.render();
+                });
             });
         }
 
@@ -91,6 +89,13 @@ final class DiscordFlows {
             this.discordLinkService = discordLinkService;
 
             action("open", ctx -> ctx.session().menuService.openUri(ctx.session(), menu.secretsConfig.externalLinks.discordUrl));
+            action("website", ctx -> {
+                var result = ctx.state().result;
+                if (result != null && result.success()) {
+                    String url = discordLinkService.websiteLinkUrl(result.code());
+                    if (!url.isBlank()) ctx.session().menuService.openUri(ctx.session(), url);
+                }
+            });
             action("copy", ctx -> {
                 var result = ctx.state().result;
                 if (result != null && result.success()) {
@@ -99,11 +104,11 @@ final class DiscordFlows {
             });
             action("refresh", ctx -> {
                 ctx.session().clearDraft(LinkingState.class);
-                ctx.openRoute(MenuRoute.of(ROUTE_LINKING).withParam("regenerate", "false"));
+                menu.linking(ctx.session().data.uuid, false);
             });
             action("regenerate", ctx -> {
                 ctx.session().clearDraft(LinkingState.class);
-                ctx.openRoute(MenuRoute.of(ROUTE_LINKING).withParam("regenerate", "true"));
+                menu.linking(ctx.session().data.uuid, true);
             });
             action("status", ctx -> {
                 ctx.close();
@@ -116,11 +121,7 @@ final class DiscordFlows {
             if (currentState != null && currentState.result != null && currentState.result.success()) {
                 return currentState;
             }
-            boolean regenerate = Boolean.parseBoolean(route.param("regenerate"));
-            var result = regenerate
-                    ? discordLinkService.createCode(session)
-                    : discordLinkService.getOrCreateActiveCode(session);
-            return new LinkingState(result);
+            return new LinkingState(DiscordLinkService.LinkCodeResult.error("loading"));
         }
 
         @Override
@@ -156,6 +157,10 @@ final class DiscordFlows {
                     )
                     .defaultNavigation(session, local);
 
+            String websiteUrl = discordLinkService.websiteLinkUrl(result.code());
+            if (websiteUrl != null && !websiteUrl.isBlank()) {
+                grid.row(MenuButton.of(local.t("discord-link-menu-website"), "website"));
+            }
             return MenuScreen.followUp(
                     local.t("discord-link-menu-title"),
                     local.t("discord-link-menu-content", args(
