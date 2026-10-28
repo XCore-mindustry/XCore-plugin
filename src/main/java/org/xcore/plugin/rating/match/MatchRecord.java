@@ -16,14 +16,15 @@ import java.util.TreeMap;
  * <p>A record read for a list of one player's matches holds that player's entry only;
  * {@code players} and {@code teamSizes} still describe the whole match.</p>
  *
- * <p>{@code players} and {@code teamSizes} count the participants the match counted for, so a
- * late joiner who changed nothing does not turn a 3 v 3 into a 3 v 4. A match that counted for
- * nobody (an unrated one) counts everyone who took part.</p>
+ * <p>{@code teamSizes} counts the participants the match counted for, so a late joiner who
+ * changed nothing does not turn a 3 v 3 into a 3 v 4. A match that counted for nobody (an
+ * unrated one) counts everyone who took part. {@code players} always counts everyone: places
+ * rank every participant, so "#19 of N" must too.</p>
  *
  * @param season     the season the match counts towards
  * @param skipReason why an unrated match changed nobody's rating, {@code null} for a rated one
  * @param algorithm  version of the calculator that produced the deltas
- * @param players    number of participants
+ * @param players    number of participants, counted or not
  * @param teamSizes  participants per team, empty in a mode without teams
  */
 public record MatchRecord(
@@ -56,18 +57,16 @@ public record MatchRecord(
                                  @Nullable String skipReason, MatchReport report) {
         boolean anyCounted = report.participants().stream().anyMatch(MatchParticipant::counted);
         Map<Integer, Integer> teams = new TreeMap<>();
-        int players = 0;
         for (MatchParticipant participant : report.participants()) {
             if (anyCounted && !participant.counted()) {
                 continue;
             }
-            players++;
             if (participant.team() != null) {
                 teams.merge(participant.team(), 1, Integer::sum);
             }
         }
         return new MatchRecord(ladder, season, matchId, report.startedAt(), report.endedAt(), skipReason,
-                report.finish(), report.map(), algorithm, players, teams, report.participants());
+                report.finish(), report.map(), algorithm, report.participants().size(), teams, report.participants());
     }
 
     /** The key the history stores the match under: a match ID is unique within its ladder only. */

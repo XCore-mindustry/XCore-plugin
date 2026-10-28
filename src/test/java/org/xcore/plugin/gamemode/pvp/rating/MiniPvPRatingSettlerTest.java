@@ -177,7 +177,7 @@ class MiniPvPRatingSettlerTest {
         assertThat(match.rated()).isTrue();
         // The latecomer changed nothing, so the line-up is the 2 v 2 that was rated.
         assertThat(match.participants()).hasSize(5);
-        assertThat(match.players()).isEqualTo(4);
+        assertThat(match.players()).isEqualTo(5);
         assertThat(match.teamSizes()).containsEntry(Team.sharded.id, 2).containsEntry(Team.crux.id, 2);
 
         MatchParticipant winner = match.participant("p1").orElseThrow();

@@ -144,7 +144,7 @@ abstract class MatchStoreContract {
     }
 
     @Test
-    @DisplayName("line-ups count the players the match counted for, or everyone when it counted for nobody")
+    @DisplayName("line-ups count the players the match counted for, or everyone when it counted for nobody; places count everyone")
     void lineup_countsCountedPlayers() {
         List<MatchParticipant> rated = List.of(
                 MatchParticipant.counted("a", "A", 1, 1, true, 1000, 10, "winner"),
@@ -152,7 +152,7 @@ abstract class MatchStoreContract {
                 MatchParticipant.uncounted("late", "Late", 2, 2, false, 1000, "late_join"));
         MatchRecord match = MatchRecord.of("duel", 1, "m1", "v1", null,
                 new MatchReport(T0.minusSeconds(60), T0, null, null, rated));
-        assertThat(match.players()).isEqualTo(2);
+        assertThat(match.players()).isEqualTo(3);
         assertThat(match.teamSizes()).containsExactlyInAnyOrderEntriesOf(Map.of(1, 1, 2, 1));
         assertThat(match.participants()).hasSize(3);
 
