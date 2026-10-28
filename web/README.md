@@ -32,7 +32,7 @@ PORT=3000 node .next/standalone/server.js
 
 Copy `.env.example` to `.env.local` and configure the two Mongo connections. Game credentials need **read only** access to the game database; website credentials need read/write and index creation only in `xcore_web` (sessions, one-time OAuth attempts, rate limits and confirmation intents). Public queries return explicit DTOs without UUIDs, IPs, credentials or Discord IDs. A Discord identity can have multiple game profiles; linking never merges statistics.
 
-Register `${WEB_ORIGIN}/api/auth/discord/callback` in the Discord Developer Portal and provide `DISCORD_CLIENT_ID` and `DISCORD_CLIENT_SECRET` through the runtime environment. Only `identify` is requested. The server uses Authorization Code + PKCE/state, consumes the browser-bound attempt once, and stores a hashed opaque session token. Discord access tokens are used for identity lookup and are not persisted. Logout revokes the stored session. The public origin must be HTTPS outside loopback development; the proxy must replace untrusted `X-Real-IP` headers before forwarding.
+Register `${WEB_ORIGIN}/api/auth/discord/callback` in the Discord Developer Portal and provide `DISCORD_CLIENT_ID` and `DISCORD_CLIENT_SECRET` through the runtime environment. Only `identify` is requested. The server uses Authorization Code + PKCE/state, consumes the browser-bound attempt once, and stores a hashed opaque session token. Discord access tokens are used for identity lookup and are not persisted. Logout revokes the stored session. The public origin must be HTTPS outside loopback development. Set optional `TRUSTED_PROXY_IP_HEADER` only when a trusted proxy overwrites or removes caller-supplied values for that header before forwarding (for example, `X-Real-IP`). Leaving it unconfigured, or a request missing that header, skips the optional sign-in IP limit without a shared anonymous bucket.
 
 Link/unlink additionally require `REDIS_URL`. Use an ACL-restricted web credential: read `xcore:discord-link:code:*`, append only to the allowed `xcore:rpc:req:{server}` streams, and read `xcore:rpc:resp:web` plus `xcore:evt:server:heartbeat`. `requested_by=web` is a routing label, not authentication. Set `XCORE_ACCOUNT_SERVERS` to the comma-separated **writable** fallback server names; read-only lobby servers should be absent. The code's issuing server executes link. Unlink chooses the profile's current server when allowed, then a configured writable fallback with a heartbeat in the last 90 seconds. If none is live, it reports unavailability before creating an intent. Confirmed intents keep their original executor for receipt lookup. Without a configured fallback, offline unlink is unavailable; no server name is guessed. The website never writes game link fields.
 
@@ -51,19 +51,36 @@ bunx tsc --noEmit
 bun run build
 ```
 
-Real Mongo/Redis checks use **disposable test databases only**, with names beginning `xcore_web_test_`:
+Real Mongo/Redis checks **require disposable Mongo databases** with names beginning `xcore_web_test_` **and a dedicated disposable Redis instance**. Setup deletes the canonical `xcore:rpc:req:qa-game`, `xcore:rpc:resp:web` and `xcore:evt:server:heartbeat` streams. The Mongo database-name guard does not protect Redis; never use a shared Redis instance.
+
+Start dedicated containers on unused loopback ports (27028 and 6388 here), without persistent volumes:
+
+```bash
+docker run --rm -d --name xcore-web-test-mongo -p 127.0.0.1:27028:27017 mongo:8
+docker run --rm -d --name xcore-web-test-redis -p 127.0.0.1:6388:6379 redis:8-alpine
+```
+
+Once both services accept connections, run the tests. Set all three Mongo URI variables explicitly to override any existing environment configuration:
 
 ```bash
 XCORE_WEB_INTEGRATION=1 \
-MONGO_URI=mongodb://127.0.0.1:27017 \
+MONGO_URI=mongodb://127.0.0.1:27028 \
+GAME_MONGO_URI=mongodb://127.0.0.1:27028 \
+WEB_MONGO_URI=mongodb://127.0.0.1:27028 \
 MONGO_DB_NAME=xcore_web_test_game \
 WEB_MONGO_DB_NAME=xcore_web_test_auth \
-REDIS_URL=redis://127.0.0.1:6379 \
+REDIS_URL=redis://127.0.0.1:6388 \
 WEB_ORIGIN=http://localhost:3000 XCORE_ACCOUNT_SERVERS=qa-game \
 bun test tests/integration.test.ts
 ```
 
 These tests seed their own `players`/games/rating fixtures and simulate the executor's canonical Redis response. They do not use production data or perform real Discord authorization.
+
+After testing, stop the disposable containers; `--rm` removes them and their data:
+
+```bash
+docker stop xcore-web-test-mongo xcore-web-test-redis
+```
 
 ## Docker
 

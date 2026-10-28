@@ -2,6 +2,16 @@ node_modules
 .next
 .git
 .env*
+**/.env*
+**/*.pem
+**/*.key
+**/*.p12
+**/*.pfx
+**/.ssh
+**/.aws
+**/.docker
+**/.npmrc
+**/.netrc
 .impeccable
 tests
 *.tsbuildinfo

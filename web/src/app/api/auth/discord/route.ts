@@ -20,11 +20,9 @@ import {
 export async function GET(request: NextRequest) {
   const lang = localeOf(request.nextUrl.searchParams.get("lang"));
   try {
-    await rateLimit(
-      "oauth-start",
-      request.headers.get("x-real-ip") ?? "anonymous",
-      100,
-    );
+    const ipHeader = process.env.TRUSTED_PROXY_IP_HEADER?.trim();
+    const ip = ipHeader ? request.headers.get(ipHeader)?.trim() : undefined;
+    if (ip) await rateLimit("oauth-start", ip, 100);
     const token = randomToken(),
       state = oauth.generateRandomState(),
       verifier = oauth.generateRandomCodeVerifier();

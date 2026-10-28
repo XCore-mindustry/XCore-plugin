@@ -19,6 +19,7 @@ import type {
 const MAX_PAGE_SIZE = 50;
 const DEFAULT_PAGE_SIZE = 25;
 const MAX_PAGE_NUMBER = 1_000;
+const PUBLIC_QUERY_TIMEOUT_MS = 2_000;
 
 export function escapeRegex(text: string): string {
   return text.replace(/[-\\/\\^$*+?.()|[\]{}]/g, "\\$&");
@@ -172,11 +173,11 @@ export async function searchPlayers(
     _id: 0,
   };
 
-  const total = await playersCol.countDocuments(filter);
+  const total = await playersCol.countDocuments(filter, { timeoutMS: PUBLIC_QUERY_TIMEOUT_MS });
   const totalPages = Math.ceil(total / clampedSize);
 
   const docs = await playersCol
-    .find(filter, { projection })
+    .find(filter, { projection, timeoutMS: PUBLIC_QUERY_TIMEOUT_MS })
     .sort({ total_play_time: -1, pid: 1 })
     .skip((clampedPage - 1) * clampedSize)
     .limit(clampedSize)
@@ -757,7 +758,7 @@ export async function listMatches(
     };
   }
 
-  // Select a bounded page from both stores, deduplicated by the shared match ID.
+  // Deduplicate the full history before pagination; time out rather than return partial results.
   const gameQuery: Record<string, unknown> = {};
   if (targetUuid) {
     gameQuery["player_stats.uuid"] = targetUuid;
@@ -795,7 +796,7 @@ export async function listMatches(
   );
   const [selected] = await gamesCol.aggregate<{
     items: { _id: string }[]; total: { value: number }[];
-  }>(pipeline, { allowDiskUse: true }).toArray();
+  }>(pipeline, { allowDiskUse: true, timeoutMS: PUBLIC_QUERY_TIMEOUT_MS }).toArray();
   const total = selected?.total[0]?.value ?? 0;
   const totalPages = Math.ceil(total / clampedSize);
   const matchIds = selected?.items.map(row => row._id) ?? [];
