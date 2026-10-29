@@ -191,14 +191,33 @@ int main() {
             rejected = true;
         }
         check(rejected, "oversized queue job accepted");
-        try {
-            writer.Flush();
-        } catch (const std::exception&) {
-        }
+        writer.Flush();
         TileLogger loaded(writer);
         loaded.Load(path);
         check(loaded.GetHistory(all, {}, -1, 0, 10).empty(), "unaccepted event was persisted");
         check(store.Status().find("FAILED") != std::string::npos, "overflow health hidden");
+        rejected = false;
+        try {
+            store.CheckWritable();
+        } catch (const std::exception&) {
+            rejected = true;
+        }
+        check(rejected, "flush cleared failed session health");
+    });
+    test("archive reads remain available after journal open failure", [&] {
+        JournalWriter writer;
+        auto path = directory / "recovery.history";
+        TileLogger store(writer);
+        store.Start(path, "recovery", "content");
+        writer.Flush();
+        auto failed = std::make_shared<JournalState>();
+        failed->path = directory;
+        writer.Enqueue(failed, DataVec{'x'}, true);
+        writer.Flush();
+        check(failed->write_failed, "journal open unexpectedly succeeded");
+        TileLogger loaded(writer);
+        loaded.Load(path);
+        check(loaded.ReadOnly() && loaded.Session() == "recovery", "healthy archive unavailable");
     });
     test("checksums reject complete corruption", [&] {
         JournalWriter writer;

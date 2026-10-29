@@ -68,6 +68,7 @@ public:
         ++state->accepted;
         changed_.notify_one();
     }
+    // Drain/sync only; session health remains available through JournalState::Check().
     // Background archive readers and shutdown only; never call from a game tick.
     void Flush() {
         auto promise = std::make_shared<std::promise<void>>();
@@ -115,6 +116,12 @@ private:
             current->durable = written;
             last_sync = std::chrono::steady_clock::now();
         };
+        auto close = [&] {
+            if (!file) return;
+            FILE* closing = file;
+            file = nullptr;
+            if (std::fclose(closing) != 0) throw std::runtime_error("Cannot close journal");
+        };
         for (;;) {
             Job job;
             bool have_job = false;
@@ -133,11 +140,7 @@ private:
             try {
                 if (have_job && job.barrier) {
                     sync();
-                    if (file) {
-                        std::fclose(file);
-                        file = nullptr;
-                    }
-                    if (current) current->Check();
+                    close();
                     job.barrier->set_value();
                     continue;
                 }
@@ -145,10 +148,7 @@ private:
                     job.state->queued -= job.bytes.size();
                     if (job.open) {
                         sync();
-                        if (file) {
-                            std::fclose(file);
-                            file = nullptr;
-                        }
+                        close();
                         current = job.state;
                         written = 0;
                         new_entry = true;
@@ -180,6 +180,7 @@ private:
         }
         try {
             sync();
+            close();
         } catch (const std::exception& e) {
             if (current) current->Fail(e.what(), true);
         }

@@ -45,6 +45,15 @@ class TileLoggerServiceTest {
         service.resetHistory("", true);
     }
 
+    private org.xcore.plugin.model.PlayerData enableAdminTools(MockPlayer player) {
+        var data = new org.xcore.plugin.model.PlayerData();
+        data.adminModVersion = "2.2";
+        var session = mock(org.xcore.plugin.session.Session.class);
+        when(session.getData()).thenReturn(data);
+        when(sessionService.get(player.uuid())).thenReturn(session);
+        return data;
+    }
+
     @Test
     @DisplayName("fill places blocks in specified Rect on world and sends success message to player")
     void fillPlacesBlocksInRectAndNotifiesPlayer(HeadlessWorld world) {
@@ -64,6 +73,23 @@ class TileLoggerServiceTest {
                 .anyMatch(msg
                         -> msg.contains("Filled") || msg.contains("tilelogger-fill-success")
                                 || msg.contains(Blocks.copperWall.name));
+    }
+
+    @Test
+    void multiblockFillLeavesPartialRemaindersEmpty(HeadlessWorld world) {
+        service.fill(null, Team.sharded, Blocks.copperWallLarge, new Rect(2, 2, 6, 6));
+        for (int x = 2; x <= 6; x++)
+            for (int y = 2; y <= 6; y++)
+                assertThat(world.tile(x, y).block())
+                        .isEqualTo(x < 6 && y < 6 ? Blocks.copperWallLarge : Blocks.air);
+        assertThat(TileLogger.getHistory(0, 0, -1, -1, "", -1, 0, 10)).hasSize(4);
+    }
+
+    @Test
+    void undersizedSelectionDoesNotPlaceAnOversizedBlock(HeadlessWorld world) {
+        service.fill(null, Team.sharded, Blocks.copperWallLarge, new Rect(2, 2, 2, 2));
+        assertThat(world.tile(2, 2).block()).isEqualTo(Blocks.air);
+        assertThat(TileLogger.getHistory(0, 0, -1, -1, "", -1, 0, 10)).isEmpty();
     }
 
     @Test
@@ -210,6 +236,7 @@ class TileLoggerServiceTest {
     @Test
     void historyPacketsCarryVersionAndHonorTheEncodedByteBudget(HeadlessWorld world) {
         var player = world.addPlayer("Viewer", Team.sharded);
+        enableAdminTools(player);
         var direct = new Async(mock(org.xcore.plugin.concurrent.StorageExecutor.class), Runnable::run);
         service = new TileLoggerService(
                 playerDataRepository, sessionService, findService, Bundle.INSTANCE, direct);
@@ -238,6 +265,75 @@ class TileLoggerServiceTest {
             assertThat(page.entries).isNotEmpty();
             assertThat(page.truncated).isTrue();
             assertThat(page.nextCursor).isNotBlank();
+        } finally {
+            service.unregisterPackets();
+        }
+    }
+
+    @Test
+    void historyHandshakeRejectsClientsWithoutTheExistingModCapability(HeadlessWorld world) {
+        var player = world.addPlayer("Viewer", Team.sharded);
+        service.registerPackets();
+        try {
+            mindustry.core.NetServer.serverPacketReliable(player.player(), "tilelogger_hello", "2");
+            assertThat(player.sentPackets(mindustry.gen.ClientPacketReliableCallPacket.class)).isEmpty();
+            enableAdminTools(player);
+            assertThat(service.useAdminTools(player.player())).isTrue();
+            var request = new HistoryRequest();
+            request.requestId = 1;
+            mindustry.core.NetServer.serverPacketReliable(
+                    player.player(), "tilelogger_history_request", HistoryWire.write(request));
+            assertThat(player.sentPackets(mindustry.gen.ClientPacketReliableCallPacket.class)).isEmpty();
+        } finally {
+            service.unregisterPackets();
+        }
+    }
+
+    @Test
+    void historyRequestRechecksCapabilityAfterHandshake(HeadlessWorld world) {
+        var player = world.addPlayer("Viewer", Team.sharded);
+        var data = enableAdminTools(player);
+        service.registerPackets();
+        try {
+            mindustry.core.NetServer.serverPacketReliable(player.player(), "tilelogger_hello", "2");
+            data.adminModVersion = null;
+            var request = new HistoryRequest();
+            request.requestId = 1;
+            mindustry.core.NetServer.serverPacketReliable(
+                    player.player(), "tilelogger_history_request", HistoryWire.write(request));
+            assertThat(player.sentPackets(mindustry.gen.ClientPacketReliableCallPacket.class))
+                    .extracting(p -> p.type).containsExactly("tilelogger_session");
+            verifyNoInteractions(async);
+        } finally {
+            service.unregisterPackets();
+        }
+    }
+
+    @Test
+    void historyPageRechecksCapabilityAfterAsyncIdentityLookup(HeadlessWorld world) {
+        var player = world.addPlayer("Viewer", Team.sharded);
+        var data = enableAdminTools(player);
+        var lookup = new java.util.concurrent.CompletableFuture<org.xcore.plugin.model.PlayerData>();
+        when(playerDataRepository.findByUuidAsync("missing")).thenReturn(lookup);
+        var direct = new Async(mock(org.xcore.plugin.concurrent.StorageExecutor.class), Runnable::run);
+        service = new TileLoggerService(
+                playerDataRepository, sessionService, findService, Bundle.INSTANCE, direct);
+        TileLogger.record(4, 4, "missing", 1, Blocks.router.id, 0, ConfigCodec.encode(null),
+                ActionKind.BUILD_COMPLETED);
+        service.registerPackets();
+        try {
+            mindustry.core.NetServer.serverPacketReliable(player.player(), "tilelogger_hello", "2");
+            var request = new HistoryRequest();
+            request.requestId = 1;
+            request.x = 4;
+            request.y = 4;
+            mindustry.core.NetServer.serverPacketReliable(
+                    player.player(), "tilelogger_history_request", HistoryWire.write(request));
+            verify(playerDataRepository).findByUuidAsync("missing");
+            data.adminModVersion = null;
+            lookup.complete(null);
+            assertThat(player.sentPackets(mindustry.gen.ClientPacketReliableCallPacket.class))
+                    .extracting(p -> p.type).containsExactly("tilelogger_session");
         } finally {
             service.unregisterPackets();
         }

@@ -690,8 +690,10 @@ public class TileLoggerService {
         Team destination = team == null ? caller.team() : team;
         var tiles = new ArrayList<Tile>();
         var covered = new HashSet<Integer>();
-        for (int x = rect.x1 - block.sizeOffset; x <= rect.x2; x += block.size)
-            for (int y = rect.y1 - block.sizeOffset; y <= rect.y2; y += block.size) {
+        for (int x = rect.x1 - block.sizeOffset; x + block.sizeOffset + block.size - 1 <= rect.x2;
+                x += block.size)
+            for (int y = rect.y1 - block.sizeOffset; y + block.sizeOffset + block.size - 1 <= rect.y2;
+                    y += block.size) {
                 Tile tile = Vars.world.tile(x, y);
                 if (tile == null)
                     throw new XCoreCommandException("tilelogger-error-coordinates");
@@ -751,13 +753,14 @@ public class TileLoggerService {
             return;
         packetServer = Vars.netServer;
         helloHandler = (player, version) -> {
-            if (!stopped && version.equals("2")) {
+            if (!stopped && "2".equals(version) && useAdminTools(player)) {
                 v2Clients.add(player.uuid());
                 sendSession(player);
             }
         };
         requestHandler = (player, text) -> {
-            if (stopped || !v2Clients.contains(player.uuid()) || text.length() > 1024)
+            if (stopped || !v2Clients.contains(player.uuid()) || !useAdminTools(player)
+                    || text == null || text.length() > 1024)
                 return;
             long now = System.nanoTime();
             if (now - requestTimes.getOrDefault(player.uuid(), 0L) < 100_000_000L)
@@ -811,7 +814,7 @@ public class TileLoggerService {
         packetServer = null;
     }
     private void sendSession(Player player) {
-        if (!v2Clients.contains(player.uuid()) || player.con == null)
+        if (!v2Clients.contains(player.uuid()) || !useAdminTools(player) || player.con == null)
             return;
         var page = new HistoryPage();
         page.sessionId = TileLogger.sessionId();
@@ -832,7 +835,7 @@ public class TileLoggerService {
         sendPage(player, query);
     }
     private void sendPage(Player player, PageQuery query) {
-        if (query.busy || query.generation != generation)
+        if (query.busy || query.generation != generation || !useAdminTools(player))
             return;
         query.busy = true;
         TileState[] states;
@@ -846,7 +849,7 @@ public class TileLoggerService {
             throw failure;
         }
         preloadAndRender(player, states, () -> {
-            if (requests.get(player.uuid()) != query)
+            if (requests.get(player.uuid()) != query || !useAdminTools(player))
                 return;
             query.busy = false;
             var page = new HistoryPage();
