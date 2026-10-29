@@ -53,20 +53,36 @@ async function Player({ lang, pid }: { lang: Locale; pid: number }) {
         </Link>
       </CommunityWindow>
     );
-  const overview = profile.overview.overall;
-  const facts = [
-    [t.games, overview.gamesPlayed.toLocaleString(lang)],
-    [t.wins, overview.gamesWon.toLocaleString(lang)],
+  const { overall: overview, pvp, survival, hexed } = profile.overview;
+  const count = (n: number) => n.toLocaleString(lang);
+  // Wins sit next to the games they came from, so the rate can be checked at a glance.
+  const facts: [string, string, string?][] = [
+    [t.games, count(overview.gamesPlayed)],
     [
-      t.winRate,
-      overview.gamesPlayed
-        ? `${Math.round((overview.gamesWon * 100) / overview.gamesPlayed)}%`
-        : "—",
+      t.wins,
+      count(overview.gamesWon),
+      overview.gamesPlayed ? `${t.ofPlayers} ${count(overview.gamesPlayed)}` : undefined,
     ],
-    [t.built, overview.blocksBuilt.toLocaleString(lang)],
-    [t.destroyed, overview.blocksDestroyed.toLocaleString(lang)],
-    [t.units, overview.unitsDestroyed.toLocaleString(lang)],
+    [t.winRate, percent(overview.gamesWon, overview.gamesPlayed)],
+    [t.built, count(overview.blocksBuilt)],
+    [t.destroyed, count(overview.blocksDestroyed)],
+    [t.units, count(overview.unitsDestroyed)],
   ];
+  // The all-modes rate mixes PvP with survival and Hexed, where a win is much rarer; per mode it reads plainly.
+  // Event games have no bucket of their own: they are what the three modes leave of the total.
+  const otherGames = Math.max(0, overview.gamesPlayed - pvp.gamesPlayed - survival.gamesPlayed - hexed.gamesPlayed);
+  const otherWins = Math.max(0, overview.gamesWon - pvp.gamesWon - survival.gamesWon - hexed.gamesWon);
+  const modes = [
+    { label: t.modePvp, games: pvp.gamesPlayed, wins: pvp.gamesWon, win: t.winPvp },
+    {
+      label: t.modeSurvival,
+      games: survival.gamesPlayed,
+      wins: survival.gamesWon,
+      win: survival.bestWave ? `${t.winSurvival} · ${t.bestWave} ${count(survival.bestWave)}` : t.winSurvival,
+    },
+    { label: t.modeHexed, games: hexed.gamesPlayed, wins: hexed.gamesWon, win: t.winHexed },
+    { label: t.modeOther, games: otherGames, wins: otherWins, win: t.winOther },
+  ].filter((mode) => mode.games > 0);
   const since =
     profile.createdAt && !Number.isNaN(Date.parse(profile.createdAt))
       ? new Intl.DateTimeFormat(lang, { dateStyle: "medium", timeZone: "UTC" }).format(
@@ -115,19 +131,46 @@ async function Player({ lang, pid }: { lang: Locale; pid: number }) {
           <section className="card" style={accent("gray")}>
             <Band as="h2" title={t.overall} />
             <dl className="cx-facts cx-facts-wide">
-              {facts.map(([label, value]) => (
+              {facts.map(([label, value, note]) => (
                 <div key={label}>
                   <dt>{label}</dt>
-                  <dd>{value}</dd>
+                  <dd>
+                    {value}
+                    {note ? <span className="muted"> {note}</span> : null}
+                  </dd>
                 </div>
               ))}
             </dl>
+            {overview.gamesPlayed ? <p className="cx-facts-note">{t.overallNote}</p> : null}
           </section>
+          {modes.length ? (
+            <section className="card" style={accent("gray")}>
+              <Band as="h2" title={t.byMode} />
+              <dl className="cx-facts cx-facts-modes">
+                {modes.map((mode) => (
+                  <div key={mode.label}>
+                    <dt>{mode.label}</dt>
+                    <dd>
+                      {percent(mode.wins, mode.games)}
+                      <span className="muted">
+                        {" "}
+                        {count(mode.wins)} {t.ofPlayers} {count(mode.games)}
+                      </span>
+                    </dd>
+                    <dd className="cx-fact-note">{mode.win}</dd>
+                  </div>
+                ))}
+              </dl>
+              <p className="cx-facts-note">{t.byModeNote}</p>
+            </section>
+          ) : null}
         </div>
         <div className="cx-col">
           {profile.standings.length ? (
             profile.standings.map((standing) => {
               const mode = ladderOf(standing.ladder, null, t);
+              // A ladder that counts top-3 finishes is a free-for-all, where a win is first place out of everyone.
+              const placement = standing.top3 !== null;
               return (
                 <section
                   key={`${standing.ladder}:${standing.seasonNumber}`}
@@ -153,7 +196,7 @@ async function Player({ lang, pid }: { lang: Locale; pid: number }) {
                       <span className="cx-rating-unit">Elo</span>
                     </p>
                     <LeagueMark rating={standing.rating} lang={lang} named />
-                    <dl className="cx-facts">
+                    <dl className={placement ? "cx-facts cx-facts-five" : "cx-facts"}>
                       <div>
                         <dt>{t.rank}</dt>
                         <dd>
@@ -171,9 +214,21 @@ async function Player({ lang, pid }: { lang: Locale; pid: number }) {
                         <dd>{standing.matches}</dd>
                       </div>
                       <div>
-                        <dt>{t.wins}</dt>
-                        <dd>{standing.wins}</dd>
+                        <dt>{placement ? t.firsts : t.wins}</dt>
+                        <dd>
+                          {standing.wins}
+                          <span className="muted"> {percent(standing.wins, standing.matches)}</span>
+                        </dd>
                       </div>
+                      {standing.top3 !== null ? (
+                        <div>
+                          <dt>{t.top3}</dt>
+                          <dd>
+                            {standing.top3}
+                            <span className="muted"> {percent(standing.top3, standing.matches)}</span>
+                          </dd>
+                        </div>
+                      ) : null}
                       <div>
                         <dt>{t.peak}</dt>
                         <dd>{standing.peakRating.toLocaleString(lang)}</dd>
@@ -237,6 +292,10 @@ async function Player({ lang, pid }: { lang: Locale; pid: number }) {
       </div>
     </CommunityWindow>
   );
+}
+
+function percent(part: number, whole: number): string {
+  return whole ? `${Math.round((part * 100) / whole)}%` : "—";
 }
 
 export default async function Page({

@@ -64,6 +64,8 @@ export type LadderStandingDTO = {
   peakRating: number;
   matches: number;
   wins: number;
+  /** Top-3 finishes on a free-for-all ladder (HexedCore); null on a ladder that does not count them. */
+  top3: number | null;
   rank: number;
   participants: number;
 };
