@@ -18,7 +18,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.IntFunction;
-import java.util.function.IntSupplier;
+import java.util.function.LongSupplier;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -38,26 +38,27 @@ class XcoreBlockHistoryProviderTest {
         var rotated = state(35, 1, 8, 2, false);
         rotated.rotation = 3;
         rotated.valid = false; // a rollback invalidates state, not the historical action
-        var summary = fold(new TileState[]{build, destroy, rotated}, 60, 50, NAMES);
+        var summary = fold(new TileState[] {build, destroy, rotated}, 60, 50, NAMES);
 
         assertThat(summary.windowSeconds()).isEqualTo(60);
         assertThat(summary.built()).isEqualTo(2);
         assertThat(summary.destroyed()).isEqualTo(1);
         assertThat(summary.configured()).isZero();
         assertThat(summary.truncated()).isFalse();
-        assertThat(summary.topBlocks()).containsExactly(
-                new BlockHistorySummary.Entry("block-1", 1, 1),
-                new BlockHistorySummary.Entry("block-2", 1, 0));
+        assertThat(summary.topBlocks())
+                .containsExactly(new BlockHistorySummary.Entry("block-1", 1, 1),
+                        new BlockHistorySummary.Entry("block-2", 1, 0));
         assertThat(summary.area()).isEqualTo(new BlockHistorySummary.Area(1, 1, 6, 8));
         assertThat(summary.lastActionSecondsAgo()).isEqualTo(10);
-        assertThatThrownBy(() -> summary.topBlocks().clear()).isInstanceOf(UnsupportedOperationException.class);
+        assertThatThrownBy(() -> summary.topBlocks().clear())
+                .isInstanceOf(UnsupportedOperationException.class);
     }
 
     @ParameterizedTest
-    @CsvSource({"32767,32760,7", "40000,39990,10", "65535,65530,5", "65535,65535,0",
-            "0,0,0", "5,0,5", "0,65535,1", "5,65530,11", "65536,65535,1"})
+    @CsvSource({"32767,32760,7", "40000,39990,10", "65535,65530,5", "65535,65535,0", "0,0,0", "5,0,5",
+            "0,65535,1", "5,65530,11", "65536,65535,1"})
     void usesUnsignedNativeSecondsAcrossTimerRollover(int now, int timestamp, int age) {
-        var provider = provider(new TileState[]{state(timestamp, 1, 1, 1, false)}, () -> (short) now, NAMES);
+        var provider = provider(new TileState[] {state(timestamp, 1, 1, 1, false)}, () -> (short) now, NAMES);
         var summary = provider.summarize("player", 600).orElseThrow();
         assertThat(summary.built()).isEqualTo(1);
         assertThat(summary.lastActionSecondsAgo()).isEqualTo(age);
@@ -65,31 +66,30 @@ class XcoreBlockHistoryProviderTest {
 
     @Test
     void includesWindowBoundaryButRejectsStaleAndFutureTimestamps() {
-        var summary = fold(new TileState[]{
-                state(39900, 1, 1, 1, false),
-                state(39899, 20, 20, 2, true),
-                state(40001, 30, 30, 3, false)}, 100, 40000, NAMES);
+        var summary = fold(new TileState[] {state(39900, 1, 1, 1, false), state(39899, 20, 20, 2, true),
+                                   state(40001, 30, 30, 3, false)},
+                100, 40000, NAMES);
         assertThat(summary.built()).isEqualTo(1);
         assertThat(summary.destroyed()).isZero();
         assertThat(summary.lastActionSecondsAgo()).isEqualTo(100);
         assertThat(summary.area()).isEqualTo(new BlockHistorySummary.Area(1, 1, 1, 1));
         assertThat(XcoreBlockHistoryProvider.fold(
-                new TileState[]{state(39900, 1, 1, 1, false)}, 99, 40000, NAMES)).isEmpty();
+                           new TileState[] {state(39900, 1, 1, 1, false)}, 99, 40000, NAMES))
+                .isEmpty();
     }
 
     @Test
     void foldsReturnedRecordsOnBothSidesOfRolloverAndUsesTheYoungestAction() {
-        var summary = fold(new TileState[]{
-                state(65535, 1, 2, 1, false),
-                state(0, 3, 4, 1, true),
-                state(4, 5, 6, 2, false),
-                state(65530, 7, 8, 2, true), // 11 seconds old, outside the window
-                state(6, 9, 10, 3, false)}, 10, 5, NAMES); // future, modulo age 65535
+        var summary = fold(new TileState[] {state(65535, 1, 2, 1, false), state(0, 3, 4, 1, true),
+                                   state(4, 5, 6, 2, false),
+                                   state(65530, 7, 8, 2, true), // 11 seconds old, outside the window
+                                   state(6, 9, 10, 3, false)},
+                10, 5, NAMES); // future, modulo age 65535
         assertThat(summary.built()).isEqualTo(2);
         assertThat(summary.destroyed()).isEqualTo(1);
-        assertThat(summary.topBlocks()).containsExactly(
-                new BlockHistorySummary.Entry("block-1", 1, 1),
-                new BlockHistorySummary.Entry("block-2", 1, 0));
+        assertThat(summary.topBlocks())
+                .containsExactly(new BlockHistorySummary.Entry("block-1", 1, 1),
+                        new BlockHistorySummary.Entry("block-2", 1, 0));
         assertThat(summary.area()).isEqualTo(new BlockHistorySummary.Area(1, 2, 5, 6));
         assertThat(summary.lastActionSecondsAgo()).isEqualTo(1);
     }
@@ -112,7 +112,7 @@ class XcoreBlockHistoryProviderTest {
 
     @Test
     void readsUnsignedNativeCoordinates() {
-        var summary = fold(new TileState[]{state(10, 40000, 65535, 1, true)}, 100, 20, NAMES);
+        var summary = fold(new TileState[] {state(10, 40000, 65535, 1, true)}, 100, 20, NAMES);
         assertThat(summary.area()).isEqualTo(new BlockHistorySummary.Area(40000, 65535, 40000, 65535));
     }
 
@@ -122,13 +122,15 @@ class XcoreBlockHistoryProviderTest {
         for (int id = 1; id <= 10; id++) states.add(state(10, id, id, id, false));
         states.add(state(11, 10, 10, 10, true));
         var names = (IntFunction<String>) id -> "block-%02d".formatted(id);
-        var first = fold(states.toArray(TileState[]::new), 100, 20, names);
+        var first = fold(states.toArray(TileState[] ::new), 100, 20, names);
         Collections.reverse(states);
-        var reversed = fold(states.toArray(TileState[]::new), 100, 20, names);
+        var reversed = fold(states.toArray(TileState[] ::new), 100, 20, names);
 
         assertThat(reversed).isEqualTo(first);
-        assertThat(first.topBlocks()).extracting(BlockHistorySummary.Entry::block)
-                .containsExactly("block-10", "block-01", "block-02", "block-03", "block-04", "block-05", "block-06", "block-07");
+        assertThat(first.topBlocks())
+                .extracting(BlockHistorySummary.Entry::block)
+                .containsExactly("block-10", "block-01", "block-02", "block-03", "block-04", "block-05",
+                        "block-06", "block-07");
         assertThat(first.topBlocks().getFirst()).isEqualTo(new BlockHistorySummary.Entry("block-10", 1, 1));
         assertThat(first.built()).isEqualTo(10);
         assertThat(first.destroyed()).isEqualTo(1);
@@ -136,14 +138,14 @@ class XcoreBlockHistoryProviderTest {
 
     @Test
     void mergesIdsResolvingToTheSameBlockName() {
-        var summary = fold(new TileState[]{state(10, 1, 1, 1, false), state(10, 1, 1, 2, true)},
-                100, 20, ignored -> "router");
+        var summary = fold(new TileState[] {state(10, 1, 1, 1, false), state(10, 1, 1, 2, true)}, 100, 20,
+                ignored -> "router");
         assertThat(summary.topBlocks()).containsExactly(new BlockHistorySummary.Entry("router", 1, 1));
     }
 
     @Test
     void unknownIdsAndInvalidNamesKeepTotalsAndAreaWithoutInventingAirEntries() {
-        var ids = new int[]{0, -1, 1024, 32767, 1, 2, 3, 4, 5, 1023};
+        var ids = new int[] {0, -1, 1024, 32767, 1, 2, 3, 4, 5, 1023};
         var states = new TileState[ids.length];
         var resolved = new ArrayList<Integer>();
         for (int i = 0; i < ids.length; i++) states[i] = state(10 + i, i, i, ids[i], true);
@@ -162,13 +164,15 @@ class XcoreBlockHistoryProviderTest {
         assertThat(summary.area()).isEqualTo(new BlockHistorySummary.Area(0, 0, 9, 9));
         assertThat(summary.lastActionSecondsAgo()).isEqualTo(1);
         assertThat(resolved).containsExactly(1, 2, 3, 4, 5, 1023);
-        assertThat(summary.topBlocks()).containsExactly(new BlockHistorySummary.Entry("router", 0, 2),
-                new BlockHistorySummary.Entry("x".repeat(64), 0, 1));
+        assertThat(summary.topBlocks())
+                .containsExactly(new BlockHistorySummary.Entry("router", 0, 2),
+                        new BlockHistorySummary.Entry("x".repeat(64), 0, 1));
     }
 
     @Test
     void entirelyUnidentifiedActionsStillProvideCorrectTotals() {
-        var summary = fold(new TileState[]{state(10, 1, 1, 0, true), state(12, 2, 2, -1, false)}, 100, 20, NAMES);
+        var summary =
+                fold(new TileState[] {state(10, 1, 1, 0, true), state(12, 2, 2, -1, false)}, 100, 20, NAMES);
         assertThat(summary.built()).isEqualTo(1);
         assertThat(summary.destroyed()).isEqualTo(1);
         assertThat(summary.topBlocks()).isEmpty();
@@ -176,11 +180,13 @@ class XcoreBlockHistoryProviderTest {
 
     @Test
     void emptyNullOrNullOnlyHistoryIsAbsent() {
-        assertThat(provider(null, () -> { throw new AssertionError("Clock should not be read"); }, NAMES)
-                .summarize("player", 600)).isEmpty();
-        assertThat(provider(new TileState[0], () -> { throw new AssertionError("Clock should not be read"); }, NAMES)
-                .summarize("player", 600)).isEmpty();
-        assertThat(XcoreBlockHistoryProvider.fold(new TileState[]{null}, 600, 20, NAMES)).isEmpty();
+        assertThat(provider(null, () -> {
+            throw new AssertionError("Clock should not be read");
+        }, NAMES).summarize("player", 600)).isEmpty();
+        assertThat(provider(new TileState[0], () -> {
+            throw new AssertionError("Clock should not be read");
+        }, NAMES).summarize("player", 600)).isEmpty();
+        assertThat(XcoreBlockHistoryProvider.fold(new TileState[] {null}, 600, 20, NAMES)).isEmpty();
         assertThat(XcoreBlockHistoryProvider.fold(null, 600, 20, NAMES)).isEmpty();
     }
 
@@ -209,7 +215,7 @@ class XcoreBlockHistoryProviderTest {
             assertThat(teams).isEqualTo(-1);
             assertThat(time).isEqualTo(-600);
             assertThat(size).isEqualTo(4096);
-            return new TileState[]{state(10, 1, 1, 1, false)};
+            return new TileState[] {state(10, 1, 1, 1, false)};
         }, () -> 20, NAMES);
         assertThat(provider.summarize("target-uuid", 600)).isPresent();
         assertThat(calls).hasValue(1);
@@ -234,15 +240,16 @@ class XcoreBlockHistoryProviderTest {
     }
 
     static Stream<Throwable> nativeFailures() {
-        return Stream.of(new UnsatisfiedLinkError("native unavailable"), new NoClassDefFoundError("native initialization"),
-                new IllegalStateException("read failed"));
+        return Stream.of(new UnsatisfiedLinkError("native unavailable"),
+                new NoClassDefFoundError("native initialization"), new IllegalStateException("read failed"));
     }
 
     @ParameterizedTest
     @MethodSource("nativeFailures")
     void readFailureIsAbsentWithoutLoadingRealNativeCode(Throwable failure) {
         var provider = new XcoreBlockHistoryProvider(registry, (x1, y1, x2, y2, uuid, teams, time, size) -> {
-            if (failure instanceof LinkageError error) throw error;
+            if (failure instanceof LinkageError error)
+                throw error;
             throw (RuntimeException) failure;
         }, () -> 20, NAMES);
         assertThat(provider.summarize("player", 600)).isEmpty();
@@ -250,15 +257,19 @@ class XcoreBlockHistoryProviderTest {
 
     @Test
     void clockAndContentFailuresAreAlsoAbsent() {
-        var states = new TileState[]{state(10, 1, 1, 1, false)};
-        assertThat(provider(states, () -> { throw new UnsatisfiedLinkError("duration unavailable"); }, NAMES)
-                .summarize("player", 600)).isEmpty();
-        assertThat(provider(states, () -> { throw new IllegalStateException("duration failed"); }, NAMES)
-                .summarize("player", 600)).isEmpty();
-        assertThat(provider(states, () -> 20, id -> { throw new IllegalStateException("content unavailable"); })
-                .summarize("player", 600)).isEmpty();
-        assertThat(provider(states, () -> 20, id -> { throw new NoClassDefFoundError("content unavailable"); })
-                .summarize("player", 600)).isEmpty();
+        var states = new TileState[] {state(10, 1, 1, 1, false)};
+        assertThat(provider(states, () -> {
+            throw new UnsatisfiedLinkError("duration unavailable");
+        }, NAMES).summarize("player", 600)).isEmpty();
+        assertThat(provider(states, () -> {
+            throw new IllegalStateException("duration failed");
+        }, NAMES).summarize("player", 600)).isEmpty();
+        assertThat(provider(states, () -> 20, id -> {
+            throw new IllegalStateException("content unavailable");
+        }).summarize("player", 600)).isEmpty();
+        assertThat(provider(states, () -> 20, id -> {
+            throw new NoClassDefFoundError("content unavailable");
+        }).summarize("player", 600)).isEmpty();
     }
 
     @Test
@@ -266,7 +277,7 @@ class XcoreBlockHistoryProviderTest {
         var previous = Vars.content;
         Vars.content = null;
         try {
-            for (int id : new int[]{-1, 0, 1, 1023, 1024, 32767}) {
+            for (int id : new int[] {-1, 0, 1, 1023, 1024, 32767}) {
                 assertThat(XcoreBlockHistoryProvider.blockName(id)).isNull();
             }
         } finally {
@@ -275,7 +286,8 @@ class XcoreBlockHistoryProviderTest {
     }
 
     @Test
-    void productionLookupUsesRegisteredIdsAndNeverTheSaveMapperAirFallback() throws ReflectiveOperationException {
+    void productionLookupUsesRegisteredIdsAndNeverTheSaveMapperAirFallback()
+            throws ReflectiveOperationException {
         var previous = Vars.content;
         var content = mock(ContentLoader.class);
         var router = mock(Block.class);
@@ -290,7 +302,7 @@ class XcoreBlockHistoryProviderTest {
         Vars.content = content;
         try {
             assertThat(XcoreBlockHistoryProvider.blockName(1)).isEqualTo("router");
-            for (int id : new int[]{-1, 0, 2, 3, 4, 1023, 1024, 32767}) {
+            for (int id : new int[] {-1, 0, 2, 3, 4, 1023, 1024, 32767}) {
                 assertThat(XcoreBlockHistoryProvider.blockName(id)).isNull();
             }
             verify(content, never()).block(anyInt());
@@ -301,11 +313,11 @@ class XcoreBlockHistoryProviderTest {
 
     @Test
     void startIsIdempotentAndStopCannotRemoveANewerProvider() {
-        var provider = provider(new TileState[]{state(10, 1, 1, 1, false)}, () -> 20, NAMES);
+        var provider = provider(new TileState[] {state(10, 1, 1, 1, false)}, () -> 20, NAMES);
         provider.start();
         assertThat(registry.summarize("player", 600)).isPresent();
-        var successor = new BlockHistorySummary(600, 42, 0, 0, false, List.of(),
-                new BlockHistorySummary.Area(1, 1, 1, 1), 0);
+        var successor = new BlockHistorySummary(
+                600, 42, 0, 0, false, List.of(), new BlockHistorySummary.Area(1, 1, 1, 1), 0);
         registry.register((uuid, window) -> java.util.Optional.of(successor));
         provider.start(); // must not replace the successor
         provider.stop();
@@ -317,17 +329,46 @@ class XcoreBlockHistoryProviderTest {
 
     @Test
     void stoppingTheCurrentProviderUnregistersIt() {
-        var provider = provider(new TileState[]{state(10, 1, 1, 1, false)}, () -> 20, NAMES);
+        var provider = provider(new TileState[] {state(10, 1, 1, 1, false)}, () -> 20, NAMES);
         provider.start();
         provider.stop();
         assertThat(registry.summarize("player", 600)).isEmpty();
     }
 
-    private XcoreBlockHistoryProvider provider(TileState[] states, IntSupplier clock, IntFunction<String> names) {
-        return new XcoreBlockHistoryProvider(registry, (x1, y1, x2, y2, uuid, teams, time, size) -> states, clock, names);
+    @Test
+    void v2CountsEventsRatherThanSnapshotsAcrossLongSessions() {
+        var build = state(70000, 1, 1, 1, false);
+        build.time = 70000;
+        build.action_kind = tilelogger.ActionKind.BUILD_COMPLETED.id;
+        var baseline = state(0, 1, 1, 1, false);
+        baseline.action_kind = tilelogger.ActionKind.BASELINE.id;
+        var configure = state(70001, 1, 1, 1, false);
+        configure.time = 70001;
+        configure.action_kind = tilelogger.ActionKind.CONFIGURE.id;
+        var rotate = state(70002, 1, 1, 1, false);
+        rotate.time = 70002;
+        rotate.action_kind = tilelogger.ActionKind.ROTATE.id;
+        var started = state(70003, 1, 1, 1, false);
+        started.time = 70003;
+        started.action_kind = tilelogger.ActionKind.DESTROY_STARTED.id;
+        var result = XcoreBlockHistoryProvider
+                             .fold(new TileState[] {baseline, build, configure, rotate, started}, 600, 70010,
+                                     NAMES)
+                             .orElseThrow();
+        assertThat(result.built()).isEqualTo(1);
+        assertThat(result.configured()).isEqualTo(1);
+        assertThat(result.destroyed()).isZero();
+        assertThat(result.lastActionSecondsAgo()).isEqualTo(8);
     }
 
-    private static BlockHistorySummary fold(TileState[] states, int window, int now, IntFunction<String> names) {
+    private XcoreBlockHistoryProvider provider(
+            TileState[] states, LongSupplier clock, IntFunction<String> names) {
+        return new XcoreBlockHistoryProvider(
+                registry, (x1, y1, x2, y2, uuid, teams, time, size) -> states, clock, names);
+    }
+
+    private static BlockHistorySummary fold(
+            TileState[] states, int window, int now, IntFunction<String> names) {
         return XcoreBlockHistoryProvider.fold(states, window, now, names).orElseThrow();
     }
 

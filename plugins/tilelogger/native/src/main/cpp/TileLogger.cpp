@@ -1,152 +1,311 @@
-#include <cassert>
-#include <cstring>
-#include <iostream>
-
+#include <atomic>
+#include <memory>
+#include <mutex>
 #include "tilelogger_TileLogger.h"
 #include "TileLogger.h"
 
-static TileLogger g_map_history;
+static JournalWriter writer;
+static auto active = std::make_unique<TileLogger>(writer);
+static std::mutex prepared_mutex;
+static std::unordered_map<jlong, std::unique_ptr<TileLogger>> prepared;
+static std::atomic<jlong> next_handle{};
 
-void HandleException(const std::exception& e) {
-    std::cerr << "Native exception: " << e.what() << std::endl;
-    g_map_history = {};
-}
+class UtfChars {
+    JNIEnv* env_;
+    jstring value_;
+    const char* chars_;
 
-JNIEXPORT jlong JNICALL Java_tilelogger_TileLogger_reset (JNIEnv* env, jclass, jstring path, jboolean write) {
-    try {
-        return g_map_history.Reset(env->GetStringUTFChars(path, NULL), write);
+public:
+    UtfChars(JNIEnv* env, jstring value) : env_(env), value_(value), chars_(nullptr) {
+        if (!value) throw std::invalid_argument("Null string");
+        chars_ = env_->GetStringUTFChars(value_, nullptr);
+        if (!chars_) throw std::runtime_error("Cannot acquire UTF string");
     }
-    catch (const std::exception& e) {
-        HandleException(e);
-        return {};
+    ~UtfChars() {
+        if (chars_) env_->ReleaseStringUTFChars(value_, chars_);
     }
-}
+    std::string string() const { return chars_; }
+    DataVec bytes() const {
+        auto s = string();
+        return DataVec(s.begin(), s.end());
+    }
+};
 
-JNIEXPORT jshort JNICALL Java_tilelogger_TileLogger_duration (JNIEnv*, jclass) {
-    try {
-        return g_map_history.Duration();
-    }
-    catch (const std::exception& e) {
-        HandleException(e);
-        return {};
-    }
-}
-
-DataVec jstringToDataVec(JNIEnv* env, jstring jstr) {
-    try {
-        const char* buffer = env->GetStringUTFChars(jstr, NULL);
-        return DataVec(buffer, buffer + strlen(buffer));
-    }
-    catch (const std::exception& e) {
-        HandleException(e);
-        return {};
-    }
-}
-
-JNIEXPORT void JNICALL Java_tilelogger_TileLogger_onAction (JNIEnv* env, jclass,
-    jshort x, jshort y, jstring juuid, jshort team, jshort block, jshort rotation, jshort config_type, jint config) {
-
-    try {
-        g_map_history.Record({x, y}, jstringToDataVec(env, juuid), team, block, rotation, config_type, config);
-    }
-    catch (const std::exception& e) {
-        HandleException(e);
+static void fail(JNIEnv* env, const std::exception& failure) {
+    if (env->ExceptionCheck()) return;
+    const char* type = dynamic_cast<const std::invalid_argument*>(&failure)
+                           ? "java/lang/IllegalArgumentException"
+                           : "java/lang/IllegalStateException";
+    jclass cls = env->FindClass(type);
+    if (cls) {
+        env->ThrowNew(cls, failure.what());
+        env->DeleteLocalRef(cls);
     }
 }
-
-JNIEXPORT void JNICALL Java_tilelogger_TileLogger_onAction2 (JNIEnv* env, jclass, 
-    jshort x, jshort y, jstring juuid, jshort team, jshort block, jshort rotation, jshort config_type, jbyteArray jconfig) {
-        
-    try {
-        uint8_t* jconfig_ptr = std::bit_cast<uint8_t*>(env->GetByteArrayElements(jconfig, NULL));
-        jsize jconfig_len = env->GetArrayLength(jconfig);
-        g_map_history.Record({x, y}, jstringToDataVec(env, juuid), team, block, rotation, config_type, DataVec(jconfig_ptr, jconfig_ptr + jconfig_len));
+static Pos position(jint x, jint y) {
+    if (x < 0 || x > 65535 || y < 0 || y > 65535) throw std::invalid_argument("Invalid tile coordinates");
+    return Pos(x, y);
+}
+static Rect rectangle(jint x1, jint y1, jint x2, jint y2) {
+    if (x2 == -1) x2 = 65535;
+    if (y2 == -1) y2 = 65535;
+    auto p1 = position(x1, y1), p2 = position(x2, y2);
+    if (p1.x > p2.x || p1.y > p2.y) throw std::invalid_argument("Invalid rectangle");
+    return Rect(p1.x, p1.y, p2.x, p2.y);
+}
+static std::filesystem::path archivePath(const std::string& input) {
+    if (input.empty()) return {};
+    std::filesystem::path path(input);
+    if (path.is_relative()) {
+        path = path.lexically_normal();
+        if (*path.begin() == "..") throw std::invalid_argument("Archive path escapes tilelogs");
+        path = std::filesystem::path("config/tilelogs") / path;
     }
-    catch (const std::exception& e) {
-        HandleException(e);
-    }
+    return path.replace_extension("history");
 }
 
-jobjectArray MarhalTileStateArray(JNIEnv* env, const std::vector<TileState> vec) {
-    jclass state_class = env->FindClass("tilelogger/TileState"); assert(state_class != nullptr);
-    jfieldID x_field = env->GetFieldID(state_class, "x", "S"); assert(x_field != nullptr);
-    jfieldID y_field = env->GetFieldID(state_class, "y", "S"); assert(y_field != nullptr);
-    jfieldID uuid_field = env->GetFieldID(state_class, "uuid", "Ljava/lang/String;"); assert(uuid_field != nullptr);
-    jfieldID team_field = env->GetFieldID(state_class, "team", "B"); assert(team_field != nullptr);
-    jfieldID valid_field = env->GetFieldID(state_class, "valid", "Z"); assert(valid_field != nullptr);
-    jfieldID time_field = env->GetFieldID(state_class, "time", "S"); assert(time_field != nullptr);
-    jfieldID block_field = env->GetFieldID(state_class, "block", "S"); assert(block_field != nullptr);
-    jfieldID destroy_field = env->GetFieldID(state_class, "destroy", "Z"); assert(destroy_field != nullptr);
-    jfieldID rotation_field = env->GetFieldID(state_class, "rotation", "S"); assert(rotation_field != nullptr);
-    jfieldID config_type_field = env->GetFieldID(state_class, "config_type", "S"); assert(config_type_field != nullptr);
-    jfieldID config_field = env->GetFieldID(state_class, "config", "Ljava/lang/Object;"); assert(config_field != nullptr);
-    
-    jclass integer_class = env->FindClass("Ljava/lang/Integer;"); assert(integer_class != nullptr);
-    jmethodID integer_class_ctr = env->GetMethodID(integer_class, "<init>", "(I)V"); assert(integer_class_ctr != nullptr);
-
-    jobjectArray object_array_j = env->NewObjectArray(static_cast<jsize>(vec.size()), state_class, nullptr); assert(object_array_j != nullptr);
-    for (int i = 0; i < vec.size(); i++) {
-        jobject state_j = env->AllocObject(state_class); assert(state_j != nullptr);
-        env->SetShortField(state_j, x_field, vec[i].pos.x);
-        env->SetShortField(state_j, y_field, vec[i].pos.y);
-        const DataVec& uuid = g_map_history.GetPlayer(vec[i].player);
-        env->SetObjectField(state_j, uuid_field, env->NewStringUTF(std::string(uuid.begin(), uuid.end()).c_str()));
-        env->SetByteField(state_j, team_field, vec[i].team);
-        env->SetBooleanField(state_j, valid_field, vec[i].valid);
-        env->SetShortField(state_j, time_field, vec[i].time);
-        env->SetShortField(state_j, block_field, vec[i].block);
-        env->SetBooleanField(state_j, destroy_field, vec[i].destroy);
-        env->SetShortField(state_j, rotation_field, vec[i].rotation);
-        env->SetShortField(state_j, config_type_field, vec[i].config_type);
-        if (vec[i].config_type >= 5) {
-            const DataVec& config_data = g_map_history.GetConfig(vec[i].config);
-            jbyteArray config_data_j = env->NewByteArray(static_cast<jsize>(config_data.size()));
-            env->SetByteArrayRegion(config_data_j, 0, static_cast<jsize>(config_data.size()), std::bit_cast<const jbyte*>(config_data.data()));
-            env->SetObjectField(state_j, config_field, config_data_j);
+static jobjectArray marshal(JNIEnv* env, const std::vector<TileState>& states, bool preview = false) {
+    jclass cls = env->FindClass("tilelogger/TileState");
+    if (!cls) return nullptr;
+#define FIELD(name, signature)                              \
+    jfieldID name = env->GetFieldID(cls, #name, signature); \
+    if (!name) return nullptr
+    FIELD(x, "I");
+    FIELD(y, "I");
+    FIELD(uuid, "Ljava/lang/String;");
+    FIELD(team, "I");
+    FIELD(valid, "Z");
+    FIELD(time, "J");
+    FIELD(block, "I");
+    FIELD(destroy, "Z");
+    FIELD(rotation, "I");
+    FIELD(config_type, "I");
+    FIELD(config, "Ljava/lang/Object;");
+    FIELD(action_kind, "I");
+    FIELD(sequence, "J");
+    FIELD(planId, "J");
+    FIELD(expectedSequence, "J");
+    FIELD(legacy, "Z");
+    FIELD(configBytes, "I");
+    FIELD(configTruncated, "Z");
+#undef FIELD
+    jclass integer = env->FindClass("java/lang/Integer");
+    if (!integer) return nullptr;
+    jmethodID valueOf = env->GetStaticMethodID(integer, "valueOf", "(I)Ljava/lang/Integer;");
+    if (!valueOf) return nullptr;
+    auto array = env->NewObjectArray(static_cast<jsize>(states.size()), cls, nullptr);
+    if (!array) return nullptr;
+    for (size_t i = 0; i < states.size(); ++i) {
+        if (env->PushLocalFrame(8) < 0) return nullptr;
+        const auto& s = states[i];
+        jobject object = env->AllocObject(cls);
+        if (!object) {
+            env->PopLocalFrame(nullptr);
+            return nullptr;
         }
-        else {
-            env->SetObjectField(state_j, config_field, env->NewObject(integer_class, integer_class_ctr, vec[i].config));
+        env->SetIntField(object, x, s.pos.x);
+        env->SetIntField(object, y, s.pos.y);
+        env->SetIntField(object, team, s.team);
+        env->SetIntField(object, block, s.block);
+        env->SetBooleanField(object, valid, s.valid);
+        env->SetBooleanField(object, destroy, s.destroy);
+        env->SetIntField(object, rotation, s.rotation);
+        env->SetIntField(object, config_type, s.config_type);
+        env->SetIntField(object, action_kind, static_cast<int>(s.action));
+        env->SetLongField(object, time, s.time);
+        env->SetLongField(object, sequence, s.sequence);
+        env->SetLongField(object, planId, s.plan);
+        env->SetLongField(object, expectedSequence, s.expected);
+        env->SetBooleanField(object, legacy, active->Legacy());
+        const auto& player = active->GetPlayer(s.player);
+        jstring actor = env->NewStringUTF(std::string(player.begin(), player.end()).c_str());
+        if (!actor) {
+            env->PopLocalFrame(nullptr);
+            return nullptr;
         }
-        env->SetObjectArrayElement(object_array_j, i, state_j);
+        env->SetObjectField(object, uuid, actor);
+        if (s.config_type >= 5) {
+            const auto& bytes = active->GetConfig(s.config);
+            size_t length = bytes.size();
+            if (preview) {
+                size_t limit = s.config_type == 7 ? 64 : 1028;
+                length = std::min(length, limit);
+            }
+            env->SetIntField(object, configBytes, static_cast<jint>(bytes.size()));
+            env->SetBooleanField(object, configTruncated, length < bytes.size());
+            auto payload = env->NewByteArray(static_cast<jsize>(length));
+            if (!payload) {
+                env->PopLocalFrame(nullptr);
+                return nullptr;
+            }
+            if (length)
+                env->SetByteArrayRegion(payload, 0, static_cast<jsize>(length),
+                                        reinterpret_cast<const jbyte*>(bytes.data()));
+            if (env->ExceptionCheck()) {
+                env->PopLocalFrame(nullptr);
+                return nullptr;
+            }
+            env->SetObjectField(object, config, payload);
+        } else {
+            auto boxed = env->CallStaticObjectMethod(integer, valueOf, static_cast<jint>(s.config));
+            if (env->ExceptionCheck() || !boxed) {
+                env->PopLocalFrame(nullptr);
+                return nullptr;
+            }
+            env->SetObjectField(object, config, boxed);
+        }
+        env->SetObjectArrayElement(array, static_cast<jsize>(i), object);
+        if (env->ExceptionCheck()) {
+            env->PopLocalFrame(nullptr);
+            return nullptr;
+        }
+        env->PopLocalFrame(nullptr);
     }
-    
-    return object_array_j;
+    return array;
 }
 
-JNIEXPORT jobjectArray JNICALL Java_tilelogger_TileLogger_getHistory (JNIEnv* env, jclass,
-    jshort x1, jshort y1, jshort x2, jshort y2, jstring juuid, jint teams, jint time, jlong size) {
-
+JNIEXPORT jint JNICALL Java_tilelogger_TileLogger_abi(JNIEnv*, jclass) { return 2; }
+JNIEXPORT void JNICALL Java_tilelogger_TileLogger_start(JNIEnv* env, jclass, jstring path, jstring session,
+                                                        jstring manifest) {
     try {
-        return MarhalTileStateArray(env, g_map_history.GetHistory({x1, y1, x2, y2}, jstringToDataVec(env, juuid), teams, time, size));
-    }
-    catch (const std::exception& e) {
-        HandleException(e);
-        return {};
+        auto candidate = std::make_unique<TileLogger>(writer);
+        candidate->Start(archivePath(UtfChars(env, path).string()), UtfChars(env, session).string(),
+                         UtfChars(env, manifest).string());
+        active = std::move(candidate);
+    } catch (const std::exception& e) {
+        fail(env, e);
     }
 }
-
-JNIEXPORT jobjectArray JNICALL Java_tilelogger_TileLogger_rollback (JNIEnv* env, jclass,
-    jshort x1, jshort y1, jshort x2, jshort y2, jstring juuid, jint teams, jint time, jint flags) {
-
+JNIEXPORT jlong JNICALL Java_tilelogger_TileLogger_prepare(JNIEnv* env, jclass, jstring path,
+                                                           jstring manifest) {
     try {
-        return MarhalTileStateArray(env, g_map_history.Rollback({x1, y1, x2, y2}, jstringToDataVec(env, juuid), teams, time, static_cast<HistoryStack::RollbackFlags>(flags)));
-    }
-    catch (const std::exception& e) {
-        HandleException(e);
-        return {};
+        auto resolved = archivePath(UtfChars(env, path).string());
+        if (resolved.empty()) throw std::invalid_argument("Archive path required");
+        writer.Flush();
+        auto candidate = std::make_unique<TileLogger>(writer);
+        candidate->Load(resolved);
+        if (!candidate->Legacy() && candidate->Manifest() != UtfChars(env, manifest).string())
+            throw std::invalid_argument("Archive content manifest differs from the current server");
+        std::lock_guard lock(prepared_mutex);
+        if (prepared.size() >= 4) throw std::runtime_error("Too many pending archive readers");
+        auto handle = ++next_handle;
+        prepared.emplace(handle, std::move(candidate));
+        return handle;
+    } catch (const std::exception& e) {
+        fail(env, e);
+        return 0;
     }
 }
-
-JNIEXPORT jlong JNICALL Java_tilelogger_TileLogger_memoryUsage (JNIEnv*, jclass, jlong id) {
+JNIEXPORT void JNICALL Java_tilelogger_TileLogger_activate(JNIEnv* env, jclass, jlong handle) {
     try {
-        return g_map_history.MemoryUsage(id);
+        std::lock_guard lock(prepared_mutex);
+        auto found = prepared.find(handle);
+        if (found == prepared.end()) throw std::invalid_argument("Unknown archive handle");
+        active = std::move(found->second);
+        prepared.erase(found);
+    } catch (const std::exception& e) {
+        fail(env, e);
     }
-    catch (const std::exception& e) {
-        HandleException(e);
-        return {};
+}
+JNIEXPORT void JNICALL Java_tilelogger_TileLogger_discard(JNIEnv*, jclass, jlong handle) {
+    std::lock_guard lock(prepared_mutex);
+    prepared.erase(handle);
+}
+JNIEXPORT jlong JNICALL Java_tilelogger_TileLogger_elapsed(JNIEnv*, jclass) {
+    return static_cast<jlong>(active->Duration());
+}
+JNIEXPORT void JNICALL Java_tilelogger_TileLogger_action(JNIEnv* env, jclass, jint x, jint y, jstring uuid,
+                                                         jint team, jint block, jint rotation, jint type,
+                                                         jint scalar, jbyteArray payload, jint kind) {
+    try {
+        if (!payload) throw std::invalid_argument("Null configuration bytes");
+        auto length = env->GetArrayLength(payload);
+        if (length > static_cast<jsize>(max_config_bytes))
+            throw std::invalid_argument("Configuration exceeds 1 MiB");
+        DataVec data(length);
+        if (length) env->GetByteArrayRegion(payload, 0, length, reinterpret_cast<jbyte*>(data.data()));
+        if (env->ExceptionCheck()) return;
+        active->Record(position(x, y), UtfChars(env, uuid).bytes(), team, block, rotation, type,
+                       static_cast<uint32_t>(scalar), data, static_cast<ActionKind>(kind));
+    } catch (const std::exception& e) {
+        fail(env, e);
+    }
+}
+JNIEXPORT jobjectArray JNICALL Java_tilelogger_TileLogger_history(JNIEnv* env, jclass, jint x1, jint y1,
+                                                                  jint x2, jint y2, jstring uuid, jint teams,
+                                                                  jlong time, jlong size, jlong before) {
+    try {
+        if (size < 1 || size > 4097 || before < 1)
+            throw std::invalid_argument("Invalid history limit/cursor");
+        return marshal(env,
+                       active->GetHistory(rectangle(x1, y1, x2, y2), UtfChars(env, uuid).bytes(), teams, time,
+                                          size, before),
+                       true);
+    } catch (const std::exception& e) {
+        fail(env, e);
+        return nullptr;
+    }
+}
+JNIEXPORT jobjectArray JNICALL Java_tilelogger_TileLogger_plan(JNIEnv* env, jclass, jint x1, jint y1, jint x2,
+                                                               jint y2, jstring uuid, jint teams,
+                                                               jlong time) {
+    try {
+        return marshal(
+            env, active->PlanRollback(rectangle(x1, y1, x2, y2), UtfChars(env, uuid).bytes(), teams, time));
+    } catch (const std::exception& e) {
+        fail(env, e);
+        return nullptr;
+    }
+}
+JNIEXPORT void JNICALL Java_tilelogger_TileLogger_commit(JNIEnv* env, jclass, jlong plan, jint x, jint y) {
+    try {
+        active->Commit(plan, position(x, y));
+    } catch (const std::exception& e) {
+        fail(env, e);
+    }
+}
+JNIEXPORT void JNICALL Java_tilelogger_TileLogger_forget(JNIEnv*, jclass, jlong plan) {
+    active->Discard(plan);
+}
+JNIEXPORT jlong JNICALL Java_tilelogger_TileLogger_memory(JNIEnv* env, jclass, jint id) {
+    try {
+        return active->MemoryUsage(id);
+    } catch (const std::exception& e) {
+        fail(env, e);
+        return 0;
+    }
+}
+JNIEXPORT jboolean JNICALL Java_tilelogger_TileLogger_readOnly(JNIEnv*, jclass) { return active->ReadOnly(); }
+JNIEXPORT jstring JNICALL Java_tilelogger_TileLogger_session(JNIEnv* env, jclass) {
+    return env->NewStringUTF(active->Session().c_str());
+}
+JNIEXPORT jstring JNICALL Java_tilelogger_TileLogger_health(JNIEnv* env, jclass) {
+    return env->NewStringUTF(active->Status().c_str());
+}
+JNIEXPORT void JNICALL Java_tilelogger_TileLogger_writable(JNIEnv* env, jclass) {
+    try {
+        active->CheckWritable();
+    } catch (const std::exception& e) {
+        fail(env, e);
+    }
+}
+JNIEXPORT jstring JNICALL Java_tilelogger_TileLogger_build(JNIEnv* env, jclass) {
+    return env->NewStringUTF("v2 " __DATE__ " " __TIME__);
+}
+JNIEXPORT void JNICALL Java_tilelogger_TileLogger_flushWrites(JNIEnv* env, jclass) {
+    try {
+        writer.Flush();
+    } catch (const std::exception& e) {
+        fail(env, e);
     }
 }
 
-JNIEXPORT jstring JNICALL Java_tilelogger_TileLogger_getBuildString (JNIEnv* env, jclass) {
-    return env->NewStringUTF(__DATE__ " " __TIME__);
+JNIEXPORT jobjectArray JNICALL Java_tilelogger_TileLogger_current(JNIEnv* env, jclass, jint x, jint y) {
+    try {
+        auto value = active->Current(position(x, y));
+        return marshal(env, value ? std::vector<TileState>{*value} : std::vector<TileState>{});
+    } catch (const std::exception& e) {
+        fail(env, e);
+        return nullptr;
+    }
 }

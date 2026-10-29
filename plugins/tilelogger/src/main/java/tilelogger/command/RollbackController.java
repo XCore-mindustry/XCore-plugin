@@ -18,10 +18,8 @@ import tilelogger.service.TileLoggerService;
 import java.time.Duration;
 import java.util.concurrent.TimeUnit;
 
-
 @Singleton
 public class RollbackController {
-
     private final TileLoggerService service;
 
     @Inject
@@ -31,10 +29,9 @@ public class RollbackController {
 
     @Command("rollback <target> [time]")
     @Permission("admin")
-    public void rollback(XCoreSender sender,
-                         @Argument("target") String targetStr,
-                         @Argument("time") @AllowNegativeDuration @DefaultUnit(TimeUnit.MINUTES) @Default("0") Duration duration,
-                         @Flag("selection") boolean useSelection) {
-        service.executeRollback(sender, targetStr, duration, useSelection);
+    public void rollback(XCoreSender sender, @Argument("target") String targetStr,
+            @Argument("time") @AllowNegativeDuration @DefaultUnit(TimeUnit.MINUTES) @Default("0")
+            Duration duration, @Flag("selection") boolean useSelection, @Flag("preview") boolean preview) {
+        service.executeRollback(sender, targetStr, duration, useSelection, preview);
     }
 }

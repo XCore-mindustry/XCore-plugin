@@ -1,179 +1,161 @@
 #pragma once
-#include <vector>
-#include <optional>
-#include <unordered_map>
-#include <fstream>
+#include <algorithm>
 #include <filesystem>
+#include <optional>
+#include <stdexcept>
+#include <unordered_map>
+#include <vector>
 #include "TileState.h"
+
+struct RollbackChange {
+    TileState before, after;
+    std::vector<std::pair<uint64_t, bool>> validity;
+};
 
 class HistoryStack {
 public:
-    time_t_ Reset(const std::filesystem::path& path, bool write) {
-        stack_ = {};
-        last_valid_cache_ = {};
-        path_ = path;
-        file_flags_ = static_cast<std::ios_base::openmode>(std::ios::binary | std::ios::in | (write ? std::ios::app : 0));
+    enum RollbackFlags { kPreview = 1 };
 
-        file_.close();
-        if (!path.empty()) {
-            file_.open(path_, file_flags_);
-            if (file_.peek() == std::fstream::traits_type::eof()) {
-                file_.seekg(0);
-                file_.write(std::bit_cast<const char*>(header_.data()), header_.size());
-                file_.flush();
-            }
-            else {
-                BitStack bs;
-                bs.buffer_.assign(std::istreambuf_iterator<char>(file_), std::istreambuf_iterator<char>());
-                if (bs.read_bytes(header_.size()) != header_)
-                    throw std::runtime_error("wrong file header");
-                if (bs.buffer_.size() % sizeof(TileState) != 0)
-                    throw std::runtime_error("wrong file length");
-
-                TileState state;
-                while (bs.read_i_ / 8 < bs.buffer_.size()) {
-                    state.Serialize(bs, Serialize::read);
-                    stack_.push_back(state);
-                }
-                return state.time;
-            }
-        }
-        return 0;
+    void Reset(const std::filesystem::path& path, bool) {
+        if (!path.empty()) throw std::invalid_argument("Use TileLogger to open archives");
+        records_.clear();
+        latest_.clear();
     }
-
+    const std::vector<TileState>& Records() const { return records_; }
+    std::optional<TileState> Current(Pos pos) const {
+        auto it = latest_.find(pos);
+        return it == latest_.end() ? std::nullopt : std::optional(records_.at(it->second));
+    }
+    void Restore(TileState state) {
+        if (state.sequence != records_.size() + 1) throw std::runtime_error("Invalid record sequence");
+        records_.push_back(state);
+        if (state.valid && state.isSnapshot()) latest_[state.pos] = records_.size() - 1;
+    }
+    std::optional<TileState> PrepareRecord(TileState state) const {
+        if (auto last = Current(state.pos)) {
+            if (state.destroy && state.config_type != 9) {
+                state.block = last->block;
+                state.rotation = last->rotation;
+                state.config_type = last->config_type;
+                state.config = last->config;
+            }
+            if (state.action == ActionKind::Legacy && !state.RecordAction(*last)) return {};
+        }
+        state.sequence = records_.size() + 1;
+        return state;
+    }
     void Record(TileState state) {
-        if (std::optional<TileState> last_valid = LastValid(state.pos); last_valid) {
-            if (state.destroy) {
-                state.block = last_valid->block;
-                state.rotation = last_valid->rotation;
-                state.config_type = last_valid->config_type;
-                state.config = last_valid->config;
-            }
-            if (!state.RecordAction(*last_valid))
-                return; // don't stack the same states
-        }
-        if (!state.block)
-            return; // don't save air blocks
-        stack_.push_back(state);
-        last_valid_cache_[state.pos] = static_cast<stack_counter_t_>(stack_.size() - 1);
-
-        if (file_) {
-            WriteState(state);
-            file_.flush();
-        }
+        if (auto prepared = PrepareRecord(state)) Restore(*prepared);
     }
-
-    std::vector<TileState> Last(const Rect& rect, const std::optional<player_t_>& player, int teams, time_t_ time, size_t size) const {
-        std::vector<TileState> ret;
-        for(auto it = stack_.rbegin(); it != stack_.rend(); it++) {
-            if (!rect.contains(it->pos))
-                continue; // wrong pos
-            if (player && *player != it->player)
-                continue; // wrong player
-            if (!(1 << it->team & teams))
-                continue; // team ignored
-            if (it->time < time)
-                break;
-            ret.push_back(*it);
-            if (--size == 0)
-                break;
+    std::vector<TileState> Last(const Rect& rect, std::optional<player_t_> player, int teams, time_t_ cutoff,
+                                size_t size, uint64_t before = UINT64_MAX) const {
+        std::vector<TileState> result;
+        if (size == 0) return result;
+        for (auto it = records_.rbegin(); it != records_.rend(); ++it) {
+            if (it->sequence >= before) continue;
+            if (it->time < cutoff) break;
+            if (!rect.contains(it->pos) || (player && *player != it->player) ||
+                !SelectedTeam(it->team, teams))
+                continue;
+            result.push_back(*it);
+            if (result.size() == size) break;
         }
-        std::reverse(ret.begin(), ret.end());
-        return ret;
+        std::reverse(result.begin(), result.end());
+        return result;
     }
-
-    enum RollbackFlags {
-        kPreview = 1 << 0,
-    };
-    std::vector<TileState> Rollback(const Rect& rect, const std::optional<player_t_>& player, int teams, time_t_ time, RollbackFlags flags) {
-        struct Tile {
-            bool rollback = false;
-            TileState* ret = nullptr;
+    static bool SelectedTeam(unsigned team, int teams) {
+        return teams == -1 || (team < 32 && (static_cast<uint32_t>(teams) & (uint32_t{1} << team)));
+    }
+    std::vector<RollbackChange> Plan(const Rect& rect, std::optional<player_t_> player, int teams,
+                                     time_t_ cutoff) const {
+        struct Candidate {
+            bool unwind{};
+            bool found{};
+            RollbackChange change;
         };
-        std::unordered_map<Pos, Tile> map;
-
-        for(auto it = stack_.rbegin(); it != stack_.rend(); it++) {
-            if (!rect.contains(it->pos))
-                continue; // wrong pos
-            auto state = map.find(it->pos);
-            Tile* tile = state == map.end() ? nullptr : &state->second;
-            if (!tile) {
-                bool backward = time < it->time; 
-                bool forward = !it->valid; 
-                bool sel_player = !player || it->player == player; 
-                bool sel_team = 1 << it->team & teams;
-                bool rollback = sel_player && sel_team && (backward || forward);
-                if (!rollback && !it->valid)
-                    continue;
-                tile = &map[it->pos];
-                tile->rollback = rollback;
+        std::unordered_map<Pos, Candidate> map;
+        size_t selected_positions = 0, visited = 0;
+        for (auto it = records_.rbegin(); it != records_.rend(); ++it) {
+            if (!it->isSnapshot() || !rect.contains(it->pos)) continue;
+            if (++visited > 100000)
+                throw std::invalid_argument("Rollback scan exceeds 100000 snapshots; select a smaller area");
+            auto entry = map.find(it->pos);
+            if (entry == map.end()) {
+                bool selected = (!player || *player == it->player) && SelectedTeam(it->team, teams);
+                bool unwind = selected && (cutoff < it->time ||
+                                           (cutoff == 0 && it->action != ActionKind::Baseline) || !it->valid);
+                if (!unwind && !it->valid) continue;
+                Candidate value;
+                value.unwind = unwind;
+                value.change.before = Current(it->pos).value_or(TileState(it->pos));
+                value.change.after = TileState(it->pos);
+                value.change.after.destroy = true;
+                value.change.after.team = value.change.before.team;
+                entry = map.emplace(it->pos, std::move(value)).first;
+                if (unwind && ++selected_positions > 2048)
+                    throw std::invalid_argument("Rollback exceeds 2048 positions; select a smaller area");
             }
-            if (tile->rollback) {
-                if ((it->valid && player && it->player != *player || it->time <= time) && (it->block < 3 || it->block > 11)) {
-                    if (!tile->ret) {
-                        tile->ret = &*it; // rollback to first suitable state
-                        last_valid_cache_[it->pos] = static_cast<stack_counter_t_>(stack_.rend() - it) - 1;
-                    }
-                    if (it->valid) {
-                        tile->rollback = false; // terminate stack unwinding if a suitable valid state is found
-                    }
+            auto& candidate = entry->second;
+            if (!candidate.unwind) continue;
+            const bool legacyConstruction =
+                it->action == ActionKind::Legacy && it->block >= 3 && it->block <= 11;
+            bool boundary = it->time < cutoff ||
+                            (it->time == cutoff && (cutoff != 0 || it->action == ActionKind::Baseline));
+            if (((it->valid && player && it->player != *player) || boundary) && !legacyConstruction) {
+                if (!candidate.found) {
+                    candidate.change.after = *it;
+                    candidate.found = true;
                 }
-                if (~flags & kPreview)
-                    it->valid = !!tile->ret; // invalidate or revalidate tile state
+                if (it->valid) candidate.unwind = false;
             }
+            if (it->valid != candidate.found)
+                candidate.change.validity.emplace_back(it->sequence, candidate.found);
         }
-
-        if (file_ && file_flags_ & std::ios::app) {
-            file_.close();
-            file_.open(path_, std::ios::binary | std::ios::out);
-            file_.write(std::bit_cast<const char*>(header_.data()), header_.size());
-            for (const TileState& state : stack_)
-                WriteState(state);
-            file_.close();
-            file_.open(path_, file_flags_);
+        std::vector<RollbackChange> result;
+        for (auto& [pos, c] : map) {
+            if (!c.change.validity.empty()) result.push_back(std::move(c.change));
         }
-
-        std::vector<TileState> states_remove;
-        std::vector<TileState> states_add;
-        for (const auto& [k,v] : map) {
-            if (v.ret)
-                (v.ret->destroy ? states_remove : states_add).push_back(*v.ret);
-            else if (v.rollback)
-                states_remove.push_back(TileState(k));
+        if (result.size() > 2048)
+            throw std::invalid_argument("Rollback exceeds 2048 buildings; select a smaller area");
+        std::sort(result.begin(), result.end(), [](const auto& a, const auto& b) {
+            if (a.after.destroy != b.after.destroy) return a.after.destroy;
+            return a.after.pos.x == b.after.pos.x ? a.after.pos.y < b.after.pos.y
+                                                  : a.after.pos.x < b.after.pos.x;
+        });
+        return result;
+    }
+    void Apply(const RollbackChange& change) {
+        for (auto [sequence, valid] : change.validity) {
+            if (!sequence || sequence > records_.size() || records_[sequence - 1].pos != change.after.pos)
+                throw std::runtime_error("Invalid rollback journal reference");
         }
-        states_remove.insert(states_remove.end(), states_add.begin(), states_add.end());
-        return states_remove;
+        for (auto [sequence, valid] : change.validity) records_[sequence - 1].valid = valid;
+        Rebuild(change.after.pos);
     }
-
-    size_t Size() const noexcept {
-        return stack_.size() * sizeof(stack_[0]);
+    std::vector<TileState> Rollback(const Rect& rect, std::optional<player_t_> player, int teams,
+                                    time_t_ cutoff, RollbackFlags flags) {
+        auto changes = Plan(rect, player, teams, cutoff);
+        std::vector<TileState> result;
+        for (const auto& change : changes) {
+            result.push_back(change.after);
+            if (!(flags & kPreview)) Apply(change);
+        }
+        return result;
     }
-
-    size_t Capacity() const noexcept {
-        return stack_.capacity() * sizeof(stack_[0]);
-    }
+    size_t Size() const { return records_.size() * sizeof(TileState); }
+    size_t Capacity() const { return records_.capacity() * sizeof(TileState); }
 
 private:
-    std::optional<TileState> LastValid(const Pos& pos) const {
-        auto it = last_valid_cache_.find(pos);
-        if (it != last_valid_cache_.end())
-            return stack_[it->second];
-        return std::nullopt;
+    void Rebuild(Pos pos) {
+        latest_.erase(pos);
+        for (size_t i = records_.size(); i > 0; --i) {
+            const auto& s = records_[i - 1];
+            if (s.pos == pos && s.valid && s.isSnapshot()) {
+                latest_[pos] = i - 1;
+                return;
+            }
+        }
     }
-
-    void WriteState(const TileState& state) {
-        assert(bs_.empty());
-        const_cast<TileState&>(state).Serialize(bs_, Serialize::write);
-        file_.write(std::bit_cast<const char*>(bs_.buffer_.data()), bs_.buffer_.size());
-        bs_.reset();
-    }
-
-    static inline const DataVec header_{'T','L',0,0,0,0,0,0,0,0,0,0,0,0};
-
-    std::vector<TileState> stack_;
-    std::unordered_map<Pos, stack_counter_t_> last_valid_cache_;
-    std::fstream file_;
-    BitStack bs_;
-    std::filesystem::path path_;
-    std::ios_base::openmode file_flags_;
+    std::vector<TileState> records_;
+    std::unordered_map<Pos, size_t> latest_;
 };

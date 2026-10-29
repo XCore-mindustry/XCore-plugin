@@ -11,10 +11,8 @@ import tilelogger.PlayerConfig;
 import tilelogger.PlayerDescriptor;
 import tilelogger.service.TileLoggerService;
 
-
 @Singleton
 public class HistoryController {
-
     private final TileLoggerService service;
 
     @Inject
@@ -23,10 +21,12 @@ public class HistoryController {
     }
 
     @Command("history [size]")
-    public void historyToggle(XCoreSender sender,
-                              @Argument("size") @Default("0") int size) {
-        if (!sender.isPlayer()) return;
+    public void historyToggle(XCoreSender sender, @Argument("size") @Default("0") int size) {
+        if (!sender.isPlayer())
+            return;
 
+        if (size != 0)
+            TileLoggerService.checkedHistoryLimit(size);
         PlayerConfig config = service.getPlayerConfig(sender.player());
 
         if (size == 0 && config.historySize == 0) {
@@ -38,19 +38,15 @@ public class HistoryController {
         sender.send("commands-history-success", Args.of("size", config.historySize));
     }
 
-
     @Command("history p|player <target> [size]")
-    public void historyTarget(XCoreSender sender,
-                              @Argument("target") String targetStr,
-                              @Argument("size") @Default("10") long size) {
+    public void historyTarget(XCoreSender sender, @Argument("target") String targetStr,
+            @Argument("size") @Default("10") long size) {
         service.executeHistoryPlayer(sender, targetStr, size);
     }
 
     @Command("history t|tile <x> <y> [size]")
-    public void historyTile(XCoreSender sender,
-                            @Argument("x") short x,
-                            @Argument("y") short y,
-                            @Argument("size") @Default("10") long size) {
+    public void historyTile(XCoreSender sender, @Argument("x") int x, @Argument("y") int y,
+            @Argument("size") @Default("10") long size) {
         service.showHistory(sender.player(), x, y, size);
     }
 }

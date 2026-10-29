@@ -9,10 +9,8 @@ import org.incendo.cloud.annotations.Permission;
 import org.xcore.plugin.cloud.XCoreSender;
 import tilelogger.service.TileLoggerService;
 
-
 @Singleton
 public class TileLoggerServerController {
-
     private final TileLoggerService service;
 
     @Inject
@@ -22,12 +20,14 @@ public class TileLoggerServerController {
 
     @Command("tl file <path> [mode]")
     @Permission("admin")
-    public void file(XCoreSender sender,
-                     @Argument("path") String path,
-                     @Argument("mode") @Default("") String mode) {
-
-        boolean write = mode.equalsIgnoreCase("w");
-        service.resetHistory(path, write);
-        sender.sendMessage("[accent]History reset: " + path + " (write=" + write + ")");
+    public void file(
+            XCoreSender sender, @Argument("path") String path, @Argument("mode") @Default("") String mode) {
+        if (mode.equalsIgnoreCase("w")) {
+            service.resetHistory(path, true);
+            sender.send("tilelogger-session-started");
+        } else if (mode.isBlank() || mode.equalsIgnoreCase("r")) {
+            service.openArchive(sender, path);
+        } else
+            throw new org.xcore.plugin.cloud.exception.XCoreCommandException("tilelogger-error-mode");
     }
 }

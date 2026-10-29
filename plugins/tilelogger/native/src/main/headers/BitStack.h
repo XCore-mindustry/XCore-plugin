@@ -2,6 +2,9 @@
 #include <vector>
 #include <cassert>
 #include <bit>
+#include <cstdint>
+#include <stdexcept>
+#include <algorithm>
 
 using DataVec = std::vector<uint8_t>;
 
@@ -15,9 +18,7 @@ public:
         read_i_ = 0;
     }
 
-    bool empty() const {
-        return buffer_.empty() && !free_ && !read_i_;
-    }
+    bool empty() const { return buffer_.empty() && !free_ && !read_i_; }
 
     void push(size_t val, size_t size) {
         while (size) {
@@ -31,7 +32,7 @@ public:
             size -= mask_size;
 
             *buffer_.rbegin() <<= mask_size;
-            *buffer_.rbegin() |= val & ~(~0 << mask_size);
+            *buffer_.rbegin() |= val & ((size_t{1} << mask_size) - 1);
             val >>= mask_size;
         };
     }
@@ -41,33 +42,17 @@ public:
         buffer_.insert(buffer_.end(), vec.begin(), vec.end());
     }
 
-    size_t pop(size_t size) {
-        size_t val = 0;
-        while (size) {
-            if (free_ == 8) {
-                buffer_.pop_back();
-                free_ = 0;
-            }
-
-            size_t mask_size = std::min(8 - free_, size);
-            free_ += mask_size;
-            size -= mask_size;
-
-            val <<= mask_size;
-            val |= *buffer_.rbegin() & ~(~0 << mask_size);
-            *buffer_.rbegin() >>= mask_size;
-        };
-        return val;
-    }
-
     size_t read(size_t size) {
+        if (size > sizeof(size_t) * 8 || read_i_ > buffer_.size() * 8 || size > buffer_.size() * 8 - read_i_)
+            throw std::runtime_error("Truncated legacy bit stream");
         size_t val = 0;
         size_t total_size = size;
         while (size) {
             size_t mask_size = std::min(8 - read_i_ % 8, size);
 
             size_t shift = (8 - read_i_ % 8) - mask_size;
-            val |= (buffer_[read_i_ / 8] & (~(~0 << mask_size) << shift)) >> shift << (total_size - size);
+            val |= static_cast<size_t>((buffer_[read_i_ / 8] >> shift) & ((size_t{1} << mask_size) - 1))
+                   << (total_size - size);
             read_i_ += mask_size;
             size -= mask_size;
         };
@@ -75,7 +60,9 @@ public:
     }
 
     DataVec read_bytes(size_t size) {
-        assert(read_i_ % 8 == 0);
+        if (read_i_ % 8 != 0 || read_i_ / 8 > buffer_.size() || size > buffer_.size() - read_i_ / 8)
+            throw std::runtime_error("Truncated legacy byte stream");
+        if (size == 0) return {};
         DataVec vec(buffer_.data() + read_i_ / 8, buffer_.data() + read_i_ / 8 + size);
         read_i_ += size * 8;
         return vec;
@@ -85,22 +72,3 @@ public:
     size_t free_;
     size_t read_i_;
 };
-
-#if defined(_MSC_VER)
-#pragma warning(disable : 4463)
-#else
-#pragma GCC diagnostic ignored "-Woverflow"
-#endif
-
-#define GET_BIT_FIELD_WIDTH(T, f) \
-    []() constexpr -> size_t \
-    { \
-        T t{}; \
-        t.f = static_cast<decltype(t.f)>(~0); \
-        size_t bitcount = 0; \
-        while (t.f != 0) { \
-            t.f >>= 1; \
-            ++bitcount; \
-        } \
-        return bitcount; \
-    }()

@@ -1,72 +1,61 @@
 #pragma once
-#include <vector>
-#include <unordered_map>
-#include <stddef.h>
-#include <numeric>
 #include <fstream>
-#include <bit>
+#include <filesystem>
+#include <limits>
+#include <optional>
+#include <unordered_map>
+#include "Binary.h"
+#include "BitStack.h"
 
-template<class Id>
+struct DataHash {
+    size_t operator()(const DataVec& value) const noexcept { return checksum(value); }
+};
+
+template <class Id>
 class Cache {
 public:
-    void Reset(const std::filesystem::path& path, bool write) {
-        ids_ = {};
-        data_ = {};
-        file_flags_ = static_cast<std::ios_base::openmode>(std::ios::binary | std::ios::in | (write ? std::ios::app : 0));
-
-        file_.close();
-        file_.open(path, file_flags_);
-        BitStack bs;
-        bs.buffer_.assign(std::istreambuf_iterator<char>(file_), std::istreambuf_iterator<char>());
-
-        while (bs.read_i_ / 8 < bs.buffer_.size()) {
-            size_t len = bs.read(32);
-            auto [it, insert] = ids_.emplace(bs.read_bytes(len), static_cast<Id>(data_.size()));
-            data_.push_back(&it->first);
+    Id operator[](const DataVec& value) {
+        auto existing = ids_.find(value);
+        if (existing != ids_.end()) return existing->second;
+        if (data_.size() >= max_records || data_.size() >= std::numeric_limits<Id>::max())
+            throw std::runtime_error("Dictionary exhausted");
+        auto id = static_cast<Id>(data_.size());
+        data_.push_back(value);
+        ids_.emplace(value, id);
+        return id;
+    }
+    const DataVec& operator[](Id id) const { return data_.at(id); }
+    std::optional<Id> at(const DataVec& value) const {
+        auto it = ids_.find(value);
+        return it == ids_.end() ? std::nullopt : std::optional(it->second);
+    }
+    void LoadLegacy(const std::filesystem::path& path, size_t limit) {
+        std::ifstream file(path, std::ios::binary);
+        if (!file) throw std::runtime_error("Cannot open dictionary: " + path.string());
+        if (std::filesystem::file_size(path) > 512ull * 1024 * 1024)
+            throw std::runtime_error("Dictionary too large");
+        BitStack input;
+        input.buffer_.assign(std::istreambuf_iterator<char>(file), {});
+        while (input.read_i_ / 8 < input.buffer_.size()) {
+            size_t length = input.read(32);
+            if (length > limit) throw std::runtime_error("Legacy dictionary value too large");
+            auto value = input.read_bytes(length);
+            if (at(value)) throw std::runtime_error("Duplicate legacy dictionary value");
+            (*this)[value];
         }
     }
-
-    Id operator[](const DataVec& data) {
-        auto [it, insert] = ids_.emplace(data, static_cast<Id>(data_.size()));
-        if (insert) {
-            data_.push_back(&it->first);
-            if (file_ && file_flags_ & std::ios::app) {
-                BitStack bs;
-                bs.push(data.size(), 32);
-                bs.push_bytes(data);
-                file_.write(std::bit_cast<const char*>(bs.buffer_.data()), bs.buffer_.size());
-                file_.flush();
-            }
-        }
-        return it->second;
+    size_t Size() const {
+        size_t total = data_.size() * sizeof(DataVec);
+        for (const auto& value : data_) total += value.size();
+        return total;
     }
-
-    std::optional<Id> at(const DataVec& data) const {
-        auto it = ids_.find(data);
-        return it == ids_.end() ? std::nullopt : std::optional<Id>(it->second);
-    }
-
-    const DataVec& operator[](Id id) const {
-        return *data_[id];
-    }
-    
-    size_t Size() const noexcept {
-        return data_.size() * sizeof(data_[0])
-            + std::accumulate(ids_.begin(), ids_.end(), 0ull, [](size_t a, const std::pair<const DataVec, Id>& b){
-                return a + b.first.size() * sizeof(b.first[0]) + sizeof(Id);
-            });
-    }
-
-    size_t Capacity() const noexcept {
-        return data_.capacity() * sizeof(data_[0])
-            + std::accumulate(ids_.begin(), ids_.end(), 0ull, [](size_t a, const std::pair<const DataVec, Id>& b){
-                return a + b.first.capacity() * sizeof(b.first[0]) + sizeof(Id);
-            });
+    size_t Capacity() const {
+        size_t total = data_.capacity() * sizeof(DataVec);
+        for (const auto& value : data_) total += value.capacity();
+        return total;
     }
 
 private:
-    std::unordered_map<DataVec, Id> ids_;
-    std::vector<const DataVec*> data_;
-    std::fstream file_;
-    std::ios_base::openmode file_flags_;
+    std::vector<DataVec> data_;
+    std::unordered_map<DataVec, Id, DataHash> ids_;
 };

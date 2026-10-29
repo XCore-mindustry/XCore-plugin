@@ -1,29 +1,27 @@
 package tilelogger;
 
+/** v2; legacy responses narrow only their display clock explicitly. */
 public class TileStatePacket {
-    public short x;
-    public short y;
-    public String name;
-    public String uuid;
-    public boolean valid;
-    public short time;
-    public short block;
-    public boolean destroy;
-    public short rotation;
-    public short config_type;
-    public String config;
-
-    public TileStatePacket(short x, short y, String name, String uuid, boolean valid, short time, short block, boolean destroy, short rotation, short config_type, String config) {
-        this.x = x;
-        this.y = y;
+    public int x, y, block, rotation, config_type, action_kind;
+    public String name, uuid, config, action;
+    public boolean valid, destroy, legacy;
+    public long time, sequence;
+    public TileStatePacket() {}
+    public TileStatePacket(TileState state, String name, String action, boolean legacyWire) {
+        x = state.x;
+        y = state.y;
+        block = state.block;
+        rotation = state.rotation;
+        config_type = state.config_type;
+        action_kind = state.action_kind;
+        uuid = state.uuid;
+        valid = state.valid;
+        destroy = state.destroy;
+        sequence = state.sequence;
+        time = legacyWire ? (short) (state.time & 0xffff) : state.time;
+        legacy = legacyWire || state.legacy;
         this.name = name;
-        this.uuid = uuid;
-        this.valid = valid;
-        this.time = time;
-        this.block = block;
-        this.destroy = destroy;
-        this.rotation = rotation;
-        this.config_type = config_type;
-        this.config = config;
+        this.action = action;
+        config = state.getConfigAsString();
     }
 }

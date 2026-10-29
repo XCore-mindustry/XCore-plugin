@@ -7,9 +7,7 @@ commands-tl-subnet-subnet-description = IPv4 подсеть (например 1.
 commands-tl-fill-description = Заполнить выбранную область блоком
 commands-tl-fill-block-description = Имя блока
 
-commands-tl-file-description = Сброс истории в файл (только сервер)
 commands-tl-file-path-description = Имя файла
-commands-tl-file-mode-description = Режим: w = запись
 
 commands-history-description = История изменений тайлов/игрока
 commands-history-size-description = Количество записей
@@ -56,12 +54,41 @@ tilelogger-fill-success = [#98ff98]✔ Заливка выполнена[] [#b0b
 tilelogger-history-player = [#a4b8ff]📜 История:[] [#ffd37f]{$player}[] [#6e7080]|[] [#b0b5c8]{$time}[]
 tilelogger-history-tile = [#a4b8ff]📜 История тайла:[] [#ffd37f]({$x}, {$y})[] [#6e7080]|[] [#b0b5c8]{$time}[]
 
-tilelogger-rollback-broadcast = [#a4b8ff]Откат:[] [#ffd37f]{$caller}[] [#b0b5c8]отменил действия[] [#ffd37f]{$target}[]
-    [#b0b5c8]Изменено:[] [#ff8a8a]{$count}[] { $count ->
-        [one] тайл
-        [few] тайла
-        [many] тайлов
-       *[other] тайла
-    }
 
 tilelogger-server = Сервер
+
+commands-rollback-preview-description = Показать план отката без изменения мира и истории
+commands-history-success = Размер истории при осмотре: { $size } (0 = выключено).
+tilelogger-error-limit = [scarlet]Размер истории должен быть от 1 до { $max }.[]
+tilelogger-error-coordinates = [scarlet]Координаты выходят за границы текущей карты.[]
+tilelogger-error-selection = [scarlet]Сначала выберите оба угла на этой карте через /tl select.[]
+tilelogger-error-duration = [scarlet]Длительность выходит за поддерживаемый диапазон.[]
+tilelogger-error-session = [scarlet]Карта/сессия изменилась или запись остановлена. Начните живую сессию и повторите команду.[]
+tilelogger-error-storage = [scarlet]Хранилище TileLogger недоступно: { $reason }[]
+tilelogger-error-archive = [scarlet]Не удалось открыть архив. Активная история сохранена; подробности в логе сервера.[]
+tilelogger-error-lookup = [scarlet]Не удалось найти игрока из-за ошибки хранилища. Попробуйте позже.[]
+tilelogger-error-mutations = [scarlet]За одну операцию можно изменить до { $max } зданий. Выберите меньшую область.[]
+tilelogger-error-protected = [scarlet]Операция затронула бы защищённое ядро или строящийся блок.[]
+tilelogger-error-team = [scarlet]Укажите команду для размещаемых блоков.[]
+tilelogger-error-footprint = [scarlet]Полный размер здания должен помещаться в выделение и не затрагивать другие здания.[]
+tilelogger-error-mode = [scarlet]Режим r открывает архив для чтения; w начинает новый журнал живой сессии.[]
+tilelogger-archive-open = [accent]Архив открыт: { $status }. Изменения мира отключены.[]
+tilelogger-session-started = [accent]Начата живая история, начальное состояние карты записано.[]
+tilelogger-read-only = [gray]Архив только для чтения. Старый формат имеет неоднозначное 16-битное время.[]
+tilelogger-rollback-preview = [accent]План: { $count } можно применить; { $protected } защищено; { $conflicts } конфликтов; { $unsupported } невосстановимых. Изменений нет.[]
+tilelogger-rollback-broadcast = [accent]{ $caller } откатил действия { $target }: { $count } применено; { $protected } защищено; { $conflicts } конфликтов; { $unsupported } невосстановимых; { $failed } ошибок.[]
+commands-tl-file-description = Открыть архив для чтения или начать живую историю (только сервер)
+commands-tl-file-mode-description = r = архив для чтения; w = новый журнал (существующие файлы не заменяются)
+
+tilelogger-action-baseline = Начальная карта
+tilelogger-action-build-started = Строительство начато
+tilelogger-action-build-completed = Построено
+tilelogger-action-destroy-started = Снос начат
+tilelogger-action-destroy-completed = Разрушено
+tilelogger-action-rotate = Поворот
+tilelogger-action-configure = Настройка
+tilelogger-action-pickup = Поднято
+tilelogger-action-drop = Выгружено
+tilelogger-action-admin-fill = Заливка админом
+tilelogger-action-legacy = Снимок старого формата
+tilelogger-error-plan = [scarlet]Область отката или объём конфигураций слишком велики. Выберите меньшую область.[]
