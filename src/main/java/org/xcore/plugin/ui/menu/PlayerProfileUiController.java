@@ -895,7 +895,8 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
             modes.add("[green]" + Iconc.defense + "[] " + t(local, "player-stats-survival-summary") + " "
                     + (survival.hasData()
                     ? games(local, nf, survival.gamesPlayed()) + SEPARATOR
-                    + t(local, "player-stats-survival-wins", args("wins", nf.format(survival.gamesWon()))) + SEPARATOR
+                    + t(local, "player-stats-survival-wins",
+                    args("wins", nf.format(survival.gamesWon()), "winRate", survival.winRatePercent())) + SEPARATOR
                     + t(local, "player-stats-waves-summary",
                     args("best", nf.format(survival.bestWave()), "avg", nf.format(survival.averageWave())))
                     : t(local, "player-menu-player-no-mode-stats")));
