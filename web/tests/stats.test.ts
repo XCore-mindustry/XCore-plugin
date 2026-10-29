@@ -463,6 +463,7 @@ const MOCK_RATING_STANDINGS = [
     peak_rating: 1700,
     matches: 25,
     wins: 18,
+    stats: { top3: null },
   },
   {
     ladder: "minipvp",
@@ -727,6 +728,13 @@ describe("XCore Stats Service - Safe Public DTO Privacy and Queries", () => {
       expect(hexedStanding?.rating).toBe(1420);
       expect(hexedStanding?.rank).toBe(1);
       expect(hexedStanding?.top3).toBe(4);
+    });
+
+    it("keeps a stored null top-3 counter as null", async () => {
+      const profile = await getPlayerProfile(102, db);
+      const standing = profile?.standings.find((s: LadderStandingDTO) => s.ladder === "minipvp");
+      expect(standing).toBeDefined();
+      expect(standing?.top3).toBeNull();
     });
 
     it("returns null for nonexistent PID", async () => {

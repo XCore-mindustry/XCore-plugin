@@ -400,7 +400,7 @@ export async function getPlayerProfile(pid: number, db?: Db): Promise<PlayerProf
         peakRating,
         matches: safeInt(standing.matches),
         wins: safeInt(standing.wins),
-        top3: standing.stats?.top3 === undefined ? null : safeInt(standing.stats.top3),
+        top3: standing.stats?.top3 == null ? null : safeInt(standing.stats.top3),
         rank: ahead + 1,
         participants,
       });

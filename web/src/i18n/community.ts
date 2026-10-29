@@ -91,7 +91,7 @@ const en = {
   games: "Games",
   winRate: "Win rate",
   overallNote:
-    "All modes together. In survival a win means holding out to the last wave, in Hexed only 1st place counts, so this rate is lower than in PvP.",
+    "All modes together. In survival a win means holding out to the last wave, in Hexed only 1st place counts, so this rate can be lower than in PvP.",
   byMode: "By mode",
   byModeNote: "All time. Together the modes add up to the totals above.",
   modePvp: "PvP",
@@ -242,7 +242,7 @@ const ru: CommunityCopy = {
   games: "Игры",
   winRate: "Доля побед",
   overallNote:
-    "Все режимы вместе. В выживании победа — продержаться до последней волны, в Hexed считается только 1-е место, поэтому общий процент ниже, чем в PvP.",
+    "Все режимы вместе. В выживании победа — продержаться до последней волны, в Hexed считается только 1-е место, поэтому общий процент может быть ниже, чем в PvP.",
   byMode: "По режимам",
   byModeNote: "За всё время. Вместе режимы дают общие цифры выше.",
   modePvp: "PvP",
@@ -391,7 +391,7 @@ const uk: CommunityCopy = {
   games: "Ігри",
   winRate: "Частка перемог",
   overallNote:
-    "Усі режими разом. У виживанні перемога — протриматися до останньої хвилі, у Hexed рахується лише 1-е місце, тому загальний відсоток нижчий, ніж у PvP.",
+    "Усі режими разом. У виживанні перемога — протриматися до останньої хвилі, у Hexed рахується лише 1-е місце, тому загальний відсоток може бути нижчим, ніж у PvP.",
   byMode: "За режимами",
   byModeNote: "За весь час. Разом режими дають загальні цифри вище.",
   modePvp: "PvP",
