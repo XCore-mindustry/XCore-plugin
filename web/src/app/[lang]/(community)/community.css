@@ -820,6 +820,14 @@
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
 }
 
+.cx-facts-five {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.cx-facts-modes {
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+}
+
 .card > .cx-facts {
   padding: var(--gap);
 }
@@ -847,6 +855,18 @@
 .cx-facts dd .muted {
   font-size: 0.875rem;
   font-weight: 400;
+}
+
+.cx-facts dd.cx-fact-note {
+  font-size: 0.8125rem;
+  font-weight: 400;
+  color: var(--muted);
+}
+
+.cx-facts-note {
+  padding: 0 var(--gap) var(--gap);
+  font-size: 0.8125rem;
+  color: var(--muted);
 }
 
 .badge-cell[aria-current] {

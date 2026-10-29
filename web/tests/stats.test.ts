@@ -463,6 +463,7 @@ const MOCK_RATING_STANDINGS = [
     peak_rating: 1700,
     matches: 25,
     wins: 18,
+    stats: { top3: null },
   },
   {
     ladder: "minipvp",
@@ -481,6 +482,7 @@ const MOCK_RATING_STANDINGS = [
     peak_rating: 1420,
     matches: 5,
     wins: 3,
+    stats: { top3: 4, disconnects: 0 },
   },
 ];
 
@@ -717,6 +719,7 @@ describe("XCore Stats Service - Safe Public DTO Privacy and Queries", () => {
       expect(pvpStanding?.peakRating).toBe(1520);
       expect(pvpStanding?.matches).toBe(10);
       expect(pvpStanding?.wins).toBe(7);
+      expect(pvpStanding?.top3).toBeNull(); // team ladder: no top-3 counter
       expect(pvpStanding?.rank).toBe(2); // Bob is #1 (1650), Alice is #2 (1500)
       expect(pvpStanding?.participants).toBe(2);
 
@@ -724,6 +727,14 @@ describe("XCore Stats Service - Safe Public DTO Privacy and Queries", () => {
       expect(hexedStanding).toBeDefined();
       expect(hexedStanding?.rating).toBe(1420);
       expect(hexedStanding?.rank).toBe(1);
+      expect(hexedStanding?.top3).toBe(4);
+    });
+
+    it("keeps a stored null top-3 counter as null", async () => {
+      const profile = await getPlayerProfile(102, db);
+      const standing = profile?.standings.find((s: LadderStandingDTO) => s.ladder === "minipvp");
+      expect(standing).toBeDefined();
+      expect(standing?.top3).toBeNull();
     });
 
     it("returns null for nonexistent PID", async () => {
