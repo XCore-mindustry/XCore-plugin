@@ -13,10 +13,8 @@ import tilelogger.PlayerConfig;
 import tilelogger.TileLogger;
 import tilelogger.service.TileLoggerService;
 
-
 @Singleton
 public class TileLoggerController {
-
     private final TileLoggerService service;
 
     @Inject
@@ -40,7 +38,7 @@ public class TileLoggerController {
             sender.send("error-not-allowed-from-console");
             return;
         }
-        service.getPlayerConfig(sender.player()).selectState = 1;
+        service.beginSelection(sender.player());
         sender.send("tilelogger-select-start");
     }
 
@@ -58,7 +56,6 @@ public class TileLoggerController {
             return;
         }
 
-        PlayerConfig config = service.getPlayerConfig(sender.player());
-        service.fill(sender.player(), null, block, config.rect);
+        service.fill(sender.player(), null, block, service.selectedRect(sender.player()));
     }
 }

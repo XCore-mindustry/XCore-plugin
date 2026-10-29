@@ -65,6 +65,7 @@ dependencies {
 
 tasks.withType<Test> {
     useJUnitPlatform()
+    jvmArgs("-Xcheck:jni", "--enable-native-access=ALL-UNNAMED")
 }
 
 tasks.named<JavaCompile>("compileJava") {
@@ -135,3 +136,5 @@ gradle.projectsEvaluated {
             )
     }
 }
+
+tasks.named("check") { dependsOn(":native:check") }

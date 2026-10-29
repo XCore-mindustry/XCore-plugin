@@ -1,12 +1,5 @@
 package tilelogger;
 
-import java.nio.ByteBuffer;
-import java.nio.IntBuffer;
-import java.nio.charset.StandardCharsets;
-import java.time.LocalTime;
-import java.time.format.DateTimeFormatter;
-
-import arc.math.geom.Point2;
 import arc.util.Reflect;
 import arc.util.Strings;
 import mindustry.Vars;
@@ -17,96 +10,67 @@ import mindustry.world.Block;
 import mindustry.world.Tile;
 
 public class TileState {
-    public short x;
-    public short y;
-
-    public String uuid;
-    public byte team;
-    public boolean valid;
-    public short time;
-    public short block;
-    public boolean destroy;
-    public short rotation;
-    public short config_type;
-    private Object config;
+    public int x, y, team, block, rotation, config_type;
+    public String uuid = "";
+    public boolean valid, destroy, legacy, configTruncated;
+    public int configBytes;
+    public long time, sequence, planId, expectedSequence;
+    public int action_kind = ActionKind.LEGACY.id;
+    private Object config = 0;
 
     public Object getConfig() {
-        return switch (config_type) {
-            case 0 -> null;
-            case 1 -> config;
-            case 2 -> (int) config > 0;
-            case 3 -> (int) config < Vars.content.items().size
-                ? Vars.content.items().get((int) config)
-                : (int)config < Vars.content.items().size + Vars.content.liquids().size
-                    ? Vars.content.liquids().get((int) config - Vars.content.items().size)
-                    : (int)config < Vars.content.items().size + Vars.content.liquids().size + Vars.content.units().size
-                        ? Vars.content.units().get((int) config - Vars.content.items().size - Vars.content.liquids().size)
-                        : (int)config < Vars.content.items().size + Vars.content.liquids().size + Vars.content.units().size + Vars.content.blocks().size
-                            ? Vars.content.blocks().get((int) config - Vars.content.items().size - Vars.content.liquids().size - Vars.content.units().size)
-                            : (int)config < Vars.content.items().size + Vars.content.liquids().size + Vars.content.units().size + Vars.content.blocks().size + Vars.content.unitCommands().size
-                                ? Vars.content.unitCommands().get((int) config - Vars.content.items().size - Vars.content.liquids().size - Vars.content.units().size - Vars.content.blocks().size)
-                                : null;
-            case 4 -> Point2.unpack((int) config);
-            case 5 -> config;
-            case 6 -> new String((byte[]) config, StandardCharsets.UTF_8);
-            case 7 -> bytesToPointArray((byte[]) config);
-            default -> null;
-        };
+        if (configTruncated)
+            throw new IllegalStateException(
+                    "History contains a display preview; use a rollback plan for restoration");
+        return ConfigCodec.decode(config_type, config);
     }
-
-    private Point2[] bytesToPointArray(byte[] bytes) {
-        IntBuffer intBuffer = ByteBuffer.wrap(bytes).asIntBuffer();
-        int[] array = new int[intBuffer.remaining()];
-        Point2[] points = new Point2[intBuffer.remaining()];
-        intBuffer.get(array);
-        for (int i = 0; i < points.length; i++) {
-            points[i] = Point2.unpack(array[i]);
-        }
-        return points;
-    }
-
     public String getConfigAsString() {
-        Object obj = getConfig();
-        if (obj instanceof byte[] bytes)
-            return bytes.length + "b";
-        else if (obj instanceof Point2[] points) {
-            String str = "";
-            for (Point2 p : points)
-                str += p.toString() + " ";
-            return str;
+        if (config_type == 5 && configBytes > 0)
+            return configBytes + "b";
+        if (configTruncated && config_type == 6) {
+            String preview = new String((byte[]) config, java.nio.charset.StandardCharsets.UTF_8);
+            int end =
+                    preview.offsetByCodePoints(0, Math.min(256, preview.codePointCount(0, preview.length())));
+            return preview.substring(0, end) + "…";
         }
-        return obj == null ? "" : obj + "";
+        return ConfigCodec.display(config_type, config) + (configTruncated ? "…" : "");
     }
-
+    public ActionKind kind() {
+        return ActionKind.fromId(action_kind);
+    }
     public Tile tile() {
         return Vars.world.tile(x, y);
     }
-
     public PlayerInfo playerInfo() {
         return Vars.netServer.admins.getInfoOptional(uuid);
     }
-
     public Team team() {
+        if (team < 0 || team >= Team.all.length)
+            throw new IllegalArgumentException("Invalid team");
         return Team.all[team];
     }
-
     public Block block() {
-        return Vars.content.block(block);
+        var blocks = Vars.content.blocks();
+        return block >= 0 && block < blocks.size ? blocks.get(block) : null;
     }
-
     public String blockEmoji() {
         try {
-            if (block == 0) return destroy ? "[#ff8a8a]X[]" : "[#98ff98][]";
-            if (block >= 3 && block <= 11) return "[#98ff98]" + (block - 2) + "[]";
-            return (destroy ? "[#ff8a8a]" : "[]") + Reflect.get(Iconc.class, Strings.kebabToCamel(block().getContentType().name() + "-" + block().name)) + "[]";
-        } catch (Exception e) {
-            return "[#ff8a8a]" + block + "[]";
+            if (block == 0)
+                return destroy ? "[#ff8a8a]X[]" : "[#98ff98][]";
+            Block value = block();
+            if (value == null)
+                return Integer.toString(block);
+            return (destroy ? "[#ff8a8a]" : "[]")
+                    + Reflect.get(Iconc.class,
+                            Strings.kebabToCamel(value.getContentType().name() + "-" + value.name))
+                    + "[]";
+        } catch (RuntimeException failure) {
+            return Integer.toString(block);
         }
     }
-
-    public Object rotationAsString() {
-        if (!block().rotate)
-            return null;
+    public String rotationAsString() {
+        if (block() == null || !block().rotate)
+            return "";
         return switch (rotation) {
             case 0 -> "";
             case 1 -> "";
@@ -115,8 +79,13 @@ public class TileState {
             default -> "?";
         };
     }
-
+    public static String formatDuration(long seconds) {
+        if (seconds < 0)
+            throw new IllegalArgumentException("Negative elapsed time");
+        return String.format(
+                java.util.Locale.ROOT, "%02d:%02d:%02d", seconds / 3600, seconds / 60 % 60, seconds % 60);
+    }
     public String timeAsString() {
-        return (valid ? "[#b0b5c8]" : "[#6e7080]") + LocalTime.MIN.plusSeconds(time).format(DateTimeFormatter.ISO_LOCAL_TIME) + "[]";
+        return (valid ? "[#b0b5c8]" : "[#6e7080]") + formatDuration(time) + "[]";
     }
 }

@@ -18,7 +18,8 @@ public class TileLoggerPlugin extends Plugin {
 
     @Override
     public synchronized void init() {
-        if (registration != null) return;
+        if (registration != null)
+            return;
         Log.info("[TileLogger] Initializing...");
 
         var xContainer = XcorePlugin.container;
@@ -26,6 +27,7 @@ public class TileLoggerPlugin extends Plugin {
             throw new RuntimeException("XCore container is null! XCore must be loaded first.");
         }
 
+        TileLogger.ensureAvailable();
         var scopes = xContainer.get(PluginScopes.class);
         BeanScope scope = createScope(xContainer);
 
@@ -45,7 +47,6 @@ public class TileLoggerPlugin extends Plugin {
             cloudService.registerServer(scope.get(TileLoggerServerController.class));
             cloudService.registerServer(scope.get(RollbackController.class));
 
-
             Log.info("[TileLogger] Started successfully.");
         } catch (RuntimeException | Error failure) {
             disable();
@@ -63,7 +64,8 @@ public class TileLoggerPlugin extends Plugin {
     }
 
     public synchronized void disable() {
-        if (registration == null) return;
+        if (registration == null)
+            return;
         try {
             registration.close();
         } finally {

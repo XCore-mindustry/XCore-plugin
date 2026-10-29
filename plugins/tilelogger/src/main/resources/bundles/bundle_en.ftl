@@ -7,9 +7,7 @@ commands-tl-subnet-subnet-description = IPv4 subnet (e.g. 1.2.3.4/24)
 commands-tl-fill-description = Fill selected area with block
 commands-tl-fill-block-description = Block name
 
-commands-tl-file-description = Reset history using custom file (server only)
 commands-tl-file-path-description = History file name/path
-commands-tl-file-mode-description = Mode: w = write to file
 
 commands-history-description = Show tile/player history
 commands-history-size-description = Number of entries to show
@@ -49,10 +47,41 @@ tilelogger-fill-success = [#98ff98]✔ Area filled[] [#b0b5c8]with[] {$emoji} {$
 tilelogger-history-player = [#a4b8ff]📜 History:[] [#ffd37f]{$player}[] [#6e7080]|[] [#b0b5c8]{$time}[]
 tilelogger-history-tile = [#a4b8ff]📜 Tile History:[] [#ffd37f]({$x}, {$y})[] [#6e7080]|[] [#b0b5c8]{$time}[]
 
-tilelogger-rollback-broadcast = [#a4b8ff]Rollback:[] [#ffd37f]{$caller}[] [#b0b5c8]reverted actions of[] [#ffd37f]{$target}[]
-    [#b0b5c8]Affected:[] [#ff8a8a]{$count}[] { $count ->
-        [one] tile
-       *[other] tiles
-    }
 
 tilelogger-server = Server
+
+commands-rollback-preview-description = Show a read-only rollback plan
+commands-history-success = History inspection size: { $size } (0 = off).
+tilelogger-error-limit = [scarlet]History size must be between 1 and { $max }.[]
+tilelogger-error-coordinates = [scarlet]Coordinates are outside the current map.[]
+tilelogger-error-selection = [scarlet]Select both corners on this map with /tl select first.[]
+tilelogger-error-duration = [scarlet]Duration is outside the supported range.[]
+tilelogger-error-session = [scarlet]The map/session changed or recording stopped. Start a live session and retry.[]
+tilelogger-error-storage = [scarlet]TileLogger storage is unavailable: { $reason }[]
+tilelogger-error-archive = [scarlet]Cannot open archive. The active history was preserved; see the server log.[]
+tilelogger-error-lookup = [scarlet]Player lookup failed. Try again later.[]
+tilelogger-error-mutations = [scarlet]At most { $max } buildings per operation. Select a smaller area.[]
+tilelogger-error-protected = [scarlet]This operation would affect a protected core or construction block.[]
+tilelogger-error-team = [scarlet]Specify a destination team.[]
+tilelogger-error-footprint = [scarlet]The complete building footprint must fit the selection without affecting other buildings.[]
+tilelogger-error-mode = [scarlet]Use r to open a read-only archive, or w to create a new live journal.[]
+tilelogger-archive-open = [accent]Archive opened: { $status }. World changes are disabled.[]
+tilelogger-session-started = [accent]New live history started and the map baseline recorded.[]
+tilelogger-read-only = [gray]Read-only archive. Legacy archives have an ambiguous 16-bit clock.[]
+tilelogger-rollback-preview = [accent]Preview: { $count } applicable; { $protected } protected; { $conflicts } conflicts; { $unsupported } unrestorable. No changes made.[]
+tilelogger-rollback-broadcast = [accent]{ $caller } rolled back { $target }: { $count } applied; { $protected } protected; { $conflicts } conflicts; { $unsupported } unrestorable; { $failed } failed.[]
+commands-tl-file-description = Open a read-only archive or start a new live history (server only)
+commands-tl-file-mode-description = r = read-only archive; w = new live journal (existing files are never replaced)
+
+tilelogger-action-baseline = Map baseline
+tilelogger-action-build-started = Build started
+tilelogger-action-build-completed = Build completed
+tilelogger-action-destroy-started = Destroy started
+tilelogger-action-destroy-completed = Destroy completed
+tilelogger-action-rotate = Rotate
+tilelogger-action-configure = Configure
+tilelogger-action-pickup = Pickup
+tilelogger-action-drop = Drop
+tilelogger-action-admin-fill = Admin fill
+tilelogger-action-legacy = Legacy snapshot
+tilelogger-error-plan = [scarlet]The rollback area or configuration volume is too large. Select a smaller area.[]
