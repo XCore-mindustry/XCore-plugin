@@ -17,6 +17,7 @@ import org.xcore.plugin.rating.ladder.LadderStanding;
 
 import java.time.Duration;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -100,6 +101,21 @@ class LadderViewsTest {
         assertThat(section.lines().get(2))
                 .startsWith("ladder-profile-history{")
                 .contains("rank=#1", "rating=1700", "season=season-title{number=1}");
+    }
+
+    @Test
+    @DisplayName("on a free-for-all ladder wins read as first places, with the top 3 beside them")
+    void profileSection_placementLadder() {
+        world.standing(1, "ace", 1100, 1100, 20, 3, Map.of("top3", 9));
+
+        ProfileSection section = world.views.profileSection(world.ladder, "X", 10, false)
+                .load(player("ace")).orElseThrow().render(local);
+
+        assertThat(section.details()).containsExactly(
+                "ladder-profile-matches{matches=20}",
+                "ladder-profile-firsts{rate=15, wins=3}",
+                "ladder-profile-top3{rate=45, top3=9}",
+                "ladder-profile-rank{rank=1}");
     }
 
     @Test

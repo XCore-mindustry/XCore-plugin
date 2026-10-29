@@ -101,7 +101,11 @@ final class RatingWorld {
     }
 
     void standing(int season, String uuid, int rating, int peak, int matches, int wins) {
-        standings.put(new LadderStanding("duel", season, uuid, rating, peak, matches, wins, Map.of()));
+        standing(season, uuid, rating, peak, matches, wins, Map.of());
+    }
+
+    void standing(int season, String uuid, int rating, int peak, int matches, int wins, Map<String, Integer> stats) {
+        standings.put(new LadderStanding("duel", season, uuid, rating, peak, matches, wins, stats));
     }
 
     /** A localisation that answers every key with the key and its arguments, e.g. {@code key{a=1, b=2}}. */

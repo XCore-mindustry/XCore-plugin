@@ -801,16 +801,15 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
             })).row();
         }));
 
-        // What the player has done so far, in three figures.
+        // What the player has done so far: wins out of games, so the rate reads at a glance, and blocks built.
         if (model.isStatsLoading()) {
             left.add(Kit.note(card, t(local, "player-stats-loading")));
         } else if (model.stats() != null) {
             AggregatedPlayerStats overall = model.stats().overall();
             NumberFormat nf = Localization.integers(local != null ? local.getLocale() : Locale.ROOT);
             left.add(Kit.card(card, (content, inner) -> content.add(Kit.text(
-                    t(local, "player-stats-total-games") + " [white]" + nf.format(overall.gamesPlayed()) + "[]\n"
-                            + t(local, "player-stats-victories") + " [lime]" + nf.format(overall.gamesWon())
-                            + "[] [gray](" + overall.winRatePercent() + "%)[]\n"
+                    victories(local, nf, overall.gamesWon(), overall.gamesPlayed(), overall.winRatePercent()) + "\n"
+                            + t(local, "player-stats-all-modes-hint") + "\n"
                             + t(local, "player-stats-blocks-built") + " [lime]" + nf.format(overall.blocksBuilt()) + "[]",
                     inner)).row()));
         } else {
@@ -871,11 +870,11 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
         List<VNode> left = new ArrayList<>();
         List<VNode> right = new ArrayList<>();
 
-        // Every game of every mode together.
+        // Every game of every mode together, and why its rate sits below the PvP one.
         left.add(Kit.card(card, (content, inner) -> content.add(Kit.text(
                 t(local, "player-stats-total-games") + " [white]" + nf.format(overall.gamesPlayed()) + "[]\n"
-                        + t(local, "player-stats-victories-value",
-                        args("wins", nf.format(overall.gamesWon()), "winRate", overall.winRatePercent())),
+                        + victories(local, nf, overall.gamesWon(), overall.gamesPlayed(), overall.winRatePercent()) + "\n"
+                        + t(local, "player-stats-all-modes-note"),
                 inner)).row()));
 
         // Mode by mode: the rating ladders first, then the modes that keep no rating.
@@ -885,20 +884,37 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
                 modes.add(section.details().isEmpty() ? section.headline()
                         : section.headline() + "\n  [lightgray]\u21b3[] " + String.join(SEPARATOR, section.details()));
             }
+            // All-time figures per mode; together with the events they add up to the total above.
+            ModeStatsSummary pvp = overview.pvp();
+            modes.add("[scarlet]" + Iconc.modePvp + "[] " + t(local, "player-stats-pvp-summary") + " "
+                    + (pvp.hasData()
+                    ? games(local, nf, pvp.gamesPlayed()) + SEPARATOR + t(local, "player-stats-mode-wins",
+                    args("wins", nf.format(pvp.gamesWon()), "winRate", pvp.winRatePercent()))
+                    : t(local, "player-menu-player-no-mode-stats")));
             ModeStatsSummary survival = overview.survival();
             modes.add("[green]" + Iconc.defense + "[] " + t(local, "player-stats-survival-summary") + " "
                     + (survival.hasData()
-                    ? games(local, nf, survival.gamesPlayed()) + SEPARATOR + t(local, "player-stats-waves-summary",
+                    ? games(local, nf, survival.gamesPlayed()) + SEPARATOR
+                    + t(local, "player-stats-survival-wins", args("wins", nf.format(survival.gamesWon()))) + SEPARATOR
+                    + t(local, "player-stats-waves-summary",
                     args("best", nf.format(survival.bestWave()), "avg", nf.format(survival.averageWave())))
                     : t(local, "player-menu-player-no-mode-stats")));
             ModeStatsSummary hexed = overview.hexed();
             modes.add("[purple]" + Iconc.star + "[] " + t(local, "player-stats-hexed-summary") + " "
                     + (hexed.hasData()
                     ? games(local, nf, hexed.gamesPlayed()) + SEPARATOR
-                    + t(local, "player-stats-victories") + " [lime]" + nf.format(hexed.gamesWon()) + "[]" + SEPARATOR
+                    + t(local, "player-stats-hexed-firsts",
+                    args("wins", nf.format(hexed.gamesWon()), "winRate", hexed.winRatePercent())) + SEPARATOR
                     + t(local, "player-stats-hexed-top-placement",
                     args("best", hexed.bestPlacement(), "top3", hexed.top3Finishes()))
                     : t(local, "player-menu-player-no-mode-stats")));
+            int otherGames = overview.otherGamesPlayed();
+            if (otherGames > 0) {
+                int otherWins = overview.otherGamesWon();
+                modes.add("[accent]" + Iconc.effect + "[] " + t(local, "player-stats-other-summary") + " "
+                        + games(local, nf, otherGames) + SEPARATOR + t(local, "player-stats-mode-wins",
+                        args("wins", nf.format(otherWins), "winRate", Math.round(otherWins * 100f / otherGames))));
+            }
             for (int i = 0; i < modes.size(); i++) {
                 String mode = modes.get(i);
                 boolean first = i == 0;
@@ -932,6 +948,12 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
                 }));
 
         body.add(Kit.columns(screen, left, right)).row();
+    }
+
+    /** "Wins: 777 of 1,736 | 45% win rate": the rate next to both numbers it comes from. */
+    private static String victories(Localization local, NumberFormat nf, int wins, int games, int winRate) {
+        return t(local, "player-stats-victories-value",
+                args("wins", nf.format(wins), "games", nf.format(games), "winRate", winRate));
     }
 
     private static String games(Localization local, NumberFormat nf, long count) {

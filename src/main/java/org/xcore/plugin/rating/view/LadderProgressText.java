@@ -14,6 +14,7 @@ import static com.ospx.flubundle.Bundle.args;
 /** The lines a {@link LadderProgress} is written out as, shared by the profile and {@code /season}. */
 final class LadderProgressText {
     private static final int PROGRESS_BAR_WIDTH = 14;
+    private static final String TOP3_STAT = "top3";
 
     private final SeasonText seasons;
 
@@ -46,9 +47,17 @@ final class LadderProgressText {
             return List.of(local.t("ladder-profile-unplaced"));
         }
         List<String> details = new ArrayList<>();
-        int winRate = Math.round(standing.wins() * 100f / standing.matches());
+        int winRate = percent(standing.wins(), standing.matches());
         details.add(local.t("ladder-profile-matches", args("matches", standing.matches())));
-        details.add(local.t("ladder-profile-wins", args("wins", standing.wins(), "rate", winRate)));
+        // A ladder that counts top-3 finishes is a free-for-all: a win there is first place out of everyone
+        // in the round, so it is named as such and the top 3 is shown beside it.
+        if (standing.stats().containsKey(TOP3_STAT)) {
+            details.add(local.t("ladder-profile-firsts", args("wins", standing.wins(), "rate", winRate)));
+            int top3 = standing.stat(TOP3_STAT);
+            details.add(local.t("ladder-profile-top3", args("top3", top3, "rate", percent(top3, standing.matches()))));
+        } else {
+            details.add(local.t("ladder-profile-wins", args("wins", standing.wins(), "rate", winRate)));
+        }
         if (progress.rank() != null) {
             details.add(local.t("ladder-profile-rank", args("rank", progress.rank())));
         }
@@ -56,6 +65,10 @@ final class LadderProgressText {
             details.add(local.t("ladder-profile-peak", args("rating", standing.peakRating())));
         }
         return details;
+    }
+
+    private static int percent(int part, int whole) {
+        return whole > 0 ? Math.round(part * 100f / whole) : 0;
     }
 
     /** Progress bar towards the next league. */
