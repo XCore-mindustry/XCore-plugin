@@ -66,7 +66,7 @@ dependencies {
 
 tasks.withType<Test> {
     useJUnitPlatform()
-    jvmArgs("-Xcheck:jni", "--enable-native-access=ALL-UNNAMED")
+    jvmArgs("--enable-native-access=ALL-UNNAMED", "--illegal-native-access=deny")
 }
 
 // Java/native boundary benchmarks against the release native library: ./gradlew jmh
@@ -91,12 +91,10 @@ tasks.named<ShadowJar>("jmhJar") {
 
 tasks.named<JavaCompile>("compileJava") {
     options.encoding = "UTF-8"
-    options.headerOutputDirectory.set(layout.buildDirectory.dir("generated/sources/headers/java/main"))
 }
 
 tasks.named<JavaCompile>("compileTestJava") {
     options.encoding = "UTF-8"
-    options.headerOutputDirectory.set(layout.buildDirectory.dir("generated/sources/headers/java/test"))
 }
 
 tasks.named<Jar>("jar") {

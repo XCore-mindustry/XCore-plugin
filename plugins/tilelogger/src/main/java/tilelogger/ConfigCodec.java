@@ -12,6 +12,8 @@ import mindustry.type.UnitType;
 import mindustry.world.Block;
 
 import java.nio.ByteBuffer;
+import java.lang.foreign.MemorySegment;
+import java.lang.foreign.ValueLayout;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -32,6 +34,13 @@ public final class ConfigCodec {
         @Override
         public byte[] bytes() {
             return bytes.clone();
+        }
+        int byteSize() {
+            return bytes.length;
+        }
+        // Copy into call-owned memory without exposing or cloning the immutable backing array.
+        void copyBytesTo(MemorySegment target) {
+            MemorySegment.copy(bytes, 0, target, ValueLayout.JAVA_BYTE, 0, bytes.length);
         }
         public boolean supported() {
             return type != UNSUPPORTED;

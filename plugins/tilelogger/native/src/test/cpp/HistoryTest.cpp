@@ -10,6 +10,12 @@
 #include <stdexcept>
 #include "HistoryStack.h"
 #include "TileLogger.h"
+#include "TileLoggerAbi.h"
+
+struct AbiResult {
+    TLResult value{};
+    ~AbiResult() { tl_release(&value); }
+};
 
 static void check(bool value, const char* message) {
     if (!value) throw std::runtime_error(message);
@@ -82,6 +88,30 @@ int main() {
         check(loaded.GetConfig(rows.back().config) == DataVec({'h', 'i'}), "config lost");
         check(loaded.ReadOnly(), "archives must be read-only");
     });
+    test("Unicode journals reopen after flush and exclusive creation preserves the archive", [&] {
+        JournalWriter writer;
+        auto path = directory / std::filesystem::path(u8"journal-\u0406\U0001F9F1.history");
+        TileLogger store(writer);
+        store.Start(path, "unicode", "content");
+        store.Record(Pos(1, 1), {}, 1, 20, 0, 0, 0, {}, ActionKind::BuildCompleted);
+        writer.Flush();
+        store.CheckWritable();
+        check(std::filesystem::exists(path), "Unicode journal not created");
+        store.Record(Pos(2, 1), {}, 1, 21, 0, 0, 0, {}, ActionKind::BuildCompleted);
+        writer.Flush();
+        store.CheckWritable();
+        auto size = std::filesystem::file_size(path);
+        auto collision = std::make_shared<JournalState>();
+        collision->path = path;
+        writer.Enqueue(collision, DataVec{'x'}, true);
+        writer.Flush();
+        check(collision->write_failed, "existing Unicode journal overwritten");
+        check(collision->error.find(pathUtf8(path)) != std::string::npos, "error path is not UTF-8");
+        check(std::filesystem::file_size(path) == size, "exclusive creation changed the archive");
+        TileLogger loaded(writer);
+        loaded.Load(path);
+        check(loaded.GetHistory(all, {}, -1, 0, 10).size() == 2, "reopened Unicode journal lost records");
+    });
     test("incomplete tail is recovered without rewriting source", [&] {
         JournalWriter writer;
         auto path = directory / "tail.history";
@@ -140,7 +170,7 @@ int main() {
         check(std::filesystem::file_size(path) == length, "preview wrote to disk");
     });
     test("legacy three-file archives remain readable", [&] {
-        auto path = directory / "legacy.history";
+        auto path = directory / std::filesystem::path(u8"legacy-\u0406\U0001F9F1.history");
         BitStack history;
         history.push_bytes(DataVec{'T', 'L', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0});
         history.push(1, 16);
@@ -174,6 +204,7 @@ int main() {
         loaded.Load(path);
         auto rows = loaded.GetHistory(all, {}, -1, 0, 10);
         check(loaded.Legacy() && loaded.ReadOnly() && rows.size() == 1, "legacy metadata lost");
+        check(loaded.Session() == "legacy:" + pathUtf8(path.stem()), "legacy session name is not UTF-8");
         check(rows[0].time == 65535 && rows[0].pos.y == 2 && rows[0].rotation == 3,
               "legacy record decoded incorrectly");
         check(loaded.GetPlayer(rows[0].player) == DataVec{'u'}, "legacy actor lost");
@@ -286,6 +317,67 @@ int main() {
         auto rows = loaded.GetHistory(all, {}, -1, 0, 101);
         check(rows.size() == 100, "configuration references lost records");
         check(loaded.GetConfig(rows.back().config).size() == 4096, "configuration reference lost bytes");
+    });
+    test("C ABI reports errors without exceptions or state replacement", [&] {
+        check(tl_abi_version() == 3 && sizeof(TLResult) == 32, "wrong ABI descriptor");
+        check(tl_start(nullptr, "", "session", "content") == 1, "null output accepted");
+        AbiResult start;
+        check(tl_start(&start.value, "", "abi-session", "content") == 0, "start failed");
+        AbiResult invalid;
+        check(tl_record(&invalid.value, 1, 1, nullptr, 1, 1, 20, 0, 0, 0, nullptr, 0, 3) == 1,
+              "invalid byte slice accepted");
+        check(invalid.value.data && invalid.value.size && invalid.value.owner, "missing owned diagnostic");
+        tl_release(&invalid.value);
+        check(!invalid.value.data && !invalid.value.owner && !invalid.value.size, "release did not clear result");
+        AbiResult session;
+        check(tl_session(&session.value) == 0, "session read failed");
+        check(std::string(session.value.data, session.value.data + session.value.size) == "abi-session",
+              "failure replaced the active store");
+    });
+    test("C ABI transfers wide records in a bounded portable buffer", [&] {
+        AbiResult start;
+        check(tl_start(&start.value, "", "abi-rows", "content") == 0, "start failed");
+        const uint8_t actor[] = {'u', 0, 'x'}, payload[] = {'h', 'i'};
+        AbiResult record;
+        check(tl_record(&record.value, 65535, 65534, actor, sizeof actor, 9, 2048, 3, 6, 0,
+                        payload, sizeof payload, static_cast<int32_t>(ActionKind::BuildCompleted)) == 0,
+              "record failed");
+        AbiResult query;
+        check(tl_history(&query.value, 0, 0, -1, -1, nullptr, 0, -1, 0, 4097, INT64_MAX) == 0,
+              "query failed");
+        DataVec data(query.value.data, query.value.data + query.value.size);
+        Decoder input{data};
+        check(input.integer(4) == 1, "wrong row count");
+        check(input.integer(2) == 65535 && input.integer(2) == 65534, "coordinates narrowed");
+        check(input.integer(2) == 9 && input.integer(2) == 2048, "identifiers narrowed");
+        check(input.integer(1) == 3 && input.integer(1) == 6, "wrong rotation/config kind");
+        check(input.integer(1) == static_cast<uint8_t>(ActionKind::BuildCompleted), "wrong event");
+        check(input.integer(1) == 1, "wrong flags");
+        input.integer(8);
+        check(input.integer(8) == 1, "wrong sequence");
+        check(input.integer(8) == 0 && input.integer(8) == 0, "unexpected rollback identifiers");
+        input.integer(4);
+        check(input.integer(4) == sizeof payload, "wrong original config size");
+        check(input.blob(256) == DataVec(actor, actor + sizeof actor), "actor byte length lost");
+        check(input.blob() == DataVec(payload, payload + sizeof payload), "configuration lost");
+        input.end();
+    });
+    test("C ABI result storage survives session replacement", [&] {
+        AbiResult start;
+        check(tl_start(&start.value, "", "owned-result", "content") == 0, "start failed");
+        DataVec config(max_config_bytes, 42);
+        AbiResult record;
+        check(tl_record(&record.value, 1, 1, nullptr, 0, 1, 20, 0, 5, 0,
+                        config.data(), config.size(), static_cast<int32_t>(ActionKind::Configure)) == 0,
+              "large record failed");
+        AbiResult result;
+        check(tl_current(&result.value, 1, 1) == 0 && result.value.size > max_config_bytes,
+              "full configuration not returned");
+        auto before = checksum(DataVec(result.value.data, result.value.data + result.value.size));
+        AbiResult replacement;
+        check(tl_start(&replacement.value, "", "replacement", "content") == 0, "replacement failed");
+        check(checksum(DataVec(result.value.data, result.value.data + result.value.size)) == before,
+              "result borrowed bytes from the replaced store");
     });
     std::filesystem::remove_all(directory);
     std::cout << failures << " native failures\n";

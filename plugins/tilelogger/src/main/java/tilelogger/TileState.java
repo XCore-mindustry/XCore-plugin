@@ -18,6 +18,10 @@ public class TileState {
     public int action_kind = ActionKind.LEGACY.id;
     private Object config = 0;
 
+    void nativeConfig(Object value) {
+        config = value;
+    }
+
     public Object getConfig() {
         if (configTruncated)
             throw new IllegalStateException(

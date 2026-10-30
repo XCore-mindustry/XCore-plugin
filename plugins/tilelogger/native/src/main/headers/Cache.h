@@ -6,6 +6,7 @@
 #include <unordered_map>
 #include "Binary.h"
 #include "BitStack.h"
+#include "Filesystem.h"
 
 struct DataHash {
     size_t operator()(const DataVec& value) const noexcept { return checksum(value); }
@@ -31,7 +32,7 @@ public:
     }
     void LoadLegacy(const std::filesystem::path& path, size_t limit) {
         std::ifstream file(path, std::ios::binary);
-        if (!file) throw std::runtime_error("Cannot open dictionary: " + path.string());
+        if (!file) throw std::runtime_error("Cannot open dictionary: " + pathUtf8(path));
         if (std::filesystem::file_size(path) > 512ull * 1024 * 1024)
             throw std::runtime_error("Dictionary too large");
         BitStack input;

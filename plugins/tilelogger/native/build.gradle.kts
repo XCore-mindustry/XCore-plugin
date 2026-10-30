@@ -1,12 +1,9 @@
 import org.gradle.internal.os.OperatingSystem
-import org.gradle.api.tasks.compile.JavaCompile
 import org.gradle.nativeplatform.tasks.LinkSharedLibrary
-import org.gradle.jvm.toolchain.JavaToolchainService
 
 plugins {
     `cpp-library`
     `cpp-unit-test`
-    `java-base`
 }
 
 library {
@@ -14,35 +11,13 @@ library {
     linkage.set(listOf(Linkage.SHARED))
 }
 
-val compileJava = project(":").tasks.named<JavaCompile>("compileJava")
-val jniHeadersDir = compileJava.flatMap { it.options.headerOutputDirectory }
-
 library {
     source.from("src/main/cpp")
-    publicHeaders.from("src/main/headers", jniHeadersDir)
+    publicHeaders.from("src/main/headers")
 }
-
-val javaToolchains = extensions.getByType<JavaToolchainService>()
-val javaLauncher = javaToolchains.launcherFor {
-    languageVersion.set(JavaLanguageVersion.of(libs.versions.java.get().toInt()))
-}
-val javaHomeProvider = javaLauncher.map { it.metadata.installationPath.asFile }
 
 tasks.withType<CppCompile>().configureEach {
-    dependsOn(compileJava)
-
-    includes.from(javaHomeProvider.map { it.resolve("include") })
-
     val os = OperatingSystem.current()
-    includes.from(javaHomeProvider.map {
-        when {
-            os.isLinux -> it.resolve("include/linux")
-            os.isWindows -> it.resolve("include/win32")
-            os.isMacOsX -> it.resolve("include/darwin")
-            else -> it
-        }
-    })
-
     if (os.isWindows) {
         compilerArgs.addAll(listOf("/std:c++20", "/W4", "/EHsc"))
     } else {

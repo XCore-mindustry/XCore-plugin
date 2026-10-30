@@ -10,6 +10,7 @@
 #include <mutex>
 #include <thread>
 #include "Binary.h"
+#include "Filesystem.h"
 #ifdef _WIN32
 #include <io.h>
 #else
@@ -154,14 +155,22 @@ private:
                         new_entry = true;
                         std::filesystem::create_directories(current->path.parent_path());
                         // Exclusive creation: never truncate an existing archive.
-                        file = std::fopen(current->path.string().c_str(), "wbx");
+#ifdef _WIN32
+                        file = _wfopen(current->path.c_str(), L"wbx");
+#else
+                        file = std::fopen(current->path.c_str(), "wbx");
+#endif
                         if (!file)
-                            throw std::runtime_error("Cannot create new journal: " + current->path.string());
+                            throw std::runtime_error("Cannot create new journal: " + pathUtf8(current->path));
                     }
                     if (job.state->write_failed) throw std::runtime_error("Journal writer failed");
                     if (current != job.state) throw std::runtime_error("Journal session mismatch");
                     if (!file) {
-                        file = std::fopen(current->path.string().c_str(), "r+b");
+#ifdef _WIN32
+                        file = _wfopen(current->path.c_str(), L"r+b");
+#else
+                        file = std::fopen(current->path.c_str(), "r+b");
+#endif
                         if (!file || std::fseek(file, 0, SEEK_END) != 0)
                             throw std::runtime_error("Cannot reopen journal");
                     }
