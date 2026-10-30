@@ -104,7 +104,7 @@ int main() {
         auto path = directory / "roundtrip.history";
         TileLogger original(writer);
         original.Start(path, "test-session", "test-content");
-        original.Record(Pos(1, 1), DataVec{'u'}, 9, 2048, 3, 6, 0, DataVec{'h', 'i'},
+        original.Record(Pos(1, 1), DataVec{'u'}, 9, 2048, 127, 6, 0, DataVec{'h', 'i'},
                         ActionKind::BuildCompleted);
         original.Record(Pos(1, 1), DataVec{'u'}, 9, 0, 0, 0, 0, {}, ActionKind::DestroyCompleted);
         writer.Flush();
@@ -113,7 +113,7 @@ int main() {
         auto rows = loaded.GetHistory(all, {}, -1, 0, 10);
         check(rows.size() == 2, "reload lost records");
         check(rows.back().destroy && rows.back().block == 2048, "destroy lost block");
-        check(rows.back().team == 9 && rows.back().rotation == 3, "wide data lost");
+        check(rows.back().team == 9 && rows.back().rotation == 127, "wide data lost");
         check(loaded.GetConfig(rows.back().config) == DataVec({'h', 'i'}), "config lost");
         check(loaded.ReadOnly(), "archives must be read-only");
     });
@@ -368,9 +368,15 @@ int main() {
         check(tl_start(&start.value, "", "abi-rows", "content") == 0, "start failed");
         const uint8_t actor[] = {'u', 0, 'x'}, payload[] = {'h', 'i'};
         AbiResult record;
-        check(tl_record(&record.value, 65535, 65534, actor, sizeof actor, 9, 2048, 3, 6, 0,
+        check(tl_record(&record.value, 65535, 65534, actor, sizeof actor, 9, 2048, 127, 6, 0,
                         payload, sizeof payload, static_cast<int32_t>(ActionKind::BuildCompleted)) == 0,
               "record failed");
+        AbiResult invalid;
+        check(tl_record(&invalid.value, 1, 1, actor, sizeof actor, 9, 2048, 128, 6, 0,
+                        payload, sizeof payload, static_cast<int32_t>(ActionKind::BuildCompleted)) != 0,
+              "out-of-range rotation accepted");
+        check(std::string(invalid.value.data, invalid.value.data + invalid.value.size)
+                  .find("rotation=128") != std::string::npos, "invalid rotation not diagnosed");
         AbiResult query;
         check(tl_history(&query.value, 0, 0, -1, -1, nullptr, 0, -1, 0, 4097, INT64_MAX) == 0,
               "query failed");
@@ -379,7 +385,7 @@ int main() {
         check(input.integer(4) == 1, "wrong row count");
         check(input.integer(2) == 65535 && input.integer(2) == 65534, "coordinates narrowed");
         check(input.integer(2) == 9 && input.integer(2) == 2048, "identifiers narrowed");
-        check(input.integer(1) == 3 && input.integer(1) == 6, "wrong rotation/config kind");
+        check(input.integer(1) == 127 && input.integer(1) == 6, "wrong rotation/config kind");
         check(input.integer(1) == static_cast<uint8_t>(ActionKind::BuildCompleted), "wrong event");
         check(input.integer(1) == 1, "wrong flags");
         input.integer(8);

@@ -70,10 +70,14 @@ public:
     void Record(Pos pos, const DataVec& uuid, unsigned team, unsigned block, unsigned rotation, unsigned type,
                 uint32_t scalar, const DataVec& payload, ActionKind action) {
         CheckWritable();
-        if (uuid.size() > 256 || team > 255 || block > 65535 || rotation > 3 || type > 9 ||
+        // Building.readBase preserves seven rotation bits, not just the cardinal direction.
+        if (uuid.size() > 256 || team > 255 || block > 65535 || rotation > 127 || type > 9 ||
             payload.size() > max_config_bytes ||
             (action > ActionKind::AdminFill && action != ActionKind::Legacy))
-            throw std::invalid_argument("Invalid tile action");
+            throw std::invalid_argument("Invalid tile action: team=" + std::to_string(team) +
+                " block=" + std::to_string(block) + " rotation=" + std::to_string(rotation) +
+                " configType=" + std::to_string(type) + " configBytes=" + std::to_string(payload.size()) +
+                " action=" + std::to_string(static_cast<unsigned>(action)));
         if (history_.Records().size() >= max_records)
             throw std::runtime_error("Session record limit reached");
         TileState state(pos, players_[uuid], team, true, Duration(), block,
@@ -227,7 +231,7 @@ private:
         s.config_type = in.integer(1);
         s.action = static_cast<ActionKind>(in.integer(1));
         s.config = in.integer(4);
-        if (s.time > INT64_MAX || s.team > 255 || valid > 1 || destroy > 1 || s.rotation > 3 ||
+        if (s.time > INT64_MAX || s.team > 255 || valid > 1 || destroy > 1 || s.rotation > 127 ||
             s.config_type > 9 || (s.action > ActionKind::AdminFill && s.action != ActionKind::Legacy))
             throw std::runtime_error("Invalid record fields");
         s.player = players_[in.blob(256)];

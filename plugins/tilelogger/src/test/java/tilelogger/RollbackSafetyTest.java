@@ -58,6 +58,91 @@ class RollbackSafetyTest {
         build.items.set(Items.silicon, 7);
         build.health = build.maxHealth / 2;
     }
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(ints = {4, 127})
+    void nonCardinalRotationDoesNotStopConfigOrDestructionHistory(int rotation, HeadlessWorld world) {
+        var build = factory(world);
+        build.rotation = rotation;
+        InputHandler.tileConfig(null, build, 1);
+        assertThat(TileLogger.isLive()).isTrue();
+        assertThat(TileLogger.currentState(8, 8).rotation).isEqualTo(rotation);
+        assertThat(build.rotation).isEqualTo(rotation);
+        service.logDestroy(build.tile, null);
+        assertThat(TileLogger.currentState(8, 8).destroy).isTrue();
+        assertThat(TileLogger.currentState(8, 8).rotation).isEqualTo(rotation);
+        world.setBlock(12, 12, Blocks.router, Team.sharded);
+        service.logBuild(world.tile(12, 12), null);
+        assertThat(TileLogger.currentState(12, 12)).isNotNull();
+        assertThat(TileLogger.isLive()).isTrue();
+    }
+    @Test
+    void derelictRepairRecordsTheRawGameRotation(HeadlessWorld world) {
+        var indexer = Vars.indexer;
+        var pathfinder = Vars.pathfinder;
+        var fog = Vars.fogControl;
+        try {
+            Vars.indexer = mock(mindustry.ai.BlockIndexer.class);
+            Vars.pathfinder = mock(mindustry.ai.Pathfinder.class);
+            Vars.fogControl = mock(mindustry.game.FogControl.class);
+            world.setBlock(8, 8, Blocks.sorter, Team.derelict);
+            Vars.state.rules.derelictRepair = true;
+            service.resetHistory("", true);
+            mindustry.world.Build.beginPlace(null, Blocks.sorter, Team.sharded, 8, 8, 4, null);
+            assertThat(world.tile(8, 8).team()).isSameAs(Team.sharded);
+            assertThat(world.tile(8, 8).build.rotation).isEqualTo(4);
+            var state = TileLogger.currentState(8, 8);
+            assertThat(state.rotation).isEqualTo(4);
+            assertThat(state.kind()).isEqualTo(ActionKind.BUILD_COMPLETED);
+            assertThat(TileLogger.isLive()).isTrue();
+        } finally {
+            Vars.indexer = indexer;
+            Vars.pathfinder = pathfinder;
+            Vars.fogControl = fog;
+        }
+    }
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(booleans = {false, true})
+    void nonCardinalRollbackSourceOrTargetIsSkippedBeforeMutation(boolean target, HeadlessWorld world) {
+        var build = factory(world);
+        if (target) {
+            build.rotation = 4;
+            service.resetHistory("", true);
+        }
+        build.rotation = target ? 0 : 4;
+        InputHandler.tileConfig(null, build, 1);
+        stock(build);
+        long sequence = TileLogger.currentState(8, 8).sequence;
+        service.rollback(null, all, -1, 0, area);
+        assertThat(world.tile(8, 8).build).isSameAs(build);
+        assertThat(build.rotation).isEqualTo(target ? 0 : 4);
+        assertThat(build.config()).isEqualTo(1);
+        assertThat(build.items.get(Items.silicon)).isEqualTo(7);
+        assertThat(build.health).isEqualTo(build.maxHealth / 2);
+        assertThat(TileLogger.currentState(8, 8).sequence).isEqualTo(sequence);
+        assertThat(TileLogger.isLive()).isTrue();
+    }
+    @Test
+    void rejectedRecordReportsContextAndKeepsSessionSuspended(HeadlessWorld world) {
+        var build = factory(world);
+        build.rotation = 128;
+        var previous = arc.util.Log.logger;
+        var messages = new java.util.ArrayList<String>();
+        try {
+            arc.util.Log.logger = (level, text) -> messages.add(text);
+            assertThatThrownBy(() -> service.logBuild(build.tile, null))
+                    .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("rotation=128");
+        } finally {
+            arc.util.Log.logger = previous;
+        }
+        assertThat(messages).anySatisfy(text -> assertThat(text).contains(
+                "Recording stopped until a new history session starts", "x=8 y=8", "rotation=128"));
+        assertThat(TileLogger.isLive()).isFalse();
+        long sequence = TileLogger.currentState(8, 8).sequence;
+        build.rotation = 0;
+        build.configured(null, 1);
+        service.logBuild(build.tile, null);
+        assertThat(TileLogger.currentState(8, 8).sequence).isEqualTo(sequence);
+    }
     @Test
     void configRollbackKeepsTheBuildingInventoryAndHealth(HeadlessWorld world) {
         var build = factory(world);
