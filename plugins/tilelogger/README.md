@@ -1,6 +1,24 @@
 # TileLogger
 
-Mindustry v160 server plugin for tile history, player activity evidence, and bounded rollback. Requires XCore and Java 25. The matching AdminTools client supports protocol v2 and Java 17/Android.
+Mindustry v160 server plugin for tile history, player activity evidence, and bounded rollback. Requires XCore and a 64-bit Java 25 JVM. The matching AdminTools client supports protocol v2 and Java 17/Android.
+
+## Native access (FFM)
+
+TileLogger 2.1 uses the final `java.lang.foreign` API and C ABI 3 instead of JNI. Start the server with native access enabled for classpath plugins:
+
+```sh
+java --enable-native-access=ALL-UNNAMED -jar server.jar
+```
+
+No preview flag is needed. Tests also use `--illegal-native-access=deny` to verify the explicit grant. Java and the native library must come from the same release jar: initialization checks ABI 3 and rejects an older JNI library. The **journal and client protocol stay at version 2**. Existing v2 and legacy archives keep their previous read-only behavior.
+
+`TileLoggerAbi.h` defines fixed-width C signatures and a 32-byte result descriptor on 64-bit hosts. Native code reports status/errors rather than throwing across the boundary. Result buffers are bounded to 8 MiB, decoded into Java-owned objects and released in `finally`/try-with-resources. UUIDs are length-prefixed UTF-8, preserving supplementary characters and embedded NUL. Paths/session metadata are NUL-free UTF-8 strings.
+
+Each Java thread has one private, GC-owned 4 KiB scratch buffer for short input arguments. Large arguments and borrowed outputs use a confined arena closed on every call; no result view escapes. Reentrant use of a call frame is rejected. The native writer always queues owned copies. The library stays loaded for the JVM lifetime so its background writer cannot outlive an unloaded library.
+
+Game-thread ownership, archive workers, rollback limits and durability semantics are unchanged. The C++ build no longer uses JDK include directories or generated JNI headers.
+
+[Migration benchmark results and reproduction steps](docs/benchmarks/ffm-2026-10-30/README.md) include the query improvements, recording tradeoffs and Java allocation costs.
 
 ## Commands
 
@@ -54,11 +72,11 @@ Dedicated wire codecs emit default fields, disable polymorphic Java class hints,
 ./gradlew :native:check -PnativeSanitizers=true
 ```
 
-`check` includes the C++ executable, deterministic/reference regression cases, Java headless tests, archive/JNI tests, and FTL compilation/consistency. JVM tests run with `-Xcheck:jni`. The sanitizer run is separate because ASan-instrumented native libraries must not be loaded by the ordinary JVM test process.
+`check` includes the C++ executable, deterministic/reference regression cases, Java headless tests, archive/FFM tests, and FTL compilation/consistency. JVM tests enable native access and deny any unapproved native access. The sanitizer run is separate because ASan-instrumented native libraries must not be loaded by the ordinary JVM test process.
 
 ## Benchmarks
 
-The suite compares revisions on the same machine. CPU scenarios run in an optimized Linux C++ binary (`-O3 -DNDEBUG`), separate from Gradle's debug/JNI-checked correctness tests. ASan builds and unoptimized builds are rejected.
+The suite compares revisions on the same machine. CPU scenarios run in an optimized Linux C++ binary (`-O3 -DNDEBUG`), separate from Gradle's debug correctness tests. ASan builds and unoptimized builds are rejected.
 
 ```sh
 scripts/bench-ab.sh master                         # 3 rounds, n = 1,000,000 total records
@@ -96,7 +114,7 @@ Journal files must live on representative storage. tmpfs is diagnosed, since it 
 java --enable-native-access=ALL-UNNAMED -jar build/libs/TileLogger-jmh.jar
 ```
 
-JMH uses the release native library, without `-Xcheck:jni`, and writes JSON results under `build/results/jmh/`. The runnable benchmark jar includes its runtime dependencies and the release library. `check` compiles the benchmarks but never times them. Linux CI also runs a small native A/A and runnable-jar smoke check, with no timing thresholds.
+JMH uses the release native library through FFM, and writes JSON results under `build/results/jmh/`. The runnable benchmark jar includes its runtime dependencies and the release library. `check` compiles the benchmarks but never times them. Linux CI also runs a small native A/A and runnable-jar smoke check, with no timing thresholds.
 
 `history32`, `history4097` and `currentState` measure complete API calls with recent answers. `record` uses single-shot, fixed batches of 16,384 records, resetting the session outside timing for every iteration; scores are normalized per record. Keep its single-shot mode and batch size of one. These include native encoding/storage work as well as argument conversion; they are not the cost of the Java/native transition alone. One JMH thread is required because the native store is global; multi-threaded runs are rejected before accessing it.
 

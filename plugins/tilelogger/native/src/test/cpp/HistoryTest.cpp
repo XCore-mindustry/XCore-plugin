@@ -10,6 +10,12 @@
 #include <stdexcept>
 #include "HistoryStack.h"
 #include "TileLogger.h"
+#include "TileLoggerAbi.h"
+
+struct AbiResult {
+    TLResult value{};
+    ~AbiResult() { tl_release(&value); }
+};
 
 static void check(bool value, const char* message) {
     if (!value) throw std::runtime_error(message);
@@ -286,6 +292,67 @@ int main() {
         auto rows = loaded.GetHistory(all, {}, -1, 0, 101);
         check(rows.size() == 100, "configuration references lost records");
         check(loaded.GetConfig(rows.back().config).size() == 4096, "configuration reference lost bytes");
+    });
+    test("C ABI reports errors without exceptions or state replacement", [&] {
+        check(tl_abi_version() == 3 && sizeof(TLResult) == 32, "wrong ABI descriptor");
+        check(tl_start(nullptr, "", "session", "content") == 1, "null output accepted");
+        AbiResult start;
+        check(tl_start(&start.value, "", "abi-session", "content") == 0, "start failed");
+        AbiResult invalid;
+        check(tl_record(&invalid.value, 1, 1, nullptr, 1, 1, 20, 0, 0, 0, nullptr, 0, 3) == 1,
+              "invalid byte slice accepted");
+        check(invalid.value.data && invalid.value.size && invalid.value.owner, "missing owned diagnostic");
+        tl_release(&invalid.value);
+        check(!invalid.value.data && !invalid.value.owner && !invalid.value.size, "release did not clear result");
+        AbiResult session;
+        check(tl_session(&session.value) == 0, "session read failed");
+        check(std::string(session.value.data, session.value.data + session.value.size) == "abi-session",
+              "failure replaced the active store");
+    });
+    test("C ABI transfers wide records in a bounded portable buffer", [&] {
+        AbiResult start;
+        check(tl_start(&start.value, "", "abi-rows", "content") == 0, "start failed");
+        const uint8_t actor[] = {'u', 0, 'x'}, payload[] = {'h', 'i'};
+        AbiResult record;
+        check(tl_record(&record.value, 65535, 65534, actor, sizeof actor, 9, 2048, 3, 6, 0,
+                        payload, sizeof payload, static_cast<int32_t>(ActionKind::BuildCompleted)) == 0,
+              "record failed");
+        AbiResult query;
+        check(tl_history(&query.value, 0, 0, -1, -1, nullptr, 0, -1, 0, 4097, INT64_MAX) == 0,
+              "query failed");
+        DataVec data(query.value.data, query.value.data + query.value.size);
+        Decoder input{data};
+        check(input.integer(4) == 1, "wrong row count");
+        check(input.integer(2) == 65535 && input.integer(2) == 65534, "coordinates narrowed");
+        check(input.integer(2) == 9 && input.integer(2) == 2048, "identifiers narrowed");
+        check(input.integer(1) == 3 && input.integer(1) == 6, "wrong rotation/config kind");
+        check(input.integer(1) == static_cast<uint8_t>(ActionKind::BuildCompleted), "wrong event");
+        check(input.integer(1) == 1, "wrong flags");
+        input.integer(8);
+        check(input.integer(8) == 1, "wrong sequence");
+        check(input.integer(8) == 0 && input.integer(8) == 0, "unexpected rollback identifiers");
+        input.integer(4);
+        check(input.integer(4) == sizeof payload, "wrong original config size");
+        check(input.blob(256) == DataVec(actor, actor + sizeof actor), "actor byte length lost");
+        check(input.blob() == DataVec(payload, payload + sizeof payload), "configuration lost");
+        input.end();
+    });
+    test("C ABI result storage survives session replacement", [&] {
+        AbiResult start;
+        check(tl_start(&start.value, "", "owned-result", "content") == 0, "start failed");
+        DataVec config(max_config_bytes, 42);
+        AbiResult record;
+        check(tl_record(&record.value, 1, 1, nullptr, 0, 1, 20, 0, 5, 0,
+                        config.data(), config.size(), static_cast<int32_t>(ActionKind::Configure)) == 0,
+              "large record failed");
+        AbiResult result;
+        check(tl_current(&result.value, 1, 1) == 0 && result.value.size > max_config_bytes,
+              "full configuration not returned");
+        auto before = checksum(DataVec(result.value.data, result.value.data + result.value.size));
+        AbiResult replacement;
+        check(tl_start(&replacement.value, "", "replacement", "content") == 0, "replacement failed");
+        check(checksum(DataVec(result.value.data, result.value.data + result.value.size)) == before,
+              "result borrowed bytes from the replaced store");
     });
     std::filesystem::remove_all(directory);
     std::cout << failures << " native failures\n";

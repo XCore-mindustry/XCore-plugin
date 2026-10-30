@@ -35,6 +35,8 @@ class NativeStoreTest {
     void invalidReadNeverClearsTheStore() {
         record
         (1, 2048, ActionKind.BUILD_COMPLETED);
+        assertThatThrownBy(() -> TileLogger.activateArchive(-1))
+                .isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> TileLogger.getHistory(0, 0, -1, -1, "", -1, 0, 0))
                 .isInstanceOf(IllegalArgumentException.class);
         TileState[] rows = TileLogger.getHistory(0, 0, -1, -1, "", -1, 0, 10);
@@ -96,7 +98,7 @@ class NativeStoreTest {
         assertThat(TileLogger.getHistory(0, 0, -1, -1, "", -1, 0, 10)).hasSize(1);
     }
     @Test
-    void dictionaryAndFrameRoundtripAcrossLargeJniResults() {
+    void dictionaryAndFrameRoundtripAcrossLargeForeignResults() {
         for (int i = 0; i < 4097; i++)
             TileLogger.record(i, 1, "actor-" + i, 9, 20, 0, ConfigCodec.encode(new byte[] {1, 2, 3}),
                     ActionKind.CONFIGURE);
@@ -121,5 +123,73 @@ class NativeStoreTest {
                 .isEqualTo(ConfigCodec.MAX_BYTES);
         assertThatThrownBy(() -> TileLogger.planRollback(new Rect(0, 0, 10, 10), "actor", -1, 0))
                 .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void readsJournalProducedByThePreviousJniRelease() throws Exception {
+        Path golden = directory.resolve("jni.history");
+        try (var input = getClass().getResourceAsStream("/golden/jni-v2.history")) {
+            assertThat(input).isNotNull();
+            Files.copy(input, golden);
+        }
+        TileLogger.activateArchive(load(golden));
+        assertThat(TileLogger.sessionId()).isEqualTo("jni-golden-session");
+        assertThat(TileLogger.isReadOnly()).isTrue();
+        var current = TileLogger.currentState(1, 2);
+        assertThat(current.block).isEqualTo(2048);
+        assertThat(current.rotation).isEqualTo(3);
+        assertThat(current.getConfig()).isEqualTo(Integer.MIN_VALUE);
+        var history = TileLogger.getHistory(1, 2, 1, 2, "", -1, 0, 10);
+        assertThat(history).hasSize(2);
+        assertThat(history[1].valid).isFalse();
+        assertThat(history[1].getConfig()).isEqualTo("old 🧱\0config");
+        assertThat((byte[]) TileLogger.currentState(2, 3).getConfig()).containsExactly(0, 1, (byte) 255);
+        var preview = TileLogger.getHistory(4, 5, 4, 5, "", -1, 0, 1)[0];
+        assertThat(preview.configTruncated).isTrue();
+        assertThat(preview.configBytes).isEqualTo(4096);
+    }
+
+    @Test
+    void returnedValuesSurviveReleaseAndSubsequentNativeCalls() {
+        String actor = "игрок🧱\0";
+        TileLogger.record(1, 1, actor, 9, 2048, 3, ConfigCodec.encode(new byte[] {1, 2, 3}),
+                ActionKind.CONFIGURE);
+        var row = TileLogger.currentState(1, 1);
+        assertThatThrownBy(() -> TileLogger.getHistory(-1, 0, 2, 2, "", -1, 0, 10))
+                .isInstanceOf(IllegalArgumentException.class);
+        for (int i = 0; i < 100; i++) {
+            TileLogger.getBuildString();
+            TileLogger.currentState(1, 1);
+        }
+        assertThat(row.uuid).isEqualTo(actor);
+        assertThat((byte[]) row.getConfig()).containsExactly(1, 2, 3);
+        TileLogger.flush();
+        TileLogger.activateArchive(load(journal));
+        assertThat(TileLogger.currentState(1, 1).uuid).isEqualTo(actor);
+    }
+
+    @Test
+    void utf8ArchivePathsAndSessionMetadataRoundtrip() {
+        Path unicode = directory.resolve("історія-🧱.history");
+        TileLogger.startSession(unicode.toString(), "сесія-🧱", "test-content");
+        record(1, 2048, ActionKind.BUILD_COMPLETED);
+        TileLogger.flush();
+        assertThat(unicode).exists();
+        TileLogger.activateArchive(load(unicode));
+        assertThat(TileLogger.sessionId()).isEqualTo("сесія-🧱");
+        assertThat(TileLogger.currentState(1, 1).getConfig()).isEqualTo("конфигурация");
+    }
+
+    @Test
+    void archiveFailuresKeepDiagnosticsLocalToEachForeignCall() {
+        var tasks = new java.util.ArrayList<CompletableFuture<Void>>();
+        for (int i = 0; i < 12; i++) {
+            Path missing = directory.resolve("missing-" + i + ".history");
+            tasks.add(CompletableFuture.runAsync(() -> assertThatThrownBy(
+                    () -> TileLogger.prepareArchive(missing.toString(), "test-content"))
+                    .isInstanceOf(IllegalStateException.class).hasMessageContaining(missing.getFileName().toString())));
+        }
+        CompletableFuture.allOf(tasks.toArray(CompletableFuture[]::new)).join();
+        assertThat(TileLogger.isReadOnly()).isFalse();
     }
 }
