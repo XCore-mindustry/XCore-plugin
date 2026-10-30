@@ -143,6 +143,26 @@ class RollbackSafetyTest {
         service.logBuild(build.tile, null);
         assertThat(TileLogger.currentState(8, 8).sequence).isEqualTo(sequence);
     }
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.CsvSource({"4,false", "127,false", "4,true", "127,true"})
+    void fillSkipsNonCardinalBuildingAndStillFillsNeighbor(int rotation, boolean large, HeadlessWorld world) {
+        world.setBlock(8, 8, large ? Blocks.groundFactory : Blocks.router, Team.sharded);
+        var original = world.tile(8, 8).build;
+        original.rotation = rotation;
+        original.items.set(Items.copper, 7);
+        original.health = original.maxHealth / 2;
+        service.resetHistory("", true);
+        long sequence = TileLogger.currentState(8, 8).sequence;
+        service.fill(null, Team.sharded, Blocks.copperWall, new Rect(7, 7, 10, 9));
+        assertThat(world.tile(8, 8).build).isSameAs(original);
+        assertThat(original.rotation).isEqualTo(rotation);
+        assertThat(original.items.get(Items.copper)).isEqualTo(7);
+        assertThat(original.health).isEqualTo(original.maxHealth / 2);
+        assertThat(TileLogger.currentState(8, 8).sequence).isEqualTo(sequence);
+        assertThat(world.tile(10, 8).block()).isSameAs(Blocks.copperWall);
+        assertThat(TileLogger.currentState(10, 8).kind()).isEqualTo(ActionKind.ADMIN_FILL);
+        assertThat(TileLogger.isLive()).isTrue();
+    }
     @Test
     void configRollbackKeepsTheBuildingInventoryAndHealth(HeadlessWorld world) {
         var build = factory(world);

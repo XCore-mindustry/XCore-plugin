@@ -768,6 +768,8 @@ public class TileLoggerService {
                 Tile tile = Vars.world.tile(x, y);
                 if (tile == null)
                     throw new XCoreCommandException("tilelogger-error-coordinates");
+                if (tile.build != null && (tile.build.rotation < 0 || tile.build.rotation > 3))
+                    continue;
                 if (tile.build != null && tile.build.tile != tile)
                     throw new XCoreCommandException("tilelogger-error-footprint");
                 try {
