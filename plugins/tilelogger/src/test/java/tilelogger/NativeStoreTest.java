@@ -174,17 +174,22 @@ class NativeStoreTest {
         TileLogger.startSession(unicode.toString(), "сесія-🧱", "test-content");
         record(1, 2048, ActionKind.BUILD_COMPLETED);
         TileLogger.flush();
+        TileLogger.checkWritable();
         assertThat(unicode).exists();
+        record(2, 2049, ActionKind.BUILD_COMPLETED);
+        TileLogger.flush();
+        TileLogger.checkWritable();
         TileLogger.activateArchive(load(unicode));
         assertThat(TileLogger.sessionId()).isEqualTo("сесія-🧱");
         assertThat(TileLogger.currentState(1, 1).getConfig()).isEqualTo("конфигурация");
+        assertThat(TileLogger.currentState(2, 1).block).isEqualTo(2049);
     }
 
     @Test
     void archiveFailuresKeepDiagnosticsLocalToEachForeignCall() {
         var tasks = new java.util.ArrayList<CompletableFuture<Void>>();
         for (int i = 0; i < 12; i++) {
-            Path missing = directory.resolve("missing-" + i + ".history");
+            Path missing = directory.resolve("відсутній-🧱-" + i + ".history");
             tasks.add(CompletableFuture.runAsync(() -> assertThatThrownBy(
                     () -> TileLogger.prepareArchive(missing.toString(), "test-content"))
                     .isInstanceOf(IllegalStateException.class).hasMessageContaining(missing.getFileName().toString())));

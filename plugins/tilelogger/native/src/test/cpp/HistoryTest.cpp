@@ -88,6 +88,30 @@ int main() {
         check(loaded.GetConfig(rows.back().config) == DataVec({'h', 'i'}), "config lost");
         check(loaded.ReadOnly(), "archives must be read-only");
     });
+    test("Unicode journals reopen after flush and exclusive creation preserves the archive", [&] {
+        JournalWriter writer;
+        auto path = directory / std::filesystem::path(u8"journal-\u0406\U0001F9F1.history");
+        TileLogger store(writer);
+        store.Start(path, "unicode", "content");
+        store.Record(Pos(1, 1), {}, 1, 20, 0, 0, 0, {}, ActionKind::BuildCompleted);
+        writer.Flush();
+        store.CheckWritable();
+        check(std::filesystem::exists(path), "Unicode journal not created");
+        store.Record(Pos(2, 1), {}, 1, 21, 0, 0, 0, {}, ActionKind::BuildCompleted);
+        writer.Flush();
+        store.CheckWritable();
+        auto size = std::filesystem::file_size(path);
+        auto collision = std::make_shared<JournalState>();
+        collision->path = path;
+        writer.Enqueue(collision, DataVec{'x'}, true);
+        writer.Flush();
+        check(collision->write_failed, "existing Unicode journal overwritten");
+        check(collision->error.find(pathUtf8(path)) != std::string::npos, "error path is not UTF-8");
+        check(std::filesystem::file_size(path) == size, "exclusive creation changed the archive");
+        TileLogger loaded(writer);
+        loaded.Load(path);
+        check(loaded.GetHistory(all, {}, -1, 0, 10).size() == 2, "reopened Unicode journal lost records");
+    });
     test("incomplete tail is recovered without rewriting source", [&] {
         JournalWriter writer;
         auto path = directory / "tail.history";
@@ -146,7 +170,7 @@ int main() {
         check(std::filesystem::file_size(path) == length, "preview wrote to disk");
     });
     test("legacy three-file archives remain readable", [&] {
-        auto path = directory / "legacy.history";
+        auto path = directory / std::filesystem::path(u8"legacy-\u0406\U0001F9F1.history");
         BitStack history;
         history.push_bytes(DataVec{'T', 'L', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0});
         history.push(1, 16);
@@ -180,6 +204,7 @@ int main() {
         loaded.Load(path);
         auto rows = loaded.GetHistory(all, {}, -1, 0, 10);
         check(loaded.Legacy() && loaded.ReadOnly() && rows.size() == 1, "legacy metadata lost");
+        check(loaded.Session() == "legacy:" + pathUtf8(path.stem()), "legacy session name is not UTF-8");
         check(rows[0].time == 65535 && rows[0].pos.y == 2 && rows[0].rotation == 3,
               "legacy record decoded incorrectly");
         check(loaded.GetPlayer(rows[0].player) == DataVec{'u'}, "legacy actor lost");

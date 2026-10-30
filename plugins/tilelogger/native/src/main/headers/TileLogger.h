@@ -168,7 +168,7 @@ public:
     // Called on an archive-reader worker, never against the active store.
     void Load(const std::filesystem::path& path) {
         std::ifstream file(path, std::ios::binary);
-        if (!file) throw std::runtime_error("Cannot open archive: " + path.string());
+        if (!file) throw std::runtime_error("Cannot open archive: " + pathUtf8(path));
         if (std::filesystem::file_size(path) > 1024ull * 1024 * 1024)
             throw std::runtime_error("Archive exceeds 1 GiB reader limit");
         DataVec data(std::istreambuf_iterator<char>(file), {});
@@ -336,7 +336,7 @@ private:
         // Empty legacy stores may have an empty player dictionary.
         players_[DataVec{}];
         legacy_ = true;
-        session_ = "legacy:" + path.stem().string();
+        session_ = "legacy:" + pathUtf8(path.stem());
     }
     static constexpr std::array<uint8_t, 8> magic_{'T', 'L', 'J', 2, 13, 10, 26, 0};
     JournalWriter& writer_;
