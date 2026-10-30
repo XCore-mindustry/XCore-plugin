@@ -10,6 +10,7 @@ plugins {
     alias(libs.plugins.avaje.inject)
     alias(libs.plugins.shadow)
     alias(libs.plugins.toxopid)
+    alias(libs.plugins.jmh)
 }
 
 java {
@@ -67,6 +68,13 @@ tasks.withType<Test> {
     useJUnitPlatform()
     jvmArgs("-Xcheck:jni", "--enable-native-access=ALL-UNNAMED")
 }
+
+// Java/native boundary benchmarks against the release native library: ./gradlew jmh
+jmh {
+    jmhVersion.set("1.37")
+    duplicateClassesStrategy.set(DuplicatesStrategy.EXCLUDE)
+}
+configurations.named("jmhImplementation") { extendsFrom(configurations.testImplementation.get()) }
 
 tasks.named<JavaCompile>("compileJava") {
     options.encoding = "UTF-8"
@@ -135,6 +143,11 @@ gradle.projectsEvaluated {
                 },
             )
     }
+    val linkRelease = project(":native").tasks.named<LinkSharedLibrary>("linkRelease")
+    dependencies {
+        "jmhRuntimeOnly"(files(linkRelease.map { it.linkedFile.get().asFile.parentFile }).builtBy(linkRelease))
+    }
 }
 
-tasks.named("check") { dependsOn(":native:check") }
+// Benchmarks are never run by check, but must keep compiling against the API.
+tasks.named("check") { dependsOn(":native:check", "compileJmhJava") }
