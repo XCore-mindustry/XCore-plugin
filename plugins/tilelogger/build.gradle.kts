@@ -10,6 +10,7 @@ plugins {
     alias(libs.plugins.avaje.inject)
     alias(libs.plugins.shadow)
     alias(libs.plugins.toxopid)
+    alias(libs.plugins.jmh)
 }
 
 java {
@@ -66,6 +67,26 @@ dependencies {
 tasks.withType<Test> {
     useJUnitPlatform()
     jvmArgs("-Xcheck:jni", "--enable-native-access=ALL-UNNAMED")
+}
+
+// Java/native boundary benchmarks against the release native library: ./gradlew jmh
+jmh {
+    jmhVersion.set("1.37")
+    duplicateClassesStrategy.set(DuplicatesStrategy.EXCLUDE)
+    failOnError.set(true)
+    includeTests.set(false)
+    resultFormat.set("JSON")
+}
+dependencies {
+    "jmhImplementation"(libs.xcore.plugin)
+    "jmhImplementation"(toxopid.dependencies.mindustryCore)
+    "jmhImplementation"(toxopid.dependencies.arcCore)
+}
+tasks.named<ShadowJar>("jmhJar") {
+    configurations = listOf(project.configurations.getByName("jmhRuntimeClasspath"))
+    mergeServiceFiles()
+    // The JMH plugin's legacy Shadow integration emits a thin class path on Shadow 9.
+    manifest.attributes["Class-Path"] = ""
 }
 
 tasks.named<JavaCompile>("compileJava") {
@@ -135,6 +156,11 @@ gradle.projectsEvaluated {
                 },
             )
     }
+    val linkRelease = project(":native").tasks.named<LinkSharedLibrary>("linkRelease")
+    dependencies {
+        "jmhRuntimeOnly"(files(linkRelease.map { it.linkedFile.get().asFile.parentFile }).builtBy(linkRelease))
+    }
 }
 
-tasks.named("check") { dependsOn(":native:check") }
+// Benchmarks are never run by check, but must keep compiling against the API.
+tasks.named("check") { dependsOn(":native:check", "compileJmhJava") }

@@ -56,4 +56,50 @@ Dedicated wire codecs emit default fields, disable polymorphic Java class hints,
 
 `check` includes the C++ executable, deterministic/reference regression cases, Java headless tests, archive/JNI tests, and FTL compilation/consistency. JVM tests run with `-Xcheck:jni`. The sanitizer run is separate because ASan-instrumented native libraries must not be loaded by the ordinary JVM test process.
 
+## Benchmarks
+
+The suite compares revisions on the same machine. CPU scenarios run in an optimized Linux C++ binary (`-O3 -DNDEBUG`), separate from Gradle's debug/JNI-checked correctness tests. ASan builds and unoptimized builds are rejected.
+
+```sh
+scripts/bench-ab.sh master                         # 3 rounds, n = 1,000,000 total records
+scripts/bench-ab.sh master 5 -- --n 10000000 --reps 3
+BENCH_PREFIX="taskset -c 3" scripts/bench-ab.sh HEAD   # A/A against unchanged core headers
+BENCH_DATA_DIR=/path/on/server-like/disk scripts/bench-ab.sh HEAD
+python3 scripts/test-compare-bench.py               # report validation regressions
+```
+
+Each invocation creates an isolated directory under `build/bench/run-*`, compiles the same harness against base and working-tree headers, and alternates which side goes first. Raw output and binaries remain in that directory. Worktrees and empty data directories are removed; failed archive fixtures may remain for diagnosis. `--n` includes the 768-record griefing tail. Compiler, flags, harness hash/version, parameters and filesystem are recorded.
+
+| Group | What it measures |
+|---|---|
+| `ingest.*` | Fixed-size recording workloads: `HistoryStack::Record` and memory-only `TileLogger::Record`, with repeated/unique configurations. Samples are whole-batch **mean ns per record**, not individual-record latency percentiles. |
+| `last.*` | One-tile lookups with recent, deep and missing answers. |
+| `page.*` | A 32-row page, a 4,096-row player window, and cursor pages at 1%, 50% and 99% depth. |
+| `plan.*` | Tiny/busy/wide rollback selections, including expected limit rejections. |
+| `commit.*` | Applying plans with no earlier snapshot (`fresh`) or a prior snapshot near the tail (`prior`). |
+| `load.*` | Archive loading with/without rollback frames; fixture creation is untimed. |
+| `journal.*` | Production queue limits: a 60 Hz workload at `--rate` records/s for `--seconds` (defaults 5,000 and 3), a burst of up to 200,000 small records, and 64 unique 1 MiB configurations. |
+
+Timing builds use the ordinary allocator. A separate `TILELOGGER_BENCH_MEMORY` build runs only ingestion/loading to count bytes requested through C++ `new`, including containers missing from `MemoryUsage`. It does not report timing results. Requested bytes exclude allocator overhead and C-library allocations. `vmhwm_kib` is the peak RSS of the **whole process**, including fixture construction, not isolated load memory.
+
+All result data is consumed outside timed intervals. Ingestion/load digests cover the entire history, actors and configuration bytes. Every journal repetition reopens its archive and verifies both accepted count and content against the live store, including after queue overflow. Burst admission counts depend on scheduling, so the report labels them as verified variable workloads rather than asserting identical data between sides. Durability metrics are unavailable after overflow and are never substituted with zero. An observation timeout fails the scenario.
+
+The comparison exits nonzero for missing/duplicate scenarios or rounds, mismatched deterministic digests, invalid measurements, and harness errors. Time and memory differences between revisions are reported for review, without a fixed performance gate. Run A/A first to estimate noise, then repeat A/B before drawing conclusions. Report machine/compiler/storage and explain tradeoffs in the PR. Percentiles are over the stated sample type; for fast operations clock overhead matters, and five samples do not establish a reliable tail latency.
+
+Journal files must live on representative storage. tmpfs is diagnosed, since it cannot measure persistence to a disk. Durability lag is sampled approximately every millisecond, can miss short-lived peaks, and includes writer scheduling and filesystem latency; 250 ms is not a guaranteed upper bound. Producer rate and elapsed time are reported separately from durable throughput.
+
+### Java/native calls
+
+```sh
+./gradlew jmh                                     # full forked run, fail on any benchmark error
+./gradlew jmhJar
+java --enable-native-access=ALL-UNNAMED -jar build/libs/TileLogger-jmh.jar
+```
+
+JMH uses the release native library, without `-Xcheck:jni`, and writes JSON results under `build/results/jmh/`. The runnable benchmark jar includes its runtime dependencies and the release library. `check` compiles the benchmarks but never times them. Linux CI also runs a small native A/A and runnable-jar smoke check, with no timing thresholds.
+
+`history32`, `history4097` and `currentState` measure complete API calls with recent answers. `record` uses single-shot, fixed batches of 16,384 records, resetting the session outside timing for every iteration; scores are normalized per record. Keep its single-shot mode and batch size of one. These include native encoding/storage work as well as argument conversion; they are not the cost of the Java/native transition alone. One JMH thread is required because the native store is global; multi-threaded runs are rejected before accessing it.
+
+Compare revisions on the same machine/JVM, check every expected result is present, and compare uncertainty as well as scores. Crash/power-loss and disk-fault testing remain separate correctness work.
+
 For AdminTools: `./gradlew build -Prelease`. Release jars exclude `admintools/dev/**` and include Android DEX. The existing in-engine DevHarness can capture the history view in portrait, landscape, and desktop modes, including v2 action labels, time beyond 65,535 seconds, and paging state.

@@ -23,3 +23,4 @@ avaje-inject-gen  = { module = "io.avaje:avaje-inject-generator", version.ref = 
 avaje-inject = { id = "io.avaje.inject", version.ref = "avaje" }
 shadow = { id = "com.gradleup.shadow", version.ref = "shadow" }
 toxopid = { id = "com.xpdustry.toxopid", version.ref = "toxopid" }
+jmh = { id = "me.champeau.jmh", version = "0.7.3" }
