@@ -54,20 +54,32 @@ is 4 KiB per calling thread. None of that native memory appears in the GC metric
 ## Reproduce
 
 Keep a standalone JNI JMH jar from the baseline **before** rebuilding the candidate jar.
-Use the same JDK, compiler and flags for each build. Run the following sequentially for
-each jar, with distinct result filenames:
+Use the same JDK, compiler and flags for each build. Preserve both jars outside their
+build directories, then compare them in ABBA order with distinct result filenames:
 
 ```sh
+# In a separate checkout at e2cc21d:
 ./gradlew jmhJar
-java --enable-native-access=ALL-UNNAMED -jar TileLogger-VARIANT-jmh.jar \
-  -foe true -prof gc -rf json -rff VARIANT.json
-java --enable-native-access=ALL-UNNAMED -jar TileLogger-VARIANT-jmh.jar \
-  -foe true -prof gc -wi 20 -i 20 -rf json -rff VARIANT-records-warmed.json '.*record$'
+cp build/libs/TileLogger-jmh.jar /tmp/TileLogger-jni-jmh.jar
+
+# In the FFM checkout:
+./gradlew jmhJar
+cp build/libs/TileLogger-jmh.jar /tmp/TileLogger-ffm-jmh.jar
+
+round=0
+for variant in jni ffm ffm jni; do
+  round=$((round + 1))
+  java --enable-native-access=ALL-UNNAMED -jar "/tmp/TileLogger-$variant-jmh.jar" \
+    -foe true -prof gc -rf json -rff "$variant-$round.json"
+  java --enable-native-access=ALL-UNNAMED -jar "/tmp/TileLogger-$variant-jmh.jar" \
+    -foe true -prof gc -wi 20 -i 20 -rf json -rff "$variant-$round-records-warmed.json" '.*record$'
+done
 ```
 
 For an acceptance decision on another machine, repeat with reversed/alternating implementation
 order and realistic server workloads. These captures used JNI then FFM for the full runs,
-then JNI and FFM for the longer recording runs; machine drift is not ruled out.
+then JNI and FFM for the longer recording runs; machine drift is not ruled out. The ABBA
+recipe above improves future comparisons; it does not retroactively change these captures.
 
 The separate native A/B smoke (`scripts/bench-ab.sh origin/master 1 -- --n 10000 --reps 1
 --rate 120 --seconds 1`) verified all 23 scenarios: deterministic digests, requested allocation
