@@ -58,45 +58,48 @@ Dedicated wire codecs emit default fields, disable polymorphic Java class hints,
 
 ## Benchmarks
 
-`native/src/bench/Bench.cpp` measures the native core outside Gradle and the JVM. The Gradle test binaries are debug builds and JVM tests use `-Xcheck:jni`, so neither is suitable for timing. The harness refuses to compile without optimization and `-DNDEBUG`, or with ASan. It runs on Linux only.
-
-Compare a base revision with the working tree on the same machine:
+The suite compares revisions on the same machine. CPU scenarios run in an optimized Linux C++ binary (`-O3 -DNDEBUG`), separate from Gradle's debug/JNI-checked correctness tests. ASan builds and unoptimized builds are rejected.
 
 ```sh
-scripts/bench-ab.sh master                         # 3 rounds, n = 1,000,000
+scripts/bench-ab.sh master                         # 3 rounds, n = 1,000,000 total records
 scripts/bench-ab.sh master 5 -- --n 10000000 --reps 3
-BENCH_PREFIX="taskset -c 3" scripts/bench-ab.sh HEAD   # A/A: measures the noise floor
+BENCH_PREFIX="taskset -c 3" scripts/bench-ab.sh HEAD   # A/A against unchanged core headers
+BENCH_DATA_DIR=/path/on/server-like/disk scripts/bench-ab.sh HEAD
+python3 scripts/test-compare-bench.py               # report validation regressions
 ```
 
-The script compiles the current harness twice with the same compiler and flags: once against the base revision's headers, once against the working tree's headers. It then runs each scenario group in its own process, alternating which side goes first each round, and prints medians, head/base ratios, result digests, retained memory and archive size. Raw results go to `build/bench/results-*.tsv`.
-
-Scenarios, all built from one seeded fixture of `n` records (`--n` is capped at the 10,000,000-record session limit), whose last 768 records are a griefing tail:
+Each invocation creates an isolated directory under `build/bench/run-*`, compiles the same harness against base and working-tree headers, and alternates which side goes first. Raw output and binaries remain in that directory. Worktrees and empty data directories are removed; failed archive fixtures may remain for diagnosis. `--n` includes the 768-record griefing tail. Compiler, flags, harness hash/version, parameters and filesystem are recorded.
 
 | Group | What it measures |
 |---|---|
-| `ingest.*` | Per-record cost and retained heap of `HistoryStack::Record` and memory-only `TileLogger::Record` (repeated vs unique configurations). No disk I/O. |
-| `last.*` | One-tile, one-row lookups (`unitToPlayerInfo`) whose answer is recent, early in the session, or absent. Reported separately because the cost depends on how far back the answer is. |
-| `page.*` | A 32-row page in a busy zone, the XCore per-player window (4,096 rows), and cursor pages at 1%, 50% and 99% depth. |
-| `plan.*` | Rollback planning for a tiny rect, a busy zone, a wide area filtered to a player with no actions, and a wide area that exceeds the position limit (`rejected`). |
-| `commit.*` | Applying every position of a plan, where the positions have no earlier snapshot (`fresh`) or one just before the griefing (`prior`). |
-| `load.*` | `TileLogger::Load` of an archive written from the fixture, without and with rollback commit frames. Archives go to `build/bench/data` and are deleted afterwards. |
-| `journal.*` | Journaling with the production queue limits. `sustained` submits `--rate` records per second (default 5,000) in 60 Hz ticks for `--seconds` (default 3). `burst.small` records as fast as possible, up to 200,000 records. `burst.large` records 64 unique 1 MiB configurations. Reports `Record` latency, records admitted before overflow, the largest accepted-but-not-durable gap, durability lag, drain time and archive bytes per record. |
+| `ingest.*` | Fixed-size recording workloads: `HistoryStack::Record` and memory-only `TileLogger::Record`, with repeated/unique configurations. Samples are whole-batch **mean ns per record**, not individual-record latency percentiles. |
+| `last.*` | One-tile lookups with recent, deep and missing answers. |
+| `page.*` | A 32-row page, a 4,096-row player window, and cursor pages at 1%, 50% and 99% depth. |
+| `plan.*` | Tiny/busy/wide rollback selections, including expected limit rejections. |
+| `commit.*` | Applying plans with no earlier snapshot (`fresh`) or a prior snapshot near the tail (`prior`). |
+| `load.*` | Archive loading with/without rollback frames; fixture creation is untimed. |
+| `journal.*` | Production queue limits: a 60 Hz workload at `--rate` records/s for `--seconds` (defaults 5,000 and 3), a burst of up to 200,000 small records, and 64 unique 1 MiB configurations. |
 
-Reading the results:
+Timing builds use the ordinary allocator. A separate `TILELOGGER_BENCH_MEMORY` build runs only ingestion/loading to count bytes requested through C++ `new`, including containers missing from `MemoryUsage`. It does not report timing results. Requested bytes exclude allocator overhead and C-library allocations. `vmhwm_kib` is the peak RSS of the **whole process**, including fixture construction, not isolated load memory.
 
-- **Digests** must be `same`. A different digest means the change altered query results, plans or loaded state. Explain that in the PR or treat it as a bug.
-- **Memory** is the bytes requested through a counting `operator new` in the harness, so it includes the hash maps and dictionary copies that `MemoryUsage` does not report, but not allocator overhead (the process peak is printed as `vmhwm_kib`). Requested and archive bytes are deterministic for a given compiler and standard library, so any change in them is real.
-- **Time** is only comparable between runs on the same machine. Run an A/A comparison (`HEAD` against an unchanged tree) first. Treat a head/base ratio as a regression only if it is outside the A/A spread for that scenario in at least two runs. For the scenarios that run on the game thread (`last`, `page`, `plan`, `commit`), compare p99 and max, not only p50.
-- The output records the harness version, compiler, flags and data filesystem. Results from different harness versions are not comparable. Bump `kHarnessVersion` when fixtures, queries or output change.
+All result data is consumed outside timed intervals. Ingestion/load digests cover the entire history, actors and configuration bytes. Every journal repetition reopens its archive and verifies both accepted count and content against the live store, including after queue overflow. Burst admission counts depend on scheduling, so the report labels them as verified variable workloads rather than asserting identical data between sides. Durability metrics are unavailable after overflow and are never substituted with zero. An observation timeout fails the scenario.
 
-Journal results depend on the device and filesystem, so point `build/bench/data` (or `--dir`) at the same kind of storage the server uses. On tmpfs `fsync` does nothing, and the harness prints a warning. Overflow is a result, not a harness failure: a session that overflows stops recording. Because overflow depends on when the writer happens to sync, the number of records `burst.small` admits varies widely between identical runs, so compare whether it overflows, not how many records it admitted. The summary marks a scenario `UNSTABLE` when its outcome changes between runs. The durability counters are sampled about once per millisecond, outside the timed `Record` calls. The journal digest comes from loading the archive written during warmup.
+The comparison exits nonzero for missing/duplicate scenarios or rounds, mismatched deterministic digests, invalid measurements, and harness errors. Time and memory differences between revisions are reported for review, without a fixed performance gate. Run A/A first to estimate noise, then repeat A/B before drawing conclusions. Report machine/compiler/storage and explain tradeoffs in the PR. Percentiles are over the stated sample type; for fast operations clock overhead matters, and five samples do not establish a reliable tail latency.
 
-### Java/native boundary
+Journal files must live on representative storage. tmpfs is diagnosed, since it cannot measure persistence to a disk. Durability lag is sampled approximately every millisecond, can miss short-lived peaks, and includes writer scheduling and filesystem latency; 250 ms is not a guaranteed upper bound. Producer rate and elapsed time are reported separately from durable throughput.
 
-`./gradlew jmh` runs `src/jmh/java/tilelogger/BoundaryBenchmark.java` against the release native library, without `-Xcheck:jni`. It measures `record` (scalar and 32-byte configurations), history pages of 32 and 4,097 rows, and `currentState`. The answers sit at the end of history, so these numbers are mostly argument conversion and `TileState` marshalling, not native query cost. Results are written to `build/results/jmh/`.
+### Java/native calls
 
-`check` compiles these benchmarks but never runs them. To compare two revisions, run `./gradlew jmh` in each checkout on the same machine and compare scores together with their error intervals. Use this for changes to the boundary itself, such as caching JNI class and field IDs or moving to FFM, and compare each candidate with the current JNI code on the same machine.
+```sh
+./gradlew jmh                                     # full forked run, fail on any benchmark error
+./gradlew jmhJar
+java --enable-native-access=ALL-UNNAMED -jar build/libs/TileLogger-jmh.jar
+```
 
-Not covered yet: crash and power-loss tests, and disk faults. Timing is never a CI gate.
+JMH uses the release native library, without `-Xcheck:jni`, and writes JSON results under `build/results/jmh/`. The runnable benchmark jar includes its runtime dependencies and the release library. `check` compiles the benchmarks but never times them. Linux CI also runs a small native A/A and runnable-jar smoke check, with no timing thresholds.
+
+`history32`, `history4097` and `currentState` measure complete API calls with recent answers. `record` uses single-shot, fixed batches of 16,384 records, resetting the session outside timing for every iteration; scores are normalized per record. Keep its single-shot mode and batch size of one. These include native encoding/storage work as well as argument conversion; they are not the cost of the Java/native transition alone. One JMH thread is required because the native store is global; multi-threaded runs are rejected before accessing it.
+
+Compare revisions on the same machine/JVM, check every expected result is present, and compare uncertainty as well as scores. Crash/power-loss and disk-fault testing remain separate correctness work.
 
 For AdminTools: `./gradlew build -Prelease`. Release jars exclude `admintools/dev/**` and include Android DEX. The existing in-engine DevHarness can capture the history view in portrait, landscape, and desktop modes, including v2 action labels, time beyond 65,535 seconds, and paging state.

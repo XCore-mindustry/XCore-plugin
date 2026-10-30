@@ -29,8 +29,10 @@
 #include "TileLogger.h"
 
 // Bump when fixtures, queries or output change; results from different versions are not comparable.
-constexpr int kHarnessVersion = 1;
+constexpr int kHarnessVersion = 2;
 
+#ifdef TILELOGGER_BENCH_MEMORY
+constexpr bool kMemoryMode = true;
 // Counts every requested C++ heap byte, including containers that MemoryUsage() does not report. The size
 // lives in a header before the block: usable sizes vary with heap history, requested sizes do not.
 static std::atomic<size_t> live_bytes{}, peak_bytes{};
@@ -63,9 +65,21 @@ void operator delete(void* p) noexcept { release(p, kHeader); }
 void operator delete(void* p, std::size_t) noexcept { release(p, kHeader); }
 void operator delete(void* p, std::align_val_t align) noexcept { release(p, alignedOffset(align)); }
 void operator delete(void* p, std::size_t, std::align_val_t align) noexcept { release(p, alignedOffset(align)); }
+void* operator new[](std::size_t size) { return ::operator new(size); }
+void* operator new[](std::size_t size, std::align_val_t align) { return ::operator new(size, align); }
+void operator delete[](void* p) noexcept { ::operator delete(p); }
+void operator delete[](void* p, std::size_t size) noexcept { ::operator delete(p, size); }
+void operator delete[](void* p, std::align_val_t align) noexcept { ::operator delete(p, align); }
+void operator delete[](void* p, std::size_t size, std::align_val_t align) noexcept {
+    ::operator delete(p, size, align);
+}
+#else
+constexpr bool kMemoryMode = false;
+#endif
 
 // Call stop() right after the measured work, so digests and formatting are not counted.
 struct Memory {
+#ifdef TILELOGGER_BENCH_MEMORY
     size_t base = live_bytes.load();
     int64_t live{}, peak{};
     Memory() { peak_bytes.store(base); }
@@ -73,6 +87,10 @@ struct Memory {
         live = static_cast<int64_t>(live_bytes.load()) - static_cast<int64_t>(base);
         peak = static_cast<int64_t>(peak_bytes.load()) - static_cast<int64_t>(base);
     }
+#else
+    int64_t live{}, peak{};
+    void stop() {}
+#endif
 };
 
 using Clock = std::chrono::steady_clock;
@@ -244,7 +262,7 @@ struct Run {
     std::vector<int64_t> ns;
     Digest digest;
 };
-// Times each operation separately. Repetition 0 is warmup and alone feeds the digest.
+// Hash every result outside the timed interval so measured calls remain observable to the optimizer.
 template <class Op, class Hash>
 static Run measure(const Options& o, size_t ops, Op op, Hash hash) {
     Run run;
@@ -255,40 +273,51 @@ static Run measure(const Options& o, size_t ops, Op op, Hash hash) {
             auto ns = since(start);
             if (r)
                 run.ns.push_back(ns);
-            else
-                hash(run.digest, value);
+            hash(run.digest, value);
         }
     return run;
 }
 
 static void result(const Options& o, const char* name, size_t ops, Run run, const char* outcome) {
+    if (kMemoryMode) return;
     auto& ns = run.ns;
     std::sort(ns.begin(), ns.end());
     auto at = [&](size_t percent) {
         return ns.empty() ? 0ll : static_cast<long long>(ns[std::min(ns.size() - 1, ns.size() * percent / 100)]);
     };
-    std::printf("result\t%s\t%zu\t%zu\t%lld\t%lld\t%lld\t%s\t%016llx\n", name, o.n, ops, at(50), at(99),
+    const char* sampling = std::string_view(name).starts_with("ingest.") ? "batch_mean_ns_per_record"
+                                                                        : "operation_ns";
+    std::printf("result\t%s\t%zu\t%zu\t%s\t%lld\t%lld\t%lld\t%s\t%016llx\n", name, o.n, ops,
+                sampling, at(50), at(99),
                 ns.empty() ? 0ll : static_cast<long long>(ns.back()), outcome,
                 static_cast<unsigned long long>(run.digest.value));
     std::fflush(stdout);
 }
 static void memory(const Options& o, const char* name, const Memory& m, size_t records,
                    const std::string& counters = "-") {
+    if (!kMemoryMode) return;
     std::printf("memory\t%s\t%zu\t%lld\t%lld\t%.1f\t%s\n", name, o.n, static_cast<long long>(m.live),
                 static_cast<long long>(m.peak), static_cast<double>(m.live) / records, counters.c_str());
 }
 // Every record via the paging cursor, with its actor and configuration bytes. Quadratic in history length,
 // so it runs once per scenario, outside the timed work.
-static void hashLogger(Digest& d, const TileLogger& logger) {
+static size_t hashLogger(Digest& d, const TileLogger& logger) {
+    size_t count = 0;
     for (uint64_t before = UINT64_MAX;;) {
         auto rows = logger.GetHistory(Rect(0, 0, 65535, 65535), {}, -1, 0, 4097, before);
+        count += rows.size();
         for (const auto& s : rows) {
             d.add(s, false);
-            for (uint8_t b : logger.GetPlayer(s.player)) d.add(b);
-            if (s.config_type >= 5)
-                for (uint8_t b : logger.GetConfig(s.config)) d.add(b);
+            const auto& actor = logger.GetPlayer(s.player);
+            d.add(actor.size());
+            for (uint8_t b : actor) d.add(b);
+            if (s.config_type >= 5) {
+                const auto& config = logger.GetConfig(s.config);
+                d.add(config.size());
+                for (uint8_t b : config) d.add(b);
+            }
         }
-        if (rows.size() < 4097) return;
+        if (rows.size() < 4097) return count;
         before = rows.front().sequence;
     }
 }
@@ -303,18 +332,22 @@ static void ingest(const Options& o, const Fixture& f, JournalWriter& writer) {
     const size_t records = f.states.size();
     if (o.wants("ingest.history")) {
         Run run;
-        for (size_t r = 0; r <= o.reps; ++r) {
+        for (size_t r = 0; r <= (kMemoryMode ? 0 : o.reps); ++r) {
             Memory m;
             HistoryStack history;
             auto start = Clock::now();
             for (const auto& s : f.states) history.Record(s);
             auto ns = since(start) / static_cast<int64_t>(records);
             m.stop();
+            Digest observed;
+            for (const auto& s : history.Records()) observed.add(s);
             if (r) {
+                if (observed.value != run.digest.value)
+                    throw std::runtime_error("Ingest results changed between repetitions");
                 run.ns.push_back(ns);
                 continue;
             }
-            for (const auto& s : history.Records()) run.digest.add(s);
+            run.digest = observed;
             memory(o, "ingest.history", m, records);
         }
         result(o, "ingest.history", records, run, "ok");
@@ -323,7 +356,7 @@ static void ingest(const Options& o, const Fixture& f, JournalWriter& writer) {
         const char* name = unique ? "ingest.logger.unique" : "ingest.logger.repeated";
         if (!o.wants(name)) continue;
         Run run;
-        for (size_t r = 0; r <= o.reps; ++r) {
+        for (size_t r = 0; r <= (kMemoryMode ? 0 : o.reps); ++r) {
             Memory m;
             auto logger = std::make_unique<TileLogger>(writer);
             logger->Start({}, "bench", "bench-content");
@@ -331,11 +364,15 @@ static void ingest(const Options& o, const Fixture& f, JournalWriter& writer) {
             recordAll(*logger, f, unique);
             auto ns = since(start) / static_cast<int64_t>(records);
             m.stop();
+            Digest observed;
+            hashLogger(observed, *logger);
             if (r) {
+                if (observed.value != run.digest.value)
+                    throw std::runtime_error("Logger results changed between repetitions");
                 run.ns.push_back(ns);
                 continue;
             }
-            hashLogger(run.digest, *logger);
+            run.digest = observed;
             memory(o, name, m, records, counters(*logger));
         }
         result(o, name, records, run, "ok");
@@ -414,7 +451,7 @@ static void commits(const Options& o, const Fixture& f, HistoryStack& h) {
         Run run;
         std::optional<uint64_t> expected;
         size_t ops = 0;
-        for (size_t r = 0; r <= o.reps; ++r) {
+        for (size_t r = 0; r <= (kMemoryMode ? 0 : o.reps); ++r) {
             auto changes = h.Plan(fresh ? f.fresh : f.prior, f.griefer, -1, 0);
             Digest planned;
             for (const auto& c : changes)
@@ -469,28 +506,25 @@ static void load(const Options& o, const Fixture& f, JournalWriter& writer) {
         std::printf("archive\t%s\t%zu\t%ju\t%.1f\n", name, o.n, static_cast<uintmax_t>(bytes),
                     static_cast<double>(bytes) / f.states.size());
         Run run;
-        const char* outcome = "ok";
-        for (size_t r = 0; r <= o.reps; ++r) {
+        for (size_t r = 0; r <= (kMemoryMode ? 0 : o.reps); ++r) {
             Memory m;
             TileLogger logger(writer);
             auto start = Clock::now();
-            try {
-                logger.Load(path);
-            } catch (const std::runtime_error& e) {
-                std::printf("error\t%s\t%s\n", name, e.what());
-                outcome = "rejected";
-                break;
-            }
+            logger.Load(path);
             auto ns = since(start);
             m.stop();
+            Digest observed;
+            hashLogger(observed, logger);
             if (r) {
+                if (observed.value != run.digest.value)
+                    throw std::runtime_error("Loaded state changed between repetitions");
                 run.ns.push_back(ns);
                 continue;
             }
-            hashLogger(run.digest, logger);
+            run.digest = observed;
             memory(o, name, m, f.states.size(), counters(logger));
         }
-        result(o, name, 1, std::move(run), outcome);
+        result(o, name, 1, std::move(run), "ok");
         std::filesystem::remove(path);
     }
 }
@@ -543,6 +577,7 @@ static void journal(const Options& o, const Fixture& f) {
             size_t admitted = 0;
             bool overflow = false, drained = false;
             int64_t produced = 0;
+            Digest expected;
             {
                 JournalWriter writer;
                 TileLogger logger(writer);
@@ -587,7 +622,7 @@ static void journal(const Options& o, const Fixture& f) {
                     }
                 }
                 produced = since(start);
-                // The writer syncs at least every 250 ms, so a healthy session drains well within this bound.
+                // Bound observation time; filesystem sync and worker scheduling can exceed 250 ms.
                 while (!overflow) {
                     auto d = durability(logger, start);
                     if (!d || d->ns - produced > 30'000'000'000) break;
@@ -598,18 +633,23 @@ static void journal(const Options& o, const Fixture& f) {
                     }
                     std::this_thread::sleep_for(std::chrono::milliseconds(1));
                 }
+                if (!overflow && !drained)
+                    throw std::runtime_error("Journal did not become durable within 30 seconds");
+                if (hashLogger(expected, logger) != admitted)
+                    throw std::runtime_error("Journal admission count differs from live state");
+            }
+            // Verify every repetition, including overflow: Stop drains accepted jobs before this read.
+            {
+                JournalWriter idle;
+                TileLogger loaded(idle);
+                loaded.Load(path);
+                Digest actual;
+                if (hashLogger(actual, loaded) != admitted || actual.value != expected.value)
+                    throw std::runtime_error("Journal roundtrip lost or changed accepted events");
+                if (!r) run.digest = actual;
             }
             const char* outcome = overflow ? "overflow" : drained ? "ok" : "stalled";
-            if (!r) {
-                // The archive written during warmup, read back untimed, is the comparable result.
-                if (drained) {
-                    JournalWriter idle;
-                    TileLogger loaded(idle);
-                    loaded.Load(path);
-                    hashLogger(run.digest, loaded);
-                }
-                continue;
-            }
+            if (!r) continue;
             outcomes.insert(outcome);
             // Lag: time until the durable count reaches what was accepted at each sample.
             int64_t lag = 0;
@@ -621,6 +661,8 @@ static void journal(const Options& o, const Fixture& f) {
                 if (j < samples.size()) lag = std::max(lag, samples[j].ns - samples[k].ns);
             }
             metric(o, c.name, "admitted", admitted);
+            metric(o, c.name, "producer_seconds", produced / 1e9);
+            metric(o, c.name, "producer_records_per_s", admitted * 1e9 / produced);
             // A failed session no longer reports its counters, so overflow runs have no durability metrics.
             if (drained) {
                 metric(o, c.name, "max_unsynced_ops", unsynced);
@@ -628,7 +670,8 @@ static void journal(const Options& o, const Fixture& f) {
                 metric(o, c.name, "drain_ms", (samples.back().ns - produced) / 1e6);
                 metric(o, c.name, "durable_ops_per_s", samples.back().durable * 1e9 / samples.back().ns);
             }
-            metric(o, c.name, "bytes_per_record", static_cast<double>(std::filesystem::file_size(path)) / admitted);
+            metric(o, c.name, "bytes_per_record", admitted
+                    ? static_cast<double>(std::filesystem::file_size(path)) / admitted : 0);
         }
         std::filesystem::remove(path);
         // Mixed outcomes such as "ok+overflow" stay visible instead of collapsing into one.
@@ -669,13 +712,16 @@ int main(int argc, char** argv) {
             return 2;
         }
     }
-    if (o.n < 10000 || o.n > max_records || o.reps < 1 || o.players < 1 || o.rate < 1 || o.seconds < 1) {
-        std::fprintf(stderr, "need 10000 <= n <= %zu, and reps, players, rate, seconds >= 1\n", max_records);
+    if (o.n < 10000 || o.n > max_records || o.reps < 1 || o.players < 1 || o.players > 10000
+            || o.rate < 1 || o.seconds < 1 || o.seconds > 3600 || o.rate > max_records / o.seconds) {
+        std::fprintf(stderr, "need 10000 <= n <= %zu, reps >= 1, 1 <= players <= 10000,"
+                             " 1 <= seconds <= 3600, 1 <= rate * seconds <= %zu\n", max_records, max_records);
         return 2;
     }
-    std::printf("meta\tharness=%d\tcompiler=%s\tsizeof(TileState)=%zu\tn=%zu\treps=%zu\tseed=%llu\tplayers=%zu\n",
+    std::printf("meta\tharness=%d\tcompiler=%s\tsizeof(TileState)=%zu\tn=%zu\treps=%zu\tseed=%llu"
+                "\tplayers=%zu\tmemory_mode=%d\trate=%zu\tseconds=%zu\n",
                 kHarnessVersion, __VERSION__, sizeof(TileState), o.n, o.reps,
-                static_cast<unsigned long long>(o.seed), o.players);
+                static_cast<unsigned long long>(o.seed), o.players, kMemoryMode, o.rate, o.seconds);
     try {
         auto f = makeFixture(o);
         JournalWriter writer;
@@ -687,7 +733,7 @@ int main(int argc, char** argv) {
             commits(o, f, history);
         }
         load(o, f, writer);
-        journal(o, f);
+        if (!kMemoryMode) journal(o, f);
     } catch (const std::exception& e) {
         std::printf("error\tbench\t%s\n", e.what());
         return 1;

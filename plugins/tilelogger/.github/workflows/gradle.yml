@@ -50,6 +50,15 @@ jobs:
           name: ${{ github.event.repository.name }}-${{ matrix.os }}-${{ matrix.arch }}
           path: build/libs/TileLogger-release.jar
 
+      - name: Check benchmark tooling (no timing thresholds)
+        if: matrix.os == 'linux' && matrix.arch == 'x64'
+        run: |
+          python3 scripts/test-compare-bench.py
+          scripts/bench-ab.sh HEAD 1 -- --n 10000 --reps 1 --seconds 1 --rate 120
+          ./gradlew jmhJar
+          mkdir -p build/results/jmh
+          java --enable-native-access=ALL-UNNAMED -jar build/libs/TileLogger-jmh.jar -foe true -f 1 -wi 1 -i 1 -w 100ms -r 100ms -rf json -rff build/results/jmh/smoke.json
+
   native-sanitizers:
     runs-on: ubuntu-latest
     steps:

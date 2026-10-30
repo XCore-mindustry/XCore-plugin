@@ -7,19 +7,21 @@ import org.openjdk.jmh.annotations.Level;
 import org.openjdk.jmh.annotations.Measurement;
 import org.openjdk.jmh.annotations.Mode;
 import org.openjdk.jmh.annotations.OutputTimeUnit;
+import org.openjdk.jmh.annotations.OperationsPerInvocation;
 import org.openjdk.jmh.annotations.Param;
 import org.openjdk.jmh.annotations.Scope;
 import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.Warmup;
+import org.openjdk.jmh.infra.ThreadParams;
 
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 /**
  * Per-call cost of the Java/native boundary with the release library and without -Xcheck:jni. Native
- * query cost is kept small (answers sit at the end of history), so these mostly measure argument
- * conversion and TileState marshalling. See README "Benchmarks".
+ * query cost is kept small (answers sit at the end of history). Recording also includes the native
+ * encoder and storage updates; it is not a measurement of the transition alone.
  */
 @BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(TimeUnit.NANOSECONDS)
@@ -28,6 +30,12 @@ import java.util.concurrent.TimeUnit;
 @Fork(value = 3, jvmArgsAppend = "--enable-native-access=ALL-UNNAMED")
 public class BoundaryBenchmark {
     private static final String ACTOR = "AAAAAAAAAAA=";
+    private static final int RECORDS_PER_ITERATION = 16_384;
+
+    private static void requireSingleThread(ThreadParams threads) {
+        if (threads.getThreadCount() != 1)
+            throw new IllegalArgumentException("TileLogger owns one native store; use one JMH thread");
+    }
 
     private static ConfigCodec.Encoded config(String kind) {
         return switch (kind) {
@@ -43,12 +51,11 @@ public class BoundaryBenchmark {
         @Param({"scalar", "bytes"})
         public String config;
         ConfigCodec.Encoded encoded;
-        int next;
 
         @Setup(Level.Iteration)
-        public void start() {
+        public void start(ThreadParams threads) {
+            requireSingleThread(threads);
             encoded = config(config);
-            next = 0;
             TileLogger.startSession("", UUID.randomUUID().toString(), "bench-content");
         }
     }
@@ -57,7 +64,8 @@ public class BoundaryBenchmark {
     @State(Scope.Thread)
     public static class Filled {
         @Setup(Level.Trial)
-        public void fill() {
+        public void fill(ThreadParams threads) {
+            requireSingleThread(threads);
             TileLogger.startSession("", UUID.randomUUID().toString(), "bench-content");
             var scalar = config("scalar");
             var bytes = config("bytes");
@@ -68,9 +76,13 @@ public class BoundaryBenchmark {
     }
 
     @Benchmark
+    @BenchmarkMode(Mode.SingleShotTime)
+    @Warmup(iterations = 5, batchSize = 1)
+    @Measurement(iterations = 10, batchSize = 1)
+    @OperationsPerInvocation(RECORDS_PER_ITERATION)
     public void record(Recording state) {
-        int i = state.next++;
-        TileLogger.record(i % 512, i / 512 % 512, ACTOR, 1, 20, 0, state.encoded, ActionKind.CONFIGURE);
+        for (int i = 0; i < RECORDS_PER_ITERATION; i++)
+            TileLogger.record(i % 512, i / 512, ACTOR, 1, 20, 0, state.encoded, ActionKind.CONFIGURE);
     }
 
     /** One client history page. */

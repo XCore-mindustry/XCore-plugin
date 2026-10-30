@@ -73,8 +73,21 @@ tasks.withType<Test> {
 jmh {
     jmhVersion.set("1.37")
     duplicateClassesStrategy.set(DuplicatesStrategy.EXCLUDE)
+    failOnError.set(true)
+    includeTests.set(false)
+    resultFormat.set("JSON")
 }
-configurations.named("jmhImplementation") { extendsFrom(configurations.testImplementation.get()) }
+dependencies {
+    "jmhImplementation"(libs.xcore.plugin)
+    "jmhImplementation"(toxopid.dependencies.mindustryCore)
+    "jmhImplementation"(toxopid.dependencies.arcCore)
+}
+tasks.named<ShadowJar>("jmhJar") {
+    configurations = listOf(project.configurations.getByName("jmhRuntimeClasspath"))
+    mergeServiceFiles()
+    // The JMH plugin's legacy Shadow integration emits a thin class path on Shadow 9.
+    manifest.attributes["Class-Path"] = ""
+}
 
 tasks.named<JavaCompile>("compileJava") {
     options.encoding = "UTF-8"
