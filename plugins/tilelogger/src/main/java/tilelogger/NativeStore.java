@@ -303,7 +303,7 @@ final class NativeStore {
             state.expectedSequence = input.getLong();
             int scalar = input.getInt();
             state.configBytes = input.getInt();
-            if ((flags & ~15) != 0 || state.rotation > 3 || state.config_type > 9
+            if ((flags & ~15) != 0 || state.rotation > 127 || state.config_type > 9
                     || (state.action_kind > ActionKind.ADMIN_FILL.id && state.action_kind != ActionKind.LEGACY.id)
                     || state.time < 0 || state.sequence < 0 || state.planId < 0 || state.expectedSequence < 0
                     || state.configBytes < 0 || state.configBytes > ConfigCodec.MAX_BYTES)

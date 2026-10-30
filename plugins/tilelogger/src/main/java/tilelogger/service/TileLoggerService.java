@@ -185,6 +185,9 @@ public class TileLoggerService {
             TileLogger.record(x, y, actor, team, block, rotation, config, kind);
         } catch (RuntimeException failure) {
             suspendRecording();
+            Log.err("[TileLogger] Recording stopped until a new history session starts: "
+                    + "x=@ y=@ team=@ block=@ rotation=@ configType=@ configBytes=@ action=@",
+                    x, y, team, block, rotation, config.type(), config.bytes().length, kind);
             throw failure;
         }
     }
@@ -517,6 +520,8 @@ public class TileLoggerService {
     private record Image(Tile tile, Block block, Team team, int rotation, ConfigCodec.Encoded config,
             byte version, byte[] state, List<PowerLink> powerLinks) {
         static ConfigCodec.Encoded check(Tile tile) {
+            if (tile.build != null && (tile.build.rotation < 0 || tile.build.rotation > 3))
+                throw new IllegalArgumentException("Cannot restore non-cardinal rotation");
             var config = ConfigCodec.encode(tile.build == null ? null : tile.build.config());
             if (!config.supported())
                 throw new IllegalArgumentException("Cannot restore current configuration");
@@ -611,6 +616,8 @@ public class TileLoggerService {
         Tile tile = change.tile();
         Block target = change.destroy ? Blocks.air : change.block();
         if (tile == null || target == null)
+            return Check.UNRESTORABLE;
+        if (!change.destroy && (change.rotation < 0 || change.rotation > 3))
             return Check.UNRESTORABLE;
         if (tile.block() instanceof CoreBlock || target instanceof CoreBlock)
             return Check.PROTECTED;
@@ -761,6 +768,8 @@ public class TileLoggerService {
                 Tile tile = Vars.world.tile(x, y);
                 if (tile == null)
                     throw new XCoreCommandException("tilelogger-error-coordinates");
+                if (tile.build != null && (tile.build.rotation < 0 || tile.build.rotation > 3))
+                    continue;
                 if (tile.build != null && tile.build.tile != tile)
                     throw new XCoreCommandException("tilelogger-error-footprint");
                 try {

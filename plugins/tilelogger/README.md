@@ -35,6 +35,8 @@ World mutations are limited to 256 buildings per command. Native planning additi
 
 Configuration, rotation and team rollbacks keep the existing building object and its unrelated inventory/health. Failed world mutations restore a transient, versioned building before-image (at most 4 MiB); this is not historical inventory replay. A rollback plan that crosses pickup/drop, including a payload state used as its restoration boundary, is rejected as a whole before any world or journal mutation. Choose a smaller area or a later time range. Payload movement is still recorded, but carrier-aware rollback is not supported.
 
+History preserves Mindustry's seven-bit building rotation (`0–127`) without changing the world. Rollback/fill skips buildings with a non-cardinal current rotation (`4–127`), and rollback also skips non-cardinal restoration targets: the normal placement/rotation RPCs cannot restore those values exactly. Ordinary `0–3` rotations work as before. Older TileLogger builds reject archives containing rotations above 3; upgrade readers before sharing these archives. If a record fails validation or storage, recording stays suspended until a new history session starts; an error reports the coordinates and numeric action fields without UUIDs or configuration contents.
+
 ## Journal and recovery
 
 New sessions write one `.history` journal under `config/tilelogs`. Paths may also be absolute for console-managed archives. Relative paths cannot escape that directory. No automatic retention or archive deletion is performed.

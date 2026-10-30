@@ -31,6 +31,26 @@ class NativeStoreTest {
         return CompletableFuture.supplyAsync(() -> TileLogger.prepareArchive(path.toString(), "test-content"))
                 .join();
     }
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(ints = {0, 3, 4, 127})
+    void preservesGameRotationThroughFfmAndArchive(int rotation) {
+        TileLogger.record(1, 1, "actor", 9, 20, rotation, ConfigCodec.encode(null), ActionKind.CONFIGURE);
+        assertThat(TileLogger.currentState(1, 1).rotation).isEqualTo(rotation);
+        assertThat(TileLogger.getHistory(0, 0, -1, -1, "", -1, 0, 10)[0].rotation).isEqualTo(rotation);
+        TileLogger.flush();
+        TileLogger.activateArchive(load(journal));
+        assertThat(TileLogger.currentState(1, 1).rotation).isEqualTo(rotation);
+    }
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(ints = {-1, 128, 256})
+    void rejectsRotationOutsideGameSaveRange(int rotation) {
+        assertThatThrownBy(() -> TileLogger.record(1, 1, "private-actor", 9, 20, rotation,
+                ConfigCodec.encode(null), ActionKind.CONFIGURE))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Invalid tile action:", "rotation=", "team=9", "block=20", "action=6")
+                .hasMessageNotContaining("private-actor");
+        assertThat(TileLogger.currentState(1, 1)).isNull();
+    }
     @Test
     void invalidReadNeverClearsTheStore() {
         record
