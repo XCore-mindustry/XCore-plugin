@@ -179,6 +179,52 @@ class RollbackSafetyTest {
         assertThat(TileLogger.currentState(8, 8).sequence).isEqualTo(source);
         assertThat(TileLogger.currentState(12, 12).sequence).isEqualTo(destination);
     }
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(booleans = {false, true})
+    void failedPowerMutationRestoresReciprocalLinksAndGraph(boolean replacement, HeadlessWorld world) {
+        var oldIndexer = Vars.indexer;
+        var oldPathfinder = Vars.pathfinder;
+        try {
+            Vars.indexer = mock(mindustry.ai.BlockIndexer.class);
+            Vars.pathfinder = mock(mindustry.ai.Pathfinder.class);
+            world.setBlock(8, 8, replacement ? Blocks.router : Blocks.combustionGenerator, Team.sharded);
+            world.setBlock(12, 8, Blocks.powerNode, Team.crux);
+            world.setBlock(15, 8, Blocks.powerNode, Team.crux);
+            var node = world.tile(12, 8).build;
+            var other = world.tile(15, 8).build;
+            InputHandler.tileConfig(null, node, other.pos());
+            service.resetHistory("", true);
+            if (replacement) world.setBlock(8, 8, Blocks.combustionGenerator, Team.crux);
+            var generator = world.tile(8, 8).build;
+            if (!replacement) generator.changeTeam(Team.crux);
+            service.logBuild(generator.tile, null, ActionKind.CONFIGURE);
+            InputHandler.tileConfig(null, node, generator.pos());
+            assertThat(generator.power.graph).isSameAs(node.power.graph).isSameAs(other.power.graph);
+            long sequence = TileLogger.currentState(8, 8).sequence;
+            try (var calls = mockStatic(TileLogger.class, CALLS_REAL_METHODS)) {
+                calls.when(() -> TileLogger.commitRollback(any(TileState.class))).thenAnswer(call -> {
+                    if (replacement) assertThat(world.tile(8, 8).block()).isSameAs(Blocks.router);
+                    else assertThat(generator.team).isSameAs(Team.sharded);
+                    assertThat(node.power.links.contains(generator.pos())).isFalse();
+                    throw new IllegalStateException("commit rejected");
+                });
+                service.rollback(null, all, -1, 0, new Rect(6, 6, 10, 10));
+                calls.verify(() -> TileLogger.commitRollback(any(TileState.class)));
+            }
+            var restored = world.tile(8, 8).build;
+            assertThat(restored.team).isSameAs(Team.crux);
+            assertThat(restored.power.links.contains(node.pos())).isTrue();
+            assertThat(node.power.links.contains(restored.pos())).isTrue();
+            assertThat(node.power.links.contains(other.pos())).isTrue();
+            assertThat(other.power.links.contains(node.pos())).isTrue();
+            assertThat(restored.power.graph).isSameAs(node.power.graph).isSameAs(other.power.graph);
+            assertThat(TileLogger.currentState(8, 8).sequence).isEqualTo(sequence);
+        } finally {
+            Vars.indexer = oldIndexer;
+            Vars.pathfinder = oldPathfinder;
+        }
+    }
+
     @Test
     void oversizedBeforeImageIsRejectedBeforeChangingTheWorld(HeadlessWorld world) {
         world.setBlock(8, 8, Blocks.router, Team.sharded);

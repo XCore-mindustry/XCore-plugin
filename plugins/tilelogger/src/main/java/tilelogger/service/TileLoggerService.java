@@ -513,8 +513,9 @@ public class TileLoggerService {
             }
         });
     }
+    private record PowerLink(Building building, Team team, boolean reciprocal) {}
     private record Image(Tile tile, Block block, Team team, int rotation, ConfigCodec.Encoded config,
-            byte version, byte[] state) {
+            byte version, byte[] state, List<PowerLink> powerLinks) {
         static ConfigCodec.Encoded check(Tile tile) {
             var config = ConfigCodec.encode(tile.build == null ? null : tile.build.config());
             if (!config.supported())
@@ -525,6 +526,7 @@ public class TileLoggerService {
             var config = check(tile);
             byte[] state = null;
             byte version = 0;
+            var powerLinks = new ArrayList<PowerLink>();
             if (tile.build != null) {
                 // A transient before-image, never a historical inventory to replay on success.
                 var bytes = new ByteArrayOutputStream() {
@@ -540,16 +542,34 @@ public class TileLoggerService {
                 version = tile.build.version();
                 tile.build.writeAll(new Writes(new DataOutputStream(bytes)));
                 state = bytes.toByteArray();
+                if (tile.build.power != null)
+                    for (int i = 0; i < tile.build.power.links.size; i++) {
+                        Building other = Vars.world.build(tile.build.power.links.get(i));
+                        if (other != null && other.power != null)
+                            powerLinks.add(new PowerLink(other, other.team,
+                                    other.power.links.contains(tile.pos())));
+                    }
             }
             return new Image(
                     tile, tile.block(), tile.team(), tile.build == null ? 0 : tile.build.rotation, config,
-                    version, state);
+                    version, state, powerLinks);
         }
         void restore() {
             set(tile, block, team, rotation,
                     ConfigCodec.decode(config.type(), config.type() >= 5 ? config.bytes() : config.scalar()));
             if (state != null) {
                 tile.build.readAll(new Reads(new DataInputStream(new ByteArrayInputStream(state))), version);
+                // Team changes/removal unlink neighbors too; reading our module cannot repair them.
+                for (PowerLink link : powerLinks)
+                    if (!link.building.isValid() || link.building.team != link.team
+                            || link.building.power == null)
+                        throw new IllegalStateException("Power neighbor changed during recovery");
+                for (PowerLink link : powerLinks) {
+                    if (link.reciprocal) link.building.power.links.addUnique(tile.pos());
+                    else link.building.power.links.removeValue(tile.pos());
+                }
+                if (tile.build.power != null) tile.build.updatePowerGraph();
+                for (PowerLink link : powerLinks) NetServer.syncBuilding(link.building);
                 NetServer.syncBuilding(tile.build);
             }
         }

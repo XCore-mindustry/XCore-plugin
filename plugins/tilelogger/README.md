@@ -55,7 +55,7 @@ Opening a v2 archive requires the same content manifest, so numeric block IDs ca
 
 Planning is read-only: no validity, cache, or file changes, including preview. A plan is session/revision-bound. Java validates current/destination blocks, complete footprints, cores, configuration restoration, and conflicts, then rechecks before each application. Only an applied position is committed. Protected/conflicting/unrestorable/failed positions are reported separately. Core subclasses are protected, not only the six vanilla cores.
 
-On failure after a world mutation, the block/team/rotation/configuration before-image is restored; an unsuccessful restoration suspends recording. This is **not** an inventory/liquid/health snapshot or a crash-atomic transaction spanning the game and disk. Those building internals remain outside the rollback contract. Restarted games start new sessions rather than automatically replaying interrupted operations onto a saved world.
+On failure after a world mutation, the transient before-image restores the building's serialized state, including its inventory, liquids and health. It also repairs captured reciprocal power links and reconnects the power graph; a replaced or team-changed neighbor causes recovery to fail rather than overwrite that neighbor. An unsuccessful restoration suspends recording. This is failure recovery, **not** replay of historical inventories or a crash-atomic transaction spanning the game and disk. Successful historical rollback does not restore past stocks or other internals absent from the journal. Restarted games start new sessions rather than automatically replaying interrupted operations onto a saved world.
 
 ## Client protocol
 
