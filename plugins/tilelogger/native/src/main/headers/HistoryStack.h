@@ -71,6 +71,7 @@ public:
         struct Candidate {
             bool unwind{};
             bool found{};
+            bool payload{};
             RollbackChange change;
         };
         std::unordered_map<Pos, Candidate> map;
@@ -97,6 +98,8 @@ public:
             }
             auto& candidate = entry->second;
             if (!candidate.unwind) continue;
+            // A tile-only plan cannot reclaim a building from a carrier or another position.
+            candidate.payload |= it->action == ActionKind::Pickup || it->action == ActionKind::Drop;
             const bool legacyConstruction =
                 it->action == ActionKind::Legacy && it->block >= 3 && it->block <= 11;
             bool boundary = it->time < cutoff ||
@@ -113,6 +116,8 @@ public:
         }
         std::vector<RollbackChange> result;
         for (auto& [pos, c] : map) {
+            if (!c.change.validity.empty() && c.payload)
+                throw std::invalid_argument("Rollback crosses a payload move");
             if (!c.change.validity.empty()) result.push_back(std::move(c.change));
         }
         if (result.size() > 2048)

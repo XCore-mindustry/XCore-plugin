@@ -92,3 +92,4 @@ tilelogger-action-drop = Выгружено
 tilelogger-action-admin-fill = Заливка админом
 tilelogger-action-legacy = Снимок старого формата
 tilelogger-error-plan = [scarlet]Область отката или объём конфигураций слишком велики. Выберите меньшую область.[]
+tilelogger-error-payload = [scarlet]Откат затрагивает подбор или выгрузку постройки. Выберите область или период без переноса payload.[]

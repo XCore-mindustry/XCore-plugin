@@ -85,3 +85,4 @@ tilelogger-action-drop = Drop
 tilelogger-action-admin-fill = Admin fill
 tilelogger-action-legacy = Legacy snapshot
 tilelogger-error-plan = [scarlet]The rollback area or configuration volume is too large. Select a smaller area.[]
+tilelogger-error-payload = [scarlet]This rollback crosses a pickup or payload drop. Select an area or time range without payload moves.[]

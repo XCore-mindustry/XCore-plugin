@@ -5,6 +5,8 @@ import arc.struct.ObjectMap;
 import arc.util.Log;
 import arc.util.Nullable;
 import arc.util.Strings;
+import arc.util.io.Reads;
+import arc.util.io.Writes;
 import com.ospx.flubundle.Args;
 import com.ospx.flubundle.Bundle;
 import com.ospx.flubundle.mindustry.Messenger;
@@ -14,6 +16,7 @@ import jakarta.inject.Singleton;
 import mindustry.Vars;
 import mindustry.ai.types.LogicAI;
 import mindustry.content.Blocks;
+import mindustry.core.NetServer;
 import mindustry.game.Team;
 import mindustry.gen.*;
 import mindustry.net.Administration.PlayerInfo;
@@ -33,6 +36,7 @@ import org.xcore.plugin.startup.ShutdownOrder;
 import tilelogger.*;
 
 import java.nio.charset.StandardCharsets;
+import java.io.*;
 import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
@@ -509,23 +513,79 @@ public class TileLoggerService {
             }
         });
     }
-    private record Image(Tile tile, Block block, Team team, int rotation, ConfigCodec.Encoded config) {
-        static Image capture(Tile tile) {
+    private record PowerLink(Building building, Team team, boolean reciprocal) {}
+    private record Image(Tile tile, Block block, Team team, int rotation, ConfigCodec.Encoded config,
+            byte version, byte[] state, List<PowerLink> powerLinks) {
+        static ConfigCodec.Encoded check(Tile tile) {
             var config = ConfigCodec.encode(tile.build == null ? null : tile.build.config());
             if (!config.supported())
                 throw new IllegalArgumentException("Cannot restore current configuration");
+            return config;
+        }
+        static Image capture(Tile tile) {
+            var config = check(tile);
+            byte[] state = null;
+            byte version = 0;
+            var powerLinks = new ArrayList<PowerLink>();
+            if (tile.build != null) {
+                // A transient before-image, never a historical inventory to replay on success.
+                var bytes = new ByteArrayOutputStream() {
+                    private void checkSize(int length) {
+                        if (length > 4 * 1024 * 1024 - count)
+                            throw new IllegalArgumentException("Building before-image exceeds 4 MiB");
+                    }
+                    @Override public synchronized void write(int value) { checkSize(1); super.write(value); }
+                    @Override public synchronized void write(byte[] data, int offset, int length) {
+                        checkSize(length); super.write(data, offset, length);
+                    }
+                };
+                version = tile.build.version();
+                tile.build.writeAll(new Writes(new DataOutputStream(bytes)));
+                state = bytes.toByteArray();
+                if (tile.build.power != null)
+                    for (int i = 0; i < tile.build.power.links.size; i++) {
+                        Building other = Vars.world.build(tile.build.power.links.get(i));
+                        if (other != null && other.power != null)
+                            powerLinks.add(new PowerLink(other, other.team,
+                                    other.power.links.contains(tile.pos())));
+                    }
+            }
             return new Image(
-                    tile, tile.block(), tile.team(), tile.build == null ? 0 : tile.build.rotation, config);
+                    tile, tile.block(), tile.team(), tile.build == null ? 0 : tile.build.rotation, config,
+                    version, state, powerLinks);
         }
         void restore() {
             set(tile, block, team, rotation,
                     ConfigCodec.decode(config.type(), config.type() >= 5 ? config.bytes() : config.scalar()));
+            if (state != null) {
+                tile.build.readAll(new Reads(new DataInputStream(new ByteArrayInputStream(state))), version);
+                // Team changes/removal unlink neighbors too; reading our module cannot repair them.
+                for (PowerLink link : powerLinks)
+                    if (!link.building.isValid() || link.building.team != link.team
+                            || link.building.power == null)
+                        throw new IllegalStateException("Power neighbor changed during recovery");
+                for (PowerLink link : powerLinks) {
+                    if (link.reciprocal) link.building.power.links.addUnique(tile.pos());
+                    else link.building.power.links.removeValue(tile.pos());
+                }
+                if (tile.build.power != null) tile.build.updatePowerGraph();
+                for (PowerLink link : powerLinks) NetServer.syncBuilding(link.building);
+                NetServer.syncBuilding(tile.build);
+            }
         }
     }
     private static void set(Tile tile, Block block, Team team, int rotation, Object config) {
-        Call.setTile(tile, block, team, rotation);
-        if (tile.build != null)
-            tile.build.configure(config);
+        if (tile.build != null && tile.block() == block) {
+            if (tile.team() != team) Call.setTeam(tile.build, team);
+            for (int turns = 0; tile.build.rotation != rotation && turns < 4; turns++)
+                Call.rotateBlock(null, tile.build, true);
+            if (tile.build.rotation != rotation)
+                throw new IllegalStateException("Building rotation did not apply");
+        } else {
+            Call.setTile(tile, block, team, rotation);
+        }
+        if (tile.build != null && !Objects.deepEquals(tile.build.config(), config))
+            tile.build.configureAny(config);
     }
     private enum Check { OK, PROTECTED, CONFLICT, UNRESTORABLE }
     private static Set<Integer> footprint(Tile anchor, Block block, Rect area) {
@@ -574,7 +634,7 @@ public class TileLoggerService {
             }
             if (!change.destroy)
                 change.getConfig();
-            Image.capture(tile);
+            Image.check(tile);
             reserved.addAll(covered);
             return Check.OK;
         } catch (IllegalArgumentException invalid) {
@@ -590,7 +650,11 @@ public class TileLoggerService {
         Rect rect = checkedRect(requested);
         TileState[] changes;
         try { changes = TileLogger.planRollback(rect, target.uuid, teams, time); }
-        catch (IllegalArgumentException limit) { throw new XCoreCommandException("tilelogger-error-plan"); }
+        catch (IllegalArgumentException failure) {
+            // This native diagnostic is also the machine-readable rejection reason across FFM.
+            throw new XCoreCommandException("Rollback crosses a payload move".equals(failure.getMessage())
+                    ? "tilelogger-error-payload" : "tilelogger-error-plan");
+        }
         long plan = changes.length == 0 ? 0 : changes[0].planId;
         int applied = 0, protectedCount = 0, conflicts = 0, unrestorable = 0, failed = 0;
         try {
@@ -714,7 +778,7 @@ public class TileLoggerService {
                 } catch (IllegalArgumentException invalid) {
                     throw new XCoreCommandException("tilelogger-error-footprint");
                 }
-                Image.capture(tile);
+                Image.check(tile);
                 tiles.add(tile);
                 if (tiles.size() > MAX_MUTATIONS)
                     throw new XCoreCommandException(

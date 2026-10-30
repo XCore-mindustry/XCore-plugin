@@ -33,6 +33,8 @@ Game-thread ownership, archive workers, rollback limits and durability semantics
 
 World mutations are limited to 256 buildings per command. Native planning additionally limits the scan to 100,000 matching snapshots, 2,048 positions, and 4 MiB of source/destination configuration bytes. Select a smaller area when a limit is reached. World changes run on the game thread.
 
+Configuration, rotation and team rollbacks keep the existing building object and its unrelated inventory/health. Failed world mutations restore a transient, versioned building before-image (at most 4 MiB); this is not historical inventory replay. A rollback plan that crosses pickup/drop, including a payload state used as its restoration boundary, is rejected as a whole before any world or journal mutation. Choose a smaller area or a later time range. Payload movement is still recorded, but carrier-aware rollback is not supported.
+
 ## Journal and recovery
 
 New sessions write one `.history` journal under `config/tilelogs`. Paths may also be absolute for console-managed archives. Relative paths cannot escape that directory. No automatic retention or archive deletion is performed.
@@ -53,7 +55,7 @@ Opening a v2 archive requires the same content manifest, so numeric block IDs ca
 
 Planning is read-only: no validity, cache, or file changes, including preview. A plan is session/revision-bound. Java validates current/destination blocks, complete footprints, cores, configuration restoration, and conflicts, then rechecks before each application. Only an applied position is committed. Protected/conflicting/unrestorable/failed positions are reported separately. Core subclasses are protected, not only the six vanilla cores.
 
-On failure after a world mutation, the block/team/rotation/configuration before-image is restored; an unsuccessful restoration suspends recording. This is **not** an inventory/liquid/health snapshot or a crash-atomic transaction spanning the game and disk. Those building internals remain outside the rollback contract. Restarted games start new sessions rather than automatically replaying interrupted operations onto a saved world.
+On failure after a world mutation, the transient before-image restores the building's serialized state, including its inventory, liquids and health. It also repairs captured reciprocal power links and reconnects the power graph; a replaced or team-changed neighbor causes recovery to fail rather than overwrite that neighbor. An unsuccessful restoration suspends recording. This is failure recovery, **not** replay of historical inventories or a crash-atomic transaction spanning the game and disk. Successful historical rollback does not restore past stocks or other internals absent from the journal. Restarted games start new sessions rather than automatically replaying interrupted operations onto a saved world.
 
 ## Client protocol
 
