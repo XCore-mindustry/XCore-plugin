@@ -37,6 +37,35 @@ int main() {
             std::cerr << "FAIL " << name << ": " << e.what() << '\n';
         }
     };
+    test("payload moves reject the whole plan without changing history", [&] {
+        HistoryStack history;
+        auto baseline = state(1, 20); baseline.action = ActionKind::Baseline;
+        history.Record(baseline);
+        auto pickup = state(2, 20, 1, 1, true); pickup.action = ActionKind::Pickup;
+        history.Record(pickup);
+        auto drop = state(3, 20); drop.pos = Pos(2, 1); drop.action = ActionKind::Drop;
+        history.Record(drop);
+        auto edit = drop; edit.time = 4; edit.action = ActionKind::Configure;
+        history.Record(edit);
+        auto independent = baseline; independent.pos = Pos(3, 1);
+        history.Record(independent);
+        auto changed = independent; changed.time = 5; changed.block = 21;
+        changed.action = ActionKind::BuildCompleted; history.Record(changed);
+        for (const Rect& area : {all, Rect(1, 1, 1, 1), Rect(2, 1, 2, 1)}) {
+            bool rejected = false;
+            try { history.Plan(area, {}, -1, 0); }
+            catch (const std::invalid_argument& e) {
+                rejected = std::string(e.what()) == "Rollback crosses a payload move";
+            }
+            check(rejected, "payload plan accepted");
+        }
+        check(history.Current(Pos(1, 1))->destroy, "pickup validity changed");
+        check(history.Current(Pos(3, 1))->block == 21, "unrelated history changed");
+        check(history.Plan(Rect(3, 1, 3, 1), {}, -1, 0).size() == 1, "safe area blocked");
+        auto later = edit; later.time = 6; later.block = 22; history.Record(later);
+        check(history.Plan(Rect(2, 1, 2, 1), {}, -1, 4).size() == 1,
+              "safe post-drop time range blocked");
+    });
     test("zero limit is empty", [&] {
         HistoryStack history;
         history.Reset({}, false);

@@ -3,7 +3,7 @@
   "author": "Горыныч#3545",
   "main": "tilelogger.TileLoggerPlugin",
   "description": "Mindustry plugin for recording tile history and rollback actions.",
-  "version": "2.1.0",
+  "version": "2.1.1",
   "dependencies": [
     "xcore-plugin"
   ]

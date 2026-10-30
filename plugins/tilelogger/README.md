@@ -33,6 +33,8 @@ Game-thread ownership, archive workers, rollback limits and durability semantics
 
 World mutations are limited to 256 buildings per command. Native planning additionally limits the scan to 100,000 matching snapshots, 2,048 positions, and 4 MiB of source/destination configuration bytes. Select a smaller area when a limit is reached. World changes run on the game thread.
 
+Configuration, rotation and team rollbacks keep the existing building object and its unrelated inventory/health. Failed world mutations restore a transient, versioned building before-image (at most 4 MiB); this is not historical inventory replay. A rollback plan that crosses pickup/drop, including a payload state used as its restoration boundary, is rejected as a whole before any world or journal mutation. Choose a smaller area or a later time range. Payload movement is still recorded, but carrier-aware rollback is not supported.
+
 ## Journal and recovery
 
 New sessions write one `.history` journal under `config/tilelogs`. Paths may also be absolute for console-managed archives. Relative paths cannot escape that directory. No automatic retention or archive deletion is performed.
