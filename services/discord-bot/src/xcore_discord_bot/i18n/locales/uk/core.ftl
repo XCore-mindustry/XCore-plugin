@@ -11,6 +11,7 @@ error-not-found = Нічого не знайдено.
 error-already-handled = Це вже оброблено.
 error-already-handled-by = Це вже обробив користувач { $name }.
 error-opening-blocked = Наразі ви не можете створювати нові звернення.
+error-thread-hidden = Це звернення не можна подати через панель. Напишіть старшому складу напряму.
 error-cooldown =
     Зачекайте ще { $seconds ->
         [one] { $seconds } секунду

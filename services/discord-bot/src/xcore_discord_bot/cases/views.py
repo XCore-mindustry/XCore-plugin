@@ -29,6 +29,7 @@ from .model import (
     CaseStatus,
     InvalidTransition,
     Resolution,
+    ThreadHidden,
 )
 from .registry import FlowRegistry, FormField, PanelContext
 
@@ -283,6 +284,13 @@ class PanelButton(discord.ui.DynamicItem[discord.ui.Button], template=PANEL_PATT
         try:
             flow = service.registry.require(self.kind)
             check_opening(service.settings, interaction.user)
+            parent = service.bot.get_channel(service.threads.user_parent_id(self.kind))
+            # The private thread would be created where this member cannot read it.
+            if (
+                parent is not None
+                and not parent.permissions_for(interaction.user).view_channel
+            ):
+                raise ThreadHidden()
             if flow.panel is None:
                 raise CaseError()
         except CaseError as error:
