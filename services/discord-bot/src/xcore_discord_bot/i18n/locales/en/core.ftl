@@ -11,6 +11,7 @@ error-not-found = Nothing was found.
 error-already-handled = This has already been handled.
 error-already-handled-by = This has already been handled by { $name }.
 error-opening-blocked = You cannot open new requests at the moment.
+error-thread-hidden = You can't open this kind of request through the panel. Contact the senior staff directly.
 error-cooldown =
     Please wait { $seconds ->
         [one] { $seconds } more second

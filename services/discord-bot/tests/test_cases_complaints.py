@@ -21,8 +21,24 @@ from cases_fakes import Interaction, member
 from xcore_discord_bot.cases.flows import complaints
 from xcore_discord_bot.cases.model import CaseKind, CaseStatus, InvalidForm
 from xcore_discord_bot.cases.registry import PanelContext
-from xcore_discord_bot.cases.views import CaseActionButton, case_view, panel_view
+from xcore_discord_bot.cases.views import (
+    CaseActionButton,
+    PanelButton,
+    case_view,
+    panel_view,
+)
 from xcore_discord_bot.i18n import t
+
+
+async def test_staff_who_cannot_see_the_parent_are_refused_before_the_form():
+    _, db, bot = await complaint_core()
+    bot.channels[500].role_permissions[77] = discord.Permissions.none()
+    interaction = Interaction(bot, user=member(77, (10,)))
+    await PanelButton(CaseKind.COMPLAINT).callback(interaction)
+    assert interaction.events == [
+        ("message", t("en", "error-thread-hidden"), {"ephemeral": True})
+    ]
+    assert not db["cases"].docs
 
 
 @pytest.mark.parametrize(

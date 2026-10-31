@@ -83,6 +83,10 @@ class OpeningBlocked(AccessDenied):
     key = "error-opening-blocked"
 
 
+class ThreadHidden(AccessDenied):
+    key = "error-thread-hidden"
+
+
 class OpenLimit(CaseError):
     key = "cases-open-limit"
 
