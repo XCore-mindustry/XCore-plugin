@@ -304,12 +304,14 @@ you-are-muted-by =
     [lightgray]You were muted by administrator [accent]{ $adminName }[lightgray].
     [orange]» [accent]Reason: [gold]{ $reason }
     [orange]» [accent]Time left: { DURATION($duration, style: "full", colored: "true", maxUnits: 2) }
+    [lightgray]To appeal, visit Discord channel [gray]{ support-channel }[].
 you-are-muted =
     [orange]⚠ Chat restricted[]
     [lightgray]You cannot send messages while this mute is active.
     [orange]» [accent]Admin: [white]{ $adminName }
     [orange]» [accent]Reason: [gold]{ $reason }
     [orange]» [accent]Time left: { DURATION($duration, style: "full", colored: "true", maxUnits: 2) }
+    [lightgray]To appeal, visit Discord channel [gray]{ support-channel }[].
 kick-pirated-game = [accent]Unauthorized client detected. [scarlet]Access denied[]. Please play using the [lime]official[] version from [blue]Steam[], [blue]Google Play[], or [blue]itch.io[].
 kick-recently-kicked =
     [accent]You were recently kicked from this server.
@@ -366,6 +368,8 @@ case-notice-report-rejected =
 case-notice-report-not-accepted = [scarlet]Your report was not accepted.
 case-notice-appeal-accepted = [lightgray]Appeal [accent]#{ $number }[lightgray] accepted: the ban was lifted.
 case-notice-appeal-shortened = [lightgray]Appeal [accent]#{ $number }[lightgray] accepted: the ban was shortened.
+case-notice-appeal-unmuted = [lightgray]Appeal [accent]#{ $number }[lightgray] accepted: the mute was lifted.
+case-notice-appeal-mute-shortened = [lightgray]Appeal [accent]#{ $number }[lightgray] accepted: the mute was shortened.
 case-notice-badge-granted = [lightgray]Badge request [accent]#{ $number }[lightgray] approved: [green]{ $badge }[lightgray] granted.
 case-notice-badge-rejected = [lightgray]Badge request [accent]#{ $number }[lightgray] was rejected.
 case-notice-map-accepted = [lightgray]Map review [accent]#{ $number }[lightgray]: [green]{ $map }[lightgray] was accepted.

@@ -21,7 +21,8 @@ import java.util.concurrent.ConcurrentHashMap;
 public class CaseNoticeService {
     private static final int MAX_IN_FLIGHT = 512;
     private static final Set<String> KINDS = Set.of("report_received", "report_resolved", "report_rejected",
-            "report_not_accepted", "appeal_accepted", "appeal_shortened", "badge_granted", "badge_rejected",
+            "report_not_accepted", "appeal_accepted", "appeal_shortened", "appeal_unmuted", "appeal_mute_shortened",
+            "badge_granted", "badge_rejected",
             "map_accepted", "map_rejected", "complaint_closed");
     /** Rejection reason codes of a report; the bundle selects the reporter-facing sentence by them. */
     private static final Set<String> REPORT_REJECTION_REASONS = Set.of("no_violation", "no_evidence",

@@ -61,6 +61,18 @@ class AuditRecordRepositoryLogicTest {
         assertThat(json).contains("\"details.expires_at\"");
     }
 
+    @Test
+    @DisplayName("toSummary keeps the expiry of a BSON date")
+    void toSummaryKeepsBsonDateExpiry() {
+        Document document = Document.parse("""
+                {"audit_id": "a1", "action": "MUTE", "created_at_epoch_ms": 1,
+                 "details": {"duration_ms": 60000, "expires_at": {"$date": "2026-10-24T17:09:00Z"}}}
+                """);
+
+        assertThat(AuditRecordRepository.toSummary(document).expiresAt())
+                .isEqualTo(java.time.Instant.parse("2026-10-24T17:09:00Z"));
+    }
+
     private static String toJson(Bson query) {
         return query.toBsonDocument(Document.class, MongoClientSettings.getDefaultCodecRegistry()).toJson();
     }

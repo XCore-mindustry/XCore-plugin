@@ -20,6 +20,7 @@ import org.xcore.plugin.model.Slice;
 
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 
@@ -221,7 +222,7 @@ public class AuditRecordRepository extends DataRepository<AuditRecord> {
         );
     }
 
-    private static AuditRecordSummary toSummary(Document document) {
+    static AuditRecordSummary toSummary(Document document) {
         Document target = document.get("target", Document.class);
         Document actor = document.get("actor", Document.class);
         Document details = document.get("details", Document.class);
@@ -258,6 +259,10 @@ public class AuditRecordRepository extends DataRepository<AuditRecord> {
     private static Instant extractInstant(Object value) {
         if (value instanceof Instant instant) {
             return instant;
+        }
+        // A raw Document decodes a BSON date as java.util.Date.
+        if (value instanceof Date date) {
+            return date.toInstant();
         }
         if (value instanceof String stringValue && !stringValue.isBlank()) {
             return Instant.parse(stringValue);

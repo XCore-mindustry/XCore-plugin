@@ -301,12 +301,14 @@ you-are-muted-by =
     [lightgray]Du wurdest von Administrator [accent]{ $adminName }[lightgray] stummgeschaltet.
     [orange]» [accent]Grund: [gold]{ $reason }
     [orange]» [accent]Verbleibend: { DURATION($duration, style: "full", colored: "true", maxUnits: 2) }
+    [lightgray]Für einen Einspruch besuche den Discord-Kanal [gray]{ support-channel }[].
 you-are-muted =
     [orange]⚠ Chat eingeschränkt[]
     [lightgray]Solange die Stummschaltung aktiv ist, kannst du keine Nachrichten senden.
     [orange]» [accent]Admin: [white]{ $adminName }
     [orange]» [accent]Grund: [gold]{ $reason }
     [orange]» [accent]Verbleibend: { DURATION($duration, style: "full", colored: "true", maxUnits: 2) }
+    [lightgray]Für einen Einspruch besuche den Discord-Kanal [gray]{ support-channel }[].
 kick-pirated-game = [accent]Nicht autorisierter Client erkannt. [scarlet]Zugriff verweigert[]. Bitte spiele die [lime]offizielle[] Version von [blue]Steam[], [blue]Google Play[] oder [blue]itch.io[].
 kick-recently-kicked =
     [accent]Du wurdest kürzlich von diesem Server gekickt.
@@ -364,6 +366,8 @@ case-notice-report-rejected =
 case-notice-report-not-accepted = [scarlet]Deine Meldung wurde nicht angenommen.
 case-notice-appeal-accepted = [lightgray]Einspruch [accent]#{ $number }[lightgray] angenommen: Die Sperre wurde aufgehoben.
 case-notice-appeal-shortened = [lightgray]Einspruch [accent]#{ $number }[lightgray] angenommen: Die Sperrdauer wurde verkürzt.
+case-notice-appeal-unmuted = [lightgray]Einspruch [accent]#{ $number }[lightgray] angenommen: Die Stummschaltung wurde aufgehoben.
+case-notice-appeal-mute-shortened = [lightgray]Einspruch [accent]#{ $number }[lightgray] angenommen: Die Stummschaltung wurde verkürzt.
 case-notice-badge-granted = [lightgray]Abzeichen-Anfrage [accent]#{ $number }[lightgray] genehmigt: [green]{ $badge }[lightgray] erhalten.
 case-notice-badge-rejected = [lightgray]Abzeichen-Anfrage [accent]#{ $number }[lightgray] wurde abgelehnt.
 case-notice-map-accepted = [lightgray]Kartenprüfung [accent]#{ $number }[lightgray]: [green]{ $map }[lightgray] wurde angenommen.

@@ -304,12 +304,14 @@ you-are-muted-by =
     [lightgray]El administrador [accent]{ $adminName }[lightgray] te ha silenciado.
     [orange]» [accent]Motivo: [gold]{ $reason }
     [orange]» [accent]Tiempo restante: { DURATION($duration, style: "full", colored: "true", maxUnits: 2) }
+    [lightgray]Para apelar, visita el canal de Discord [gray]{ support-channel }[].
 you-are-muted =
     [orange]⚠ Chat restringido[]
     [lightgray]No puedes enviar mensajes mientras este silencio esté activo.
     [orange]» [accent]Admin: [white]{ $adminName }
     [orange]» [accent]Motivo: [gold]{ $reason }
     [orange]» [accent]Tiempo restante: { DURATION($duration, style: "full", colored: "true", maxUnits: 2) }
+    [lightgray]Para apelar, visita el canal de Discord [gray]{ support-channel }[].
 kick-pirated-game = [accent]Cliente no autorizado detectado. [scarlet]Acceso denegado[]. Juega con la versión [lime]oficial[] de [blue]Steam[], [blue]Google Play[] o [blue]itch.io[].
 kick-recently-kicked =
     [accent]Te expulsaron de este servidor hace poco.
@@ -367,6 +369,8 @@ case-notice-report-rejected =
 case-notice-report-not-accepted = [scarlet]Tu reporte no fue aceptado.
 case-notice-appeal-accepted = [lightgray]Apelación [accent]#{ $number }[lightgray] aceptada: se ha retirado el baneo.
 case-notice-appeal-shortened = [lightgray]Apelación [accent]#{ $number }[lightgray] aceptada: se ha reducido el tiempo de baneo.
+case-notice-appeal-unmuted = [lightgray]Apelación [accent]#{ $number }[lightgray] aceptada: se ha retirado el silencio.
+case-notice-appeal-mute-shortened = [lightgray]Apelación [accent]#{ $number }[lightgray] aceptada: se ha reducido el tiempo de silencio.
 case-notice-badge-granted = [lightgray]Solicitud de insignia [accent]#{ $number }[lightgray] aprobada: [green]{ $badge }[lightgray] concedida.
 case-notice-badge-rejected = [lightgray]Solicitud de insignia [accent]#{ $number }[lightgray] rechazada.
 case-notice-map-accepted = [lightgray]Revisión de mapa [accent]#{ $number }[lightgray]: [green]{ $map }[lightgray] fue aceptado.
