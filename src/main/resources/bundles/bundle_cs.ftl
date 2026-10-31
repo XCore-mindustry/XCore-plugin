@@ -306,12 +306,14 @@ you-are-muted-by =
     [lightgray]Administrátor [accent]{ $adminName }[lightgray] tě umlčel.
     [orange]» [accent]Důvod: [gold]{ $reason }
     [orange]» [accent]Zbývá: { DURATION($duration, style: "full", colored: "true", maxUnits: 2) }
+    [lightgray]Pro odvolání navštiv Discord kanál [gray]{ support-channel }[].
 you-are-muted =
     [orange]⚠ Chat omezen[]
     [lightgray]Dokud platí umlčení, nemůžeš posílat zprávy.
     [orange]» [accent]Admin: [white]{ $adminName }
     [orange]» [accent]Důvod: [gold]{ $reason }
     [orange]» [accent]Zbývá: { DURATION($duration, style: "full", colored: "true", maxUnits: 2) }
+    [lightgray]Pro odvolání navštiv Discord kanál [gray]{ support-channel }[].
 kick-pirated-game = [accent]Zjištěn neautorizovaný klient. [scarlet]Přístup odepřen[]. Hraj prosím [lime]oficiální[] verzi ze [blue]Steamu[], [blue]Google Play[] nebo [blue]itch.io[].
 kick-recently-kicked =
     [accent]Z tohoto serveru jsi byl nedávno vyhozen.
@@ -369,6 +371,8 @@ case-notice-report-rejected =
 case-notice-report-not-accepted = [scarlet]Tvoje nahlášení nebylo přijato.
 case-notice-appeal-accepted = [lightgray]Odvolání [accent]#{ $number }[lightgray] přijato: ban byl zrušen.
 case-notice-appeal-shortened = [lightgray]Odvolání [accent]#{ $number }[lightgray] přijato: délka banu byla zkrácena.
+case-notice-appeal-unmuted = [lightgray]Odvolání [accent]#{ $number }[lightgray] přijato: umlčení bylo zrušeno.
+case-notice-appeal-mute-shortened = [lightgray]Odvolání [accent]#{ $number }[lightgray] přijato: délka umlčení byla zkrácena.
 case-notice-badge-granted = [lightgray]Žádost o odznak [accent]#{ $number }[lightgray] schválena: udělen odznak [green]{ $badge }[lightgray].
 case-notice-badge-rejected = [lightgray]Žádost o odznak [accent]#{ $number }[lightgray] byla zamítnuta.
 case-notice-map-accepted = [lightgray]Kontrola mapy [accent]#{ $number }[lightgray]: mapa [green]{ $map }[lightgray] byla přijata.

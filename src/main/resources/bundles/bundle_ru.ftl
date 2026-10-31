@@ -308,12 +308,14 @@ you-are-muted-by =
     [lightgray]Администратор [accent]{ $adminName }[lightgray] выдал вам мут.
     [orange]» [accent]Причина: [gold]{ $reason }
     [orange]» [accent]До снятия: { DURATION($duration, style: "full", colored: "true", maxUnits: 2) }
+    [lightgray]Чтобы обжаловать мут, перейдите в Discord-канал [gray]{ support-channel }[].
 you-are-muted =
     [orange]⚠ Чат ограничен[]
     [lightgray]Вы не можете отправлять сообщения, пока действует мут.
     [orange]» [accent]Администратор: [white]{ $adminName }
     [orange]» [accent]Причина: [gold]{ $reason }
     [orange]» [accent]До снятия: { DURATION($duration, style: "full", colored: "true", maxUnits: 2) }
+    [lightgray]Чтобы обжаловать мут, перейдите в Discord-канал [gray]{ support-channel }[].
 kick-pirated-game = [accent]Обнаружен неавторизованный клиент. [scarlet]Доступ запрещен[]. Пожалуйста, используйте [lime]официальную[] версию из [blue]Steam[], [blue]Google Play[] или [blue]itch.io[].
 kick-recently-kicked =
     [accent]Вы недавно были кикнуты с этого сервера.
@@ -370,6 +372,8 @@ case-notice-report-rejected =
 case-notice-report-not-accepted = [scarlet]Ваша жалоба не принята.
 case-notice-appeal-accepted = [lightgray]Апелляция [accent]#{ $number }[lightgray] принята: блокировка снята.
 case-notice-appeal-shortened = [lightgray]Апелляция [accent]#{ $number }[lightgray] принята: срок блокировки сокращён.
+case-notice-appeal-unmuted = [lightgray]Апелляция [accent]#{ $number }[lightgray] принята: мут снят.
+case-notice-appeal-mute-shortened = [lightgray]Апелляция [accent]#{ $number }[lightgray] принята: срок мута сокращён.
 case-notice-badge-granted = [lightgray]Заявка на значок [accent]#{ $number }[lightgray] одобрена: значок [green]{ $badge }[lightgray] выдан.
 case-notice-badge-rejected = [lightgray]Заявка на значок [accent]#{ $number }[lightgray] отклонена.
 case-notice-map-accepted = [lightgray]Проверка карты [accent]#{ $number }[lightgray]: карта [green]{ $map }[lightgray] принята.

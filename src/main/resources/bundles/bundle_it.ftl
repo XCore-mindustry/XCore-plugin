@@ -310,12 +310,14 @@ you-are-muted-by =
     [lightgray]Sei stato silenziato dall'amministratore [accent]{ $adminName }[lightgray].
     [orange]» [accent]Motivo: [gold]{ $reason }
     [orange]» [accent]Tempo rimasto: { DURATION($duration, style: "full", colored: "true", maxUnits: 2) }
+    [lightgray]Per fare ricorso, visita il canale Discord [gray]{ support-channel }[].
 you-are-muted =
     [orange]⚠ Chat limitata[]
     [lightgray]Non puoi inviare messaggi finché questo silenziamento è attivo.
     [orange]» [accent]Admin: [white]{ $adminName }
     [orange]» [accent]Motivo: [gold]{ $reason }
     [orange]» [accent]Tempo rimasto: { DURATION($duration, style: "full", colored: "true", maxUnits: 2) }
+    [lightgray]Per fare ricorso, visita il canale Discord [gray]{ support-channel }[].
 kick-pirated-game = [accent]Rilevato client non autorizzato. [scarlet]Accesso negato[]. Gioca usando la versione [lime]ufficiale[] da [blue]Steam[], [blue]Google Play[] o [blue]itch.io[].
 kick-recently-kicked =
     [accent]Sei stato espulso di recente da questo server.
@@ -373,6 +375,8 @@ case-notice-report-rejected =
 case-notice-report-not-accepted = [scarlet]La tua segnalazione non è stata accettata.
 case-notice-appeal-accepted = [lightgray]Ricorso [accent]#{ $number }[lightgray] accettato: il ban è stato revocato.
 case-notice-appeal-shortened = [lightgray]Ricorso [accent]#{ $number }[lightgray] accettato: la durata del ban è stata ridotta.
+case-notice-appeal-unmuted = [lightgray]Ricorso [accent]#{ $number }[lightgray] accettato: il silenziamento è stato revocato.
+case-notice-appeal-mute-shortened = [lightgray]Ricorso [accent]#{ $number }[lightgray] accettato: la durata del silenziamento è stata ridotta.
 case-notice-badge-granted = [lightgray]Richiesta distintivo [accent]#{ $number }[lightgray] approvata: distintivo [green]{ $badge }[lightgray] assegnato.
 case-notice-badge-rejected = [lightgray]Richiesta distintivo [accent]#{ $number }[lightgray] rifiutata.
 case-notice-map-accepted = [lightgray]Revisione mappa [accent]#{ $number }[lightgray]: mappa [green]{ $map }[lightgray] accettata.

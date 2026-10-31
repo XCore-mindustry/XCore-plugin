@@ -308,12 +308,14 @@ you-are-muted-by =
     [lightgray]Zostałeś wyciszony przez administratora [accent]{ $adminName }[lightgray].
     [orange]» [accent]Powód: [gold]{ $reason }
     [orange]» [accent]Pozostało: { DURATION($duration, style: "full", colored: "true", maxUnits: 2) }
+    [lightgray]Aby się odwołać, odwiedź kanał Discord [gray]{ support-channel }[].
 you-are-muted =
     [orange]⚠ Czat ograniczony[]
     [lightgray]Nie możesz wysyłać wiadomości, dopóki wyciszenie jest aktywne.
     [orange]» [accent]Admin: [white]{ $adminName }
     [orange]» [accent]Powód: [gold]{ $reason }
     [orange]» [accent]Pozostało: { DURATION($duration, style: "full", colored: "true", maxUnits: 2) }
+    [lightgray]Aby się odwołać, odwiedź kanał Discord [gray]{ support-channel }[].
 kick-pirated-game = [accent]Wykryto nieautoryzowanego klienta. [scarlet]Odmowa dostępu[]. Graj w [lime]oficjalną[] wersję ze [blue]Steam[], [blue]Google Play[] lub [blue]itch.io[].
 kick-recently-kicked =
     [accent]Niedawno zostałeś wyrzucony z tego serwera.
@@ -371,6 +373,8 @@ case-notice-report-rejected =
 case-notice-report-not-accepted = [scarlet]Twoje zgłoszenie nie zostało przyjęte.
 case-notice-appeal-accepted = [lightgray]Odwołanie [accent]#{ $number }[lightgray] przyjęte: ban został zdjęty.
 case-notice-appeal-shortened = [lightgray]Odwołanie [accent]#{ $number }[lightgray] przyjęte: czas bana został skrócony.
+case-notice-appeal-unmuted = [lightgray]Odwołanie [accent]#{ $number }[lightgray] przyjęte: wyciszenie zostało zdjęte.
+case-notice-appeal-mute-shortened = [lightgray]Odwołanie [accent]#{ $number }[lightgray] przyjęte: czas wyciszenia został skrócony.
 case-notice-badge-granted = [lightgray]Wniosek o odznakę [accent]#{ $number }[lightgray] zatwierdzony: przyznano odznakę [green]{ $badge }[lightgray].
 case-notice-badge-rejected = [lightgray]Wniosek o odznakę [accent]#{ $number }[lightgray] został odrzucony.
 case-notice-map-accepted = [lightgray]Weryfikacja mapy [accent]#{ $number }[lightgray]: mapa [green]{ $map }[lightgray] została zaakceptowana.

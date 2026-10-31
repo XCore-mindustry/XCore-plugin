@@ -310,12 +310,14 @@ you-are-muted-by =
     [lightgray]Você foi silenciado pelo administrador [accent]{ $adminName }[lightgray].
     [orange]» [accent]Motivo: [gold]{ $reason }
     [orange]» [accent]Tempo restante: { DURATION($duration, style: "full", colored: "true", maxUnits: 2) }
+    [lightgray]Para recorrer, visite o canal do Discord [gray]{ support-channel }[].
 you-are-muted =
     [orange]⚠ Chat restrito[]
     [lightgray]Você não pode enviar mensagens enquanto este silenciamento estiver ativo.
     [orange]» [accent]Admin: [white]{ $adminName }
     [orange]» [accent]Motivo: [gold]{ $reason }
     [orange]» [accent]Tempo restante: { DURATION($duration, style: "full", colored: "true", maxUnits: 2) }
+    [lightgray]Para recorrer, visite o canal do Discord [gray]{ support-channel }[].
 kick-pirated-game = [accent]Cliente não autorizado detectado. [scarlet]Acesso negado[]. Por favor, jogue usando a versão [lime]oficial[] da [blue]Steam[], [blue]Google Play[] ou [blue]itch.io[].
 kick-recently-kicked =
     [accent]Você foi expulso recentemente deste servidor.
@@ -373,6 +375,8 @@ case-notice-report-rejected =
 case-notice-report-not-accepted = [scarlet]Sua denúncia não foi aceita.
 case-notice-appeal-accepted = [lightgray]Recurso [accent]#{ $number }[lightgray] aceito: o banimento foi removido.
 case-notice-appeal-shortened = [lightgray]Recurso [accent]#{ $number }[lightgray] aceito: o tempo de banimento foi reduzido.
+case-notice-appeal-unmuted = [lightgray]Recurso [accent]#{ $number }[lightgray] aceito: o silenciamento foi removido.
+case-notice-appeal-mute-shortened = [lightgray]Recurso [accent]#{ $number }[lightgray] aceito: o tempo de silenciamento foi reduzido.
 case-notice-badge-granted = [lightgray]Solicitação de emblema [accent]#{ $number }[lightgray] aprovada: emblema [green]{ $badge }[lightgray] concedido.
 case-notice-badge-rejected = [lightgray]Solicitação de emblema [accent]#{ $number }[lightgray] foi rejeitada.
 case-notice-map-accepted = [lightgray]Revisão de mapa [accent]#{ $number }[lightgray]: mapa [green]{ $map }[lightgray] foi aceito.

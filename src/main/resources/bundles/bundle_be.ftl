@@ -308,12 +308,14 @@ you-are-muted-by =
     [lightgray]Адміністратар [accent]{ $adminName }[lightgray] выдаў вам мут.
     [orange]» [accent]Прычына: [gold]{ $reason }
     [orange]» [accent]Засталося: { DURATION($duration, style: "full", colored: "true", maxUnits: 2) }
+    [lightgray]Каб абскардзіць, зайдзіце ў канал Discord [gray]{ support-channel }[].
 you-are-muted =
     [orange]⚠ Чат абмежаваны[]
     [lightgray]Пакуль дзейнічае мут, вы не можаце адпраўляць паведамленні.
     [orange]» [accent]Адмін: [white]{ $adminName }
     [orange]» [accent]Прычына: [gold]{ $reason }
     [orange]» [accent]Засталося: { DURATION($duration, style: "full", colored: "true", maxUnits: 2) }
+    [lightgray]Каб абскардзіць, зайдзіце ў канал Discord [gray]{ support-channel }[].
 kick-pirated-game = [accent]Выяўлены неаўтарызаваны кліент. [scarlet]Доступ забаронены[]. Калі ласка, гуляйце ў [lime]афіцыйную[] версію са [blue]Steam[], [blue]Google Play[] або [blue]itch.io[].
 kick-recently-kicked =
     [accent]Вас нядаўна выключылі з гэтага сервера.
@@ -371,6 +373,8 @@ case-notice-report-rejected =
 case-notice-report-not-accepted = [scarlet]Ваша скарга не прынята.
 case-notice-appeal-accepted = [lightgray]Апеляцыя [accent]#{ $number }[lightgray] прынята: блакіроўка знята.
 case-notice-appeal-shortened = [lightgray]Апеляцыя [accent]#{ $number }[lightgray] прынята: тэрмін блакіроўкі скарочаны.
+case-notice-appeal-unmuted = [lightgray]Апеляцыя [accent]#{ $number }[lightgray] прынята: мут зняты.
+case-notice-appeal-mute-shortened = [lightgray]Апеляцыя [accent]#{ $number }[lightgray] прынята: тэрмін мута скарочаны.
 case-notice-badge-granted = [lightgray]Запыт на бэйдж [accent]#{ $number }[lightgray] ухвалены: бэйдж [green]{ $badge }[lightgray] выдадзены.
 case-notice-badge-rejected = [lightgray]Запыт на бэйдж [accent]#{ $number }[lightgray] адхілены.
 case-notice-map-accepted = [lightgray]Праверка карты [accent]#{ $number }[lightgray]: карта [green]{ $map }[lightgray] прынята.

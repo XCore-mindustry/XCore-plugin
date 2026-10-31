@@ -7,6 +7,13 @@ All notable changes to this project will be documented in this file.
 ### Changed
 - The profile writes wins next to the games they came from ("Wins: 777 of 1,736 | 45%") and says that the all-modes rate includes survival and Hexed, where a win is much rarer, so it can sit below the PvP rate. The Stats tab lists all-time games, wins and rate per mode (PvP, survival, Hexed, events and other), adding up to the total.
 - A ladder whose standings count `top3` (HexedCore) shows its wins as first places, with top-3 finishes beside them, on the profile and in `/season`.
+- The mute messages tell the player where to appeal (`#tickets` in Discord).
+
+### Added
+- Case notices `appeal_unmuted` and `appeal_mute_shortened` for accepted mute appeals.
+
+### Fixed
+- The audit list showed every timed ban and mute as permanent: the expiry, read from a raw document as `java.util.Date`, was dropped. The detail view was already right.
 
 ## [5.2.0] - 2026-10-28
 
