@@ -241,6 +241,22 @@ class PunishmentStore:
         result = await self._store.database["mutes"].delete_one({"uuid": uuid})
         return result.deleted_count
 
+    async def delete_mute_if(self, *, uuid: str, expire_date: datetime) -> bool:
+        """Lift the mute only while it is the one that was read (same expiry)."""
+        result = await self._store.database["mutes"].delete_one(
+            {"uuid": uuid, "expire_date": expire_date}
+        )
+        return result.deleted_count > 0
+
+    async def update_mute_expiry(
+        self, *, uuid: str, expire_date: datetime, new_expiry: datetime
+    ) -> bool:
+        result = await self._store.database["mutes"].update_one(
+            {"uuid": uuid, "expire_date": expire_date},
+            {"$set": {"expire_date": new_expiry}},
+        )
+        return result.modified_count > 0
+
     async def find_mute(self, *, uuid: str) -> MuteRecord | None:
         raw = await self._store.database["mutes"].find_one({"uuid": uuid})
         if raw is None:

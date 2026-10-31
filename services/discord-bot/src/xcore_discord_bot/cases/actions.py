@@ -42,6 +42,8 @@ AUDIT_RESOLUTIONS: dict[tuple[str, str | None, str], str] = {
     ("report", "MUTE", ""): "muted",
     ("appeal", "UNBAN", ""): "unbanned",
     ("appeal", "NOTE", "ban_shortened"): "shortened",
+    ("appeal", "UNMUTE", ""): "unmuted",
+    ("appeal", "NOTE", "mute_shortened"): "mute_shortened",
     ("badge", "NOTE", "badge_granted"): "granted",
     ("map", "NOTE", "map_uploaded"): "accepted",
 }
@@ -346,6 +348,8 @@ class CaseActions:
             "muted": "mute",
             "unbanned": "unban",
             "shortened": "shorten",
+            "unmuted": "unmute",
+            "mute_shortened": "shorten_mute",
             "granted": "grant",
             "accepted": "accept",
         }[code]

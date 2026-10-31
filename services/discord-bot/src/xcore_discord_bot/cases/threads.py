@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import logging
 from datetime import timedelta
 
@@ -57,6 +58,8 @@ class CaseThreads:
     def __init__(self, bot, settings) -> None:
         self.bot = bot
         self.settings = settings
+        # Two messages in a row must not both read the notice before either edits it.
+        self._notice_lock = asyncio.Lock()
 
     async def channel(self, channel_id: int | str):
         channel = self.bot.get_channel(int(channel_id))
@@ -571,16 +574,43 @@ class CaseThreads:
                 keep_mentions=True,
             )
 
-        thread = await self.channel(case.discord["thread_id"])
-        async for last in thread.history(limit=1):
-            if (
-                last.author.id == self.bot.user.id
-                and last.content.startswith(notice(""))
-                and discord.utils.utcnow() - last.created_at < USER_MESSAGE_BURST
-            ):
-                return
-        if thread.archived:
-            await thread.edit(archived=False)
-        await thread.send(
-            notice(message.jump_url), allowed_mentions=discord.AllowedMentions.none()
-        )
+        # Staff who have not taken the case cannot open the private thread, so they get the
+        # words too. A complaint stays a bare link: only the assignee reads those.
+        quote = "" if case.kind == CaseKind.COMPLAINT else _quote(message, case)
+        async with self._notice_lock:
+            thread = await self.channel(case.discord["thread_id"])
+            async for last in thread.history(limit=1):
+                if (
+                    last.author.id == self.bot.user.id
+                    and last.content.startswith(notice(""))
+                    and discord.utils.utcnow() - last.created_at < USER_MESSAGE_BURST
+                ):
+                    if not quote:
+                        return
+                    if len(last.content) + len(quote) <= 2000:
+                        if thread.archived:
+                            await thread.edit(archived=False)
+                        await last.edit(
+                            content=last.content + quote,
+                            allowed_mentions=discord.AllowedMentions.none(),
+                        )
+                        return
+            if thread.archived:
+                await thread.edit(archived=False)
+            await thread.send(
+                (notice(message.jump_url) + quote)[:2000],
+                allowed_mentions=discord.AllowedMentions.none(),
+            )
+
+
+def _quote(message, case: Case) -> str:
+    """The message as quoted lines, with the names of its files; empty if it has neither."""
+    secrets = case_secrets(case)
+    text = safe_text(getattr(message, "content", ""), secrets=secrets, limit=500)
+    # Ten lines of text and Discord's ten files keep a notice well under 2,000 characters.
+    lines = [line for line in text.splitlines() if line.strip()][:10]
+    lines += [
+        "📎 " + safe_text(file.filename, secrets=secrets, limit=100)
+        for file in list(getattr(message, "attachments", ()))[:10]
+    ]
+    return "".join("\n> " + line for line in lines)
