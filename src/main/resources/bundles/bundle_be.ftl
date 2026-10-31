@@ -389,6 +389,7 @@ votekick-vote =
 votekick-left = { $player }[lightgray] выйшаў. Яго голас адменены. ([accent]{ $votes }[]/[accent]{ $required }[])
 votekick-fail = [lightgray]Галасаванне не прайшло. Недастаткова галасоў, каб выключыць { $target }[lightgray].
 votekick-cancelled = [scarlet]Галасаванне за выключэнне { $target }[scarlet] адмяніў { $admin }.
+votekick-success-disconnected = { votekick-success } [lightgray]Выгнанне залічана аўтаматычна: гулец адключыўся падчас галасавання.
 votekick-success =
     [orange]Галасаванне прайшло. { $target }[orange] выключаны на [scarlet]{ $minutes }[] { $minutes ->
         [one] хвіліну

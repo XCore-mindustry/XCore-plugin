@@ -382,6 +382,7 @@ votekick-vote =
 votekick-left = { $player }[lightgray] ist gegangen. Die Stimme wurde zurückgezogen. ([accent]{ $votes }[]/[accent]{ $required }[])
 votekick-fail = [lightgray]Abstimmung gescheitert. Nicht genug Stimmen, um { $target }[lightgray] zu kicken.
 votekick-cancelled = [scarlet]Die Abstimmung zum Kick von { $target }[scarlet] wurde von { $admin } abgebrochen.
+votekick-success-disconnected = { votekick-success } [lightgray]Der Rauswurf wurde automatisch bestätigt: Der Spieler hat während der Abstimmung die Verbindung getrennt.
 votekick-success =
     [orange]Abstimmung erfolgreich. { $target }[orange] wurde für [scarlet]{ $minutes }[] { $minutes ->
         [one] Minute

@@ -194,23 +194,27 @@ public class VoteKick extends VoteSession {
         }
 
         if (target == player && votes() > 0) {
-            success();
+            success("votekick-success-disconnected");
         }
     }
 
     @Override
     public void success() {
+        success("votekick-success");
+    }
+
+    private void success(String messageKey) {
         stop();
         var bundleArgs = args(
                 "target", target.coloredName(),
                 "minutes", secretsConfig.moderation.votekick.banDurationMinutes);
-        sessionService.broadcast("votekick-success", bundleArgs);
+        sessionService.broadcast(messageKey, bundleArgs);
         target.kick(Packets.KickReason.vote, (long) secretsConfig.moderation.votekick.banDurationMinutes * 60 * 1000);
 
         if (network != null) {
             network.post(buildVoteKickEvent());
             network.post(new ServerActionV1(
-                    systemLocal.format("votekick-success", bundleArgs), config.server.name));
+                    systemLocal.format(messageKey, bundleArgs), config.server.name));
         }
         onKick.get(target);
     }

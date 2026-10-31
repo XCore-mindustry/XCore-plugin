@@ -383,6 +383,7 @@ votekick-vote =
 votekick-left = { $player }[lightgray] left. Their vote was cancelled. ([accent]{ $votes }[]/[accent]{ $required }[])
 votekick-fail = [lightgray]Vote failed. Not enough votes to kick { $target }[lightgray].
 votekick-cancelled = [scarlet]Vote to kick { $target }[scarlet] was cancelled by { $admin }.
+votekick-success-disconnected = { votekick-success } [lightgray]Kick counted automatically: the player disconnected during the vote.
 votekick-success =
     [orange]Vote passed. { $target }[orange] kicked for [scarlet]{ $minutes }[] { $minutes ->
         [one] minute

@@ -387,6 +387,7 @@ votekick-vote =
 votekick-left = { $player }[lightgray] odešel. Jeho hlas byl zrušen. ([accent]{ $votes }[]/[accent]{ $required }[])
 votekick-fail = [lightgray]Hlasování neuspělo. Málo hlasů pro vyhození { $target }[lightgray].
 votekick-cancelled = [scarlet]Hlasování o vyhození { $target }[scarlet] zrušil { $admin }.
+votekick-success-disconnected = { votekick-success } [lightgray]Vyloučení bylo schváleno automaticky: hráč se během hlasování odpojil.
 votekick-success =
     [orange]Hlasování prošlo. { $target }[orange] je vyhozen na [scarlet]{ $minutes }[] { $minutes ->
         [one] minutu

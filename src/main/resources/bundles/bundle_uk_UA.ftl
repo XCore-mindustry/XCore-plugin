@@ -395,6 +395,7 @@ votekick-vote =
 votekick-left = { $player }[lightgray] покинув гру. Голос анульовано. ([accent]{ $votes }[]/[accent]{ $required }[])
 votekick-fail = [lightgray]Голосування не відбулося. Недостатньо голосів для вигнання { $target }[lightgray].
 votekick-cancelled = [scarlet]Голосування за вигнання { $target }[scarlet] скасовано адміністратором { $admin }.
+votekick-success-disconnected = { votekick-success } [lightgray]Вигнання зараховано автоматично: гравець відключився під час голосування.
 votekick-success =
     [orange]Голосування успішне. { $target }[orange] вигнаний на [scarlet]{ $minutes }[] { $minutes ->
     [one] хвилину

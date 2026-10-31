@@ -391,6 +391,7 @@ votekick-vote =
 votekick-left = { $player }[lightgray] saiu. Seu voto foi cancelado. ([accent]{ $votes }[]/[accent]{ $required }[])
 votekick-fail = [lightgray]Votação falhou. Votos insuficientes para expulsar { $target }[lightgray].
 votekick-cancelled = [scarlet]A votação para expulsar { $target }[scarlet] foi cancelada por { $admin }.
+votekick-success-disconnected = { votekick-success } [lightgray]A expulsão foi aprovada automaticamente: o jogador se desconectou durante a votação.
 votekick-success =
     [orange]Votação aprovada. { $target }[orange] expulso por [scarlet]{ $minutes }[] { $minutes ->
     [one] minuto

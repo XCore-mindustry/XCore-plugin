@@ -389,6 +389,7 @@ votekick-vote =
 votekick-left = { $player }[lightgray] wyszedł. Jego głos został anulowany. ([accent]{ $votes }[]/[accent]{ $required }[])
 votekick-fail = [lightgray]Głosowanie nieudane. Za mało głosów, aby wyrzucić { $target }[lightgray].
 votekick-cancelled = [scarlet]Głosowanie nad wyrzuceniem { $target }[scarlet] zostało anulowane przez { $admin }.
+votekick-success-disconnected = { votekick-success } [lightgray]Wyrzucenie zatwierdzono automatycznie: gracz rozłączył się podczas głosowania.
 votekick-success =
     [orange]Głosowanie przyjęte. { $target }[orange] wyrzucony na [scarlet]{ $minutes }[] { $minutes ->
         [one] minutę
