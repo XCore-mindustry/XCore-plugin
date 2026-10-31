@@ -200,6 +200,12 @@ def _is_mute(case: Case) -> bool:
     return "mute" in case.payload
 
 
+def _mute_dedup(mute: MuteRecord) -> str:
+    # A mute has no number: a reissued mute has another expiry and so its own appeal.
+    assert isinstance(mute.expire_date, datetime)
+    return f"appeal:mute:{mute.uuid}:{utc(mute.expire_date).isoformat()}"
+
+
 def _is_ban(case: Case) -> bool:
     return not _is_mute(case)
 
@@ -351,7 +357,7 @@ async def _submit(  # noqa: C901
             linked,
             mute,
             lookup,
-            dedup=f"appeal:mute:{mute.uuid}",
+            dedup=_mute_dedup(mute),
             same={
                 "payload.mute.uuid": mute.uuid,
                 "payload.mute.expire_date": mute.expire_date,
@@ -780,8 +786,8 @@ async def _current_mute(context, claimed) -> MuteRecord:
         mute is None
         or not claimed.subject
         or mute.uuid != claimed.subject.player_uuid
-        or claimed.dedup_key != f"appeal:mute:{mute.uuid}"
         or not isinstance(mute.expire_date, datetime)
+        or claimed.dedup_key != _mute_dedup(mute)
         or not isinstance(snapshot.get("expire_date"), datetime)
         or utc(mute.expire_date) != utc(snapshot["expire_date"])
     ):

@@ -46,7 +46,8 @@ async def test_a_linked_mute_opens_its_own_appeal():
     assert "reference" not in modal.inputs
     await submit(bot, modal, statement="I was joking")
     case = await service.store.by_submission("discord:700")
-    assert case.kind == CaseKind.APPEAL and case.dedup_key == "appeal:mute:private-1="
+    assert case.kind == CaseKind.APPEAL
+    assert case.dedup_key == f"appeal:mute:private-1=:{EXPIRY.isoformat()}"
     assert case.subject.player_uuid == "private-1=" and not case.flags
     assert case.payload["mute"]["expire_date"] == EXPIRY
     assert "ban_id" not in case.payload
@@ -139,3 +140,14 @@ async def test_a_rejected_mute_blocks_only_that_mute():
     db["mutes"].docs[0]["expire_date"] = EXPIRY + timedelta(days=1)
     await submit(bot, await form(bot), id=702)
     assert await service.store.by_submission("discord:702") is not None
+
+
+async def test_a_reissued_mute_can_be_appealed_while_the_old_appeal_is_open():
+    service, db, bot, *_ = await muted()
+    first = await mute_case(service, bot)
+    again = await submit(bot, await form(bot), id=701)
+    assert f"#{first.number}" in again.events[-1][1]
+    db["mutes"].docs[0]["expire_date"] = EXPIRY + timedelta(days=1)
+    await submit(bot, await form(bot), id=702)
+    second = await service.store.by_submission("discord:702")
+    assert second is not None and second.number != first.number

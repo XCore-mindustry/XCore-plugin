@@ -73,7 +73,7 @@ cases-outcome = Ваше обращение #{ $number } рассмотрено.
 cases-panel-title = Связь с администрацией
 cases-panel-text = Ответ придёт в закрытую ветку, её видите только вы и администрация. Кнопка 🌐 **Language** меняет язык ответов.
 cases-panel-hint-report = игрок нарушает правила
-cases-panel-hint-appeal = вы считаете бан ошибкой
+cases-panel-hint-appeal = вы считаете бан или мут ошибкой
 cases-panel-hint-badge = запросить заслуженный значок
 cases-panel-hint-complaint = сотрудник поступил с вами несправедливо
 cases-panel-language = Language
@@ -84,7 +84,7 @@ cases-configuration-error = Обращения настроены не полн�
 # Типы, статусы и результаты на карточке
 
 cases-kind-report = Жалоба на игрока
-cases-kind-appeal = Обжалование бана
+cases-kind-appeal = Апелляция
 cases-kind-badge = Заявка на значок
 cases-kind-complaint = Жалоба на администрацию
 cases-kind-map = Проверка карты

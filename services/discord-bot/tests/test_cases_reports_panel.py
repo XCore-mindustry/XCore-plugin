@@ -321,9 +321,18 @@ async def test_only_the_owner_of_a_thread_is_announced_to_staff():
     )
     assert len(post.messages) == before + 1
     assert post.messages[-1].content.endswith("look\n> 📎 proof.png")
+    # A long message is capped, and its files are still named.
+    post.messages[-1].created_at -= timedelta(minutes=31)
+    long = "\n".join(f"line {n} " + "x" * 60 for n in range(40))
+    await service.threads.announce_user_message(
+        service, message(owner, long, [Attachment()] * 10)
+    )
+    content = post.messages[-1].content
+    assert len(content) <= 2000 and "line 10 " not in content
+    assert content.count("📎 proof.png") == 10
     post.messages[-1].created_at -= timedelta(minutes=31)
     await service.threads.announce_user_message(service, message(owner))
-    assert len(post.messages) == before + 2
+    assert len(post.messages) == before + 3
 
 
 async def test_the_conflict_rule_covers_a_discord_reporter():

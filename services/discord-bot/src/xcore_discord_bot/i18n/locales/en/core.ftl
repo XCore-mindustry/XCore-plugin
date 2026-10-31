@@ -71,7 +71,7 @@ cases-outcome = Your request #{ $number } has been reviewed.
 cases-panel-title = Contact the staff
 cases-panel-text = Staff will answer in a private thread that only you and the staff can see. Press 🌐 **Language** to choose the language of replies.
 cases-panel-hint-report = a player is breaking the rules
-cases-panel-hint-appeal = you think your ban was a mistake
+cases-panel-hint-appeal = you think your ban or mute was a mistake
 cases-panel-hint-badge = ask for a badge you have earned
 cases-panel-hint-complaint = a staff member treated you unfairly
 cases-panel-language = Language
@@ -82,7 +82,7 @@ cases-configuration-error = Cases are not fully configured: { $details }
 # Kinds, statuses and outcomes shown on a card
 
 cases-kind-report = Report
-cases-kind-appeal = Ban appeal
+cases-kind-appeal = Appeal
 cases-kind-badge = Badge request
 cases-kind-complaint = Staff complaint
 cases-kind-map = Map review

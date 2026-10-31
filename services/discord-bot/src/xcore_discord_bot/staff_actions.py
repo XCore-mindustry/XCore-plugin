@@ -117,6 +117,10 @@ def _subject_name(player: PlayerRecord | BanRecord | MuteRecord) -> str:
     return player.nickname if isinstance(player, PlayerRecord) else player.name
 
 
+def _utc(value: datetime) -> datetime:
+    return value.replace(tzinfo=UTC) if value.tzinfo is None else value.astimezone(UTC)
+
+
 def _require_duration(duration: timedelta) -> None:
     if duration <= timedelta(0):
         raise InvalidDuration("Duration must be greater than zero.")
@@ -471,7 +475,12 @@ async def perform_unmute(
 ) -> str:
     """Lift exactly ``mute``; ``MuteNotFound`` if it was lifted or replaced since it was read.
     Returns the audit ID."""
-    if not mute.uuid or not isinstance(mute.expire_date, datetime):
+    # The filter matches the expiry that was read, so this also says it is still in force.
+    if (
+        not mute.uuid
+        or not isinstance(mute.expire_date, datetime)
+        or _utc(mute.expire_date) <= _utc(bot.store.now_utc())
+    ):
         raise MuteNotFound("No active mute found")
     if not await bot.container.punishments.delete_mute_if(
         uuid=mute.uuid, expire_date=mute.expire_date
@@ -501,16 +510,11 @@ async def perform_shorten_mute(
     """Move ``mute`` to an earlier expiry; ``MuteNotFound`` if it changed since it was read.
     Returns the audit ID."""
 
-    def utc(value: datetime) -> datetime:
-        return (
-            value.replace(tzinfo=UTC) if value.tzinfo is None else value.astimezone(UTC)
-        )
-
-    now = utc(bot.store.now_utc())
+    now = _utc(bot.store.now_utc())
     if (
         not mute.uuid
         or not isinstance(mute.expire_date, datetime)
-        or not now < utc(new_expiry) < utc(mute.expire_date)
+        or not now < _utc(new_expiry) < _utc(mute.expire_date)
     ):
         raise InvalidDuration("The new expiry must be between now and the current one.")
     if not await bot.container.punishments.update_mute_expiry(
