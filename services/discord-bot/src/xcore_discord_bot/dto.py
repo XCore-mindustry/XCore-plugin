@@ -58,11 +58,11 @@ class BanRecord:
 
 
 def record_identifiers(
-    record: PlayerRecord | BanRecord,
+    record: PlayerRecord | BanRecord | MuteRecord,
 ) -> tuple[str | None, str | None]:
-    """The record's UUID and IP, ``None`` when blank."""
+    """The record's UUID and IP, ``None`` when blank (a mute has no IP)."""
     uuid_value = str(record.uuid or "").strip() or None
-    return uuid_value, str(record.ip or "").strip() or None
+    return uuid_value, str(getattr(record, "ip", None) or "").strip() or None
 
 
 @dataclass(frozen=True, kw_only=True)

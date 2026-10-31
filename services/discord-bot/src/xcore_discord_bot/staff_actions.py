@@ -12,7 +12,7 @@ from xcore_protocol.generated.shared import MapUploadResultV1
 
 from .badges import get_badge
 from .bus.transport import RpcError
-from .dto import Actor, BanRecord, PlayerRecord, record_identifiers
+from .dto import Actor, BanRecord, MuteRecord, PlayerRecord, record_identifiers
 from .moderation_logs import post_ban_log, post_mute_log
 from .protocol_outbound import build_maps_upload_request
 from .retry import TRANSIENT_EXCEPTIONS
@@ -38,6 +38,10 @@ class InvalidDuration(StaffActionError):
 
 
 class BanNotFound(StaffActionError):
+    pass
+
+
+class MuteNotFound(StaffActionError):
     pass
 
 
@@ -109,8 +113,8 @@ class MapUploadResult:
         return self.response.results
 
 
-def _subject_name(player: PlayerRecord | BanRecord) -> str:
-    return player.name if isinstance(player, BanRecord) else player.nickname
+def _subject_name(player: PlayerRecord | BanRecord | MuteRecord) -> str:
+    return player.nickname if isinstance(player, PlayerRecord) else player.name
 
 
 def _require_duration(duration: timedelta) -> None:
@@ -138,7 +142,7 @@ async def _append_audit(
     bot: XCoreDiscordBot,
     *,
     action: str,
-    player: PlayerRecord | BanRecord,
+    player: PlayerRecord | BanRecord | MuteRecord,
     reason: str,
     actor: Actor,
     duration: timedelta | None = None,
@@ -441,12 +445,10 @@ async def perform_mute(
         admin_discord_id=actor.discord_id,
         reason=reason,
         expire=expire,
-        **({"case_number": case_number} if case_number is not None else {}),
-        **(
-            {"privacy_secrets": (uuid_value, player.ip or "")}
-            if case_number is not None
-            else {}
-        ),
+        case_number=case_number,
+        privacy_secrets=(uuid_value, player.ip or "")
+        if case_number is not None
+        else (),
     )
     return MuteResult(
         uuid_value,
@@ -457,6 +459,89 @@ async def perform_mute(
             f"({discord.utils.format_dt(expire, style='R')})"
         ),
     )
+
+
+async def perform_unmute(
+    bot: XCoreDiscordBot,
+    mute: MuteRecord,
+    actor: Actor,
+    case_number: int | None = None,
+    *,
+    case_action_token: str | None = None,
+) -> str:
+    """Lift exactly ``mute``; ``MuteNotFound`` if it was lifted or replaced since it was read.
+    Returns the audit ID."""
+    if not mute.uuid or not isinstance(mute.expire_date, datetime):
+        raise MuteNotFound("No active mute found")
+    if not await bot.container.punishments.delete_mute_if(
+        uuid=mute.uuid, expire_date=mute.expire_date
+    ):
+        raise MuteNotFound("No active mute found")
+    return await _append_audit(
+        bot,
+        action="UNMUTE",
+        player=mute,
+        reason=mute.reason,
+        actor=actor,
+        extra=_audit_extra(
+            case_number=case_number, case_action_token=case_action_token
+        ),
+    )
+
+
+async def perform_shorten_mute(
+    bot: XCoreDiscordBot,
+    mute: MuteRecord,
+    new_expiry: datetime,
+    actor: Actor,
+    case_number: int | None = None,
+    *,
+    case_action_token: str | None = None,
+) -> str:
+    """Move ``mute`` to an earlier expiry; ``MuteNotFound`` if it changed since it was read.
+    Returns the audit ID."""
+
+    def utc(value: datetime) -> datetime:
+        return (
+            value.replace(tzinfo=UTC) if value.tzinfo is None else value.astimezone(UTC)
+        )
+
+    now = utc(bot.store.now_utc())
+    if (
+        not mute.uuid
+        or not isinstance(mute.expire_date, datetime)
+        or not now < utc(new_expiry) < utc(mute.expire_date)
+    ):
+        raise InvalidDuration("The new expiry must be between now and the current one.")
+    if not await bot.container.punishments.update_mute_expiry(
+        uuid=mute.uuid, expire_date=mute.expire_date, new_expiry=new_expiry
+    ):
+        raise MuteNotFound("No active mute found")
+    extra = _audit_extra(case_number=case_number, case_action_token=case_action_token)
+    extra["kind"] = "mute_shortened"
+    audit_id = await _append_audit(
+        bot,
+        action="NOTE",
+        player=mute,
+        reason=mute.reason,
+        actor=actor,
+        duration=new_expiry - now,
+        expires_at=new_expiry,
+        extra=extra,
+    )
+    await post_mute_log(
+        bot,
+        pid=mute.pid,
+        name=mute.name,
+        admin_name=actor.name,
+        admin_discord_id=actor.discord_id,
+        reason=mute.reason,
+        expire=new_expiry,
+        case_number=case_number,
+        title="Mute Shortened",
+        privacy_secrets=(mute.uuid,),
+    )
+    return audit_id
 
 
 async def perform_badge_grant(

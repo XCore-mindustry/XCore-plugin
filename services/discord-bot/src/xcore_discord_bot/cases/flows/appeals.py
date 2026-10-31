@@ -1,4 +1,4 @@
-"""Ban appeals. Cached choices describe forms; durable DB state decides every action."""
+"""Ban and mute appeals. Cached choices describe forms; durable DB state decides every action."""
 
 from __future__ import annotations
 
@@ -9,10 +9,17 @@ from datetime import datetime, timedelta
 
 import discord
 
-from ...dto import BanRecord, PlayerRecord
+from ...dto import BanRecord, MuteRecord, PlayerRecord
 from ...i18n import t
 from ...player_pids import NO_PID, or_none
-from ...staff_actions import BanNotFound, perform_shorten_ban, perform_unban
+from ...staff_actions import (
+    BanNotFound,
+    MuteNotFound,
+    perform_shorten_ban,
+    perform_shorten_mute,
+    perform_unban,
+    perform_unmute,
+)
 from ...utils.duration import parse_duration
 from ..access import check_opening
 from ..cards import add_sanctions, base_card, safe_text
@@ -177,7 +184,34 @@ async def _checked(service, ban) -> BanRecord | None:
     return current
 
 
-async def _lookup(service, reference: str) -> tuple[BanRecord | None, str]:
+async def _active_mute(service, uuid: str | None) -> MuteRecord | None:
+    mute = await service.punishments.find_mute(uuid=uuid) if uuid else None
+    if (
+        mute is not None
+        and mute.uuid == uuid
+        and isinstance(mute.expire_date, datetime)
+        and utc(mute.expire_date) > utc(service.now())
+    ):
+        return mute
+    return None
+
+
+def _is_mute(case: Case) -> bool:
+    return "mute" in case.payload
+
+
+def _is_ban(case: Case) -> bool:
+    return not _is_mute(case)
+
+
+def _payload_secrets(payload: dict) -> tuple[str, ...]:
+    reference = payload.get("ban_reference") or {
+        "uuid": payload.get("mute", {}).get("uuid")
+    }
+    return tuple(v for v in reference.values() if v)
+
+
+async def _lookup(service, reference: str) -> tuple[BanRecord | MuteRecord | None, str]:
     kind, number = parse_reference(reference)
     if kind == "ban_id":
         ban = await service.punishments.find_ban_by_id(number)
@@ -190,7 +224,8 @@ async def _lookup(service, reference: str) -> tuple[BanRecord | None, str]:
     if not _player_valid(player, pid=number):
         return None, "pid"
     ban = await service.punishments.find_ban(uuid=player.uuid, ip=player.ip)
-    return await _checked(service, ban), "pid"
+    ban = await _checked(service, ban)
+    return ban or await _active_mute(service, player.uuid), "pid"
 
 
 def _secrets(ban, linked=()):
@@ -198,7 +233,7 @@ def _secrets(ban, linked=()):
         v
         for v in (
             ban.uuid,
-            ban.ip,
+            getattr(ban, "ip", None),
             *(v for p in linked for v in (p.uuid, p.ip)),
         )
         if v
@@ -254,7 +289,9 @@ async def _history_data(service, uuid, *, exclude=None):
 
 
 async def _submit(  # noqa: C901
-    context: PanelContext, values: dict[str, str], choice: BanRecord | None = None
+    context: PanelContext,
+    values: dict[str, str],
+    choice: BanRecord | MuteRecord | None = None,
 ) -> Case:
     service, user, locale = context.service, context.interaction.user, context.locale
     service.registry.require(CaseKind.APPEAL)
@@ -273,7 +310,13 @@ async def _submit(  # noqa: C901
             flags=existing.flags,
         )
     linked = await _linked(service, str(user.id))
-    if choice:
+    ban: BanRecord | MuteRecord | None
+    if isinstance(choice, MuteRecord):
+        ban = await _active_mute(service, choice.uuid)
+        lookup = "link"
+        if ban is None or ban.expire_date != choice.expire_date:
+            raise ActionFailed(t(locale, "appeals-no-active"))
+    elif choice:
         ban = await _checked(
             service, await service.punishments.find_ban_by_id(choice.ban_id)
         )
@@ -287,8 +330,68 @@ async def _submit(  # noqa: C901
             raise ActionFailed(t(locale, "appeals-reference-invalid")) from error
     if ban is None:
         raise ActionFailed(t(locale, "appeals-no-active"))
+    if isinstance(ban, MuteRecord):
+        mute = ban
+
+        async def mute_payload():
+            return {
+                "mute": {
+                    "uuid": mute.uuid,
+                    "reason": mute.reason,
+                    "admin_name": mute.admin_name,
+                    "admin_discord_id": mute.admin_discord_id,
+                    "expire_date": mute.expire_date,
+                }
+            }
+
+        # One mute per player: its expiry tells a later mute from the one rejected.
+        return await _open(
+            context,
+            values,
+            linked,
+            mute,
+            lookup,
+            dedup=f"appeal:mute:{mute.uuid}",
+            same={
+                "payload.mute.uuid": mute.uuid,
+                "payload.mute.expire_date": mute.expire_date,
+            },
+            make_payload=mute_payload,
+        )
+
+    async def ban_payload():
+        return {
+            "ban_id": ban.ban_id,
+            "ban_snapshot": await _snapshot(service, ban, locale),
+            "ban_reference": {"uuid": ban.uuid, "ip": ban.ip},
+        }
+
+    return await _open(
+        context,
+        values,
+        linked,
+        ban,
+        lookup,
+        dedup=f"appeal:{ban.ban_id}",
+        same={"payload.ban_id": ban.ban_id},
+        make_payload=ban_payload,
+    )
+
+
+async def _open(
+    context: PanelContext,
+    values: dict[str, str],
+    linked: list[PlayerRecord],
+    ban: BanRecord | MuteRecord,
+    lookup: str,
+    *,
+    dedup: str,
+    same: dict,
+    make_payload,
+) -> Case:
+    """Everything a ban and a mute appeal share once the sanction is known."""
+    service, user, locale = context.service, context.interaction.user, context.locale
     verified = next((p for p in linked if p.uuid == ban.uuid), None)
-    dedup = f"appeal:{ban.ban_id}"
     duplicate = await service.store.by_dedup(CaseKind.APPEAL, dedup)
     if duplicate:
         raise ActionFailed(t(locale, "appeals-existing", number=duplicate.number))
@@ -301,7 +404,7 @@ async def _submit(  # noqa: C901
         .find(
             {
                 "kind": "appeal",
-                "payload.ban_id": ban.ban_id,
+                **same,
                 "status": "rejected",
                 "closed_at": {"$gt": cutoff},
             }
@@ -343,13 +446,7 @@ async def _submit(  # noqa: C901
     flags = [] if verified else ["unverified_identity"]
     if not ban.admin_discord_id:
         flags.append("issuer_unknown")
-    payload = {
-        "ban_id": ban.ban_id,
-        "ban_snapshot": await _snapshot(service, ban, locale),
-        "statement": statement,
-        "lookup": lookup,
-        "ban_reference": {"uuid": ban.uuid, "ip": ban.ip},
-    }
+    payload = {**await make_payload(), "statement": statement, "lookup": lookup}
     try:
         return await context.open(
             opener=opener,
@@ -369,9 +466,14 @@ async def _submit(  # noqa: C901
 
 
 class AppealChoiceView(PanelChoiceView):
-    """Ban labels and modal construction stay private to the appeal flow."""
+    """Sanction labels and modal construction stay private to the appeal flow."""
 
-    def __init__(self, context: PanelContext, bans: list[BanRecord], verified_ids=()):
+    def __init__(
+        self,
+        context: PanelContext,
+        bans: list[BanRecord | MuteRecord],
+        verified_ids=(),
+    ):
         self.bans = tuple(bans)
         self.verified_ids = frozenset(verified_ids)
         self.locale = context.locale
@@ -381,6 +483,12 @@ class AppealChoiceView(PanelChoiceView):
                     label=(
                         t(
                             self.locale,
+                            "appeals-choice-mute",
+                            player=safe_text(ban.name, secrets=_secrets(ban), limit=50),
+                        )
+                        if isinstance(ban, MuteRecord)
+                        else t(
+                            self.locale,
                             "appeals-choice",
                             ban=ban.ban_id,
                             player=safe_text(ban.name, secrets=_secrets(ban), limit=50),
@@ -389,7 +497,10 @@ class AppealChoiceView(PanelChoiceView):
                         else t(
                             self.locale, "appeals-choice-unverified", option=index + 1
                         )
-                    )[:100],
+                    )[
+                        # A mute is only ever found through a linked account.
+                        :100
+                    ],
                     value=str(index),
                 )
                 for index, ban in enumerate(self.bans)
@@ -434,13 +545,16 @@ class AppealChoiceView(PanelChoiceView):
         modal = OpenCaseModal(
             current, title_key="appeals-title", fields=fields, submit=submit, files=True
         )
-        if ban and ban.ban_id in self.verified_ids:
+        if isinstance(ban, MuteRecord):
+            modal.title = t(self.locale, "appeals-title-mute")[:45]
+        elif ban and ban.ban_id in self.verified_ids:
             modal.title = t(self.locale, "appeals-title-ban", ban=ban.ban_id)[:45]
         await interaction.response.send_modal(modal)
 
 
 async def panel_handler(context: PanelContext):
-    bans, verified_ids = {}, set()
+    bans: dict[object, BanRecord | MuteRecord] = {}
+    verified_ids = set()
     for player in await _linked(context.service, str(context.interaction.user.id)):
         ban = await _checked(
             context.service,
@@ -452,6 +566,9 @@ async def panel_handler(context: PanelContext):
             # until the banned UUID belongs to one of this member's linked accounts.
             if ban.uuid == player.uuid:
                 verified_ids.add(ban.ban_id)
+        mute = await _active_mute(context.service, player.uuid)
+        if mute:
+            bans[f"mute:{player.uuid}"] = mute
     await context.interaction.followup.send(
         t(context.locale, "appeals-select" if len(bans) > 1 else "appeals-continue"),
         view=AppealChoiceView(context, list(bans.values()), verified_ids),
@@ -470,10 +587,15 @@ def _date(value, locale):
 
 def card_builder(case, locale):
     embed = base_card(case, locale)
-    secrets = tuple(v for v in case.payload.get("ban_reference", {}).values() if v)
-    snapshot = case.payload.get("ban_snapshot", {})
+    secrets = _payload_secrets(case.payload)
+    if _is_mute(case):
+        snapshot = case.payload["mute"]
+        first = ("appeals-mute", case.subject.player_name if case.subject else None)
+    else:
+        snapshot = case.payload.get("ban_snapshot", {})
+        first = ("appeals-ban", f"B-{case.payload.get('ban_id')}")
     for label, value in (
-        ("appeals-ban", f"B-{case.payload.get('ban_id')}"),
+        first,
         ("cases-reason", safe_text(snapshot.get("reason"), secrets=secrets)),
         ("appeals-issuer", safe_text(snapshot.get("admin_name"), secrets=secrets)),
         (
@@ -481,13 +603,17 @@ def card_builder(case, locale):
             _date(snapshot["issued_at"], locale)
             if snapshot.get("issued_at")
             else t(locale, "cases-unknown"),
-        ),
+        )
+        if not _is_mute(case)
+        else (None, None),
         ("appeals-expiry", _date(snapshot.get("expire_date"), locale)),
         (
             "appeals-statement",
             safe_text(case.payload.get("statement"), secrets=secrets),
         ),
     ):
+        if label is None:
+            continue
         embed.add_field(
             name=t(locale, label),
             value=value or t(locale, "cases-unknown"),
@@ -646,20 +772,94 @@ async def shorten(context):
     return await context.run(action)
 
 
+async def _current_mute(context, claimed) -> MuteRecord:
+    """Re-read the appealed mute: the same player, the same expiry, still in force."""
+    snapshot = claimed.payload.get("mute", {})
+    mute = await _active_mute(context.service, snapshot.get("uuid"))
+    if (
+        mute is None
+        or not claimed.subject
+        or mute.uuid != claimed.subject.player_uuid
+        or claimed.dedup_key != f"appeal:mute:{mute.uuid}"
+        or not isinstance(mute.expire_date, datetime)
+        or not isinstance(snapshot.get("expire_date"), datetime)
+        or utc(mute.expire_date) != utc(snapshot["expire_date"])
+    ):
+        raise ActionFailed(t(context.locale, "appeals-stale-mute"))
+    await context.service.authorize(claimed, context.member, context.verb)
+    return mute
+
+
+async def unmute(context):
+    if context.values.get("confirmed") != "yes":
+        await _current_mute(context, context.case)
+        await context.confirm(
+            t(
+                context.locale,
+                "appeals-confirm-unmute",
+                player=context.case.subject.player_name or "?",
+            )
+        )
+        return None
+
+    async def action(claimed):
+        mute = await _current_mute(context, claimed)
+        try:
+            audit_id = await perform_unmute(
+                context.service.bot,
+                mute,
+                context.actor,
+                case_number=claimed.number,
+                case_action_token=claimed.pending_action["token"],
+            )
+        except MuteNotFound as error:
+            raise ActionFailed(t(context.locale, "appeals-stale-mute")) from error
+        return Resolution("unmuted", audit_id=audit_id)
+
+    return await context.run(action)
+
+
+async def shorten_mute(context):
+    async def action(claimed):
+        mute = await _current_mute(context, claimed)
+        try:
+            duration = parse_duration(context.values.get("duration", ""))
+            expiry = utc(context.service.now()) + duration
+            audit_id = await perform_shorten_mute(
+                context.service.bot,
+                mute,
+                expiry,
+                context.actor,
+                case_number=claimed.number,
+                case_action_token=claimed.pending_action["token"],
+            )
+        except (ValueError, OverflowError) as error:
+            # InvalidDuration is a ValueError: too long, not positive or unparsable.
+            raise ActionFailed(t(context.locale, "appeals-duration-invalid")) from error
+        except MuteNotFound as error:
+            raise ActionFailed(t(context.locale, "appeals-stale-mute")) from error
+        return Resolution(
+            "mute_shortened",
+            audit_id=audit_id,
+            duration_ms=int(duration.total_seconds() * 1000),
+        )
+
+    return await context.run(action)
+
+
 async def history(context):
-    current = await context.service.punishments.find_ban_by_id(
-        context.case.payload["ban_id"]
-    )
-    if current is not None:
-        await _current(context, context.case)
+    if not _is_mute(context.case):
+        current = await context.service.punishments.find_ban_by_id(
+            context.case.payload["ban_id"]
+        )
+        if current is not None:
+            await _current(context, context.case)
     data = await _history_data(
         context.service,
         context.case.subject.player_uuid if context.case.subject else None,
         exclude=context.case.number,
     )
-    secrets = tuple(
-        v for v in context.case.payload.get("ban_reference", {}).values() if v
-    )
+    secrets = _payload_secrets(context.case.payload)
     lines = [
         t(context.locale, "appeals-history-title"),
         _previous_text(data["earlier_appeals"], context.locale),
@@ -692,8 +892,7 @@ async def on_closed(service, case):
             ban=case.resolution.ban_id,
             number=case.number,
             actor=safe_text(
-                case.resolution.by_name,
-                secrets=tuple(case.payload.get("ban_reference", {}).values()),
+                case.resolution.by_name, secrets=_payload_secrets(case.payload)
             ),
         ),
         allowed_mentions=discord.AllowedMentions.none(),
@@ -709,6 +908,8 @@ def outcomes(case):
     if not case.resolution or case.resolution.code not in {
         "unbanned",
         "shortened",
+        "unmuted",
+        "mute_shortened",
         "rejected",
     }:
         return ()
@@ -717,6 +918,8 @@ def outcomes(case):
     kind = {
         "unbanned": "appeal_accepted",
         "shortened": "appeal_shortened",
+        "unmuted": "appeal_unmuted",
+        "mute_shortened": "appeal_mute_shortened",
         "rejected": "discord",
     }[code]
     recipient = (
@@ -752,13 +955,32 @@ APPEAL_FLOW = flow_registry.register(
         panel=PanelEntry("appeals-panel", emoji="🔓", handler=panel_handler),
         actions=(
             Action(
-                "unban", "cases-button-unban", unban, style=discord.ButtonStyle.success
+                "unban",
+                "cases-button-unban",
+                unban,
+                style=discord.ButtonStyle.success,
+                visible=_is_ban,
             ),
             Action(
                 "shorten",
                 "cases-button-shorten",
                 shorten,
                 fields=(FormField("duration", "appeals-duration", max_length=64),),
+                visible=_is_ban,
+            ),
+            Action(
+                "unmute",
+                "cases-button-unmute",
+                unmute,
+                style=discord.ButtonStyle.success,
+                visible=_is_mute,
+            ),
+            Action(
+                "shorten_mute",
+                "cases-button-shorten-mute",
+                shorten_mute,
+                fields=(FormField("duration", "appeals-duration", max_length=64),),
+                visible=_is_mute,
             ),
             Action("history", "cases-button-history", history),
         ),

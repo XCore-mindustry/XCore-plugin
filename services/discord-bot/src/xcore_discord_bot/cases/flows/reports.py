@@ -82,6 +82,8 @@ LIMITS = "case_report_limits"
 HISTORY_LIMIT = 10
 REPORTERS_SHOWN = 8
 _PID = re.compile(r"#?(-?[0-9]{1,10})")
+# "name (pid=407218)" as the logs and the game print a player.
+_PID_IN_TEXT = re.compile(r"\bpid\s*[=:]\s*(-?[0-9]{1,10})\b", re.IGNORECASE)
 
 
 def _plain(value: object, limit: int) -> str:
@@ -469,9 +471,9 @@ async def submitted(service, event: CasesReportSubmittedV1) -> None:
 
 
 async def _find_player(service, who: str) -> PlayerRecord | None:
-    """Digits or ``#n`` are a player ID, anything else an exact name; ``None`` unless exactly
-    one player matches (9.2 step 2)."""
-    typed = _PID.fullmatch(who)
+    """Digits, ``#n`` or ``pid=n`` anywhere are a player ID, anything else an exact name;
+    ``None`` unless exactly one player matches (9.2 step 2)."""
+    typed = _PID.fullmatch(who) or _PID_IN_TEXT.search(who)
     if typed:
         player = await service.player_store.find_player_by_pid(int(typed[1]))
         return player if player is not None and player.uuid else None

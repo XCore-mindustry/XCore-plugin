@@ -205,7 +205,7 @@ async def post_ban_log(
 async def post_mute_log(
     bot: XCoreDiscordBot,
     *,
-    pid: int,
+    pid: int | None,
     name: str,
     admin_name: str,
     admin_discord_id: str | None,
@@ -213,6 +213,7 @@ async def post_mute_log(
     expire: datetime,
     case_number: int | None = None,
     privacy_secrets: tuple[str, ...] = (),
+    title: str = "Mute Issued",
 ) -> None:
     mutes_channel_id = bot.settings.discord_mutes_channel_id
     if not mutes_channel_id:
@@ -242,7 +243,7 @@ async def post_mute_log(
         f"({discord.utils.format_dt(expire_utc, style='R')})"
     )
 
-    embed = discord.Embed(title="Mute Issued", color=discord.Color.orange())
+    embed = discord.Embed(title=title, color=discord.Color.orange())
     if case_number is not None:
         embed.add_field(name="Case", value=f"#{case_number}", inline=False)
     embed.add_field(name="Violator", value=violator_value, inline=False)

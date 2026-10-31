@@ -571,6 +571,9 @@ class CaseThreads:
                 keep_mentions=True,
             )
 
+        # Staff who have not taken the case cannot open the private thread, so they get the
+        # words too. A complaint stays a bare link: only the assignee reads those.
+        quote = "" if case.kind == CaseKind.COMPLAINT else _quote(message, case)
         thread = await self.channel(case.discord["thread_id"])
         async for last in thread.history(limit=1):
             if (
@@ -578,9 +581,32 @@ class CaseThreads:
                 and last.content.startswith(notice(""))
                 and discord.utils.utcnow() - last.created_at < USER_MESSAGE_BURST
             ):
-                return
+                if not quote:
+                    return
+                if len(last.content) + len(quote) <= 2000:
+                    if thread.archived:
+                        await thread.edit(archived=False)
+                    await last.edit(
+                        content=last.content + quote,
+                        allowed_mentions=discord.AllowedMentions.none(),
+                    )
+                    return
         if thread.archived:
             await thread.edit(archived=False)
         await thread.send(
-            notice(message.jump_url), allowed_mentions=discord.AllowedMentions.none()
+            (notice(message.jump_url) + quote)[:2000],
+            allowed_mentions=discord.AllowedMentions.none(),
         )
+
+
+def _quote(message, case: Case) -> str:
+    """The message as quoted lines, with the names of its files; empty if it has neither."""
+    text = safe_text(
+        getattr(message, "content", ""), secrets=case_secrets(case), limit=500
+    )
+    lines = [line for line in text.splitlines() if line.strip()]
+    lines += [
+        "📎 " + safe_text(file.filename, limit=100)
+        for file in getattr(message, "attachments", ())
+    ]
+    return "".join("\n> " + line for line in lines)

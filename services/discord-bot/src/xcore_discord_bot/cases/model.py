@@ -46,7 +46,9 @@ TRANSITIONS = {
 }
 RESOLUTIONS = {
     CaseKind.REPORT: frozenset({"banned", "muted", "rejected"}),
-    CaseKind.APPEAL: frozenset({"unbanned", "shortened", "rejected"}),
+    CaseKind.APPEAL: frozenset(
+        {"unbanned", "shortened", "unmuted", "mute_shortened", "rejected"}
+    ),
     CaseKind.BADGE: frozenset({"granted", "rejected"}),
     CaseKind.COMPLAINT: frozenset({"upheld", "rejected"}),
     CaseKind.MAP: frozenset({"accepted", "rejected"}),

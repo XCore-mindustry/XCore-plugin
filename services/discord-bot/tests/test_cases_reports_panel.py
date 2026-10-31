@@ -54,7 +54,9 @@ class Attachment:
 # --- who is reported ----------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize("who", ["-5", "#-5", "target", " TARGET "])
+@pytest.mark.parametrize(
+    "who", ["-5", "#-5", "target", " TARGET ", "\u25a1player< (pid=-5)", "PID: -5"]
+)
 async def test_the_reported_player_is_found_by_id_or_exact_name(who):
     service, _, bot = await reports_core()
     _, case = await panel(service, bot, {"who": who, "what": "grief"})
@@ -290,26 +292,35 @@ async def test_only_the_owner_of_a_thread_is_announced_to_staff():
     [thread] = private_threads(bot)
     post = bot.channels[int(case.discord["thread_id"])]
 
-    def message(author):
+    def message(author, content="he broke my base\n\n@everyone look", attachments=()):
         return SimpleNamespace(
             author=SimpleNamespace(id=author, bot=False),
             channel=thread,
             jump_url=f"https://discord.test/{author}",
+            content=content,
+            attachments=attachments,
         )
 
     before = len(post.messages)
     await service.threads.announce_user_message(service, message(STAFF))
     assert len(post.messages) == before
     await service.threads.announce_user_message(service, message(owner))
-    assert post.messages[-1].content == t(
+    notice = t(
         "en",
         "cases-user-message",
         name=f"Staff {owner} · <@{owner}>",
         url=f"https://discord.test/{owner}",
     )
-    # A second message in a row is covered by the same notice, a later one gets its own.
-    await service.threads.announce_user_message(service, message(owner))
+    # Staff read it without taking the case; the mention does not survive the quote.
+    assert post.messages[-1].content == (
+        notice + "\n> he broke my base\n> @\u200beveryone look"
+    )
+    # A second message in a row joins the same notice, a later one gets its own.
+    await service.threads.announce_user_message(
+        service, message(owner, "", [Attachment()])
+    )
     assert len(post.messages) == before + 1
+    assert post.messages[-1].content.endswith("look\n> 📎 proof.png")
     post.messages[-1].created_at -= timedelta(minutes=31)
     await service.threads.announce_user_message(service, message(owner))
     assert len(post.messages) == before + 2
