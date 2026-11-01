@@ -34,8 +34,8 @@ publishing {
                 url.set("https://github.com/XCore-mindustry/xcore-ui")
                 licenses {
                     license {
-                        name.set("MIT License")
-                        url.set("https://opensource.org/licenses/MIT")
+                        name.set("Mozilla Public License 2.0")
+                        url.set("https://www.mozilla.org/MPL/2.0/")
                     }
                 }
                 developers {

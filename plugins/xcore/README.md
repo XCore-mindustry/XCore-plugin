@@ -339,4 +339,4 @@ Bundles are stored in `src/main/resources/bundles/` and distributed via FluBundl
 - GitHub Actions maps `XCORE_USERNAME` and `XCORE_PASSWORD` to matching Gradle properties.
 
 ## License
-This project is licensed under the **MIT** License. For more details, see the [LICENSE](LICENSE.txt) file.
+XCore-plugin is licensed under the [GNU AGPL 3.0](LICENSE) with an [additional permission](LICENSE-EXCEPTION) for separate plugins that use its API. Code contributed before the license change was received under the [MIT License](LICENSE.MIT).

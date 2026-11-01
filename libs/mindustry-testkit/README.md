@@ -2,7 +2,7 @@
 
 > A deterministic, headless testing toolkit and client simulator for Mindustry v160 plugins running on Java 25.
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![License: MPL 2.0](https://img.shields.io/badge/License-MPL_2.0-brightgreen.svg)](LICENSE)
 [![Java](https://img.shields.io/badge/Java-25-orange.svg)](https://openjdk.org/projects/jdk/25/)
 [![Mindustry](https://img.shields.io/badge/Mindustry-v160-green.svg)](https://github.com/Anuken/Mindustry/releases/tag/v160)
 
