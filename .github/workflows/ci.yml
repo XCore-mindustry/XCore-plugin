@@ -18,6 +18,7 @@ jobs:
       renderer: ${{ steps.filter.outputs.renderer }}
       protocol: ${{ steps.filter.outputs.protocol }}
       tilelogger: ${{ steps.filter.outputs.tilelogger }}
+      python: ${{ steps.filter.outputs.python }}
     steps:
       - uses: actions/checkout@v7
       - uses: dorny/paths-filter@v3
@@ -31,6 +32,15 @@ jobs:
               - '*.gradle.kts'
               - gradle.properties
               - gradlew
+            python: &python
+              - .github/workflows/ci.yml
+              - .github/workflows/release.yml
+              - .dockerignore
+              - pyproject.toml
+              - uv.lock
+              - .python-version
+              - protocol/**
+              - services/**
             jvm:
               - *shared
               - libs/**
@@ -56,8 +66,7 @@ jobs:
               - plugins/tilelogger/*.gradle.kts
               - plugins/tilelogger/plugin.json
             protocol:
-              - .github/workflows/ci.yml
-              - protocol/**
+              - *python
 
   gradle:
     needs: changes
@@ -127,6 +136,8 @@ jobs:
     needs: changes
     if: needs.changes.outputs.protocol == 'true' || github.event_name != 'pull_request'
     runs-on: ubuntu-latest
+    env:
+      UV_PYTHON: "3.11"
     defaults:
       run:
         working-directory: protocol
@@ -134,13 +145,13 @@ jobs:
       - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v10.3.0
       - run: uv python install 3.11
-      - run: uv sync --extra dev
+      - run: uv sync --locked --package xcore-protocol --extra dev
       - name: Generated code matches the spec
         run: |
-          uv run python scripts/validate-generation.py
-          uv run python scripts/validate-generated-models.py
+          uv run --no-sync python scripts/validate-generation.py
+          uv run --no-sync python scripts/validate-generated-models.py
           git diff --exit-code -- .
-      - run: uv run pytest
+      - run: uv run --no-sync pytest
       - run: uv build
       - name: Built wheel installs
         working-directory: /tmp
@@ -153,9 +164,92 @@ jobs:
     with:
       ref: ${{ github.sha }}
 
+  python-services:
+    needs: changes
+    if: needs.changes.outputs.python == 'true'
+    runs-on: ubuntu-latest
+    services:
+      mongo:
+        image: mongo:7
+        ports: ['27017:27017']
+        options: >-
+          --health-cmd "mongosh --quiet --eval 'db.adminCommand({ping:1})'"
+          --health-interval 5s --health-timeout 5s --health-retries 12
+      redis:
+        image: redis:7.4-alpine
+        ports: ['6379:6379']
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s --health-timeout 5s --health-retries 12
+    env:
+      XCORE_TEST_MONGO_URL: mongodb://127.0.0.1:27017
+      XCORE_TEST_REDIS_URL: redis://127.0.0.1:6379
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.3.0
+      - run: uv python install 3.14
+      - run: uv sync --locked --all-packages --all-groups --all-extras
+      - name: Bot lint, format and type baseline
+        working-directory: services/discord-bot
+        run: |
+          uv run --no-sync ruff check
+          uv run --no-sync ruff format --check
+          uv run --no-sync mypy | uv run --no-sync mypy-baseline filter
+      - name: Bot tests including real Mongo and Redis
+        working-directory: services/discord-bot
+        run: uv run --no-sync pytest -q
+      - name: Gateway lint and tests
+        working-directory: services/metrics-gateway
+        run: |
+          uv run --no-sync ruff check
+          if ! uv run --no-sync ruff format --check; then
+            echo "::warning::Gateway formatting differs from its existing baseline."
+          fi
+          uv run --no-sync pytest -q
+      - name: Compose definition
+        run: docker compose -f services/metrics-gateway/compose.yaml config --quiet
+
+  gateway-compat:
+    needs: changes
+    if: needs.changes.outputs.python == 'true'
+    runs-on: ubuntu-latest
+    env:
+      UV_PYTHON: '3.13'
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.3.0
+      - run: uv python install 3.13
+      - run: uv sync --locked --package xcore-metrics-gateway --all-groups
+      - working-directory: services/metrics-gateway
+        run: uv run --no-sync pytest -q
+
+  python-images:
+    needs: changes
+    if: needs.changes.outputs.python == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - service: discord-bot
+            module: xcore_discord_bot
+          - service: metrics-gateway
+            module: xcore_metrics_gateway
+    steps:
+      - uses: actions/checkout@v7
+      - name: Build installed service and local protocol
+        env:
+          SERVICE: ${{ matrix.service }}
+        run: docker build -f "services/$SERVICE/Dockerfile" -t xcore-service:ci .
+      - name: Runtime imports without the source checkout
+        env:
+          MODULE: ${{ matrix.module }}
+        run: |
+          docker run --rm --network none -e MODULE --entrypoint python xcore-service:ci -c \
+            'import importlib, os; import xcore_protocol; importlib.import_module(os.environ["MODULE"] + ".main")'
+
   # The only required check. Jobs skipped by the path filter count as passed.
   ci-ok:
-    needs: [changes, gradle, menu-render, renderer-selfcheck, protocol, tilelogger-native]
+    needs: [changes, gradle, menu-render, renderer-selfcheck, protocol, tilelogger-native, python-services, gateway-compat, python-images]
     if: always()
     runs-on: ubuntu-latest
     steps:

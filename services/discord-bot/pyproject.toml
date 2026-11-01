@@ -1,6 +1,7 @@
 [project]
 name = "xcore-discord-bot"
 version = "0.1.0"
+license = "AGPL-3.0-only"
 description = "Standalone Discord bot for XCore Redis transport"
 readme = "README.md"
 authors = [
@@ -16,12 +17,11 @@ dependencies = [
     "python-dotenv>=1.1.0",
     "redis>=5.2.1",
     "tenacity>=9.1.2",
-    "xcore-protocol==0.17.0",
+    "xcore-protocol",
 ]
 
 [tool.uv.sources]
-# Pin the release tag; uv.lock also records its resolved commit for reproducible builds.
-xcore-protocol = { git = "https://github.com/XCore-mindustry/xcore-protocol.git", tag = "v0.17.0" }
+xcore-protocol = { workspace = true }
 
 [project.scripts]
 xcore-discord-bot = "xcore_discord_bot.main:main"
@@ -67,5 +67,5 @@ max-complexity = 10
 "tests/**" = ["C901"]
 
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling>=1.27"]
 build-backend = "hatchling.build"

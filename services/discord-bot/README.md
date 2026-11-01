@@ -120,38 +120,38 @@ never grant bot command access or log a player into the game.
 
 ## Local setup
 
-For a fresh clone, install dev dependencies and enable the git hook once:
+From the monorepo root, install the shared development environment and optional hooks:
 
 ```bash
-uv sync --all-groups
-uv run pre-commit install --install-hooks
+uv sync --locked --all-packages --all-groups --all-extras
+uv run --no-sync pre-commit install --install-hooks
 ```
-
-After that, `pre-commit` runs automatically on every `git commit`.
 
 ## Local run
 
+From this component directory:
+
 ```bash
-uv sync
-uv run xcore-discord-bot
+uv run --locked --package xcore-discord-bot --env-file .env xcore-discord-bot
 ```
 
-The protocol dependency is pinned to the
-[v0.17.0 release](https://github.com/XCore-mindustry/xcore-protocol/releases/tag/v0.17.0).
-`uv.lock` records the resolved commit. Local, CI and Docker builds use the same release
-without a sibling protocol checkout.
-
-The bot automatically loads environment variables from a local `.env` file on startup.
+The protocol dependency is the local `protocol/` workspace member. The root
+`uv.lock` covers protocol, the bot and metrics-gateway; no sibling protocol clone
+or git-tag dependency is used. The bot loads environment variables from `.env`;
+pass its path explicitly when launching from a different working directory.
+For an existing deployment, see [the cutover guide](../../docs/monorepo-wave3.md).
 
 ## Docker smoke run
+
+Run the Docker commands from the monorepo root.
 
 The bot does not start without the shared `permissions.toml`; mount it at
 `PERMISSIONS_CONFIG_PATH` and set `DISCORD_GUILD_ID` in `.env` to its `discord.guildId`.
 
 ```bash
-cp .env.example .env
-docker build -t xcore-discord-bot .
-docker run --rm --env-file .env \
+cp services/discord-bot/.env.example services/discord-bot/.env
+docker build -f services/discord-bot/Dockerfile -t xcore-discord-bot .
+docker run --rm --env-file services/discord-bot/.env \
   -v /path/to/permissions.toml:/config/permissions.toml:ro \
   xcore-discord-bot
 ```
@@ -250,3 +250,8 @@ that message by hand if the switch-off is permanent.
 
 Flow modules are written against the [flow and transport contract](src/xcore_discord_bot/cases/README.md);
 [`tests/cases_dummy_flow.py`](tests/cases_dummy_flow.py) is a complete minimal flow.
+
+## License
+
+[AGPL-3.0](LICENSE) with the [plugin exception](LICENSE-EXCEPTION).
+The original [MIT notice](LICENSE.MIT) is retained for code received under MIT.

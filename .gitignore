@@ -5,3 +5,14 @@ build/
 .vscode/
 *.iml
 out/
+
+.venv/
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+*.egg-info/
+dist/
+.env
+.env.*
+!.env.example

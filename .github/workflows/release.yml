@@ -107,6 +107,8 @@ jobs:
     permissions:
       contents: write
       id-token: write
+    env:
+      UV_PYTHON: "3.11"
     defaults:
       run:
         working-directory: protocol
@@ -116,12 +118,12 @@ jobs:
           ref: ${{ needs.publish.outputs.tag }}
       - uses: astral-sh/setup-uv@v10.3.0
       - run: uv python install 3.11
-      - run: uv sync --extra dev
+      - run: uv sync --locked --package xcore-protocol --extra dev
       - name: Validate and build
         run: |
-          uv run python scripts/validate-generation.py
-          uv run python scripts/validate-generated-models.py
-          uv run pytest
+          uv run --no-sync python scripts/validate-generation.py
+          uv run --no-sync python scripts/validate-generated-models.py
+          uv run --no-sync pytest
           uv build
       - uses: pypa/gh-action-pypi-publish@release/v1
         with:

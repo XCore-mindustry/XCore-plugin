@@ -13,7 +13,8 @@ services:
 
   gateway:
     build:
-      context: .
+      context: ../..
+      dockerfile: services/metrics-gateway/Dockerfile
     restart: unless-stopped
     environment:
       REDIS_URL: redis://redis:6379

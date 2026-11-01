@@ -1,0 +1,20 @@
+Additional permission under GNU AGPL version 3 section 7
+
+XCore Discord Bot is licensed under the GNU Affero General Public License version 3
+(see LICENSE). As an additional permission under section 7 of that license, the
+copyright holders of XCore Discord Bot give you permission to combine XCore Discord Bot
+with a separate plugin or mod, and to convey and run the combination, without
+the terms of the GNU AGPL applying to that plugin or mod, provided that:
+
+  1. the plugin or mod is distributed and loaded as its own artifact, separate
+     from XCore Discord Bot, and
+  2. it uses XCore Discord Bot only through its public classes and interfaces,
+     without copying or modifying XCore Discord Bot's source code.
+
+The Corresponding Source of such a combination does not need to include the
+source code of the separate plugin or mod. This permission does not cover
+modified versions of XCore Discord Bot itself: those remain under the GNU AGPL.
+
+If you modify XCore Discord Bot, you may extend this permission to your version,
+but you are not obliged to do so. If you do not, delete this file from your
+version.

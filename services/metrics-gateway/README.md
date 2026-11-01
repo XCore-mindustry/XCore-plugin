@@ -22,7 +22,7 @@ Standalone Prometheus-facing telemetry gateway for XCore Mindustry servers.
 
 ## Current scaffold
 
-- uv project and pre-commit hooks
+- uv workspace and shared pre-commit hooks
 - environment-driven settings
 - telemetry snapshot decoder using `xcore-protocol`
 - read-only Redis client for binary snapshot values
@@ -65,16 +65,20 @@ Example environment file:
 
 ## Local setup
 
+Run setup from the monorepo root.
+
 ```bash
-uv sync --all-groups
-uv run pre-commit install --install-hooks
+uv sync --locked --all-packages --all-groups --all-extras
+uv run --no-sync pre-commit install --install-hooks
 ```
 
 ## Local run
 
+Run from this component directory with its `.env` file. Protocol is the local
+workspace member, locked with both services in the root `uv.lock`.
+
 ```bash
-uv sync
-uv run xcore-metrics-gateway
+uv run --locked --package xcore-metrics-gateway --env-file .env xcore-metrics-gateway
 ```
 
 The gateway starts background discovery and polling loops automatically. `/metrics`
@@ -90,8 +94,10 @@ healthchecks should use `/ready`.
 
 ## Container build
 
+Use the monorepo root as the build context.
+
 ```bash
-docker build -t xcore-metrics-gateway:local .
+docker build -f services/metrics-gateway/Dockerfile -t xcore-metrics-gateway:local .
 ```
 
 ## Docker Compose stack
@@ -106,7 +112,7 @@ The repository includes a local observability stack:
 Start it with:
 
 ```bash
-docker compose up --build
+docker compose -f services/metrics-gateway/compose.yaml up --build
 ```
 
 Endpoints:
@@ -175,22 +181,22 @@ Prerequisites: Python 3.11+, `uv`, Redis reachable from the host.
 Install and start the gateway as a system service:
 
 ```bash
-git clone https://github.com/XCore-mindustry/xcore-metrics-gateway.git
-cd xcore-metrics-gateway
-sudo env REDIS_URL=redis://<redis-host>:6379 ./ops/systemd/install.sh
+git clone https://github.com/XCore-mindustry/xcore.git
+cd xcore
+sudo env REDIS_URL=redis://<redis-host>:6379 ./services/metrics-gateway/ops/systemd/install.sh
 ```
 
 If the repository is owned by a non-sudo user such as `xcore`, run the same installer as
 root from that checkout:
 
 ```bash
-cd /opt/xcore/xcore-metrics-gateway
-REDIS_URL=redis://<redis-host>:6379 ./ops/systemd/install.sh
+cd /opt/xcore
+REDIS_URL=redis://<redis-host>:6379 ./services/metrics-gateway/ops/systemd/install.sh
 ```
 
 The installer:
 
-- syncs the locked `uv` environment
+- syncs the gateway and local protocol from the root lock into a service-specific `.venv`
 - creates `/etc/xcore/xcore-metrics-gateway.env` if it does not exist
 - installs `/etc/systemd/system/xcore-metrics-gateway.service`
 - enables and starts `xcore-metrics-gateway`
@@ -211,7 +217,7 @@ Update an existing install:
 
 ```bash
 git pull --ff-only
-sudo ./ops/systemd/install.sh
+sudo ./services/metrics-gateway/ops/systemd/install.sh
 ```
 
 To add a scrape job to an existing Prometheus:
@@ -232,6 +238,13 @@ uv run pytest -q
 ## Lint
 
 ```bash
-uvx ruff check
-uvx ruff format --check
+uv run --no-sync ruff check
+uv run --no-sync ruff format --check
 ```
+
+Existing tmux deployments and preservation of local observability edits are
+covered by [the cutover guide](../../docs/monorepo-wave3.md).
+
+## License
+
+[AGPL-3.0](LICENSE) with the [plugin exception](LICENSE-EXCEPTION).

@@ -3,8 +3,6 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-import pytest
-
 from xcore_discord_bot.dto import PlayerRecord
 from xcore_discord_bot.store_mappers import player_record_from_doc
 
@@ -12,8 +10,8 @@ from xcore_discord_bot.store_mappers import player_record_from_doc
 # checks its own copy against the real codec; change both copies together.
 FIXTURE = Path(__file__).with_name("fixtures") / "player_document.json"
 PLUGIN_COPY = (
-    Path(__file__).resolve().parents[2]
-    / "XCore-plugin/src/test/resources/contract/player_document.json"
+    Path(__file__).resolve().parents[3]
+    / "plugins/xcore/src/test/resources/contract/player_document.json"
 )
 
 
@@ -50,8 +48,5 @@ def test_maps_every_field_the_plugin_writes() -> None:
     )
 
 
-# shortcut: compares the copies only in the xcore workspace checkout, not in this repo's CI;
-# move the fixture to a shared package if the copies ever drift unnoticed.
-@pytest.mark.skipif(not PLUGIN_COPY.exists(), reason="XCore-plugin is not checked out")
 def test_fixture_matches_the_plugin_copy() -> None:
     assert json.loads(FIXTURE.read_text()) == json.loads(PLUGIN_COPY.read_text())

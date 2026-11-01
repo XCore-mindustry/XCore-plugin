@@ -10,6 +10,7 @@ fi
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(cd -- "${SCRIPT_DIR}/../.." && pwd)"
+WORKSPACE_DIR="$(cd -- "${PROJECT_DIR}/../.." && pwd)"
 
 REPO_OWNER="$(stat -c '%U' "${PROJECT_DIR}")"
 REPO_GROUP="$(stat -c '%G' "${PROJECT_DIR}")"
@@ -59,9 +60,9 @@ if [[ ! -f "${ENV_FILE}" ]]; then
 fi
 
 if [[ "${SERVICE_USER}" == "root" ]]; then
-  "${UV_BIN}" sync --locked --no-dev --project "${PROJECT_DIR}"
+  UV_PROJECT_ENVIRONMENT="${PROJECT_DIR}/.venv" "${UV_BIN}" sync --locked --no-dev --package xcore-metrics-gateway --project "${WORKSPACE_DIR}"
 else
-  runuser -u "${SERVICE_USER}" -- "${UV_BIN}" sync --locked --no-dev --project "${PROJECT_DIR}"
+  runuser -u "${SERVICE_USER}" -- env UV_PROJECT_ENVIRONMENT="${PROJECT_DIR}/.venv" "${UV_BIN}" sync --locked --no-dev --package xcore-metrics-gateway --project "${WORKSPACE_DIR}"
 fi
 
 cat > "${UNIT_FILE}" <<EOF

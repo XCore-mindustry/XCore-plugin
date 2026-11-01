@@ -9,7 +9,7 @@ if [ -z "$TOKEN" ] || [ "$TOKEN" = "your_discord_bot_token" ] || [ "$TOKEN" = "Y
     echo " Bot will enter IDLE mode (sleep infinity) to prevent restart crash loops."
     echo " To enable the bot:"
     echo "   1. Set DISCORD_BOT_TOKEN in .env"
-    echo "   2. Restart: ./dev.sh restart discord-bot"
+    echo "   2. Restart the bot container."
     echo "================================================================================"
     exec sleep infinity
 fi

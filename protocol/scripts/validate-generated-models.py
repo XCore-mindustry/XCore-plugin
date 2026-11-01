@@ -23,9 +23,9 @@ def run_step(repo_root: Path, *args: str) -> None:
 def main() -> int:
     repo_root = REPO_ROOT
     for test_path in generated_model_test_paths():
-        run_step(repo_root, "uv", "run", "pytest", test_path)
+        run_step(repo_root, sys.executable, "-m", "pytest", test_path)
     for test_path in JAVA_PYTHON_COMPATIBILITY_TESTS:
-        run_step(repo_root, "uv", "run", "pytest", test_path)
+        run_step(repo_root, sys.executable, "-m", "pytest", test_path)
     return 0
 
 

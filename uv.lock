@@ -7,6 +7,13 @@ resolution-markers = [
     "python_full_version < '3.13'",
 ]
 
+[manifest]
+members = [
+    "xcore-discord-bot",
+    "xcore-metrics-gateway",
+    "xcore-protocol",
+]
+
 [[package]]
 name = "aiohappyeyeballs"
 version = "2.7.1"
@@ -1017,6 +1024,15 @@ wheels = [
 ]
 
 [[package]]
+name = "prometheus-client"
+version = "0.26.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/52/73/f1334c29c2af4cd9dba6c7817e61b611bd0215e2eb5565c6064a4de18802/prometheus_client-0.26.0.tar.gz", hash = "sha256:04a91bcf94e2cf74a44a1a874d651a2e853ed354b6e822f3b7487751465d5c2b", size = 92910, upload-time = "2026-07-24T19:36:41.893Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/eb/a3/b69efbf4143b5b9859b977770bbbabcc2796b702fa69dc40271e45cd5a56/prometheus_client-0.26.0-py3-none-any.whl", hash = "sha256:fa93d06737aa02bacd05794768508bb97d2fbee28cb3bca04eaae92f0ca953d6", size = 64494, upload-time = "2026-07-24T19:36:40.854Z" },
+]
+
+[[package]]
 name = "propcache"
 version = "0.5.4"
 source = { registry = "https://pypi.org/simple" }
@@ -1755,7 +1771,7 @@ wheels = [
 [[package]]
 name = "xcore-discord-bot"
 version = "0.1.0"
-source = { editable = "." }
+source = { editable = "services/discord-bot" }
 dependencies = [
     { name = "discord-py" },
     { name = "fluent-runtime" },
@@ -1789,7 +1805,7 @@ requires-dist = [
     { name = "python-dotenv", specifier = ">=1.1.0" },
     { name = "redis", specifier = ">=5.2.1" },
     { name = "tenacity", specifier = ">=9.1.2" },
-    { name = "xcore-protocol", git = "https://github.com/XCore-mindustry/xcore-protocol.git?tag=v0.17.0" },
+    { name = "xcore-protocol", editable = "protocol" },
 ]
 
 [package.metadata.requires-dev]
@@ -1804,15 +1820,73 @@ dev = [
 ]
 
 [[package]]
+name = "xcore-metrics-gateway"
+version = "0.1.0"
+source = { editable = "services/metrics-gateway" }
+dependencies = [
+    { name = "aiohttp" },
+    { name = "prometheus-client" },
+    { name = "pydantic" },
+    { name = "pydantic-settings" },
+    { name = "python-dotenv" },
+    { name = "redis" },
+    { name = "xcore-protocol" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "fakeredis" },
+    { name = "pre-commit" },
+    { name = "pytest" },
+    { name = "pytest-asyncio" },
+    { name = "ruff" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "aiohttp", specifier = ">=3.12.0" },
+    { name = "prometheus-client", specifier = ">=0.23.0" },
+    { name = "pydantic", specifier = ">=2.11.0" },
+    { name = "pydantic-settings", specifier = ">=2.10.0" },
+    { name = "python-dotenv", specifier = ">=1.1.0" },
+    { name = "redis", specifier = ">=5.2.1" },
+    { name = "xcore-protocol", editable = "protocol" },
+]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "fakeredis", specifier = ">=2.31.0" },
+    { name = "pre-commit", specifier = ">=4.3.0" },
+    { name = "pytest", specifier = ">=8.4.0" },
+    { name = "pytest-asyncio", specifier = ">=1.2.0" },
+    { name = "ruff", specifier = ">=0.11.0" },
+]
+
+[[package]]
 name = "xcore-protocol"
-version = "0.17.0"
-source = { git = "https://github.com/XCore-mindustry/xcore-protocol.git?tag=v0.17.0#b0c3ee30427b4e8a5e4be111ee54a03c9550dbce" }
+version = "0.17.1"
+source = { editable = "protocol" }
 dependencies = [
     { name = "jsonschema" },
     { name = "pyyaml" },
     { name = "referencing" },
     { name = "rfc3339-validator" },
 ]
+
+[package.optional-dependencies]
+dev = [
+    { name = "pytest" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "jsonschema", specifier = ">=4.23.0" },
+    { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.3.0" },
+    { name = "pyyaml", specifier = ">=6.0.2" },
+    { name = "referencing", specifier = ">=0.35.0" },
+    { name = "rfc3339-validator", specifier = ">=0.1.4" },
+]
+provides-extras = ["dev"]
 
 [[package]]
 name = "yarl"

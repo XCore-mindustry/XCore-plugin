@@ -1,34 +1,24 @@
-# Multi-stage Dockerfile for XCore Discord Bot
 FROM ghcr.io/astral-sh/uv:python3.14-bookworm-slim AS builder
 
+ENV UV_PYTHON_DOWNLOADS=never
 WORKDIR /app
 
-# git and ca-certificates are required for uv to resolve git-based dependencies (e.g. xcore-protocol)
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    git \
-    ca-certificates \
-    && rm -rf /var/lib/apt/lists/*
-
-COPY pyproject.toml uv.lock README.md ./
-COPY src ./src
-
-RUN uv sync --locked --no-dev
+# Build with the monorepo root as context; the lock covers every workspace member.
+COPY pyproject.toml uv.lock ./
+COPY protocol ./protocol
+COPY services/discord-bot ./services/discord-bot
+COPY services/metrics-gateway/pyproject.toml services/metrics-gateway/README.md ./services/metrics-gateway/
+RUN uv sync --locked --no-dev --no-editable --package xcore-discord-bot
 
 FROM python:3.14-slim-bookworm AS runtime
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PATH="/app/.venv/bin:${PATH}"
-
 WORKDIR /app
-
 COPY --from=builder /app/.venv /app/.venv
-COPY --from=builder /app/src /app/src
-COPY --from=builder /app/README.md /app/README.md
-COPY --from=builder /app/pyproject.toml /app/pyproject.toml
 
-COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+COPY services/discord-bot/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
-
 ENTRYPOINT ["docker-entrypoint.sh"]
 CMD ["xcore-discord-bot"]

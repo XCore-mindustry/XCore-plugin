@@ -10,6 +10,8 @@ Plugins, libraries and the protocol behind the XCore Mindustry servers.
 | `libs/cloud-mindustry` | Cloud command framework integration | `org.xcore:cloud-mindustry` | [MPL-2.0](libs/cloud-mindustry/LICENSE) |
 | `libs/xcore-ui` | Server-driven menu UI | `org.xcore:xcore-ui` | [MPL-2.0](libs/xcore-ui/LICENSE) |
 | `libs/mindustry-testkit` | Test toolkit and real-client menu renderer | `org.xcore.testkit:{core,ui,fixtures}` | [MPL-2.0](libs/mindustry-testkit/LICENSE) |
+| `services/discord-bot` | Discord transport and commands | Docker image / uv entrypoint | [AGPL-3.0 + plugin exception](services/discord-bot/LICENSE-EXCEPTION) |
+| `services/metrics-gateway` | Prometheus telemetry gateway | Docker image / uv entrypoint | [AGPL-3.0 + plugin exception](services/metrics-gateway/LICENSE-EXCEPTION) |
 | `protocol` | Message spec and generated Java/Python/TypeScript bindings | `org.xcore:xcore-protocol-java`, `xcore-protocol` on PyPI | [MPL-2.0](protocol/LICENSE) |
 
 Everything else in the repository is under the [MPL-2.0](LICENSE).
@@ -25,6 +27,22 @@ Java 25 and a C++20 toolchain are required for the full build. Everything JVM-ba
 ```
 
 Inside this repository the plugin always builds against the libraries from the same commit.
+
+## Python workspace
+
+Protocol, the Discord bot and metrics-gateway share one `uv.lock` and use the
+protocol from the same checkout. Python 3.14 is the development default; protocol
+is also checked on 3.11, and gateway on 3.13 for existing deployments.
+
+```sh
+uv sync --locked --all-packages --all-groups --all-extras
+uv run --package xcore-discord-bot --env-file /path/to/bot.env xcore-discord-bot
+uv run --package xcore-metrics-gateway --env-file /path/to/gateway.env xcore-metrics-gateway
+```
+
+Service Dockerfiles use the repository root as build context. Existing service
+cutover and separate runtime environments are described in
+[the wave 3 guide](docs/monorepo-wave3.md).
 
 ## Releasing
 
