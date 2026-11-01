@@ -1,0 +1,159 @@
+from __future__ import annotations
+
+from dataclasses import dataclass
+from typing import TYPE_CHECKING
+
+from .account_merge_store import AccountMergeStore
+from .audit_store import AuditStore
+from .bus.accounts import AccountsBus
+from .bus.cases import CasesBus
+from .bus.chat import ChatBus
+from .bus.maps import MapsBus
+from .bus.moderation import ModerationBus
+from .bus.rating import RatingBus
+from .bus.security import SecurityBus
+from .bus.sentinel import SentinelBus
+from .bus.transport import RedisTransport
+from .cases import flows  # noqa: F401 -- importing modules registers flow definitions
+from .cases.notify import CaseNotifier
+from .cases.panel import CasePanel
+from .cases.registry import flow_registry
+from .cases.service import CaseService
+from .cases.store import CaseStore
+from .cases.threads import CaseThreads
+from .daemons.cases_reconcile_daemon import CasesReconcileDaemon
+from .daemons.presence_daemon import PresenceDaemon
+from .daemons.rating_merge_daemon import RatingMergeDaemon
+from .daemons.staff_sync_daemon import StaffSyncDaemon
+from .daemons.stream_supervisor import StreamSupervisor
+from .game_stats import GameStatsStore
+from .mongo_store import MongoStore
+from .punishment_store import PunishmentStore
+from .rating_store import RatingStore
+from .registry import LiveServerRegistry
+from .rpc.mindustry_rpc import MindustryRpcClient
+from .services.map_catalog import MapCatalog
+from .services.player_service import PlayerService
+from .services.rating_service import RatingService
+from .settings import Settings
+
+if TYPE_CHECKING:
+    from .bot import XCoreDiscordBot
+
+
+@dataclass(slots=True)
+class ServiceContainer:
+    """The services built on the bot's store and bus; the bot owns those two itself."""
+
+    settings: Settings
+    accounts_bus: AccountsBus
+    cases_bus: CasesBus
+    chat_bus: ChatBus
+    maps_bus: MapsBus
+    moderation_bus: ModerationBus
+    rating_bus: RatingBus
+    security_bus: SecurityBus
+    sentinel_bus: SentinelBus
+    rpc: MindustryRpcClient
+    # The live game servers, as their heartbeats report them.
+    servers: LiveServerRegistry
+    map_catalog: MapCatalog
+    players: PlayerService
+    punishments: PunishmentStore
+    audit: AuditStore
+    ratings: RatingStore
+    game_stats: GameStatsStore
+    rating_service: RatingService
+    presence_daemon: PresenceDaemon
+    rating_merge_daemon: RatingMergeDaemon
+    stream_supervisor: StreamSupervisor
+    cases: CaseService
+    case_panel: CasePanel
+    cases_reconcile_daemon: CasesReconcileDaemon
+    staff_sync_daemon: StaffSyncDaemon
+
+    @classmethod
+    def create(
+        cls,
+        settings: Settings,
+        bot: XCoreDiscordBot,
+        *,
+        store: MongoStore,
+        bus: RedisTransport,
+    ) -> ServiceContainer:
+        servers = LiveServerRegistry()
+        accounts_bus = AccountsBus(bus, servers)
+        cases_bus = CasesBus(bus)
+        chat_bus = ChatBus(bus, servers)
+        maps_bus = MapsBus(bus)
+        moderation_bus = ModerationBus(bus, servers)
+        rating_bus = RatingBus(bus)
+        security_bus = SecurityBus(bus)
+        sentinel_bus = SentinelBus(bus)
+        rpc = MindustryRpcClient(
+            cases=cases_bus,
+            maps=maps_bus,
+            rating=rating_bus,
+            security=security_bus,
+            sentinel=sentinel_bus,
+            servers=servers,
+        )
+
+        punishments = PunishmentStore(store)
+        audit = AuditStore(store)
+        ratings = RatingStore(store)
+        rating_service = RatingService(
+            store=ratings, rpc=rpc, timeout_ms=settings.rpc_timeout_ms
+        )
+        players = PlayerService(
+            settings=settings,
+            rpc=rpc,
+            moderation=moderation_bus,
+            merges=AccountMergeStore(store, punishments, audit),
+            ratings=rating_service,
+        )
+
+        presence_daemon = PresenceDaemon(bot=bot)
+        rating_merge_daemon = RatingMergeDaemon(bot=bot, ratings=rating_service)
+        stream_supervisor = StreamSupervisor(bot=bot)
+        case_store = CaseStore(store)
+
+        cases = CaseService(
+            store=case_store,
+            settings=settings,
+            registry=flow_registry.copy(),
+            threads=CaseThreads(bot, settings),
+            notifier=CaseNotifier(bot, settings, find_player=store.find_player_by_uuid),
+            claims=bus,
+            player_store=store,
+            punishments=punishments,
+        )
+        case_panel = CasePanel(cases, bot)
+
+        return cls(
+            settings=settings,
+            accounts_bus=accounts_bus,
+            cases_bus=cases_bus,
+            chat_bus=chat_bus,
+            maps_bus=maps_bus,
+            moderation_bus=moderation_bus,
+            rating_bus=rating_bus,
+            security_bus=security_bus,
+            sentinel_bus=sentinel_bus,
+            rpc=rpc,
+            servers=servers,
+            map_catalog=MapCatalog(rpc),
+            players=players,
+            punishments=punishments,
+            audit=audit,
+            ratings=ratings,
+            game_stats=GameStatsStore(store),
+            rating_service=rating_service,
+            presence_daemon=presence_daemon,
+            rating_merge_daemon=rating_merge_daemon,
+            stream_supervisor=stream_supervisor,
+            cases=cases,
+            case_panel=case_panel,
+            cases_reconcile_daemon=CasesReconcileDaemon(bot, cases, case_panel),
+            staff_sync_daemon=StaffSyncDaemon(bot, store, rpc, settings),
+        )

@@ -1,0 +1,183 @@
+from __future__ import annotations
+
+from collections.abc import Awaitable, Callable
+from typing import Literal
+
+import discord
+from discord import Interaction
+
+from .i18n import DEFAULT, t
+from .presentation import build_servers_embed, sort_live_servers
+from .registry import LiveServerRegistry
+from .ui_helpers import disable_view_buttons, safe_edit_view_message
+
+MapSortMode = Literal["reputation", "popularity", "name"]
+
+
+class PaginatorView(discord.ui.View):
+    def __init__(
+        self,
+        *,
+        page: int,
+        has_prev: bool,
+        has_next: bool,
+        fetch_page: Callable[[int], Awaitable[tuple[discord.Embed, bool]]],
+    ) -> None:
+        super().__init__(timeout=120)
+        self._page = page
+        self._fetch_page = fetch_page
+        self.bot_message: discord.Message | None = None
+        self._prev_btn.disabled = not has_prev
+        self._next_btn.disabled = not has_next
+
+    @discord.ui.button(label="◀ Prev", style=discord.ButtonStyle.secondary)
+    async def _prev_btn(
+        self, interaction: Interaction, button: discord.ui.Button
+    ) -> None:
+        await self._turn(interaction, self._page - 1)
+
+    @discord.ui.button(label="Next ▶", style=discord.ButtonStyle.secondary)
+    async def _next_btn(
+        self, interaction: Interaction, button: discord.ui.Button
+    ) -> None:
+        await self._turn(interaction, self._page + 1)
+
+    async def _turn(self, interaction: Interaction, new_page: int) -> None:
+        embed, has_next = await self._fetch_page(new_page)
+        self._page = new_page
+        self._prev_btn.disabled = new_page == 0
+        self._next_btn.disabled = not has_next
+        await interaction.response.edit_message(embed=embed, view=self)
+
+    async def on_timeout(self) -> None:
+        disable_view_buttons(self)
+        await safe_edit_view_message(self.bot_message, view=self)
+
+
+class ServersView(discord.ui.View):
+    def __init__(
+        self,
+        servers: LiveServerRegistry,
+        *,
+        sort_mode: Literal["players", "name"] = "players",
+        locale: str = DEFAULT,
+    ) -> None:
+        super().__init__(timeout=180)
+        self._servers = servers
+        self._sort_mode: Literal["players", "name"] = sort_mode
+        # The message is one for everyone who presses its buttons: it keeps the language
+        # of the user who asked for it.
+        self._locale = locale
+        self.bot_message: discord.Message | None = None
+        self._refresh_btn.label = t(locale, "servers-refresh")
+        self._sync_sort_button_label()
+
+    @property
+    def sort_mode(self) -> Literal["players", "name"]:
+        return self._sort_mode
+
+    def build_embed(self) -> discord.Embed:
+        servers = sort_live_servers(self._servers.get_all_servers(), self._sort_mode)
+        return build_servers_embed(
+            servers, sort_mode=self._sort_mode, locale=self._locale
+        )
+
+    @discord.ui.button(label="Refresh", style=discord.ButtonStyle.primary, emoji="🔄")
+    async def _refresh_btn(
+        self, interaction: Interaction, button: discord.ui.Button
+    ) -> None:
+        embed = self.build_embed()
+        await interaction.response.edit_message(embed=embed, view=self)
+
+    @discord.ui.button(label="Sort: players", style=discord.ButtonStyle.secondary)
+    async def _sort_btn(
+        self, interaction: Interaction, button: discord.ui.Button
+    ) -> None:
+        self._sort_mode = "name" if self._sort_mode == "players" else "players"
+        self._sync_sort_button_label()
+        embed = self.build_embed()
+        await interaction.response.edit_message(embed=embed, view=self)
+
+    async def on_timeout(self) -> None:
+        disable_view_buttons(self)
+        await safe_edit_view_message(self.bot_message, view=self)
+
+    def _sync_sort_button_label(self) -> None:
+        self._sort_btn.label = t(
+            self._locale,
+            "command-sort",
+            sort=t(self._locale, f"servers-sort-{self._sort_mode}"),
+        )
+
+
+class MapsListView(discord.ui.View):
+    def __init__(
+        self,
+        *,
+        page: int,
+        has_prev: bool,
+        has_next: bool,
+        sort_mode: MapSortMode,
+        fetch_page: Callable[[int, MapSortMode], Awaitable[tuple[discord.Embed, bool]]],
+        locale: str = DEFAULT,
+    ) -> None:
+        super().__init__(timeout=120)
+        self._page = page
+        self._sort_mode: MapSortMode = sort_mode
+        self._fetch_page = fetch_page
+        self._locale = locale
+        self.bot_message: discord.Message | None = None
+        self._prev_btn.label = t(locale, "command-page-previous")
+        self._next_btn.label = t(locale, "command-page-next")
+        self._prev_btn.disabled = not has_prev
+        self._next_btn.disabled = not has_next
+        self._sync_sort_button_label()
+
+    @discord.ui.button(label="◀ Prev", style=discord.ButtonStyle.secondary)
+    async def _prev_btn(
+        self, interaction: Interaction, button: discord.ui.Button
+    ) -> None:
+        await self._turn(interaction, self._page - 1)
+
+    @discord.ui.button(label="Next ▶", style=discord.ButtonStyle.secondary)
+    async def _next_btn(
+        self, interaction: Interaction, button: discord.ui.Button
+    ) -> None:
+        await self._turn(interaction, self._page + 1)
+
+    @discord.ui.button(label="Sort: reputation", style=discord.ButtonStyle.secondary)
+    async def _sort_btn(
+        self, interaction: Interaction, button: discord.ui.Button
+    ) -> None:
+        self._sort_mode = self._next_sort_mode()
+        self._sync_sort_button_label()
+        embed, has_next = await self._fetch_page(0, self._sort_mode)
+        self._page = 0
+        self._prev_btn.disabled = True
+        self._next_btn.disabled = not has_next
+        await interaction.response.edit_message(embed=embed, view=self)
+
+    async def _turn(self, interaction: Interaction, new_page: int) -> None:
+        embed, has_next = await self._fetch_page(new_page, self._sort_mode)
+        self._page = new_page
+        self._prev_btn.disabled = new_page == 0
+        self._next_btn.disabled = not has_next
+        await interaction.response.edit_message(embed=embed, view=self)
+
+    async def on_timeout(self) -> None:
+        disable_view_buttons(self)
+        await safe_edit_view_message(self.bot_message, view=self)
+
+    def _sync_sort_button_label(self) -> None:
+        self._sort_btn.label = t(
+            self._locale,
+            "command-sort",
+            sort=t(self._locale, f"maps-list-sort-{self._sort_mode}"),
+        )
+
+    def _next_sort_mode(self) -> MapSortMode:
+        if self._sort_mode == "reputation":
+            return "popularity"
+        if self._sort_mode == "popularity":
+            return "name"
+        return "reputation"

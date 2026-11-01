@@ -1,0 +1,71 @@
+[project]
+name = "xcore-discord-bot"
+version = "0.1.0"
+description = "Standalone Discord bot for XCore Redis transport"
+readme = "README.md"
+authors = [
+    { name = "osp54", email = "76648940+osp54@users.noreply.github.com" }
+]
+requires-python = ">=3.11"
+dependencies = [
+    "discord.py>=2.7.0",
+    "fluent-runtime>=0.4.0",
+    "pydantic>=2.11.0",
+    "pydantic-settings>=2.10.0",
+    "pymongo>=4.18.3",
+    "python-dotenv>=1.1.0",
+    "redis>=5.2.1",
+    "tenacity>=9.1.2",
+    "xcore-protocol==0.17.0",
+]
+
+[tool.uv.sources]
+# Pin the release tag; uv.lock also records its resolved commit for reproducible builds.
+xcore-protocol = { git = "https://github.com/XCore-mindustry/xcore-protocol.git", tag = "v0.17.0" }
+
+[project.scripts]
+xcore-discord-bot = "xcore_discord_bot.main:main"
+
+[dependency-groups]
+dev = [
+    "fakeredis>=2.31.0",
+    "mypy>=2.4.0",
+    "mypy-baseline>=0.7.4",
+    "pre-commit>=4.3.0",
+    "pytest>=8.4.0",
+    "pytest-asyncio>=1.2.0",
+    "ruff>=0.11.0",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.mypy]
+files = ["src"]
+
+[[tool.mypy.overrides]]
+# The protocol package ships no py.typed marker; read its annotations anyway.
+module = ["xcore_protocol", "xcore_protocol.*"]
+follow_untyped_imports = true
+
+[tool.ruff]
+target-version = "py311"
+
+[tool.ruff.lint]
+# A broad `except Exception` needs a stated reason: `# noqa: BLE001 -- why`.
+# C901: the functions over the limit when it was turned on carry `# noqa: C901` until
+# they are split; a new one has to stay under it. RUF100 flags a noqa that is no longer
+# needed, so a split function loses its marker.
+extend-select = ["BLE001", "C901", "RUF100"]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 10
+
+[tool.ruff.lint.per-file-ignores]
+# Test bodies and fakes are judged by how they read, not by branch count.
+"tests/**" = ["C901"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

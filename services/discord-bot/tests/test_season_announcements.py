@@ -1,0 +1,311 @@
+from __future__ import annotations
+
+import asyncio
+from dataclasses import dataclass, field, replace
+from types import SimpleNamespace
+from typing import Any
+from unittest.mock import AsyncMock
+
+import pytest
+from backends import real_bot
+from bot_fakes import make_settings
+from xcore_protocol.generated.rating import (
+    RatingSeasonEndedV1,
+    RatingSeasonEndingSoonV1,
+    RatingSeasonRescheduledV1,
+    RatingSeasonStartedV1,
+)
+from xcore_protocol.generated.shared import (
+    ActorRefV1,
+    DiscordIdentityRefV1,
+    PlayerRefV1,
+    SeasonPodiumEntryV1,
+    SeasonRefV1,
+    SeasonSummaryV1,
+)
+
+from xcore_discord_bot.bot import XCoreDiscordBot
+from xcore_discord_bot.handlers_seasons import (
+    on_season_ended,
+    on_season_ending_soon,
+    on_season_rescheduled,
+    on_season_started,
+)
+from xcore_discord_bot.rating_store import SEASON_POSTS
+from xcore_discord_bot.runtime_consumers import consume_season_ended
+
+SEASON = SeasonRefV1(
+    ladder="minipvp",
+    season=3,
+    name="Winter",
+    startsAt="2026-01-01T00:00:00Z",
+    endsAt="2026-04-01T00:00:00Z",
+)
+
+
+@dataclass
+class _Channel:
+    fail: bool = False
+    sent: list[dict[str, Any]] = field(default_factory=list)
+
+    async def send(self, *, embed, allowed_mentions) -> Any:
+        if self.fail:
+            raise RuntimeError("discord is down")
+        self.sent.append({"embed": embed, "allowed_mentions": allowed_mentions})
+        return SimpleNamespace(id=1000 + len(self.sent))
+
+
+async def _bot(channel: Any, channel_id: int = 777) -> XCoreDiscordBot:
+    bot, _ = await real_bot(
+        settings=make_settings(discord_seasons_channel_id=channel_id)
+    )
+    bot.resolve_channel = AsyncMock(return_value=channel)  # type: ignore[method-assign]
+    return bot
+
+
+def _posts(bot: XCoreDiscordBot) -> dict[str, int | None]:
+    """The announcements claimed so far, with the message each was posted as."""
+    posts = bot.store.database[SEASON_POSTS].docs
+    return {post["_id"]: post["message_id"] for post in posts}
+
+
+def _ended(podium: tuple[SeasonPodiumEntryV1, ...]) -> RatingSeasonEndedV1:
+    return RatingSeasonEndedV1(
+        season=SEASON,
+        podium=podium,
+        summary=SeasonSummaryV1(participants=30, matches=120),
+        server="mini-pvp",
+        occurredAt="2026-04-01T00:00:01Z",
+    )
+
+
+def _entry(place: int, name: str, discord_id: str | None) -> SeasonPodiumEntryV1:
+    return SeasonPodiumEntryV1(
+        place=place,
+        player=PlayerRefV1(playerUuid=f"u{place}", playerName=name, playerPid=place),
+        rating=1600 - place * 50,
+        league="GOLD",
+        matches=20,
+        wins=12,
+        discord=DiscordIdentityRefV1(discordId=discord_id, discordUsername="d")
+        if discord_id
+        else None,
+    )
+
+
+@pytest.mark.asyncio
+async def test_started_is_posted_once_even_when_replayed() -> None:
+    channel = _Channel()
+    bot = await _bot(channel)
+    event = RatingSeasonStartedV1(
+        season=SEASON, server="mini-pvp", occurredAt="2026-01-01T00:00:00Z"
+    )
+
+    await on_season_started(bot, event)
+    await on_season_started(bot, event)
+
+    assert len(channel.sent) == 1
+    assert "Winter" in channel.sent[0]["embed"].title
+    assert _posts(bot) == {"minipvp:3:started": 1001}
+
+
+@pytest.mark.asyncio
+async def test_started_tells_the_first_season_apart_from_a_reset() -> None:
+    channel = _Channel()
+    bot = await _bot(channel)
+
+    await on_season_started(
+        bot,
+        RatingSeasonStartedV1(
+            season=SEASON, server="mini-pvp", occurredAt="2026-01-01T00:00:00Z"
+        ),
+    )
+    await on_season_started(
+        bot,
+        RatingSeasonStartedV1(
+            season=SEASON,
+            previousSeason=2,
+            server="mini-pvp",
+            occurredAt="2026-01-01T00:00:00Z",
+        ),
+    )
+
+    # Both are the same season's start, so only the first one is posted.
+    assert len(channel.sent) == 1
+    assert "softly reset" not in channel.sent[0]["embed"].description
+    assert "carries on" in channel.sent[0]["embed"].description
+
+
+@pytest.mark.asyncio
+async def test_nothing_is_posted_without_a_configured_channel() -> None:
+    channel = _Channel()
+    bot = await _bot(channel, channel_id=0)
+
+    await on_season_started(
+        bot,
+        RatingSeasonStartedV1(
+            season=SEASON, server="mini-pvp", occurredAt="2026-01-01T00:00:00Z"
+        ),
+    )
+
+    assert channel.sent == []
+    assert _posts(bot) == {}
+
+
+@pytest.mark.asyncio
+async def test_each_ending_notice_is_its_own_announcement() -> None:
+    channel = _Channel()
+    bot = await _bot(channel)
+
+    for notice in ("7d", "1d", "7d"):
+        await on_season_ending_soon(
+            bot,
+            RatingSeasonEndingSoonV1(
+                season=SEASON,
+                notice=notice,
+                server="mini-pvp",
+                occurredAt="2026-03-25T00:00:00Z",
+            ),
+        )
+
+    assert len(channel.sent) == 2
+
+
+@pytest.mark.asyncio
+async def test_ended_mentions_only_the_winners_who_linked_discord() -> None:
+    channel = _Channel()
+    bot = await _bot(channel)
+
+    await on_season_ended(
+        bot, _ended((_entry(1, "Ann", "4242"), _entry(2, "Bob", None)))
+    )
+
+    sent = channel.sent[0]
+    description = sent["embed"].description
+    assert "<@4242>" in description
+    assert "Bob" in description
+    mentions = sent["allowed_mentions"]
+    assert [user.id for user in mentions.users] == [4242]
+    assert mentions.everyone is False
+    assert mentions.roles is False
+
+
+@pytest.mark.asyncio
+async def test_failed_post_is_released_so_a_replay_can_retry() -> None:
+    channel = _Channel(fail=True)
+    bot = await _bot(channel)
+    event = _ended((_entry(1, "Ann", None),))
+
+    with pytest.raises(RuntimeError):
+        await on_season_ended(bot, event)
+    assert _posts(bot) == {}
+
+    channel.fail = False
+    await on_season_ended(bot, event)
+    assert len(channel.sent) == 1
+
+
+@pytest.mark.asyncio
+async def test_cancelled_post_is_released_so_a_replay_can_retry() -> None:
+    class _CancelledChannel(_Channel):
+        async def send(self, *, embed, allowed_mentions) -> Any:
+            raise asyncio.CancelledError()
+
+    bot = await _bot(_CancelledChannel())
+    event = _ended((_entry(1, "Ann", None),))
+
+    with pytest.raises(asyncio.CancelledError):
+        await on_season_ended(bot, event)
+
+    # The consumer was stopped mid-post; the claim must not outlive it.
+    assert _posts(bot) == {}
+
+
+@pytest.mark.asyncio
+async def test_a_notice_that_is_due_again_after_an_extension_is_posted_again() -> None:
+    channel = _Channel()
+    bot = await _bot(channel)
+
+    def notice(ends_at: str) -> RatingSeasonEndingSoonV1:
+        return RatingSeasonEndingSoonV1(
+            season=replace(SEASON, endsAt=ends_at),
+            notice="1d",
+            server="mini-pvp",
+            occurredAt="2026-03-31T00:00:00Z",
+        )
+
+    await on_season_ending_soon(bot, notice("2026-04-01T00:00:00Z"))
+    # A replay of the same notice.
+    await on_season_ending_soon(bot, notice("2026-04-01T00:00:00Z"))
+    # The season was extended by a week, so "one day left" comes round again.
+    await on_season_ending_soon(bot, notice("2026-04-08T00:00:00Z"))
+
+    assert len(channel.sent) == 2
+
+
+@pytest.mark.asyncio
+async def test_moving_the_end_back_to_where_it_was_is_announced_too() -> None:
+    channel = _Channel()
+    bot = await _bot(channel)
+
+    def moved(
+        previous: str, ends_at: str, occurred_at: str
+    ) -> RatingSeasonRescheduledV1:
+        return RatingSeasonRescheduledV1(
+            season=replace(SEASON, endsAt=ends_at),
+            previousEndsAt=previous,
+            actor=ActorRefV1(actorName="Head"),
+            server="mini-pvp",
+            occurredAt=occurred_at,
+        )
+
+    first, second = "2026-04-01T00:00:00Z", "2026-04-08T00:00:00Z"
+    await on_season_rescheduled(bot, moved(first, second, "2026-03-20T00:00:00Z"))
+    await on_season_rescheduled(bot, moved(second, first, "2026-03-21T00:00:00Z"))
+    await on_season_rescheduled(bot, moved(first, second, "2026-03-22T00:00:00Z"))
+    # A replay of the last move.
+    await on_season_rescheduled(bot, moved(first, second, "2026-03-22T00:00:00Z"))
+
+    assert len(channel.sent) == 3
+
+
+@pytest.mark.asyncio
+async def test_rescheduling_announces_each_move_once() -> None:
+    channel = _Channel()
+    bot = await _bot(channel)
+    event = RatingSeasonRescheduledV1(
+        season=SEASON,
+        previousEndsAt="2026-03-25T00:00:00Z",
+        actor=ActorRefV1(actorName="Head"),
+        server="mini-pvp",
+        occurredAt="2026-03-20T00:00:00Z",
+        reason="tournament",
+    )
+
+    await on_season_rescheduled(bot, event)
+    await on_season_rescheduled(bot, event)
+
+    assert len(channel.sent) == 1
+    fields = {f.name: f.value for f in channel.sent[0]["embed"].fields}
+    assert fields["By"] == "Head"
+    assert fields["Reason"] == "tournament"
+
+
+@pytest.mark.asyncio
+async def test_ended_consumer_dispatches_to_the_handler() -> None:
+    channel = _Channel()
+
+    bot = await _bot(channel)
+
+    async def consume(callback):
+        await callback(_ended((_entry(1, "Ann", None),)))
+        raise asyncio.CancelledError()
+
+    bot.container.rating_bus.consume_season_ended = consume
+    bot.bus.reconnect = AsyncMock(
+        side_effect=AssertionError("reconnect should not be called")
+    )
+    with pytest.raises(asyncio.CancelledError):
+        await consume_season_ended(bot)
+
+    assert len(channel.sent) == 1

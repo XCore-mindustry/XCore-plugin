@@ -1,0 +1,230 @@
+from __future__ import annotations
+
+import traceback
+
+import pytest
+from bot_fakes import PERMISSIONS_SETTINGS
+from pydantic import ValidationError
+
+from xcore_discord_bot.settings import Settings
+
+ENV_KEYS = [
+    "DISCORD_BOT_TOKEN",
+    "DISCORD_ADMIN_ROLE_ID",
+    "DISCORD_GENERAL_ADMIN_ROLE_ID",
+    "DISCORD_MAP_REVIEWER_ROLE_ID",
+    "DISCORD_PRIVATE_CHANNEL_ID",
+    "DISCORD_BANS_CHANNEL_ID",
+    "DISCORD_MUTES_CHANNEL_ID",
+    "DISCORD_VOTEKICKS_CHANNEL_ID",
+    "DISCORD_GUILD_ID",
+    "DISCORD_CLEAR_STALE_COMMANDS",
+    "DISCORD_ERROR_LOG_CHANNEL_ID",
+    "REDIS_URL",
+    "REDIS_GROUP_PREFIX",
+    "REDIS_CONSUMER_NAME",
+    "MONGO_URI",
+    "MONGO_DB_NAME",
+    "RPC_TIMEOUT_MS",
+    "CASES_PANEL_CHANNEL_ID",
+    "MAPS_TAG_PROFILES",
+    "PERMISSIONS_CONFIG_PATH",
+    "PERMISSIONS_RPC_SERVER",
+]
+
+
+@pytest.fixture(autouse=True)
+def clean_settings_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    for key in ENV_KEYS:
+        monkeypatch.delenv(key, raising=False)
+
+
+def _set_required_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("DISCORD_BOT_TOKEN", "token")
+    monkeypatch.setenv("DISCORD_ADMIN_ROLE_ID", "10")
+    monkeypatch.setenv("DISCORD_PRIVATE_CHANNEL_ID", "20")
+    for name, value in PERMISSIONS_SETTINGS.items():
+        monkeypatch.setenv(name.upper(), str(value))
+
+
+@pytest.mark.parametrize(
+    "name", ["DISCORD_GUILD_ID", "PERMISSIONS_CONFIG_PATH", "PERMISSIONS_RPC_SERVER"]
+)
+def test_settings_from_env_requires_the_role_configuration(
+    monkeypatch: pytest.MonkeyPatch, name: str
+) -> None:
+    _set_required_env(monkeypatch)
+    monkeypatch.setenv(name, " ")
+
+    with pytest.raises(
+        RuntimeError, match=f"Missing required environment variable: {name}"
+    ):
+        Settings.from_env()
+
+
+def test_settings_from_env_required_token_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("DISCORD_ADMIN_ROLE_ID", "10")
+    monkeypatch.setenv("DISCORD_PRIVATE_CHANNEL_ID", "20")
+
+    with pytest.raises(
+        RuntimeError,
+        match="Missing required environment variable: DISCORD_BOT_TOKEN",
+    ):
+        Settings.from_env()
+
+
+def test_settings_from_env_role_fallbacks(monkeypatch: pytest.MonkeyPatch) -> None:
+    _set_required_env(monkeypatch)
+
+    settings = Settings.from_env()
+
+    assert settings.discord_admin_role_id == 10
+    assert settings.discord_general_admin_role_id == 10
+    assert settings.discord_map_reviewer_role_id == 10
+
+
+def test_settings_from_env_blank_optional_strings_use_defaults(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _set_required_env(monkeypatch)
+    monkeypatch.setenv("REDIS_URL", "   ")
+    monkeypatch.setenv("REDIS_GROUP_PREFIX", "")
+    monkeypatch.setenv("REDIS_CONSUMER_NAME", " ")
+    monkeypatch.setenv("MONGO_URI", "")
+    monkeypatch.setenv("MONGO_DB_NAME", "")
+
+    settings = Settings.from_env()
+
+    assert settings.redis_url == "redis://127.0.0.1:6379"
+    assert settings.redis_group_prefix == "xcore:cg"
+    assert settings.redis_consumer_name == "discord-bot"
+    assert settings.mongo_uri == "mongodb://127.0.0.1:27017"
+    assert settings.mongo_db_name == "xcore"
+
+
+def test_settings_from_env_rpc_timeout_must_be_integer(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _set_required_env(monkeypatch)
+    monkeypatch.setenv("RPC_TIMEOUT_MS", "abc")
+
+    with pytest.raises(
+        RuntimeError, match="RPC_TIMEOUT_MS: Input should be a valid integer"
+    ):
+        Settings.from_env()
+
+
+def test_settings_from_env_rpc_timeout_positive(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _set_required_env(monkeypatch)
+    monkeypatch.setenv("RPC_TIMEOUT_MS", "0")
+
+    with pytest.raises(
+        RuntimeError, match="RPC_TIMEOUT_MS: Input should be greater than 0"
+    ):
+        Settings.from_env()
+
+
+def test_settings_from_env_hides_values_of_other_variables(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _set_required_env(monkeypatch)
+    monkeypatch.setenv("DISCORD_BOT_TOKEN", "secret-token")
+    monkeypatch.delenv("DISCORD_ADMIN_ROLE_ID")
+
+    with pytest.raises(RuntimeError) as raised:
+        Settings.from_env()
+
+    assert str(raised.value) == (
+        "Missing required environment variable: DISCORD_ADMIN_ROLE_ID"
+    )
+    # An uncaught error prints the whole chain; pydantic would echo the input there.
+    printed = "".join(traceback.format_exception(raised.value))
+    assert "input_value" not in printed
+    assert "secret" not in printed
+
+
+def test_settings_blank_ids_use_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
+    _set_required_env(monkeypatch)
+    monkeypatch.setenv("CASES_PANEL_CHANNEL_ID", " ")
+    monkeypatch.setenv("DISCORD_GENERAL_ADMIN_ROLE_ID", "")
+
+    settings = Settings.from_env()
+
+    assert settings.cases_panel_channel_id == 0
+    assert settings.discord_general_admin_role_id == 10
+
+
+def test_settings_blank_list_means_none(monkeypatch: pytest.MonkeyPatch) -> None:
+    _set_required_env(monkeypatch)
+    monkeypatch.setenv("MAPS_TAG_PROFILES", "")
+
+    assert Settings.from_env().maps_tag_profiles == ""
+
+
+def test_settings_is_frozen_model() -> None:
+    settings = Settings(
+        discord_bot_token="token",
+        discord_admin_role_id=10,
+        discord_private_channel_id=20,
+        **PERMISSIONS_SETTINGS,
+    )
+
+    with pytest.raises(ValidationError):
+        settings.discord_bot_token = "new-token"
+
+
+def test_settings_error_log_channel_optional(monkeypatch: pytest.MonkeyPatch) -> None:
+    _set_required_env(monkeypatch)
+    monkeypatch.setenv("DISCORD_ERROR_LOG_CHANNEL_ID", "")
+
+    settings = Settings.from_env()
+    assert settings.discord_error_log_channel_id is None
+
+    monkeypatch.setenv("DISCORD_ERROR_LOG_CHANNEL_ID", "123456")
+    settings = Settings.from_env()
+    assert settings.discord_error_log_channel_id == 123456
+
+
+def test_settings_mutes_channel_id_defaults_to_zero(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _set_required_env(monkeypatch)
+
+    settings = Settings.from_env()
+
+    assert settings.discord_mutes_channel_id == 0
+
+
+def test_settings_votekicks_channel_id_defaults_to_zero(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _set_required_env(monkeypatch)
+
+    settings = Settings.from_env()
+
+    assert settings.discord_votekicks_channel_id == 0
+
+
+def test_settings_clear_stale_commands_defaults_to_false(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _set_required_env(monkeypatch)
+
+    settings = Settings.from_env()
+
+    assert settings.discord_clear_stale_commands is False
+
+
+def test_settings_clear_stale_commands_parses_bool(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _set_required_env(monkeypatch)
+    monkeypatch.setenv("DISCORD_CLEAR_STALE_COMMANDS", "true")
+
+    settings = Settings.from_env()
+
+    assert settings.discord_clear_stale_commands is True

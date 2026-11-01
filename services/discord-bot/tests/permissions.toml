@@ -1,0 +1,10 @@
+# The shared role configuration the tests start the bot with.
+schemaVersion = 1
+[discord]
+guildId = "123"
+[[discord.bindings]]
+roleId = "10"
+role = "moderator"
+[[discord.bindings]]
+roleId = "20"
+role = "admin"
