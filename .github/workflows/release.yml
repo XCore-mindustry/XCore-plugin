@@ -18,6 +18,7 @@ permissions:
 jobs:
   publish:
     runs-on: ubuntu-latest
+    environment: release
     outputs:
       component: ${{ steps.tag.outputs.component }}
       version: ${{ steps.tag.outputs.version }}

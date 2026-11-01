@@ -1,0 +1,22 @@
+# Reviewed false positives: Discord snowflake IDs in test fixtures and documentation.
+05f8e783273c4df9ccbf26a8a65e54c120f5727a:protocol/fixtures/invalid/security/security.staff.sync.request.v1.duplicate-role.json:discord-client-id:7
+05f8e783273c4df9ccbf26a8a65e54c120f5727a:protocol/fixtures/invalid/security/security.staff.sync.request.v1.missing-complete.json:discord-client-id:7
+05f8e783273c4df9ccbf26a8a65e54c120f5727a:protocol/fixtures/valid/security/security.staff.sync.request.v1.json:discord-client-id:7
+05f8e783273c4df9ccbf26a8a65e54c120f5727a:protocol/fixtures/valid/security/security.staff.sync.request.v1.left-guild.json:discord-client-id:7
+120e8d72fcc2d7b158b83781884c1663580e4b65:protocol/spec/fixtures/valid/discord/discord.admin-access.changed.command.v1.grant.json:discord-client-id:11
+120e8d72fcc2d7b158b83781884c1663580e4b65:protocol/spec/fixtures/valid/discord/discord.admin-access.changed.command.v1.grant.json:discord-client-id:21
+120e8d72fcc2d7b158b83781884c1663580e4b65:protocol/spec/fixtures/valid/discord/discord.admin-access.changed.command.v1.revoke.json:discord-client-id:11
+120e8d72fcc2d7b158b83781884c1663580e4b65:protocol/spec/fixtures/valid/discord/discord.admin-access.changed.command.v1.revoke.json:discord-client-id:21
+120e8d72fcc2d7b158b83781884c1663580e4b65:protocol/spec/fixtures/valid/discord/discord.unlink.command.v1.json:discord-client-id:11
+120e8d72fcc2d7b158b83781884c1663580e4b65:protocol/spec/fixtures/valid/discord/discord.unlink.command.v1.json:discord-client-id:16
+20d79820ad7b061d0d259203704128f76ec36fab:protocol/fixtures/valid/maps/maps.upload.request.v1.json:discord-client-id:11
+32ff004ce3766c11e7a58ed0da94a98bd91df194:docs/architecture/map-discord-attribution.md:discord-client-id:20
+3b071e65a22db69bcef89868940416512b69ed5e:src/test/java/org/xcore/plugin/model/PlayerDataDocumentContractTest.java:discord-client-id:76
+3b071e65a22db69bcef89868940416512b69ed5e:src/test/resources/contract/player_document.json:discord-client-id:19
+6aecfda4b664f8741a6b5a639c231dca6290f972:protocol/fixtures/invalid/maps/maps.load.command.v1.invalid-time.json:discord-client-id:11
+6aecfda4b664f8741a6b5a639c231dca6290f972:protocol/fixtures/valid/maps/maps.list.response.v1.discord-upload.json:discord-client-id:21
+6aecfda4b664f8741a6b5a639c231dca6290f972:protocol/fixtures/valid/maps/maps.list.response.v1.discord-upload.json:discord-client-id:26
+6aecfda4b664f8741a6b5a639c231dca6290f972:protocol/fixtures/valid/maps/maps.load.command.v1.discord-upload.json:discord-client-id:11
+6aecfda4b664f8741a6b5a639c231dca6290f972:protocol/fixtures/valid/maps/maps.load.command.v1.discord-upload.json:discord-client-id:16
+f7d3f849951b2e7b1609d69211528852fa14de09:docs/architecture/map-discord-attribution.md:discord-client-id:18
+f7d3f849951b2e7b1609d69211528852fa14de09:docs/architecture/map-discord-attribution.md:discord-client-id:20
