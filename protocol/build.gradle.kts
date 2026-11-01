@@ -59,6 +59,13 @@ publishing {
             version = project.version.toString()
 
             pom {
+                url.set("https://github.com/XCore-mindustry/xcore/tree/main/protocol")
+                licenses {
+                    license {
+                        name.set("Mozilla Public License 2.0")
+                        url.set("https://www.mozilla.org/MPL/2.0/")
+                    }
+                }
                 name.set("xcore-protocol-java")
                 description.set("Generated Java protocol artifacts for the canonical XCore protocol surface.")
             }
