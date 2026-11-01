@@ -152,7 +152,7 @@ jobs:
           uv run --no-sync python scripts/validate-generated-models.py
           git diff --exit-code -- .
       - run: uv run --no-sync pytest
-      - run: uv build
+      - run: uv build --package xcore-protocol --out-dir "$GITHUB_WORKSPACE/protocol/dist"
       - name: Built wheel installs
         working-directory: /tmp
         run: uv run --isolated --with "$GITHUB_WORKSPACE"/protocol/dist/*.whl python -c 'import xcore_protocol'

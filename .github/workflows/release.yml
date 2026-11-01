@@ -124,7 +124,7 @@ jobs:
           uv run --no-sync python scripts/validate-generation.py
           uv run --no-sync python scripts/validate-generated-models.py
           uv run --no-sync pytest
-          uv build
+          uv build --package xcore-protocol --out-dir "$GITHUB_WORKSPACE/protocol/dist"
       - uses: pypa/gh-action-pypi-publish@release/v1
         with:
           packages-dir: protocol/dist
