@@ -1,37 +1,19 @@
-import org.gradle.api.credentials.PasswordCredentials
-import org.gradle.authentication.http.BasicAuthentication
-
 plugins {
     base
+    id("xcore.publish") apply false
 }
 
-val baseVersion = "0.2.0"
-version = providers.gradleProperty("xcorePublishVersion").orElse(baseVersion).get()
-
-val xcoreSnapshotsRepositoryUrl =
-    providers
-        .gradleProperty("xcoreMavenSnapshotsUrl")
-        .orElse("https://maven.x-core.org/snapshots")
-val xcoreReleasesRepositoryUrl =
-    providers
-        .gradleProperty("xcoreMavenReleasesUrl")
-        .orElse("https://maven.x-core.org/releases")
-
-tasks.register("getProjectVersion") {
-    doLast {
-        println(project.version.toString())
-    }
-}
+version = "0.2.0"
+val junitBom = libs.junit.bom
 
 subprojects {
     apply(plugin = "java-library")
-    apply(plugin = "maven-publish")
+    apply(plugin = "xcore.publish")
 
     group = "org.xcore.testkit"
-    version = rootProject.version
+    version = parent!!.version
 
     repositories {
-        mavenLocal()
         mavenCentral()
         maven("https://maven.xpdustry.com/mindustry")
         maven("https://raw.githubusercontent.com/Zelaux/MindustryRepo/master/repository")
@@ -43,7 +25,7 @@ subprojects {
     }
 
     dependencies {
-        "testImplementation"(platform("org.junit:junit-bom:6.1.3"))
+        "testImplementation"(platform(junitBom))
         "testImplementation"("org.junit.jupiter:junit-jupiter")
         "testRuntimeOnly"("org.junit.platform:junit-platform-launcher")
     }
@@ -51,24 +33,6 @@ subprojects {
     tasks.withType<Test>().configureEach { useJUnitPlatform() }
 
     extensions.configure<PublishingExtension> {
-        repositories {
-            maven {
-                name = "xcoreRepositorySnapshots"
-                url = uri(xcoreSnapshotsRepositoryUrl.get())
-                credentials(PasswordCredentials::class)
-                authentication {
-                    create<BasicAuthentication>("basic")
-                }
-            }
-            maven {
-                name = "xcoreRepositoryReleases"
-                url = uri(xcoreReleasesRepositoryUrl.get())
-                credentials(PasswordCredentials::class)
-                authentication {
-                    create<BasicAuthentication>("basic")
-                }
-            }
-        }
         publications {
             create<MavenPublication>("maven") {
                 groupId = project.group.toString()

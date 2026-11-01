@@ -1,27 +1,10 @@
-import org.gradle.api.credentials.PasswordCredentials
-import org.gradle.authentication.http.BasicAuthentication
-
 plugins {
     `java-library`
-    `maven-publish`
+    id("xcore.java17")
+    id("xcore.publish")
 }
 
-group = "org.xcore"
-
-val xcoreSnapshotsRepositoryUrl =
-    providers
-        .gradleProperty("xcoreMavenSnapshotsUrl")
-        .orElse("https://maven.x-core.org/snapshots")
-val xcoreReleasesRepositoryUrl =
-    providers
-        .gradleProperty("xcoreMavenReleasesUrl")
-        .orElse("https://maven.x-core.org/releases")
-val isSnapshotVersion = version.toString().endsWith("-SNAPSHOT")
-
 java {
-    toolchain {
-        languageVersion = JavaLanguageVersion.of(17)
-    }
     withSourcesJar()
 }
 
@@ -37,6 +20,7 @@ dependencies {
     compileOnly(libs.mindustry.core)
     compileOnly(libs.arc.core)
 
+    testImplementation(platform(libs.junit.bom))
     testImplementation(libs.junit.jupiter)
     testImplementation(libs.mindustry.core)
     testImplementation(libs.arc.core)
@@ -51,26 +35,6 @@ tasks.named<Test>("test") {
 }
 
 publishing {
-    repositories {
-        maven {
-            name = "xcoreRepositorySnapshots"
-            url = uri(xcoreSnapshotsRepositoryUrl.get())
-            credentials(PasswordCredentials::class)
-            authentication {
-                create<BasicAuthentication>("basic")
-            }
-        }
-
-        maven {
-            name = "xcoreRepositoryReleases"
-            url = uri(xcoreReleasesRepositoryUrl.get())
-            credentials(PasswordCredentials::class)
-            authentication {
-                create<BasicAuthentication>("basic")
-            }
-        }
-    }
-
     publications {
         create<MavenPublication>("maven") {
             from(components["java"])
@@ -79,11 +43,5 @@ publishing {
             artifactId = "cloud-mindustry"
             version = project.version.toString()
         }
-    }
-}
-
-tasks.register("getProjectVersion") {
-    doLast {
-        println(project.version.toString())
     }
 }

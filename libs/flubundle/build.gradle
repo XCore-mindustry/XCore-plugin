@@ -1,17 +1,13 @@
 plugins {
     id 'java-library'
-    id 'maven-publish'
+    id 'xcore.publish'
 }
 
-group = 'ospx'
-def baseVersion = '2.1.2'
-version = findProperty('xcorePublishVersion') ?: baseVersion
+group = 'com.ospx'
+version = '2.1.2'
 ext {
-    mindustryVersion = "v160"
+    mindustryVersion = libs.versions.mindustry.get()
 }
-
-def xcoreSnapshotsRepositoryUrl = findProperty('xcoreMavenSnapshotsUrl') ?: 'https://maven.x-core.org/snapshots'
-def xcoreReleasesRepositoryUrl = findProperty('xcoreMavenReleasesUrl') ?: 'https://maven.x-core.org/releases'
 
 java {
     toolchain {
@@ -20,35 +16,14 @@ java {
 }
 
 repositories {
-    mavenLocal()
     mavenCentral()
     maven { url "https://maven.x-core.org/releases" }
-    maven { url "https://maven.x-core.org/snapshots" }
     maven { url "https://maven.xpdustry.com/mindustry" }
     maven { url "https://raw.githubusercontent.com/Zelaux/MindustryRepo/master/repository" }
     maven { url 'https://www.jitpack.io' }
 }
 
 publishing {
-    repositories {
-        maven {
-            name = "xcoreRepositorySnapshots"
-            url = uri(xcoreSnapshotsRepositoryUrl)
-            credentials(PasswordCredentials)
-            authentication {
-                basic(BasicAuthentication)
-            }
-        }
-
-        maven {
-            name = "xcoreRepositoryReleases"
-            url = uri(xcoreReleasesRepositoryUrl)
-            credentials(PasswordCredentials)
-            authentication {
-                basic(BasicAuthentication)
-            }
-        }
-    }
     publications {
         maven(MavenPublication) {
             groupId = "com.ospx"
@@ -60,18 +35,18 @@ publishing {
 }
 
 dependencies {
-    compileOnly "com.github.Anuken.Mindustry:core:$mindustryVersion"
-    compileOnly "com.github.Anuken.Arc:arc-core:$mindustryVersion"
+    compileOnly libs.mindustry.core
+    compileOnly libs.arc.core
 
-    api "net.xyzsd.fluent:fluent-base:2.0.2-xcore"
+    api libs.fluent.base
     // DURATION formats units with CLDR data; same version fluent-base uses for plural rules.
-    implementation "com.ibm.icu:icu4j:78.3"
+    implementation libs.icu4j
 
-    testImplementation platform('org.junit:junit-bom:6.1.3')
+    testImplementation platform(libs.junit.bom)
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
-    testImplementation 'org.junit.jupiter:junit-jupiter'
-    testImplementation "com.github.Anuken.Mindustry:core:$mindustryVersion"
-    testImplementation "com.github.Anuken.Arc:arc-core:$mindustryVersion"
+    testImplementation libs.junit.jupiter
+    testImplementation libs.mindustry.core
+    testImplementation libs.arc.core
 }
 
 tasks.withType(Test).configureEach {

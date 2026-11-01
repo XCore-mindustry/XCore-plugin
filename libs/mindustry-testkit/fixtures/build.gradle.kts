@@ -1,11 +1,11 @@
 dependencies {
-    api(project(":core"))
+    api(project(":libs:mindustry-testkit:core"))
 
     compileOnly("com.github.Anuken.Mindustry:core:v160")
     compileOnly("com.github.Anuken.Arc:arc-core:v160")
     compileOnly("com.github.Anuken.Arc:g3d:v160")
 
-    compileOnly(platform("org.junit:junit-bom:6.1.3"))
+    compileOnly(platform(libs.junit.bom))
     compileOnly("org.junit.jupiter:junit-jupiter-api")
 
     testImplementation("com.github.Anuken.Mindustry:core:v160")

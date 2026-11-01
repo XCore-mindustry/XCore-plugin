@@ -1,10 +1,7 @@
-import org.gradle.api.credentials.PasswordCredentials
-import org.gradle.api.publish.maven.MavenPublication
-import org.gradle.authentication.http.BasicAuthentication
-
 plugins {
     java
-    `maven-publish`
+    id("xcore.java17")
+    id("xcore.publish")
 }
 
 fun pyprojectBaseVersion(): String {
@@ -22,22 +19,10 @@ fun pyprojectBaseVersion(): String {
 }
 
 group = "org.xcore"
-val baseVersion = pyprojectBaseVersion()
-version = providers.gradleProperty("xcorePublishVersion").orElse("$baseVersion-SNAPSHOT").get()
-
-val xcoreSnapshotsRepositoryUrl =
-    providers
-        .gradleProperty("xcoreMavenSnapshotsUrl")
-        .orElse("https://maven.x-core.org/snapshots")
-val xcoreReleasesRepositoryUrl =
-    providers
-        .gradleProperty("xcoreMavenReleasesUrl")
-        .orElse("https://maven.x-core.org/releases")
+// Java and Python packages share one version, kept in pyproject.toml.
+version = pyprojectBaseVersion()
 
 java {
-    toolchain {
-        languageVersion.set(JavaLanguageVersion.of(17))
-    }
     withSourcesJar()
 }
 
@@ -47,7 +32,7 @@ repositories {
 
 dependencies {
     testImplementation("com.google.code.gson:gson:2.14.0")
-    testImplementation(platform("org.junit:junit-bom:6.1.3"))
+    testImplementation(platform(libs.junit.bom))
     testImplementation("org.junit.jupiter:junit-jupiter")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
@@ -66,26 +51,6 @@ sourceSets {
 }
 
 publishing {
-    repositories {
-        maven {
-            name = "xcoreRepositorySnapshots"
-            url = uri(xcoreSnapshotsRepositoryUrl.get())
-            credentials(PasswordCredentials::class)
-            authentication {
-                create<BasicAuthentication>("basic")
-            }
-        }
-
-        maven {
-            name = "xcoreRepositoryReleases"
-            url = uri(xcoreReleasesRepositoryUrl.get())
-            credentials(PasswordCredentials::class)
-            authentication {
-                create<BasicAuthentication>("basic")
-            }
-        }
-    }
-
     publications {
         create<MavenPublication>("mavenJava") {
             from(components["java"])
@@ -99,28 +64,4 @@ publishing {
             }
         }
     }
-}
-
-tasks.register("getProjectVersion") {
-    doLast {
-        println(project.version.toString())
-    }
-}
-
-tasks.register("getBaseVersion") {
-    doLast {
-        println(baseVersion)
-    }
-}
-
-val verifyReleaseVersion by tasks.registering {
-    doLast {
-        check(project.version.toString() == baseVersion) {
-            "Release version ${project.version} must match pyproject.toml version $baseVersion"
-        }
-    }
-}
-
-tasks.register("validateRelease") {
-    dependsOn(tasks.test, verifyReleaseVersion)
 }

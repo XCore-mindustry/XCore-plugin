@@ -21,7 +21,7 @@ repositories {
 }
 
 dependencies {
-    implementation(project(":lib"))
+    implementation(project(":libs:cloud-mindustry:lib"))
 
     compileOnly(libs.mindustry.core)
     compileOnly(libs.arc.core)

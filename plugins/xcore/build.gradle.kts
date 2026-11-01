@@ -4,23 +4,19 @@ import com.xpdustry.toxopid.extension.anukeXpdustry
 import com.xpdustry.toxopid.spec.ModMetadata
 import com.xpdustry.toxopid.spec.ModPlatform
 import com.xpdustry.toxopid.task.MindustryExec
-import org.gradle.api.credentials.PasswordCredentials
 import org.gradle.api.publish.maven.MavenPublication
 import org.gradle.api.tasks.testing.Test
-import org.gradle.authentication.http.BasicAuthentication
 
 plugins {
     java
-    `maven-publish`
+    id("xcore.publish")
     alias(libs.plugins.toxopid)
     alias(libs.plugins.shadow)
 }
 
 group = "org.xcore.plugin"
-val baseVersion = "5.3.0"
-version = providers.gradleProperty("xcorePublishVersion").orElse(baseVersion).get()
-val isSnapshotVersion = version.toString().endsWith("-SNAPSHOT")
-val mindustryVersion = libs.versions.mindustry.get()
+version = "5.3.0"
+val mindustryVersion = libs.versions.mindustry.get().removePrefix("v")
 
 java {
     toolchain {
@@ -45,35 +41,22 @@ val metadata =
         mainClass = "${project.group}.XcorePlugin",
     )
 
-val xcoreSnapshotsRepositoryUrl =
-    providers
-        .gradleProperty("xcoreMavenSnapshotsUrl")
-        .orElse("https://maven.x-core.org/snapshots")
-val xcoreReleasesRepositoryUrl =
-    providers
-        .gradleProperty("xcoreMavenReleasesUrl")
-        .orElse("https://maven.x-core.org/releases")
-
 repositories {
-    mavenLocal()
-    maven { url = uri("https://maven.x-core.org/snapshots") }
     maven { url = uri("https://maven.x-core.org/releases") }
     mavenCentral()
     anukeXpdustry()
     maven(url = "https://oss.sonatype.org/content/repositories/snapshots")
     maven(url = "https://www.jitpack.io")
-    maven(url = xcoreReleasesRepositoryUrl)
-    maven(url = xcoreSnapshotsRepositoryUrl)
 }
 
 dependencies {
     compileOnly(toxopid.dependencies.mindustryCore)
     compileOnly(toxopid.dependencies.arcCore)
     compileOnly(toxopid.dependencies.mindustryHeadless)
-    implementation(libs.xcore.protocol.java)
-    implementation(libs.flubundle)
-    implementation(libs.xcore.ui)
-    implementation(libs.cloud.mindustry)
+    implementation(project(":protocol"))
+    implementation(project(":libs:flubundle"))
+    implementation(project(":libs:xcore-ui"))
+    implementation(project(":libs:cloud-mindustry:lib"))
     implementation(libs.mongodb.sync)
     implementation(libs.mongodb.reactive)
     implementation(libs.gson)
@@ -92,8 +75,8 @@ dependencies {
     testImplementation(libs.mockito.core)
     testImplementation(libs.mockito.junit.jupiter)
     testImplementation(libs.assertj.core)
-    testImplementation("org.xcore.testkit:ui:0.1.0")
-    testImplementation("org.xcore.testkit:fixtures:0.1.0")
+    testImplementation(project(":libs:mindustry-testkit:ui"))
+    testImplementation(project(":libs:mindustry-testkit:fixtures"))
     testImplementation(libs.testcontainers.junit.jupiter)
     testImplementation(libs.testcontainers)
     testImplementation(libs.avaje.inject.test)
@@ -115,6 +98,7 @@ val generateModInfo by tasks.registering {
 }
 
 tasks.jar {
+    archiveBaseName.set("XCore-plugin")
     from(generateModInfo)
 }
 
@@ -123,7 +107,7 @@ tasks.assemble {
 }
 
 fun ShadowJar.applyCommonSettings() {
-    archiveBaseName.set(project.name)
+    archiveBaseName.set("XCore-plugin")
     archiveVersion.set(project.version.toString())
     archiveClassifier.set("")
     destinationDirectory.set(layout.buildDirectory.dir("libs"))
@@ -148,40 +132,13 @@ tasks.register<ShadowJar>("shadowJarRelease") {
     configurations = listOf(project.configurations.runtimeClasspath.get())
 }
 
-val publishJarTask =
-    if (isSnapshotVersion) {
-        tasks.named<ShadowJar>("shadowJar")
-    } else {
-        tasks.named<ShadowJar>("shadowJarRelease")
-    }
-
 publishing {
-    repositories {
-        maven {
-            name = "xcoreRepositorySnapshots"
-            url = uri(xcoreSnapshotsRepositoryUrl.get())
-            credentials(PasswordCredentials::class)
-            authentication {
-                create<BasicAuthentication>("basic")
-            }
-        }
-
-        maven {
-            name = "xcoreRepositoryReleases"
-            url = uri(xcoreReleasesRepositoryUrl.get())
-            credentials(PasswordCredentials::class)
-            authentication {
-                create<BasicAuthentication>("basic")
-            }
-        }
-    }
-
     publications {
         create<MavenPublication>("maven") {
             groupId = project.group.toString()
-            artifactId = project.name
+            artifactId = "XCore-plugin"
             version = project.version.toString()
-            artifact(publishJarTask)
+            artifact(tasks.named("shadowJarRelease"))
 
             pom {
                 name.set("XCore-plugin")
@@ -213,10 +170,6 @@ tasks.register("printArtifacts") {
         println("shadowJar: ${shadow.absolutePath}")
         println("shadowJarRelease: ${release.absolutePath}")
     }
-}
-
-tasks.register("getProjectVersion") {
-    doLast { println(project.version.toString()) }
 }
 
 tasks.register("validateCi") {
