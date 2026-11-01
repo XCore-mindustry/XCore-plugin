@@ -4,10 +4,14 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [5.3.0] - 2026-11-01
+
 ### Changed
 - The profile writes wins next to the games they came from ("Wins: 777 of 1,736 | 45%") and says that the all-modes rate includes survival and Hexed, where a win is much rarer, so it can sit below the PvP rate. The Stats tab lists all-time games, wins and rate per mode (PvP, survival, Hexed, events and other), adding up to the total.
 - A ladder whose standings count `top3` (HexedCore) shows its wins as first places, with top-3 finishes beside them, on the profile and in `/season`.
 - The mute messages tell the player where to appeal (`#tickets` in Discord).
+- Admin marks and admin-only menu parts follow the player's current staff rights instead of the legacy `PlayerData.admin` flag, which stopped being updated when the legacy permissions mode was removed (#46). An offline player shows no admin mark, and leaderboard cards no longer carry the `admin` attribute. Joining a full server checks the same live rights.
+- A vote kick that passes because the target left says so: "Kick counted automatically: the player disconnected during the vote."
 
 ### Added
 - Case notices `appeal_unmuted` and `appeal_mute_shortened` for accepted mute appeals.
@@ -406,7 +410,8 @@ No changelog entries were recorded in the Unreleased section.
 ### Security
 - Added ingress-based connection verification to harden request entry points.
 
-[Unreleased]: https://github.com/XCore-mindustry/XCore-plugin/compare/v5.2.0...HEAD
+[Unreleased]: https://github.com/XCore-mindustry/XCore-plugin/compare/v5.3.0...HEAD
+[5.3.0]: https://github.com/XCore-mindustry/XCore-plugin/compare/v5.2.0...v5.3.0
 [5.2.0]: https://github.com/XCore-mindustry/XCore-plugin/compare/v5.1.0...v5.2.0
 [5.1.0]: https://github.com/XCore-mindustry/XCore-plugin/compare/v5.0.0...v5.1.0
 [5.0.0]: https://github.com/XCore-mindustry/XCore-plugin/compare/v4.7.0...v5.0.0
