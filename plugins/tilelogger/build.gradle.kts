@@ -1,0 +1,164 @@
+import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
+import com.xpdustry.toxopid.Toxopid
+import com.xpdustry.toxopid.extension.anukeXpdustry
+import com.xpdustry.toxopid.spec.ModPlatform
+import org.gradle.nativeplatform.tasks.LinkSharedLibrary
+import java.util.Locale
+
+plugins {
+    java
+    alias(libs.plugins.avaje.inject)
+    alias(libs.plugins.shadow)
+    alias(libs.plugins.toxopid)
+    alias(libs.plugins.jmh)
+}
+
+java {
+    toolchain.languageVersion.set(
+        JavaLanguageVersion.of(
+            libs.versions.java
+                .get()
+                .toInt(),
+        ),
+    )
+}
+
+toxopid {
+    compileVersion.set(libs.versions.mindustry.get())
+    runtimeVersion.set(libs.versions.mindustry.get())
+    platforms = setOf(ModPlatform.SERVER)
+}
+
+repositories {
+    mavenLocal()
+    anukeXpdustry()
+    mavenCentral()
+    maven("https://maven.x-core.org/releases")
+    maven("https://maven.x-core.org/snapshots")
+}
+
+dependencies {
+    compileOnly(toxopid.dependencies.arcCore)
+    compileOnly(toxopid.dependencies.mindustryCore)
+    compileOnly(toxopid.dependencies.mindustryHeadless)
+
+    compileOnly(libs.xcore.plugin)
+    compileOnly(libs.flubundle)
+    compileOnly(libs.cloud.mindustry)
+
+    compileOnly(libs.avaje.inject)
+    annotationProcessor(libs.avaje.inject.gen)
+
+    testImplementation(platform("org.junit:junit-bom:6.1.3"))
+    testImplementation("org.junit.jupiter:junit-jupiter")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+    testImplementation(libs.flubundle)
+    testImplementation(libs.xcore.plugin)
+    testImplementation(libs.avaje.inject)
+    testImplementation("org.assertj:assertj-core:3.27.7")
+    testImplementation("org.mockito:mockito-core:5.24.0")
+    testImplementation("org.mockito:mockito-junit-jupiter:5.24.0")
+    testImplementation("org.xcore.testkit:fixtures:0.1.0-SNAPSHOT")
+    testImplementation(toxopid.dependencies.arcCore)
+    testImplementation(toxopid.dependencies.mindustryCore)
+    testImplementation(toxopid.dependencies.mindustryHeadless)
+}
+
+tasks.withType<Test> {
+    useJUnitPlatform()
+    jvmArgs("--enable-native-access=ALL-UNNAMED", "--illegal-native-access=deny")
+}
+
+// Java/native boundary benchmarks against the release native library: ./gradlew jmh
+jmh {
+    jmhVersion.set("1.37")
+    duplicateClassesStrategy.set(DuplicatesStrategy.EXCLUDE)
+    failOnError.set(true)
+    includeTests.set(false)
+    resultFormat.set("JSON")
+}
+dependencies {
+    "jmhImplementation"(libs.xcore.plugin)
+    "jmhImplementation"(toxopid.dependencies.mindustryCore)
+    "jmhImplementation"(toxopid.dependencies.arcCore)
+}
+tasks.named<ShadowJar>("jmhJar") {
+    configurations = listOf(project.configurations.getByName("jmhRuntimeClasspath"))
+    mergeServiceFiles()
+    // The JMH plugin's legacy Shadow integration emits a thin class path on Shadow 9.
+    manifest.attributes["Class-Path"] = ""
+}
+
+tasks.named<JavaCompile>("compileJava") {
+    options.encoding = "UTF-8"
+}
+
+tasks.named<JavaCompile>("compileTestJava") {
+    options.encoding = "UTF-8"
+}
+
+tasks.named<Jar>("jar") {
+    archiveFileName.set("${project.name}.jar")
+    from(rootDir) { include("plugin.json") }
+}
+
+fun ShadowJar.applyCommonSettings() {
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    mergeServiceFiles()
+    filesMatching("META-INF/services/**") {
+        duplicatesStrategy = DuplicatesStrategy.INCLUDE
+    }
+    isReproducibleFileOrder = true
+    isPreserveFileTimestamps = false
+    from(rootDir) { include("plugin.json") }
+
+    configurations = listOf(project.configurations.runtimeClasspath.get())
+    from(
+        project.sourceSets.main
+            .get()
+            .output,
+    )
+}
+tasks.named<ShadowJar>("shadowJar") {
+    applyCommonSettings()
+    archiveFileName.set("${project.name}.jar")
+}
+
+fun registerNativeJar(variant: String) {
+    tasks.register<ShadowJar>("jar$variant") {
+        group = "build"
+        description = "Assembles shadow JAR with $variant native library."
+        archiveClassifier.set(variant.lowercase(Locale.getDefault()))
+        applyCommonSettings()
+        val nativeTask = project(":native").tasks.named<LinkSharedLibrary>("link$variant")
+        dependsOn(nativeTask)
+        from(nativeTask.map { it.linkedFile })
+    }
+}
+registerNativeJar("Release")
+registerNativeJar("Debug")
+tasks.named("build") {
+    dependsOn("jarRelease")
+}
+
+gradle.projectsEvaluated {
+    tasks.named<Test>("test") {
+        val linkDebug = project(":native").tasks.named<LinkSharedLibrary>("linkDebug")
+        dependsOn(linkDebug)
+        classpath +=
+            files(
+                linkDebug.map {
+                    it.linkedFile
+                        .get()
+                        .asFile.parentFile
+                },
+            )
+    }
+    val linkRelease = project(":native").tasks.named<LinkSharedLibrary>("linkRelease")
+    dependencies {
+        "jmhRuntimeOnly"(files(linkRelease.map { it.linkedFile.get().asFile.parentFile }).builtBy(linkRelease))
+    }
+}
+
+// Benchmarks are never run by check, but must keep compiling against the API.
+tasks.named("check") { dependsOn(":native:check", "compileJmhJava") }
