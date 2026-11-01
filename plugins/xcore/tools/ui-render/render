@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+# Renders this plugin's menus in the real desktop client with the renderer of mindustry-testkit.
+set -euo pipefail
+cd "$(dirname "$0")/../.."
+
+renderer=../../libs/mindustry-testkit/render/render
+
+# Without an input of its own, the run covers every exported fixture.
+has_input=false
+previous=""
+for arg in "$@"; do
+    [[ "$arg" == -* || "$previous" == --profiles || "$previous" == --out ]] || has_input=true
+    previous="$arg"
+done
+$has_input || set -- "$@" build/ui-render/packets
+../../gradlew -p ../.. :plugins:xcore:exportUiFixtures --console=plain
+exec "$renderer" --out build/ui-render/results "$@"

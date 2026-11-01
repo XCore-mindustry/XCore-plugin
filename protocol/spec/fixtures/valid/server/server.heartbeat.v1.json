@@ -1,0 +1,11 @@
+{
+  "messageType": "server.heartbeat",
+  "messageVersion": 1,
+  "serverName": "survival-eu-1",
+  "discordChannelId": 1284729104857600001,
+  "players": 2,
+  "maxPlayers": 120,
+  "version": "Mindustry 147.1",
+  "host": "play.xcore.example",
+  "port": 6567
+}

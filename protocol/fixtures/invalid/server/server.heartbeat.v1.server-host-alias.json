@@ -1,0 +1,10 @@
+{
+  "messageType": "server.heartbeat",
+  "messageVersion": 1,
+  "serverName": "mini-pvp",
+  "discordChannelId": 321,
+  "players": 4,
+  "maxPlayers": 12,
+  "version": "146.1",
+  "serverHost": "play.example.com"
+}

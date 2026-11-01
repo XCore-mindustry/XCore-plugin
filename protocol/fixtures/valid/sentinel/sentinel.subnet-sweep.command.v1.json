@@ -1,0 +1,7 @@
+{
+  "messageType": "sentinel.subnet-sweep.command",
+  "messageVersion": 1,
+  "actor": "admin",
+  "reason": "botnet wave",
+  "occurredAt": "2026-08-30T12:00:00Z"
+}

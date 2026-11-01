@@ -1,0 +1,16 @@
+{
+  "messageType": "moderation.audit.appended",
+  "messageVersion": 1,
+  "entryType": "ban",
+  "target": {
+    "playerName": "Unknown"
+  },
+  "actor": {
+    "actorName": "admin",
+    "actorDiscordId": "123456",
+    "actorType": "discord"
+  },
+  "reason": "griefing",
+  "server": "mini-pvp",
+  "occurredAt": "2026-04-23T12:00:00Z"
+}

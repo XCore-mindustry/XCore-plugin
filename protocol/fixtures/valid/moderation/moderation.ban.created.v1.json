@@ -1,0 +1,22 @@
+{
+  "messageType": "moderation.ban.created",
+  "messageVersion": 1,
+  "target": {
+    "playerUuid": "uuid-7",
+    "playerPid": 7,
+    "playerName": "Target",
+    "ip": "1.2.3.4"
+  },
+  "actor": {
+    "actorName": "admin",
+    "actorDiscordId": "123456",
+    "actorType": "discord"
+  },
+  "reason": "griefing",
+  "expiration": {
+    "expiresAt": "2026-05-01T12:00:00Z",
+    "permanent": false
+  },
+  "server": "mini-pvp",
+  "occurredAt": "2026-04-23T12:00:00Z"
+}

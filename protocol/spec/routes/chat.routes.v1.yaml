@@ -1,0 +1,41 @@
+version: 1
+family: chat
+messages:
+  - messageType: chat.message
+    messageVersion: 1
+    kind: event
+    stream: xcore:evt:chat:message
+    targetScope: broadcast
+    ttlMs: 60000
+    replayable: true
+    idempotentConsumerRecommended: false
+    owner: chat
+  - messageType: chat.global
+    messageVersion: 1
+    kind: event
+    stream: xcore:evt:chat:global
+    targetScope: broadcast
+    ttlMs: 60000
+    replayable: true
+    idempotentConsumerRecommended: false
+    owner: chat
+  - messageType: chat.discord-ingress.command
+    messageVersion: 1
+    kind: command
+    stream: xcore:cmd:discord-message:{server}
+    bindings:
+      server: payload.server
+    targetScope: server
+    ttlMs: 60000
+    replayable: false
+    idempotentConsumerRecommended: true
+    owner: chat
+  - messageType: chat.private
+    messageVersion: 1
+    kind: event
+    stream: xcore:evt:chat:private
+    targetScope: broadcast
+    ttlMs: 60000
+    replayable: true
+    idempotentConsumerRecommended: false
+    owner: chat

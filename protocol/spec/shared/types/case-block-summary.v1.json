@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:xcore:protocol:shared:types:case-block-summary:v1",
+  "title": "CaseBlockSummaryV1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "windowSeconds",
+    "built",
+    "destroyed",
+    "configured",
+    "truncated",
+    "topBlocks"
+  ],
+  "properties": {
+    "windowSeconds": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "built": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "destroyed": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "configured": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "truncated": {
+      "type": "boolean"
+    },
+    "topBlocks": {
+      "type": "array",
+      "maxItems": 8,
+      "items": {
+        "$ref": "urn:xcore:protocol:shared:types:case-block-entry:v1"
+      }
+    },
+    "area": {
+      "$ref": "urn:xcore:protocol:shared:types:case-block-area:v1"
+    },
+    "lastActionSecondsAgo": {
+      "type": "integer",
+      "minimum": 0
+    }
+  }
+}

@@ -1,0 +1,72 @@
+{
+  "messageType": "rating.season.ended",
+  "messageVersion": 1,
+  "season": {
+    "ladder": "mini-pvp",
+    "season": 3,
+    "name": "Season 3",
+    "startsAt": "2026-07-01T00:00:00Z",
+    "endsAt": "2026-10-01T00:00:00Z"
+  },
+  "podium": [
+    {
+      "place": 1,
+      "player": {
+        "playerUuid": "uuid-1",
+        "playerName": "Alice",
+        "playerPid": 101
+      },
+      "discord": {
+        "discordId": "111111111111111111",
+        "discordUsername": "alice"
+      },
+      "rating": 1820,
+      "league": "DIAMOND",
+      "matches": 64,
+      "wins": 47,
+      "prizes": [
+        {
+          "placeFrom": 1,
+          "placeTo": 1,
+          "kind": "badge",
+          "value": "season-champion",
+          "description": "Season champion badge"
+        },
+        {
+          "placeFrom": 1,
+          "placeTo": 3,
+          "kind": "custom",
+          "value": "Discord Nitro, 1 month",
+          "description": "Nitro for the top three"
+        }
+      ]
+    },
+    {
+      "place": 2,
+      "player": {
+        "playerUuid": "uuid-2",
+        "playerName": "Bob",
+        "playerPid": 202
+      },
+      "rating": 1744,
+      "league": "PLATINUM",
+      "matches": 58,
+      "wins": 38,
+      "prizes": [
+        {
+          "placeFrom": 1,
+          "placeTo": 3,
+          "kind": "custom",
+          "value": "Discord Nitro, 1 month",
+          "description": "Nitro for the top three"
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "participants": 312,
+    "matches": 4120
+  },
+  "server": "mini-pvp",
+  "occurredAt": "2026-10-01T00:30:00Z"
+}

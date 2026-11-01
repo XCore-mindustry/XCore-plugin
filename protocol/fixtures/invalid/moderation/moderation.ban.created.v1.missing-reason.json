@@ -1,0 +1,12 @@
+{
+  "messageType": "moderation.ban.created",
+  "messageVersion": 1,
+  "target": {
+    "playerUuid": "uuid-7",
+    "playerName": "Target"
+  },
+  "actor": {
+    "actorName": "admin"
+  },
+  "server": "mini-pvp"
+}

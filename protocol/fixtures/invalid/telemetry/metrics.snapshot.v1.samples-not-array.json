@@ -1,0 +1,11 @@
+{
+  "schemaVersion": "metrics.snapshot.v1",
+  "server": "mini-hexed",
+  "nodeId": "mini-hexed-01",
+  "producer": "xcore-plugin",
+  "createdAtUnixMs": 1790789112000,
+  "startTimeUnixMs": 1790785512000,
+  "sequence": 42,
+  "intervalMs": 10000,
+  "samples": {}
+}

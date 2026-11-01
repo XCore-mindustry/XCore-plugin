@@ -1,0 +1,69 @@
+{
+  "messageType": "cases.report.submitted",
+  "messageVersion": 1,
+  "submissionId": "mini-pvp:report-42",
+  "server": "mini-pvp",
+  "reporter": {
+    "playerUuid": "uuid-reporter",
+    "playerName": "Alice",
+    "playerPid": 12,
+    "ip": "192.0.2.1"
+  },
+  "target": {
+    "playerUuid": "uuid-target",
+    "playerName": "Bob",
+    "playerPid": 24
+  },
+  "targetOnline": true,
+  "reason": "griefing",
+  "comment": "The walls near the core were removed.",
+  "reporterLocale": "uk_UA",
+  "mapName": "Ancient Caldera",
+  "mapFileName": "ancient-caldera.msav",
+  "gameMode": "pvp",
+  "sameNetwork": false,
+  "chat": [
+    {
+      "sentAt": 1791892800000,
+      "playerName": "Alice",
+      "playerPid": 12,
+      "role": "reporter",
+      "text": "Please stop destroying the base.",
+      "team": true
+    },
+    {
+      "sentAt": 1791892801000,
+      "playerName": "Bob",
+      "role": "target",
+      "text": ""
+    },
+    {
+      "sentAt": 1791892802000,
+      "playerName": "Carol",
+      "role": "other",
+      "text": "I saw it too."
+    }
+  ],
+  "blockSummary": {
+    "windowSeconds": 300,
+    "built": 5,
+    "destroyed": 8,
+    "configured": 2,
+    "truncated": false,
+    "topBlocks": [
+      {
+        "block": "copper-wall",
+        "built": 5,
+        "destroyed": 8
+      }
+    ],
+    "area": {
+      "x1": 4,
+      "y1": 5,
+      "x2": 20,
+      "y2": 30
+    },
+    "lastActionSecondsAgo": 2
+  },
+  "occurredAt": "2026-10-13T12:00:00Z"
+}

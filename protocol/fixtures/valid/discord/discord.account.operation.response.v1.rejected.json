@@ -1,0 +1,8 @@
+{
+  "messageType": "discord.account.operation.response",
+  "messageVersion": 1,
+  "server": "mini-pvp",
+  "operationId": "8d1e4b2a-0c3f-4a5b-8e6d-1f2a3b4c5d6e",
+  "status": "rejected",
+  "reason": "link_changed"
+}

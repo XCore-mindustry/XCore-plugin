@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:xcore:protocol:envelopes:envelope-base:v1",
+  "title": "EnvelopeBaseV1",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "message_kind",
+    "message_type",
+    "message_version",
+    "message_id",
+    "producer",
+    "created_at",
+    "content_type",
+    "payload_json"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "1"
+    },
+    "message_kind": {
+      "type": "string",
+      "enum": ["event", "command", "rpc_request", "rpc_response", "dlq"]
+    },
+    "message_type": {
+      "type": "string",
+      "minLength": 1
+    },
+    "message_version": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "message_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "correlation_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "causation_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "producer": {
+      "type": "string",
+      "minLength": 1
+    },
+    "target": {
+      "type": "string",
+      "minLength": 1
+    },
+    "created_at": {
+      "type": "string",
+      "pattern": "^[0-9]+$"
+    },
+    "expires_at": {
+      "type": "string",
+      "pattern": "^[0-9]+$"
+    },
+    "schema_ref": {
+      "type": "string",
+      "minLength": 1
+    },
+    "content_type": {
+      "const": "application/json"
+    },
+    "payload_json": {
+      "type": "string",
+      "minLength": 2
+    }
+  }
+}

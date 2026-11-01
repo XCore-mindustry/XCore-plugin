@@ -1,0 +1,8 @@
+{
+  "messageType": "cases.notice.command",
+  "messageVersion": 1,
+  "server": "mini-pvp",
+  "noticeId": "42:uuid-reporter:report_received",
+  "playerUuid": "uuid-reporter",
+  "requestedAt": "not-a-time"
+}

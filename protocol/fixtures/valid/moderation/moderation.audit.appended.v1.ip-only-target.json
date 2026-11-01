@@ -1,0 +1,20 @@
+{
+  "messageType": "moderation.audit.appended",
+  "messageVersion": 1,
+  "entryType": "pardon",
+  "target": {
+    "ip": "1.2.3.4"
+  },
+  "actor": {
+    "actorName": "admin",
+    "actorDiscordId": "123456",
+    "actorType": "discord"
+  },
+  "reason": "manual ip pardon",
+  "server": "mini-pvp",
+  "occurredAt": "2026-04-23T12:30:00Z",
+  "details": {
+    "source": "discord-bot",
+    "relatedAuditId": "audit-2"
+  }
+}

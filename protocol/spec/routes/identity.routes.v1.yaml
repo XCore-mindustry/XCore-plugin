@@ -1,0 +1,56 @@
+version: 1
+family: identity
+messages:
+  - messageType: player.join-leave
+    messageVersion: 1
+    kind: event
+    stream: xcore:evt:player:joinleave
+    targetScope: broadcast
+    ttlMs: 60000
+    replayable: true
+    idempotentConsumerRecommended: false
+    owner: player-session
+  - messageType: player.custom-nickname.changed.command
+    messageVersion: 1
+    kind: command
+    stream: xcore:cmd:player-custom-nickname:{server}
+    bindings:
+      server: payload.server
+    targetScope: server
+    ttlMs: 120000
+    replayable: false
+    idempotentConsumerRecommended: true
+    owner: player-session
+  - messageType: player.active-badge.changed.command
+    messageVersion: 1
+    kind: command
+    stream: xcore:cmd:player-active-badge:{server}
+    bindings:
+      server: payload.server
+    targetScope: server
+    ttlMs: 120000
+    replayable: false
+    idempotentConsumerRecommended: true
+    owner: player-session
+  - messageType: player.badge-inventory.changed.command
+    messageVersion: 1
+    kind: command
+    stream: xcore:cmd:player-badge-inventory:{server}
+    bindings:
+      server: payload.server
+    targetScope: server
+    ttlMs: 120000
+    replayable: false
+    idempotentConsumerRecommended: true
+    owner: player-session
+  - messageType: player.badge-symbol-color-mode.changed.command
+    messageVersion: 1
+    kind: command
+    stream: xcore:cmd:player-badge-symbol-color-mode:{server}
+    bindings:
+      server: payload.server
+    targetScope: server
+    ttlMs: 120000
+    replayable: false
+    idempotentConsumerRecommended: true
+    owner: player-session

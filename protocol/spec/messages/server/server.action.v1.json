@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:xcore:protocol:messages:chat:server.action:v1",
+  "title": "ServerActionV1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["messageType", "messageVersion", "message", "server"],
+  "properties": {
+    "messageType": {
+      "const": "server.action"
+    },
+    "messageVersion": {
+      "const": 1
+    },
+    "message": {
+      "type": "string",
+      "minLength": 1
+    },
+    "server": {
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}

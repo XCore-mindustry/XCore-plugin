@@ -1,0 +1,7 @@
+{
+  "messageType": "player.custom-nickname.changed.command",
+  "messageVersion": 1,
+  "uuid": "player-uuid-123",
+  "customNickname": "[gold]Hero[]",
+  "server": "mini-pvp"
+}

@@ -1,0 +1,7 @@
+{
+  "messageType": "chat.global",
+  "messageVersion": 1,
+  "authorName": "PlayerOne",
+  "message": "Hello everyone",
+  "server": "mini-pvp"
+}

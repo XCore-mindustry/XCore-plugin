@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:xcore:protocol:messages:discord:discord.link.status-changed:v1",
+  "title": "DiscordLinkStatusChangedV1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["messageType", "messageVersion", "player", "discord", "action", "server", "occurredAt"],
+  "properties": {
+    "messageType": {
+      "const": "discord.link.status-changed"
+    },
+    "messageVersion": {
+      "const": 1
+    },
+    "player": {
+      "$ref": "urn:xcore:protocol:shared:types:player-ref:v1"
+    },
+    "discord": {
+      "$ref": "urn:xcore:protocol:shared:types:discord-identity-ref:v1"
+    },
+    "action": {
+      "type": "string",
+      "enum": ["linked", "unlinked"]
+    },
+    "server": {
+      "type": "string",
+      "minLength": 1
+    },
+    "occurredAt": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}

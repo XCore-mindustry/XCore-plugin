@@ -1,0 +1,7 @@
+{
+  "messageType": "rating.accounts.merge.request",
+  "messageVersion": 1,
+  "server": "mini-pvp",
+  "sourceUuid": "",
+  "targetUuid": "uuid-new"
+}

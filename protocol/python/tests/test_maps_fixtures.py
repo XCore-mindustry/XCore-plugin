@@ -1,0 +1,118 @@
+from __future__ import annotations
+
+from pathlib import Path
+
+import pytest
+
+from xcore_protocol.paths import fixtures_root, spec_root
+from xcore_protocol.schema_validation import assert_invalid, assert_valid
+
+
+VALID_CASES = [
+    (
+        spec_root() / "messages" / "maps" / "maps.list.request.v1.json",
+        fixtures_root() / "valid" / "maps" / "maps.list.request.v1.json",
+    ),
+    (
+        spec_root() / "messages" / "maps" / "maps.list.response.v1.json",
+        fixtures_root() / "valid" / "maps" / "maps.list.response.v1.json",
+    ),
+    (
+        spec_root() / "messages" / "maps" / "maps.remove.request.v1.json",
+        fixtures_root() / "valid" / "maps" / "maps.remove.request.v1.json",
+    ),
+    (
+        spec_root() / "messages" / "maps" / "maps.remove.response.v1.json",
+        fixtures_root() / "valid" / "maps" / "maps.remove.response.v1.json",
+    ),
+    (
+        spec_root() / "messages" / "maps" / "maps.load.command.v1.json",
+        fixtures_root() / "valid" / "maps" / "maps.load.command.v1.json",
+    ),
+]
+
+
+VALID_CASES += [
+    (spec_root() / "messages" / "maps" / f"{name}.v1.json",
+     fixtures_root() / "valid" / "maps" / f"{name}.v1.discord-upload.json")
+    for name in ("maps.load.command", "maps.list.response")
+]
+
+
+INVALID_CASES = [
+    (
+        spec_root() / "messages" / "maps" / "maps.list.response.v1.json",
+        fixtures_root()
+        / "invalid"
+        / "maps"
+        / "maps.list.response.v1.legacy-file-name.json",
+    ),
+    (
+        spec_root() / "messages" / "maps" / "maps.remove.request.v1.json",
+        fixtures_root()
+        / "invalid"
+        / "maps"
+        / "maps.remove.request.v1.path-filename.json",
+    ),
+    (
+        spec_root() / "messages" / "maps" / "maps.load.command.v1.json",
+        fixtures_root()
+        / "invalid"
+        / "maps"
+        / "maps.load.command.v1.empty-files.json",
+    ),
+    (
+        spec_root() / "messages" / "maps" / "maps.load.command.v1.json",
+        fixtures_root()
+        / "invalid"
+        / "maps"
+        / "maps.load.command.v1.bad-extension.json",
+    ),
+]
+
+
+def test_valid_maps_fixtures_pass() -> None:
+    for schema_path, fixture_path in VALID_CASES:
+        assert_valid(schema_path, fixture_path)
+
+
+def test_invalid_maps_fixtures_fail() -> None:
+    for schema_path, fixture_path in INVALID_CASES:
+        error = assert_invalid(schema_path, fixture_path)
+        assert error is not None
+
+
+def test_maps_fixture_inventory_exists() -> None:
+    maps_valid_dir = fixtures_root() / "valid" / "maps"
+    maps_invalid_dir = fixtures_root() / "invalid" / "maps"
+
+    assert maps_valid_dir.exists()
+    assert maps_invalid_dir.exists()
+    assert any(maps_valid_dir.iterdir())
+    assert any(maps_invalid_dir.iterdir())
+
+
+def test_invalid_discord_upload_fixtures_fail() -> None:
+    schema = spec_root() / "messages" / "maps" / "maps.load.command.v1.json"
+    for suffix in ("missing-uploader", "invalid-time"):
+        assert_invalid(schema, fixtures_root() / "invalid" / "maps" / f"maps.load.command.v1.{suffix}.json")
+
+
+@pytest.mark.parametrize(
+    "fixture_path",
+    sorted((fixtures_root() / "valid" / "maps").glob("maps.inspect.*.json")),
+    ids=lambda path: path.name,
+)
+def test_valid_inspect_fixtures_pass(fixture_path: Path) -> None:
+    name = fixture_path.name.split(".v1")[0]
+    assert_valid(spec_root() / "messages" / "maps" / f"{name}.v1.json", fixture_path)
+
+
+@pytest.mark.parametrize(
+    "fixture_path",
+    sorted((fixtures_root() / "invalid" / "maps").glob("maps.inspect.*.json")),
+    ids=lambda path: path.name,
+)
+def test_invalid_inspect_fixtures_fail(fixture_path: Path) -> None:
+    name = fixture_path.name.split(".v1")[0]
+    assert_invalid(spec_root() / "messages" / "maps" / f"{name}.v1.json", fixture_path)

@@ -1,0 +1,6 @@
+{
+  "messageType": "maps.upload.request",
+  "messageVersion": 1,
+  "server": "mini-pvp",
+  "files": []
+}

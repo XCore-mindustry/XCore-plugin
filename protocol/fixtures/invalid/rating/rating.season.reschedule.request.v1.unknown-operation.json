@@ -1,0 +1,14 @@
+{
+  "messageType": "rating.season.reschedule.request",
+  "messageVersion": 1,
+  "server": "mini-pvp",
+  "ladder": "mini-pvp",
+  "operation": "postpone",
+  "extendSeconds": 1209600,
+  "actor": {
+    "actorName": "Admin",
+    "actorDiscordId": "222222222222222222",
+    "actorType": "discord"
+  },
+  "reason": "Tournament week"
+}

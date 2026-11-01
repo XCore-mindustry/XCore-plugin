@@ -1,0 +1,16 @@
+{
+  "messageType": "maps.upload.response",
+  "messageVersion": 1,
+  "server": "mini-pvp",
+  "results": [
+    {
+      "fileName": "arena.msav",
+      "status": "installed"
+    },
+    {
+      "fileName": "broken.msav",
+      "status": "invalid_map",
+      "detail": "Not a valid map file"
+    }
+  ]
+}

@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:xcore:protocol:messages:rating:rating.season.rescheduled:v1",
+  "title": "RatingSeasonRescheduledV1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "messageType",
+    "messageVersion",
+    "season",
+    "previousEndsAt",
+    "actor",
+    "server",
+    "occurredAt"
+  ],
+  "properties": {
+    "messageType": {
+      "const": "rating.season.rescheduled"
+    },
+    "messageVersion": {
+      "const": 1
+    },
+    "season": {
+      "$ref": "urn:xcore:protocol:shared:types:season-ref:v1"
+    },
+    "previousEndsAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "actor": {
+      "$ref": "urn:xcore:protocol:shared:types:actor-ref:v1"
+    },
+    "reason": {
+      "type": "string"
+    },
+    "server": {
+      "type": "string",
+      "minLength": 1
+    },
+    "occurredAt": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}

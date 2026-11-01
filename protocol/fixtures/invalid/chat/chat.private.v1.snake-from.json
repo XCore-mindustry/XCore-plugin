@@ -1,0 +1,11 @@
+{
+  "messageType": "chat.private",
+  "messageVersion": 1,
+  "from_uuid": "uuid-from-1",
+  "fromPid": 7,
+  "fromName": "[gold]Sender",
+  "toUuid": "uuid-to-2",
+  "toPid": 11,
+  "message": "meet me at base",
+  "server": "mini-pvp"
+}

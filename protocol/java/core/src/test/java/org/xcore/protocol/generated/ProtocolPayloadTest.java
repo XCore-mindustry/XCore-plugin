@@ -1,0 +1,496 @@
+package org.xcore.protocol.generated;
+
+import org.junit.jupiter.api.Test;
+import org.xcore.protocol.generated.messages.chat.ChatMessages.*;
+import org.xcore.protocol.generated.messages.identity.IdentityMessages.*;
+import org.xcore.protocol.generated.messages.server.ServerMessages.*;
+import org.xcore.protocol.generated.messages.security.SecurityMessages.*;
+import org.xcore.protocol.generated.messages.discord.DiscordLinkStatusChangedV1Action;
+import org.xcore.protocol.generated.messages.discord.DiscordMessages.*;
+import org.xcore.protocol.generated.messages.moderation.ModerationMessages.*;
+import org.xcore.protocol.generated.messages.maps.MapsMessages.*;
+import org.xcore.protocol.generated.messages.rating.RatingMessages.*;
+import org.xcore.protocol.generated.shared.SeasonPrizeV1;
+import org.xcore.protocol.generated.shared.SeasonPrizeV1Kind;
+import org.xcore.protocol.generated.messages.telemetry.TelemetryMessages.*;
+import org.xcore.protocol.generated.shared.*;
+
+import java.util.List;
+import java.util.Map;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+class ProtocolPayloadTest {
+
+    @Test
+    void moderationBanIdIsOptionalAndPositive() {
+        var target = new PlayerRefV1("uuid", 12, "Alice", null);
+        var actor = new ActorRefV1("admin", null, null);
+        var oldPayload = new ModerationBanCreatedV1(target, actor, "spam", null, null, null, null).toPayload();
+        assertFalse(oldPayload.containsKey("banId"));
+        var newPayload = new ModerationBanCreatedV1(target, actor, "spam", null, null, null, 1).toPayload();
+        assertEquals(1, newPayload.get("banId"));
+        assertThrows(IllegalArgumentException.class,
+                () -> new ModerationBanCreatedV1(target, actor, "spam", null, null, null, 0));
+        assertThrows(IllegalArgumentException.class,
+                () -> new ModerationBanCreatedV1(target, actor, "spam", null, null, null, -1));
+    }
+
+    @Test
+    void caseChatPreservesEpochMillisecondsAndSignedPids() {
+        var line = new CaseChatLineV1(1791892800000L, "Alice", -12, CaseChatLineV1Role.REPORTER, "", null);
+        assertEquals(1791892800000L, line.toPayload().get("sentAt"));
+        assertEquals(-12, line.toPayload().get("playerPid"));
+        assertEquals("reporter", line.toPayload().get("role"));
+        assertFalse(line.toPayload().containsKey("team"));
+    }
+
+    @Test
+    void inspectFindingCodesRemainOpen() {
+        var finding = new MapInspectFindingV1("future-check-v2", MapInspectFindingV1Severity.INFO, null, null, null, null);
+        assertEquals("future-check-v2", finding.toPayload().get("code"));
+        assertEquals("info", finding.toPayload().get("severity"));
+    }
+
+    // ── Shared types ────────────────────────────────────────────────
+
+    @Test
+    void voteKickParticipantCanonicalFieldNames() {
+        var p = new VoteKickParticipantV1("foo", 12, "123");
+        var payload = p.toPayload();
+
+        assertEquals("foo", payload.get("playerName"));
+        assertEquals(12, payload.get("playerPid"));
+        assertEquals("123", payload.get("discordId"));
+        assertFalse(payload.containsKey("name"), "no legacy 'name' key");
+        assertFalse(payload.containsKey("pid"), "no legacy 'pid' key");
+    }
+
+    @Test
+    void voteKickParticipantOmitsNullOptionals() {
+        var p = new VoteKickParticipantV1("minimal", null, null);
+        var payload = p.toPayload();
+
+        assertTrue(payload.containsKey("playerName"));
+        assertFalse(payload.containsKey("playerPid"));
+        assertFalse(payload.containsKey("discordId"));
+    }
+
+    @Test
+    void playerPidsAcceptNegativeValues() {
+        // Technical admins hand out negative PIDs to special players (e.g. event participants).
+        assertEquals(-12, new VoteKickParticipantV1("foo", -12, null).toPayload().get("playerPid"));
+        assertEquals(-1, new PlayerRefV1("uuid-1", -1, "tester", null).toPayload().get("playerPid"));
+        assertEquals(-7, new ModerationTargetRefV1("uuid-1", -7, null, null).toPayload().get("playerPid"));
+        assertEquals(-7, new PlayerCommandTargetV1("uuid-1", -7, null, null).toPayload().get("playerPid"));
+
+        var message = new ChatPrivateV1("uuid-from", -3, "from", "uuid-to", -4, "hi", "mini-pvp").toPayload();
+        assertEquals(-3, message.get("fromPid"));
+        assertEquals(-4, message.get("toPid"));
+    }
+
+    @Test
+    void actorRefCanonicalFieldNames() {
+        var actor = new ActorRefV1("admin", "123", ActorRefV1ActorType.DISCORD);
+        var payload = actor.toPayload();
+
+        assertEquals("admin", payload.get("actorName"));
+        assertEquals("123", payload.get("actorDiscordId"));
+        assertEquals("discord", payload.get("actorType"));
+    }
+
+    @Test
+    void actorRefOmitsNullOptionals() {
+        var actor = new ActorRefV1("system", null, null);
+        var payload = actor.toPayload();
+
+        assertEquals("system", payload.get("actorName"));
+        assertFalse(payload.containsKey("actorDiscordId"));
+        assertFalse(payload.containsKey("actorType"));
+    }
+
+    @Test
+    void playerRefCanonicalFieldNames() {
+        var player = new PlayerRefV1("uuid-1", 12, "tester", "1.2.3.4");
+        var payload = player.toPayload();
+
+        assertEquals("uuid-1", payload.get("playerUuid"));
+        assertEquals(12, payload.get("playerPid"));
+        assertEquals("tester", payload.get("playerName"));
+        assertEquals("1.2.3.4", payload.get("ip"));
+    }
+
+    @Test
+    void discordIdentityRefCanonicalFieldNames() {
+        var discord = new DiscordIdentityRefV1("123", "user#1");
+        var payload = discord.toPayload();
+
+        assertEquals("123", payload.get("discordId"));
+        assertEquals("user#1", payload.get("discordUsername"));
+    }
+
+    // ── Chat messages ────────────────────────────────────────────────
+
+    @Test
+    void chatMessagePayloadIncludesMessageIdentity() {
+        var msg = new ChatMessageV1("tester", "hello", "alpha");
+        var payload = msg.toPayload();
+
+        assertEquals("chat.message", payload.get("messageType"));
+        assertEquals(1, payload.get("messageVersion"));
+        assertEquals("tester", payload.get("authorName"));
+        assertEquals("hello", payload.get("message"));
+        assertEquals("alpha", payload.get("server"));
+    }
+
+    @Test
+    void chatGlobalPayloadIncludesMessageIdentity() {
+        var msg = new ChatGlobalV1("tester", "gg", "alpha");
+        var payload = msg.toPayload();
+
+        assertEquals("chat.global", payload.get("messageType"));
+        assertEquals(1, payload.get("messageVersion"));
+    }
+
+    @Test
+    void playerJoinLeavePayloadIncludesMessageIdentity() {
+        var event = new PlayerJoinLeaveV1("tester #1", "alpha", true);
+        var payload = event.toPayload();
+
+        assertEquals("player.join-leave", payload.get("messageType"));
+        assertEquals(1, payload.get("messageVersion"));
+        assertEquals("tester #1", payload.get("playerName"));
+        assertEquals("alpha", payload.get("server"));
+        assertEquals(true, payload.get("joined"));
+    }
+
+    @Test
+    void serverActionPayloadIncludesMessageIdentity() {
+        var event = new ServerActionV1("Server loaded", "alpha");
+        var payload = event.toPayload();
+
+        assertEquals("server.action", payload.get("messageType"));
+        assertEquals(1, payload.get("messageVersion"));
+        assertEquals("Server loaded", payload.get("message"));
+        assertEquals("alpha", payload.get("server"));
+    }
+
+    @Test
+    void serverHeartbeatPayloadIncludesMessageIdentity() {
+        // ServerHeartbeatV1(serverName, discordChannelId:long, players, maxPlayers, version, host, port, description, map, wave, mode, tps)
+        var event = new ServerHeartbeatV1("alpha", 0L, 5, 20, "v7", null, null, null, null, null, null, null);
+        var payload = event.toPayload();
+
+        assertEquals("server.heartbeat", payload.get("messageType"));
+        assertEquals(1, payload.get("messageVersion"));
+        assertEquals("alpha", payload.get("serverName"));
+        assertEquals(0L, payload.get("discordChannelId"));
+        assertEquals(5, payload.get("players"));
+        assertEquals(20, payload.get("maxPlayers"));
+        assertEquals("v7", payload.get("version"));
+    }
+
+    @Test
+    void serverHeartbeatOmitsNullHostAndPort() {
+        var event = new ServerHeartbeatV1("alpha", 0L, 5, 20, "v7", null, null, null, null, null, null, null);
+        var payload = event.toPayload();
+
+        assertFalse(payload.containsKey("host"));
+        assertFalse(payload.containsKey("port"));
+        assertFalse(payload.containsKey("description"));
+        assertFalse(payload.containsKey("map"));
+        assertFalse(payload.containsKey("wave"));
+        assertFalse(payload.containsKey("mode"));
+        assertFalse(payload.containsKey("tps"));
+    }
+
+    @Test
+    void serverHeartbeatIncludesHostAndPortWhenSet() {
+        var event = new ServerHeartbeatV1("alpha", 0L, 5, 20, "v7", "127.0.0.1", 6567, "Fast PvP", "Sand Dunes", 12, "pvp", 60);
+        var payload = event.toPayload();
+
+        assertEquals("127.0.0.1", payload.get("host"));
+        assertEquals(6567, payload.get("port"));
+        assertEquals("Fast PvP", payload.get("description"));
+        assertEquals("Sand Dunes", payload.get("map"));
+        assertEquals(12, payload.get("wave"));
+        assertEquals("pvp", payload.get("mode"));
+        assertEquals(60, payload.get("tps"));
+    }
+
+    // ── Telemetry messages ───────────────────────────────────────────
+
+    @SuppressWarnings("unchecked")
+    @Test
+    void metricsSnapshotPayloadIncludesSchemaIdentityWithoutRouteIdentity() {
+        var samples = List.of(
+                new MetricSampleV1(
+                        "xcore_players_online",
+                        MetricSampleV1Type.GAUGE,
+                        Map.of("mode", "hexed"),
+                        "Current online players.",
+                        null,
+                        16.0,
+                        null,
+                        null,
+                        null,
+                        null
+                ),
+                new MetricSampleV1(
+                        "xcore_command_duration_seconds",
+                        MetricSampleV1Type.HISTOGRAM,
+                        Map.of("command", "stats"),
+                        null,
+                        null,
+                        null,
+                        List.of(0.01, 0.05, 0.1, 0.25, 1.0),
+                        List.of(12, 20, 29, 31, 31),
+                        31L,
+                        2.64
+                )
+        );
+
+        var snapshot = new MetricsSnapshotV1(
+                "mini-hexed",
+                "mini-hexed-01",
+                "xcore-plugin",
+                1790789112000L,
+                1790785512000L,
+                42L,
+                10_000,
+                samples
+        );
+        var payload = snapshot.toPayload();
+
+        assertEquals("metrics.snapshot.v1", payload.get("schemaVersion"));
+        assertFalse(payload.containsKey("messageType"));
+        assertFalse(payload.containsKey("messageVersion"));
+        assertEquals("mini-hexed", payload.get("server"));
+        assertEquals(42L, payload.get("sequence"));
+
+        var samplePayloads = (List<Map<String, Object>>) payload.get("samples");
+        assertEquals(2, samplePayloads.size());
+        assertEquals("gauge", samplePayloads.get(0).get("type"));
+        assertEquals("histogram", samplePayloads.get(1).get("type"));
+        assertEquals(List.of(12, 20, 29, 31, 31), samplePayloads.get(1).get("counts"));
+        assertEquals(31L, samplePayloads.get(1).get("count"));
+    }
+
+    // ── Moderation messages ──────────────────────────────────────────
+
+    @SuppressWarnings("unchecked")
+    @Test
+    void moderationBanCreatedNestedRefs() {
+        var target = new PlayerRefV1("uuid-1", 12, "bad", "1.2.3.4");
+        var actor = new ActorRefV1("admin", "123", ActorRefV1ActorType.DISCORD);
+        var expiration = new ExpirationInfoV1("2026-01-01T00:00:00Z", false);
+        var ban = new ModerationBanCreatedV1(target, actor, "spam", expiration, "alpha", "2026-01-01T00:00:00Z", null);
+        var payload = ban.toPayload();
+
+        assertEquals("moderation.ban.created", payload.get("messageType"));
+        assertEquals(1, payload.get("messageVersion"));
+
+        var targetPayload = (Map<String, Object>) payload.get("target");
+        assertEquals("uuid-1", targetPayload.get("playerUuid"));
+        assertEquals("bad", targetPayload.get("playerName"));
+
+        var actorPayload = (Map<String, Object>) payload.get("actor");
+        assertEquals("admin", actorPayload.get("actorName"));
+        assertEquals("123", actorPayload.get("actorDiscordId"));
+        assertEquals("discord", actorPayload.get("actorType"));
+
+        var expPayload = (Map<String, Object>) payload.get("expiration");
+        assertEquals("2026-01-01T00:00:00Z", expPayload.get("expiresAt"));
+        assertEquals(false, expPayload.get("permanent"));
+
+        assertEquals("spam", payload.get("reason"));
+        assertEquals("alpha", payload.get("server"));
+        assertEquals("2026-01-01T00:00:00Z", payload.get("occurredAt"));
+
+        // No legacy flat keys
+        assertFalse(payload.containsKey("uuid"));
+        assertFalse(payload.containsKey("name"));
+        assertFalse(payload.containsKey("adminName"));
+        assertFalse(payload.containsKey("expire"));
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    void moderationMuteCreatedNestedRefs() {
+        var target = new PlayerRefV1("uuid-2", 24, "quiet", null);
+        var actor = new ActorRefV1("mod", null, ActorRefV1ActorType.PLAYER);
+        var mute = new ModerationMuteCreatedV1(target, actor, "spam", null, "alpha", "2026-01-01T00:00:00Z");
+        var payload = mute.toPayload();
+
+        assertEquals("moderation.mute.created", payload.get("messageType"));
+        assertEquals(1, payload.get("messageVersion"));
+
+        var targetPayload = (Map<String, Object>) payload.get("target");
+        assertEquals("quiet", targetPayload.get("playerName"));
+
+        var actorPayload = (Map<String, Object>) payload.get("actor");
+        assertEquals("mod", actorPayload.get("actorName"));
+        assertEquals("player", actorPayload.get("actorType"));
+
+        assertNull(payload.get("expiration"));
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    void moderationVoteKickCreatedParticipantsCanonical() {
+        var target = new PlayerRefV1("uuid-3", 42, "sus", null);
+        var starter = new ActorRefV1("starter", null, ActorRefV1ActorType.PLAYER);
+        var votesFor = List.of(
+            new VoteKickParticipantV1("voter1", 1, "disc1"),
+            new VoteKickParticipantV1("voter2", 2, null)
+        );
+        var votesAgainst = List.of(
+            new VoteKickParticipantV1("voter3", 3, "disc3")
+        );
+
+        var vk = new ModerationVoteKickCreatedV1(
+            target, starter, "griefing", votesFor, votesAgainst, "alpha", "2026-01-01T00:00:00Z"
+        );
+        var payload = vk.toPayload();
+
+        assertEquals("moderation.vote-kick.created", payload.get("messageType"));
+        assertEquals(1, payload.get("messageVersion"));
+
+        var votesForList = (List<Map<String, Object>>) payload.get("votesFor");
+        assertEquals(2, votesForList.size());
+        assertEquals("voter1", votesForList.get(0).get("playerName"));
+        assertEquals(1, votesForList.get(0).get("playerPid"));
+        assertEquals("disc1", votesForList.get(0).get("discordId"));
+        assertFalse(votesForList.get(0).containsKey("name"), "no legacy name key");
+        assertFalse(votesForList.get(0).containsKey("pid"), "no legacy pid key");
+
+        assertEquals("voter2", votesForList.get(1).get("playerName"));
+        assertFalse(votesForList.get(1).containsKey("discordId"));
+
+        var votesAgainstList = (List<Map<String, Object>>) payload.get("votesAgainst");
+        assertEquals(1, votesAgainstList.size());
+        assertEquals("voter3", votesAgainstList.get(0).get("playerName"));
+    }
+
+    // ── Discord messages ─────────────────────────────────────────────
+
+    @SuppressWarnings("unchecked")
+    @Test
+    void discordLinkStatusChangedNestedRefs() {
+        var player = new PlayerRefV1("uuid-4", 56, "linker", null);
+        var discord = new DiscordIdentityRefV1("disc-1", "linker#1");
+        var event = new DiscordLinkStatusChangedV1(
+            player, discord, DiscordLinkStatusChangedV1Action.LINKED, "alpha", "2026-01-01T00:00:00Z"
+        );
+        var payload = event.toPayload();
+
+        assertEquals("discord.link.status-changed", payload.get("messageType"));
+        assertEquals(1, payload.get("messageVersion"));
+
+        var playerPayload = (Map<String, Object>) payload.get("player");
+        assertEquals("linker", playerPayload.get("playerName"));
+        assertEquals(56, playerPayload.get("playerPid"));
+
+        var discordPayload = (Map<String, Object>) payload.get("discord");
+        assertEquals("disc-1", discordPayload.get("discordId"));
+        assertEquals("linker#1", discordPayload.get("discordUsername"));
+
+        assertEquals("linked", payload.get("action"));
+        assertEquals("alpha", payload.get("server"));
+        assertEquals("2026-01-01T00:00:00Z", payload.get("occurredAt"));
+    }
+
+    // ── Maps messages ────────────────────────────────────────────────
+
+    @Test
+    void mapsListRequestIncludesMessageIdentity() {
+        var req = new MapsListRequestV1("alpha");
+        var payload = req.toPayload();
+
+        assertEquals("maps.list.request", payload.get("messageType"));
+        assertEquals(1, payload.get("messageVersion"));
+        assertEquals("alpha", payload.get("server"));
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    void mapsListResponseIncludesMessageIdentityAndMaps() {
+        var entry = new MapEntryV1("map1", "map1.msav", "author", 200, 150, 1024000, 5, 1, 4, 0.8, 0.9, "pvp", null);
+        var resp = new MapsListResponseV1("alpha", List.of(entry));
+        var payload = resp.toPayload();
+
+        assertEquals("maps.list.response", payload.get("messageType"));
+        assertEquals(1, payload.get("messageVersion"));
+        assertEquals("alpha", payload.get("server"));
+
+        var maps = (List<Map<String, Object>>) payload.get("maps");
+        assertEquals(1, maps.size());
+        assertEquals("map1", maps.get(0).get("name"));
+    }
+
+    @Test
+    void seasonEndedPayloadNestsPodiumAndOmitsUnlinkedDiscord() {
+        var season = new SeasonRefV1("mini-pvp", 3, "Season 3", "2026-07-01T00:00:00Z", "2026-10-01T00:00:00Z");
+        var linked = new SeasonPodiumEntryV1(1, new PlayerRefV1("uuid-1", 101, "Alice", null),
+                new DiscordIdentityRefV1("111", "alice"), 1820, "DIAMOND", 64, 47, null);
+        var unlinked = new SeasonPodiumEntryV1(2, new PlayerRefV1("uuid-2", 202, "Bob", null),
+                null, 1744, "PLATINUM", 58, 38, null);
+
+        var payload = new RatingSeasonEndedV1(season, List.of(linked, unlinked),
+                new SeasonSummaryV1(312, 4120), "alpha", "2026-10-01T00:30:00Z").toPayload();
+
+        assertEquals("rating.season.ended", payload.get("messageType"));
+        @SuppressWarnings("unchecked")
+        var podium = (List<Map<String, Object>>) payload.get("podium");
+        assertEquals(2, podium.size());
+        assertTrue(podium.get(0).containsKey("discord"));
+        assertFalse(podium.get(1).containsKey("discord"));
+        assertEquals(1, podium.get(0).get("place"));
+    }
+
+    @Test
+    void podiumEntryCarriesThePrizesItWon() {
+        var prize = new SeasonPrizeV1(1, 3, SeasonPrizeV1Kind.CUSTOM, "Discord Nitro", "Top three");
+        var entry = new SeasonPodiumEntryV1(1, new PlayerRefV1("uuid-1", 101, "Alice", null),
+                null, 1820, "DIAMOND", 64, 47, List.of(prize));
+
+        @SuppressWarnings("unchecked")
+        var prizes = (List<Map<String, Object>>) entry.toPayload().get("prizes");
+
+        assertEquals(1, prizes.size());
+        assertEquals("custom", prizes.get(0).get("kind"));
+        assertEquals("Discord Nitro", prizes.get(0).get("value"));
+    }
+
+    @Test
+    void seasonPrizeRejectsPlacesBelowOne() {
+        assertThrows(IllegalArgumentException.class,
+                () -> new SeasonPrizeV1(0, 1, SeasonPrizeV1Kind.BADGE, "season-champion", null));
+    }
+
+    @Test
+    void seasonStartedOmitsPreviousSeasonForTheFirstSeason() {
+        var season = new SeasonRefV1("mini-pvp", 1, "Season 1", "2026-07-01T00:00:00Z", "2026-10-01T00:00:00Z");
+        var payload = new RatingSeasonStartedV1(season, null, "alpha", "2026-07-01T00:00:01Z").toPayload();
+
+        assertFalse(payload.containsKey("previousSeason"));
+    }
+
+    @Test
+    void seasonRatingRejectsSeasonNumberBelowOne() {
+        assertThrows(IllegalArgumentException.class,
+                () -> new SeasonRefV1("mini-pvp", 0, "Season 0", "2026-07-01T00:00:00Z", "2026-10-01T00:00:00Z"));
+    }
+
+    @Test
+    void staffSyncRejectsDuplicateRoleIds() {
+        IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
+                () -> new SecurityStaffSyncRequestV1("mini-pvp", "op-1", "uuid-1", "123456789012345678",
+                        List.of("111111111111111111", "111111111111111111"), true));
+        assertEquals("roleIds must not contain duplicate items", error.getMessage());
+
+        new SecurityStaffSyncRequestV1("mini-pvp", "op-1", "uuid-1", "123456789012345678",
+                List.of("111111111111111111", "222222222222222222"), true);
+        new SecurityStaffSyncRequestV1("mini-pvp", "op-1", "uuid-1", "123456789012345678", List.of(), true);
+    }
+}

@@ -1,0 +1,14 @@
+{
+  "messageType": "rating.season.started",
+  "messageVersion": 1,
+  "season": {
+    "ladder": "mini-pvp",
+    "season": 0,
+    "name": "Season 4",
+    "startsAt": "2026-10-01T00:00:00Z",
+    "endsAt": "2027-01-01T00:00:00Z"
+  },
+  "previousSeason": 3,
+  "server": "mini-pvp",
+  "occurredAt": "2026-10-01T00:00:01Z"
+}

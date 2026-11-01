@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:xcore:protocol:envelopes:rpc-response-envelope:v1",
+  "title": "RpcResponseEnvelopeV1",
+  "type": "object",
+  "unevaluatedProperties": false,
+  "allOf": [
+    {
+      "$ref": "urn:xcore:protocol:envelopes:envelope-base:v1"
+    },
+    {
+      "type": "object",
+      "required": ["message_kind", "correlation_id", "status", "responded_at"],
+      "properties": {
+        "message_kind": {
+          "const": "rpc_response"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["ok", "error"]
+        },
+        "error_code": {
+          "type": "string"
+        },
+        "error_message": {
+          "type": "string"
+        },
+        "responded_at": {
+          "type": "string",
+          "pattern": "^[0-9]+$"
+        }
+      }
+    }
+  ]
+}

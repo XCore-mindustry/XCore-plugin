@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:xcore:protocol:messages:maps:maps.list.request:v1",
+  "title": "MapsListRequestV1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["messageType", "messageVersion", "server"],
+  "properties": {
+    "messageType": {
+      "const": "maps.list.request"
+    },
+    "messageVersion": {
+      "const": 1
+    },
+    "server": {
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}

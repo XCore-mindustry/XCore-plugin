@@ -1,0 +1,17 @@
+{
+  "messageType": "discord.account.operation.request",
+  "messageVersion": 1,
+  "server": "mini-pvp",
+  "operationId": "8d1e4b2a-0c3f-4a5b-8e6d-1f2a3b4c5d6e",
+  "action": "unlink",
+  "player": {
+    "playerUuid": "uuid-1",
+    "playerPid": 10,
+    "playerName": "LinkedPlayer"
+  },
+  "discord": {
+    "discordId": "1234567890"
+  },
+  "issuedAt": 1777000000000,
+  "expiresAt": 1777000010000
+}

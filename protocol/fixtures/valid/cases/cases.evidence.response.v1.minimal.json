@@ -1,0 +1,8 @@
+{
+  "messageType": "cases.evidence.response",
+  "messageVersion": 1,
+  "server": "mini-pvp",
+  "targetOnline": false,
+  "chat": [],
+  "capturedAt": "2026-10-13T12:00:00Z"
+}

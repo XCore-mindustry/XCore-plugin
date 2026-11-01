@@ -1,0 +1,6 @@
+{
+  "messageType": "server.action",
+  "messageVersion": 1,
+  "message": "Server loaded",
+  "server": "mini-pvp"
+}

@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:xcore:protocol:messages:cases:cases.evidence.response:v1",
+  "title": "CasesEvidenceResponseV1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "messageType",
+    "messageVersion",
+    "server",
+    "targetOnline",
+    "chat",
+    "capturedAt"
+  ],
+  "properties": {
+    "messageType": {
+      "const": "cases.evidence.response"
+    },
+    "messageVersion": {
+      "const": 1
+    },
+    "server": {
+      "type": "string",
+      "minLength": 1
+    },
+    "targetOnline": {
+      "type": "boolean"
+    },
+    "mapName": {
+      "type": "string"
+    },
+    "gameMode": {
+      "type": "string"
+    },
+    "chat": {
+      "type": "array",
+      "items": {
+        "$ref": "urn:xcore:protocol:shared:types:case-chat-line:v1"
+      },
+      "maxItems": 30
+    },
+    "blockSummary": {
+      "$ref": "urn:xcore:protocol:shared:types:case-block-summary:v1"
+    },
+    "capturedAt": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}

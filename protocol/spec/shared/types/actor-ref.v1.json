@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:xcore:protocol:shared:types:actor-ref:v1",
+  "title": "ActorRefV1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["actorName"],
+  "properties": {
+    "actorName": {
+      "type": "string",
+      "minLength": 1
+    },
+    "actorDiscordId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "actorType": {
+      "type": "string",
+      "enum": ["player", "discord", "server", "system", "unknown"]
+    }
+  }
+}

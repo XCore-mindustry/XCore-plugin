@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:xcore:protocol:messages:chat:chat.global:v1",
+  "title": "ChatGlobalV1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["messageType", "messageVersion", "authorName", "message", "server"],
+  "properties": {
+    "messageType": {
+      "const": "chat.global"
+    },
+    "messageVersion": {
+      "const": 1
+    },
+    "authorName": {
+      "type": "string",
+      "minLength": 1
+    },
+    "message": {
+      "type": "string",
+      "minLength": 1
+    },
+    "server": {
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}

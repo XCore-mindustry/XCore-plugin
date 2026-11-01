@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:xcore:protocol:messages:chat:player.badge-inventory.changed.command:v1",
+  "title": "PlayerBadgeInventoryChangedCommandV1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["messageType", "messageVersion", "playerUuid", "activeBadge", "unlockedBadges", "server"],
+  "properties": {
+    "messageType": {
+      "const": "player.badge-inventory.changed.command"
+    },
+    "messageVersion": {
+      "const": 1
+    },
+    "playerUuid": {
+      "type": "string",
+      "minLength": 1
+    },
+    "activeBadge": {
+      "type": "string"
+    },
+    "unlockedBadges": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "server": {
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}

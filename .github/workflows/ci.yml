@@ -1,0 +1,149 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      jvm: ${{ steps.filter.outputs.jvm }}
+      menus: ${{ steps.filter.outputs.menus }}
+      renderer: ${{ steps.filter.outputs.renderer }}
+      protocol: ${{ steps.filter.outputs.protocol }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            shared: &shared
+              - .github/workflows/**
+              - build-logic/**
+              - gradle/**
+              - '*.gradle.kts'
+              - gradle.properties
+              - gradlew
+            jvm:
+              - *shared
+              - libs/**
+              - plugins/**
+              - protocol/**
+            menus:
+              - *shared
+              - plugins/xcore/*.gradle.kts
+              - libs/xcore-ui/*.gradle.kts
+              - plugins/xcore/src/main/**
+              - plugins/xcore/src/test/java/org/xcore/plugin/ui/**
+              - plugins/xcore/tools/ui-render/**
+              - libs/xcore-ui/src/main/**
+              - libs/mindustry-testkit/**
+            renderer:
+              - .github/workflows/ci.yml
+              - libs/mindustry-testkit/render/**
+            protocol:
+              - .github/workflows/ci.yml
+              - protocol/**
+
+  gradle:
+    needs: changes
+    if: needs.changes.outputs.jvm == 'true' || github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '25'
+      - uses: gradle/actions/setup-gradle@v5
+        with:
+          cache-read-only: ${{ github.event_name == 'pull_request' }}
+      - name: Build and test everything
+        run: ./gradlew build
+      - name: Upload plugin jar
+        uses: actions/upload-artifact@v7
+        with:
+          name: xcore-plugin
+          path: plugins/xcore/build/libs/XCore-plugin-*.jar
+      - name: Upload test reports
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-reports
+          path: |
+            **/build/reports/tests/test/
+            **/build/test-results/test/
+
+  menu-render:
+    needs: changes
+    if: needs.changes.outputs.menus == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '25'
+      - uses: gradle/actions/setup-gradle@v5
+        with:
+          cache-read-only: true
+      - name: Render every menu fixture in the phone, android1080 and pc profiles
+        run: plugins/xcore/tools/ui-render/render
+      - name: Upload packets, screenshots and diagnostics
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: menu-client-render
+          path: |
+            plugins/xcore/build/ui-render/
+            plugins/xcore/build/reports/tests/exportUiFixtures/
+            plugins/xcore/build/test-results/exportUiFixtures/
+
+  renderer-selfcheck:
+    needs: changes
+    if: needs.changes.outputs.renderer == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Check the real-client renderer catches broken menus
+        run: libs/mindustry-testkit/render/render selfcheck
+
+  protocol:
+    needs: changes
+    if: needs.changes.outputs.protocol == 'true' || github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: protocol
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.3.0
+      - run: uv python install 3.11
+      - run: uv sync --extra dev
+      - name: Generated code matches the spec
+        run: |
+          uv run python scripts/validate-generation.py
+          uv run python scripts/validate-generated-models.py
+          git diff --exit-code -- .
+      - run: uv run pytest
+      - run: uv build
+      - name: Built wheel installs
+        working-directory: /tmp
+        run: uv run --isolated --with "$GITHUB_WORKSPACE"/protocol/dist/*.whl python -c 'import xcore_protocol'
+
+  # The only required check. Jobs skipped by the path filter count as passed.
+  ci-ok:
+    needs: [changes, gradle, menu-render, renderer-selfcheck, protocol]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fail if any job failed or was cancelled
+        if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')
+        run: exit 1

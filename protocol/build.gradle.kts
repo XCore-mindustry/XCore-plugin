@@ -1,0 +1,67 @@
+plugins {
+    java
+    id("xcore.java17")
+    id("xcore.publish")
+}
+
+fun pyprojectBaseVersion(): String {
+    val versionLine =
+        file("pyproject.toml")
+            .readLines()
+            .firstOrNull { it.trim().startsWith("version = ") }
+            ?: error("Unable to locate project version in pyproject.toml")
+
+    return Regex("\"([^\"]+)\"")
+        .find(versionLine)
+        ?.groupValues
+        ?.get(1)
+        ?: error("Unable to parse project version from pyproject.toml")
+}
+
+group = "org.xcore"
+// Java and Python packages share one version, kept in pyproject.toml.
+version = pyprojectBaseVersion()
+
+java {
+    withSourcesJar()
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    testImplementation("com.google.code.gson:gson:2.14.0")
+    testImplementation(platform(libs.junit.bom))
+    testImplementation("org.junit.jupiter:junit-jupiter")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+}
+
+tasks.test {
+    useJUnitPlatform()
+}
+
+sourceSets {
+    main {
+        java.srcDir("java/core/src/main/java")
+    }
+    test {
+        java.srcDir("java/core/src/test/java")
+    }
+}
+
+publishing {
+    publications {
+        create<MavenPublication>("mavenJava") {
+            from(components["java"])
+            groupId = project.group.toString()
+            artifactId = "xcore-protocol-java"
+            version = project.version.toString()
+
+            pom {
+                name.set("xcore-protocol-java")
+                description.set("Generated Java protocol artifacts for the canonical XCore protocol surface.")
+            }
+        }
+    }
+}
