@@ -31,7 +31,7 @@ publishing {
             pom {
                 name.set("xcore-ui")
                 description.set("Type-safe, reactive server-driven UI framework for Mindustry v160 servers.")
-                url.set("https://github.com/XCore-mindustry/xcore-ui")
+                url.set("https://github.com/XCore-mindustry/xcore/tree/main/libs/xcore-ui")
                 licenses {
                     license {
                         name.set("Mozilla Public License 2.0")
@@ -45,9 +45,9 @@ publishing {
                     }
                 }
                 scm {
-                    connection.set("scm:git:git://github.com/XCore-mindustry/xcore-ui.git")
-                    developerConnection.set("scm:git:ssh://github.com:XCore-mindustry/xcore-ui.git")
-                    url.set("https://github.com/XCore-mindustry/xcore-ui")
+                    connection.set("scm:git:git://github.com/XCore-mindustry/xcore.git")
+                    developerConnection.set("scm:git:ssh://git@github.com/XCore-mindustry/xcore.git")
+                    url.set("https://github.com/XCore-mindustry/xcore")
                 }
             }
         }

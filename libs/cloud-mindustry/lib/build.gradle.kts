@@ -42,6 +42,15 @@ publishing {
             groupId = "org.xcore"
             artifactId = "cloud-mindustry"
             version = project.version.toString()
+            pom {
+                url.set("https://github.com/XCore-mindustry/xcore/tree/main/libs/cloud-mindustry")
+                licenses {
+                    license {
+                        name.set("Mozilla Public License 2.0")
+                        url.set("https://www.mozilla.org/MPL/2.0/")
+                    }
+                }
+            }
         }
     }
 }

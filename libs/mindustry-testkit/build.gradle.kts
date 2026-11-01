@@ -43,7 +43,7 @@ subprojects {
                 pom {
                     name.set("mindustry-testkit-${project.name}")
                     description.set("Deterministic testing toolkit for Mindustry plugins: ${project.name} module.")
-                    url.set("https://github.com/XCore-mindustry/mindustry-testkit")
+                    url.set("https://github.com/XCore-mindustry/xcore/tree/main/libs/mindustry-testkit")
                     licenses {
                         license {
                             name.set("Mozilla Public License 2.0")
@@ -57,9 +57,9 @@ subprojects {
                         }
                     }
                     scm {
-                        connection.set("scm:git:git://github.com/XCore-mindustry/mindustry-testkit.git")
-                        developerConnection.set("scm:git:ssh://github.com:XCore-mindustry/mindustry-testkit.git")
-                        url.set("https://github.com/XCore-mindustry/mindustry-testkit")
+                        connection.set("scm:git:git://github.com/XCore-mindustry/xcore.git")
+                        developerConnection.set("scm:git:ssh://git@github.com/XCore-mindustry/xcore.git")
+                        url.set("https://github.com/XCore-mindustry/xcore")
                     }
                 }
             }
