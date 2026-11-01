@@ -18,14 +18,14 @@ component release tags (`*/v*`). Repository Maven secrets remain available.
 | cloud-mindustry | 0.4.1 | Prepared |
 | xcore-ui | 0.3.0 | Existing unreleased version, prepared |
 | testkit (core, ui, fixtures) | 0.2.0 | Existing unreleased version, prepared |
-| protocol | 0.17.0 | Unchanged; prepare a new version after PyPI publisher setup |
+| protocol (Java and Python) | 0.17.1 | Prepared; owner confirmed PyPI trusted publisher setup |
 
 ## Before the first release
 
 - Rotate any still-active Maven credentials exposed in the old FluBundle history.
   The imported history removes them; the original repository is unaffected.
-- Configure PyPI trusted publishing for this repository, `release.yml`, environment
-  `pypi`. Check Java and Python versions agree before a protocol release.
+- PyPI trusted publishing is configured for this repository, `release.yml`, environment
+  `pypi` (confirmed by the owner). Check Java and Python versions agree before a protocol release.
 - Release new patch versions through the component tags; do not republish existing
   Maven versions or push historical tags as release events.
 - Build satellite consumers against the new published artifacts before archiving
