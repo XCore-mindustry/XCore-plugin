@@ -11,7 +11,7 @@ repositories {
 ### 2. Add dependency
 ```groovy
 dependencies {
-    implementation "com.ospx:flubundle:2.1.0"
+    implementation "com.ospx:flubundle:2.1.1"
 }
 ```
 
