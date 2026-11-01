@@ -105,9 +105,10 @@ class PlayerDisplayServiceTest {
     void adminBadgeIncluded() {
         var service = new PlayerDisplayService(config("mini-pvp"));
         var data = basePlayer();
-        data.admin = true;
+        Player player = Mockito.mock(Player.class);
+        player.admin = true;
 
-        assertThat(service.buildDisplayName(data, null)).isEqualTo("[scarlet]<" + Iconc.hammer + ">[] PlayerOne");
+        assertThat(service.buildDisplayName(data, player)).isEqualTo("[scarlet]<" + Iconc.hammer + ">[] PlayerOne");
     }
 
     @Test
@@ -133,7 +134,7 @@ class PlayerDisplayServiceTest {
         data.activeBadge = "translator";
 
         assertThat(service.buildChatBadgePrefix(data, null))
-                .isEqualTo("[scarlet]<" + Iconc.hammer + ">[] [#79d7ff]<[white]" + Iconc.bookOpen + "[]>[]");
+                .isEqualTo("[#79d7ff]<[white]" + Iconc.bookOpen + "[]>[]");
     }
 
     @Test
@@ -163,7 +164,9 @@ class PlayerDisplayServiceTest {
         data.activeBadge = "developer";
         data.customNickname = "[gold]Hero[]";
 
-        assertThat(service.buildDisplayName(data, null))
+        Player player = Mockito.mock(Player.class);
+        player.admin = true;
+        assertThat(service.buildDisplayName(data, player))
                 .isEqualTo("[scarlet]<" + Iconc.hammer + ">[] [#86dca2]<[white]" + Iconc.wrench + "[]>[] [gold]Hero[]");
     }
 
@@ -199,6 +202,15 @@ class PlayerDisplayServiceTest {
 
         assertThat(service.buildDisplayName(data, null)).isEqualTo(":lead: PlayerOne");
         assertThat(service.buildChatBadgePrefix(data, null)).isEqualTo(":lead:");
+    }
+
+    @Test
+    void offlinePlayerHasNoSystemBadgeDespiteLegacyFlag() {
+        var service = new PlayerDisplayService(config("mini-pvp"));
+        var data = basePlayer();
+        data.admin = true;
+        assertThat(service.resolveSystemBadgeTag(data)).isEmpty();
+        assertThat(service.buildDisplayName(data, null)).isEqualTo("PlayerOne");
     }
 
     private static PlayerData basePlayer() {

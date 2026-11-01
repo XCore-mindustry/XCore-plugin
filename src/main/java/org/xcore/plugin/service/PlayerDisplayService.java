@@ -91,7 +91,7 @@ public class PlayerDisplayService {
             return player.admin ? Badge.ADMIN.tag() : "";
         }
 
-        return data.admin ? Badge.ADMIN.tag() : "";
+        return "";
     }
 
     public String resolveSelectedBadgeTag(PlayerData data) {

@@ -149,7 +149,7 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
         }
 
         /** @param details what is already loaded about {@code target}, {@code null} while it is being read */
-        public ProfileModel withTarget(PlayerData target, boolean isOnline, String colorHex,
+        public ProfileModel withTarget(PlayerData target, boolean isOnline, boolean isAdmin, String colorHex,
                                       ProfileDetails details, boolean fromPlayersTab) {
             Objects.requireNonNull(target, "target");
             return new ProfileModel(
@@ -160,7 +160,7 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
                     target.nickname != null ? target.nickname : "",
                     target.customNickname != null ? target.customNickname : "",
                     target.description != null ? target.description : "",
-                    target.admin,
+                    isAdmin,
                     isOnline,
                     target.createdModelTime,
                     target.totalPlayTime,
@@ -287,11 +287,8 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
         boolean isViewerAdmin = session != null && (session.has(PermissionNodes.PLAYERS_SETTINGS_OTHERS)
                 || session.has(PermissionNodes.MODERATION_AUDIT_OTHERS));
 
-        boolean isOnline = false;
-        if (sessionService != null) {
-            Session s = sessionService.get(targetData.uuid);
-            isOnline = s != null && s.player != null;
-        }
+        Session targetSession = sessionService != null ? sessionService.get(targetData.uuid) : (isSelf ? session : null);
+        boolean isOnline = targetSession != null && targetSession.player != null;
 
         String playerColorHex = PlayerSettingsUiController.resolvePlayerColorHex(session, targetData);
 
@@ -306,7 +303,7 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
                 targetData.nickname != null ? targetData.nickname : "",
                 targetData.customNickname != null ? targetData.customNickname : "",
                 targetData.description != null ? targetData.description : "",
-                targetData.admin,
+                isOnline && targetSession.player.admin,
                 isOnline,
                 targetData.createdModelTime,
                 targetData.totalPlayTime,
@@ -353,7 +350,7 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
                         s.data.customNickname != null ? s.data.customNickname : "",
                         s.data.activeBadge != null ? s.data.activeBadge : "",
                         s.data.badgeSymbolColorMode != null ? s.data.badgeSymbolColorMode : "default",
-                        s.player.admin || s.data.admin,
+                        s.player.admin,
                         PlayerSettingsUiController.resolvePlayerColorHex(s, s.data)
                 ))
                 .toList();
@@ -361,7 +358,7 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
 
     private static boolean matchesFilter(Session s, AdminFilter filter) {
         if (filter == null || filter == AdminFilter.ALL) return true;
-        boolean isAdmin = s.player.admin || s.data.admin;
+        boolean isAdmin = s.player.admin;
         return filter == AdminFilter.ADMINS_ONLY ? isAdmin : !isAdmin;
     }
 
@@ -499,16 +496,19 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
             case ProfileEvent.InspectPlayer(String targetUuid) -> {
                 PlayerData target = null;
                 boolean isOnline = false;
+                boolean isAdmin = false;
                 if (sessionService != null) {
                     Session s = sessionService.get(targetUuid);
                     if (s != null && s.data != null) {
                         target = s.data;
                         isOnline = s.player != null;
+                        isAdmin = isOnline && s.player.admin;
                     }
                 }
                 if (target == null && initialTargetData != null && Objects.equals(initialTargetData.uuid, targetUuid)) {
                     target = initialTargetData;
                     isOnline = session != null && session.player != null && Objects.equals(session.data.uuid, targetUuid);
+                    isAdmin = isOnline && session.player.admin;
                 }
 
                 if (target == null) {
@@ -517,7 +517,7 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
                 }
 
                 String colorHex = PlayerSettingsUiController.resolvePlayerColorHex(session, target);
-                ProfileModel newModel = model.withTarget(target, isOnline, colorHex, null, true);
+                ProfileModel newModel = model.withTarget(target, isOnline, isAdmin, colorHex, null, true);
                 UpdateResult<ProfileModel> shown = UpdateResult.rerender(newModel);
                 yield playerMenu != null ? shown.effect(DETAILS, playerMenu.loadDetails(session, target)) : shown;
             }

@@ -34,6 +34,23 @@ import static org.mockito.Mockito.*;
 
 class ServerSelectorUiControllerTest {
 
+    @Test
+    @WithHeadlessWorld
+    void fullServerBypassUsesRuntimeAdminFlag(HeadlessWorld world) {
+        var registry = crowdedRegistry();
+        MockPlayer player = world.addPlayer("Traveller", mindustry.game.Team.sharded);
+        Session session = createTestSession("uuid-1", player.player());
+        var controller = new ServerSelectorUiController(registry, session);
+        for (boolean admin : new boolean[]{false, true}) {
+            session.player.admin = admin;
+            session.data.admin = !admin;
+            var result = controller.update(ServerSelectorUiController.createModel(registry, Category.ALL),
+                    new ServerSelectorUiController.ServerSelectorEvent.Connect("hexedcore"), mock(ControllerContext.class));
+            assertThat(result.close()).isEqualTo(admin);
+        }
+        assertThat(player.con().redirects()).hasSize(1);
+    }
+
     @SuppressWarnings("unchecked")
     private Session createTestSession(String uuid) {
         return createTestSession(uuid, null);
