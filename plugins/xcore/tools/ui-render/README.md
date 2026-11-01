@@ -2,7 +2,7 @@
 
 The menus of this plugin rendered in the official Mindustry desktop client, on phone, Android
 and desktop screens, with a report of what runs off the screen or out of its place. The renderer
-belongs to [mindustry-testkit](https://github.com/XCore-mindustry/mindustry-testkit/tree/main/render);
+belongs to [mindustry-testkit](../../../../libs/mindustry-testkit/render);
 this plugin supplies the menus.
 
 ```sh
@@ -11,9 +11,8 @@ tools/ui-render/render --profiles phone build/ui-render/packets/settings-de-prof
 tools/ui-render/render --host                            # Java 25 and xvfb-run instead of Docker
 ```
 
-The script finds the testkit beside this plugin (`../mindustry-testkit`) or at
-`$MINDUSTRY_TESTKIT`, exports the current code's menus with `./gradlew exportUiFixtures`, and
-renders them. Results (PNG, element tree, JSON findings per menu and screen) are under
+The script exports the current code's menus with `./gradlew :plugins:xcore:exportUiFixtures`
+and renders them with the testkit renderer in `libs/mindustry-testkit/render`. Results (PNG, element tree, JSON findings per menu and screen) are under
 `build/ui-render/results/`; see the testkit's README for the checks, profiles and exit codes.
 
 Fixtures are `settings-<locale>-profile|chat|language|badges` and `top-<locale>-crowded` for every
