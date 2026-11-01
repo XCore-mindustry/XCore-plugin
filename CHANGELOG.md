@@ -13,6 +13,8 @@ All notable changes to this project will be documented in this file.
 - Case notices `appeal_unmuted` and `appeal_mute_shortened` for accepted mute appeals.
 
 ### Fixed
+- Updated FluBundle to 2.1.2. Numbers, dates and durations are formatted in each player's own language: 2.1.0 shared one function cache across languages, so a player could get a number formatted for another language. Formatted text now uses plain spaces where CLDR puts no-break spaces (French `1 234`), since the client's font cannot draw those.
+- `cloud-mindustry` is the released 0.4.0 instead of 0.4.0-SNAPSHOT.
 - The audit list showed every timed ban and mute as permanent: the expiry, read from a raw document as `java.util.Date`, was dropped. The detail view was already right.
 
 ## [5.2.0] - 2026-10-28
