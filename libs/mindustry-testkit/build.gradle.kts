@@ -58,7 +58,7 @@ subprojects {
                     }
                     scm {
                         connection.set("scm:git:git://github.com/XCore-mindustry/xcore.git")
-                        developerConnection.set("scm:git:ssh://github.com:XCore-mindustry/xcore.git")
+                        developerConnection.set("scm:git:ssh://git@github.com/XCore-mindustry/xcore.git")
                         url.set("https://github.com/XCore-mindustry/xcore")
                     }
                 }

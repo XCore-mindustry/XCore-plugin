@@ -11,14 +11,13 @@ repositories {
 ### 2. Add dependency
 ```groovy
 dependencies {
-    implementation "com.ospx:flubundle:2.1.2"
+    implementation "com.ospx:flubundle:2.1.3"
 }
 ```
 
 ### Publishing
-- Snapshots are published to `https://maven.x-core.org/snapshots` on every non-PR push.
-- Releases are published to `https://maven.x-core.org/releases` when a GitHub Release is published.
-- Gradle repository names are `xcoreRepositorySnapshots` and `xcoreRepositoryReleases`.
+- Releases are published to `https://maven.x-core.org/releases` by the monorepo release workflow when a `flubundle/vX.Y.Z` tag is pushed.
+- The Gradle repository name is `xcoreRepositoryReleases`.
 
 ## Usage
 ```java

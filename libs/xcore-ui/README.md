@@ -3,7 +3,7 @@
 > A type-safe, reactive, server-driven UI framework for Mindustry v160 servers running on Java 25.
 
 [![License: MPL 2.0](https://img.shields.io/badge/License-MPL_2.0-brightgreen.svg)](LICENSE)
-[![Release](https://img.shields.io/badge/release-0.2.0-blue.svg)](https://github.com/XCore-mindustry/xcore-ui/releases/tag/v0.2.0)
+[![Release](https://img.shields.io/badge/release-0.3.0-blue.svg)](https://github.com/XCore-mindustry/xcore/releases/tag/xcore-ui/v0.3.0)
 [![Java](https://img.shields.io/badge/Java-25-orange.svg)]()
 [![Mindustry](https://img.shields.io/badge/Mindustry-v160-green.svg)]()
 
@@ -30,12 +30,11 @@
 ```kotlin
 repositories {
     mavenCentral()
-    maven("https://maven.x-core.org/snapshots")
     maven("https://maven.x-core.org/releases")
 }
 
 dependencies {
-    compileOnly("org.xcore:xcore-ui:0.2.0")
+    compileOnly("org.xcore:xcore-ui:0.3.0")
     // Or implementation(...) if you shade it into your plugin jar
 }
 ```
@@ -44,19 +43,18 @@ dependencies {
 ```groovy
 repositories {
     mavenCentral()
-    maven { url 'https://maven.x-core.org/snapshots' }
     maven { url 'https://maven.x-core.org/releases' }
 }
 
 dependencies {
-    compileOnly 'org.xcore:xcore-ui:0.2.0'
+    compileOnly 'org.xcore:xcore-ui:0.3.0'
 }
 ```
 
 ### Version Catalog (`libs.versions.toml`)
 ```toml
 [versions]
-xcore-ui = "0.2.0"
+xcore-ui = "0.3.0"
 
 [libraries]
 xcore-ui = { module = "org.xcore:xcore-ui", version.ref = "xcore-ui" }

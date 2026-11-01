@@ -22,19 +22,18 @@ The project is based on the integration found in [Xpdustry's Distributor](https:
 
 ### Gradle (Kotlin DSL)
 
-1. Add the XCore Maven repositories:
+1. Add the XCore Maven repository:
 ```kotlin
 repositories {
     mavenCentral()
     maven("https://maven.x-core.org/releases")
-    maven("https://maven.x-core.org/snapshots")
 }
 ```
 
 2. Add the library:
 ```kotlin
 dependencies {
-    implementation("org.xcore:cloud-mindustry:0.4.0")
+    implementation("org.xcore:cloud-mindustry:0.4.1")
 }
 ```
 
