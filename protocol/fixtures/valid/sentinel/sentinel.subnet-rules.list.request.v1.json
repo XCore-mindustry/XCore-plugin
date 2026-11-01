@@ -1,0 +1,6 @@
+{
+  "messageType": "sentinel.subnet-rules.list.request",
+  "messageVersion": 1,
+  "request": "req-list",
+  "targetServer": "survival-1"
+}

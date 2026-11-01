@@ -1,0 +1,88 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:xcore:protocol:shared:types:map-inspect-info:v1",
+  "title": "MapInspectInfoV1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "name",
+    "width",
+    "height",
+    "sha256",
+    "sizeBytes"
+  ],
+  "properties": {
+    "name": {
+      "type": "string",
+      "maxLength": 256
+    },
+    "author": {
+      "type": "string",
+      "maxLength": 256
+    },
+    "description": {
+      "type": "string",
+      "maxLength": 1024
+    },
+    "width": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "height": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "saveVersion": {
+      "type": "integer"
+    },
+    "build": {
+      "type": "integer"
+    },
+    "gameMode": {
+      "type": "string"
+    },
+    "profile": {
+      "type": "string"
+    },
+    "spawnCount": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "coresByTeam": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "integer",
+        "minimum": 0
+      }
+    },
+    "waves": {
+      "type": "boolean"
+    },
+    "waveTimer": {
+      "type": "boolean"
+    },
+    "spawnGroupCount": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "dropZoneRadius": {
+      "type": "number"
+    },
+    "mods": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "maxLength": 256
+      },
+      "maxItems": 32
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[a-fA-F0-9]{64}$"
+    },
+    "sizeBytes": {
+      "type": "integer",
+      "minimum": 0
+    }
+  }
+}

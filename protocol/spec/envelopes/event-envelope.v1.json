@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:xcore:protocol:envelopes:event-envelope:v1",
+  "title": "EventEnvelopeV1",
+  "type": "object",
+  "unevaluatedProperties": false,
+  "allOf": [
+    {
+      "$ref": "urn:xcore:protocol:envelopes:envelope-base:v1"
+    },
+    {
+      "type": "object",
+      "required": ["message_kind", "expires_at"],
+      "properties": {
+        "message_kind": {
+          "const": "event"
+        }
+      }
+    }
+  ]
+}

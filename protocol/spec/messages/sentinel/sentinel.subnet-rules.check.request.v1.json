@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:xcore:protocol:messages:sentinel:sentinel.subnet-rules.check.request:v1",
+  "title": "SentinelSubnetRulesCheckRequestV1",
+  "type": "object", "additionalProperties": false,
+  "required": ["messageType", "messageVersion", "request", "targetServer", "ip"],
+  "properties": {
+    "messageType": { "const": "sentinel.subnet-rules.check.request" },
+    "messageVersion": { "const": 1 },
+    "request": { "type": "string", "minLength": 1 },
+    "targetServer": { "type": "string", "minLength": 1 },
+    "ip": { "type": "string", "minLength": 1 }
+  }
+}

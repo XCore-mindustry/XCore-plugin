@@ -1,0 +1,44 @@
+package org.xcore.protocol.generated.shared;
+
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.Objects;
+import org.xcore.protocol.generated.runtime.ProtocolPayload;
+
+public record PlayerRefV1(
+        String playerUuid,
+        Integer playerPid,
+        String playerName,
+        String ip
+) implements ProtocolPayload {
+    public PlayerRefV1 {
+        Objects.requireNonNull(playerUuid, "playerUuid must not be null");
+        if (playerUuid.length() < 1) {
+            throw new IllegalArgumentException("playerUuid must be at least 1 characters");
+        }
+        Objects.requireNonNull(playerName, "playerName must not be null");
+        if (playerName.length() < 1) {
+            throw new IllegalArgumentException("playerName must be at least 1 characters");
+        }
+        if (ip != null) {
+            Objects.requireNonNull(ip, "ip must not be null");
+            if (ip.length() < 1) {
+                throw new IllegalArgumentException("ip must be at least 1 characters");
+            }
+        }
+    }
+
+    @Override
+    public Map<String, Object> toPayload() {
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("playerUuid", playerUuid);
+        if (playerPid != null) {
+            payload.put("playerPid", playerPid);
+        }
+        payload.put("playerName", playerName);
+        if (ip != null) {
+            payload.put("ip", ip);
+        }
+        return payload;
+    }
+}

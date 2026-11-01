@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:xcore:protocol:shared:types:map-inspect-finding:v1",
+  "title": "MapInspectFindingV1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "code",
+    "severity"
+  ],
+  "properties": {
+    "code": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+    },
+    "severity": {
+      "type": "string",
+      "enum": [
+        "error",
+        "warning",
+        "info"
+      ]
+    },
+    "detail": {
+      "type": "string",
+      "maxLength": 300
+    },
+    "x": {
+      "type": "integer"
+    },
+    "y": {
+      "type": "integer"
+    },
+    "count": {
+      "type": "integer"
+    }
+  }
+}

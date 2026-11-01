@@ -1,0 +1,28 @@
+{
+  "messageType": "rating.season.prizes.set.response",
+  "messageVersion": 1,
+  "server": "mini-pvp",
+  "season": {
+    "ladder": "mini-pvp",
+    "season": 4,
+    "name": "Season 4",
+    "startsAt": "2026-10-01T00:00:00Z",
+    "endsAt": "2027-01-01T00:00:00Z"
+  },
+  "prizes": [
+    {
+      "placeFrom": 1,
+      "placeTo": 1,
+      "kind": "badge",
+      "value": "season-champion",
+      "description": "Season champion badge"
+    },
+    {
+      "placeFrom": 1,
+      "placeTo": 3,
+      "kind": "custom",
+      "value": "Discord Nitro, 1 month",
+      "description": "Nitro for the top three"
+    }
+  ]
+}

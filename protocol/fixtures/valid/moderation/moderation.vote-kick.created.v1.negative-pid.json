@@ -1,0 +1,30 @@
+{
+  "messageType": "moderation.vote-kick.created",
+  "messageVersion": 1,
+  "target": {
+    "playerUuid": "uuid-target",
+    "playerPid": -42,
+    "playerName": "Target"
+  },
+  "actor": {
+    "actorName": "Starter",
+    "actorDiscordId": "999999",
+    "actorType": "player"
+  },
+  "reason": "afk trolling",
+  "votesFor": [
+    {
+      "playerName": "Starter",
+      "playerPid": -1,
+      "discordId": "999999"
+    }
+  ],
+  "votesAgainst": [
+    {
+      "playerName": "Defender",
+      "playerPid": 0
+    }
+  ],
+  "server": "mini-pvp",
+  "occurredAt": "2026-04-23T13:00:00Z"
+}

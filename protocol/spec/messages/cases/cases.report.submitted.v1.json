@@ -1,0 +1,93 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:xcore:protocol:messages:cases:cases.report.submitted:v1",
+  "title": "CasesReportSubmittedV1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "messageType",
+    "messageVersion",
+    "submissionId",
+    "server",
+    "reporter",
+    "target",
+    "targetOnline",
+    "reason",
+    "chat",
+    "occurredAt"
+  ],
+  "properties": {
+    "messageType": {
+      "const": "cases.report.submitted"
+    },
+    "messageVersion": {
+      "const": 1
+    },
+    "submissionId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "server": {
+      "type": "string",
+      "minLength": 1
+    },
+    "reporter": {
+      "$ref": "urn:xcore:protocol:shared:types:player-ref:v1",
+      "not": {
+        "required": [
+          "ip"
+        ]
+      }
+    },
+    "target": {
+      "$ref": "urn:xcore:protocol:shared:types:player-ref:v1",
+      "not": {
+        "required": [
+          "ip"
+        ]
+      }
+    },
+    "targetOnline": {
+      "type": "boolean"
+    },
+    "reason": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]{0,31}$"
+    },
+    "comment": {
+      "type": "string",
+      "maxLength": 300
+    },
+    "reporterLocale": {
+      "type": "string",
+      "maxLength": 16
+    },
+    "mapName": {
+      "type": "string"
+    },
+    "mapFileName": {
+      "type": "string"
+    },
+    "gameMode": {
+      "type": "string"
+    },
+    "sameNetwork": {
+      "type": "boolean"
+    },
+    "chat": {
+      "type": "array",
+      "maxItems": 30,
+      "items": {
+        "$ref": "urn:xcore:protocol:shared:types:case-chat-line:v1"
+      }
+    },
+    "blockSummary": {
+      "$ref": "urn:xcore:protocol:shared:types:case-block-summary:v1"
+    },
+    "occurredAt": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "messageType": "maps.remove.request",
+  "messageVersion": 1,
+  "server": "mini-pvp",
+  "fileName": "nested/ancient-caldera.msav"
+}

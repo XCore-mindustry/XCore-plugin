@@ -1,0 +1,7 @@
+{
+  "messageType": "maps.inspect.response",
+  "messageVersion": 1,
+  "server": "mini-pvp",
+  "status": "ok",
+  "findings": []
+}

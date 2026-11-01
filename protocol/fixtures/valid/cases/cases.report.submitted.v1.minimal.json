@@ -1,0 +1,19 @@
+{
+  "messageType": "cases.report.submitted",
+  "messageVersion": 1,
+  "submissionId": "mini-pvp:report-42",
+  "server": "mini-pvp",
+  "reporter": {
+    "playerUuid": "uuid-reporter",
+    "playerName": "Alice",
+    "playerPid": -12
+  },
+  "target": {
+    "playerUuid": "uuid-target",
+    "playerName": "Bob"
+  },
+  "targetOnline": false,
+  "reason": "future-reason",
+  "chat": [],
+  "occurredAt": "2026-10-13T12:00:00Z"
+}

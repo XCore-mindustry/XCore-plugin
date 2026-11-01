@@ -1,0 +1,6 @@
+{
+  "messageType": "maps.inspect.request",
+  "messageVersion": 1,
+  "server": "mini-pvp",
+  "profile": "pvp"
+}

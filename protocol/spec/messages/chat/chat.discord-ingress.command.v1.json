@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:xcore:protocol:messages:chat:chat.discord-ingress.command:v1",
+  "title": "ChatDiscordIngressCommandV1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["messageType", "messageVersion", "authorName", "message", "server"],
+  "properties": {
+    "messageType": {
+      "const": "chat.discord-ingress.command"
+    },
+    "messageVersion": {
+      "const": 1
+    },
+    "authorName": {
+      "type": "string",
+      "minLength": 1
+    },
+    "message": {
+      "type": "string",
+      "minLength": 1
+    },
+    "server": {
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "messageType": "player.active-badge.changed.command",
+  "messageVersion": 1,
+  "uuid": "player-uuid-123",
+  "activeBadge": "veteran",
+  "server": "mini-pvp"
+}

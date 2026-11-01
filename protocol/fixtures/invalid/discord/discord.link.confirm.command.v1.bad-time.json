@@ -1,0 +1,16 @@
+{
+  "messageType": "discord.link.confirm.command",
+  "messageVersion": 1,
+  "code": "ABCD23",
+  "player": {
+    "playerUuid": "uuid-1",
+    "playerPid": 10,
+    "playerName": "LinkedPlayer"
+  },
+  "discord": {
+    "discordId": "1234567890",
+    "discordUsername": "tester"
+  },
+  "server": "mini-pvp",
+  "confirmedAt": 1713895200000
+}

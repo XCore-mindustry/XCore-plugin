@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.pyc
+*.egg-info/
+.venv/
+
+# Java / Gradle / build outputs
+.gradle/
+build/
+out/
+
+# Temporary work files
+.tmp/
+
+# IDEs
+.idea/
+.vscode/
+
+# OS
+.DS_Store

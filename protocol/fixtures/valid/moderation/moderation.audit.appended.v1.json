@@ -1,0 +1,22 @@
+{
+  "messageType": "moderation.audit.appended",
+  "messageVersion": 1,
+  "entryType": "ban",
+  "target": {
+    "playerUuid": "uuid-7",
+    "playerPid": 7,
+    "playerName": "Target"
+  },
+  "actor": {
+    "actorName": "admin",
+    "actorDiscordId": "123456",
+    "actorType": "discord"
+  },
+  "reason": "griefing",
+  "server": "mini-pvp",
+  "occurredAt": "2026-04-23T12:00:00Z",
+  "details": {
+    "source": "discord-bot",
+    "permanent": false
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:xcore:protocol:shared:types:expiration-info:v1",
+  "title": "ExpirationInfoV1",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "expiresAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "permanent": {
+      "type": "boolean"
+    }
+  }
+}

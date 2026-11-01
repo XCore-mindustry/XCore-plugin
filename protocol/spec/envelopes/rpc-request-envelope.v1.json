@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:xcore:protocol:envelopes:rpc-request-envelope:v1",
+  "title": "RpcRequestEnvelopeV1",
+  "type": "object",
+  "unevaluatedProperties": false,
+  "allOf": [
+    {
+      "$ref": "urn:xcore:protocol:envelopes:envelope-base:v1"
+    },
+    {
+      "type": "object",
+      "required": [
+        "message_kind",
+        "correlation_id",
+        "target",
+        "reply_to",
+        "timeout_ms",
+        "expires_at"
+      ],
+      "properties": {
+        "message_kind": {
+          "const": "rpc_request"
+        },
+        "reply_to": {
+          "type": "string",
+          "minLength": 1
+        },
+        "timeout_ms": {
+          "type": "string",
+          "pattern": "^[0-9]+$"
+        }
+      }
+    }
+  ]
+}

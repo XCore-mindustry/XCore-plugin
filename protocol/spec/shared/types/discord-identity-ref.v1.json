@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:xcore:protocol:shared:types:discord-identity-ref:v1",
+  "title": "DiscordIdentityRefV1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["discordId"],
+  "properties": {
+    "discordId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "discordUsername": {
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}

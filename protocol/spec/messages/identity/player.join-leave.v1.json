@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:xcore:protocol:messages:chat:player.join-leave:v1",
+  "title": "PlayerJoinLeaveV1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["messageType", "messageVersion", "playerName", "server", "joined"],
+  "properties": {
+    "messageType": {
+      "const": "player.join-leave"
+    },
+    "messageVersion": {
+      "const": 1
+    },
+    "playerName": {
+      "type": "string",
+      "minLength": 1
+    },
+    "server": {
+      "type": "string",
+      "minLength": 1
+    },
+    "joined": {
+      "type": "boolean"
+    }
+  }
+}

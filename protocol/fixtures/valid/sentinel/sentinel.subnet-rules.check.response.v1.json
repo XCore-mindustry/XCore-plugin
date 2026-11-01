@@ -1,0 +1,10 @@
+{
+  "messageType": "sentinel.subnet-rules.check.response",
+  "messageVersion": 1,
+  "request": "req-check",
+  "targetServer": "survival-1",
+  "allowed": true,
+  "matchedRules": [
+    "1.2.3.0/24"
+  ]
+}

@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:xcore:protocol:shared:types:season-podium-entry:v1",
+  "title": "SeasonPodiumEntryV1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "place",
+    "player",
+    "rating",
+    "league",
+    "matches",
+    "wins"
+  ],
+  "properties": {
+    "place": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "player": {
+      "$ref": "urn:xcore:protocol:shared:types:player-ref:v1"
+    },
+    "discord": {
+      "$ref": "urn:xcore:protocol:shared:types:discord-identity-ref:v1"
+    },
+    "rating": {
+      "type": "integer"
+    },
+    "league": {
+      "type": "string",
+      "minLength": 1
+    },
+    "matches": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "wins": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "prizes": {
+      "type": "array",
+      "items": {
+        "$ref": "urn:xcore:protocol:shared:types:season-prize:v1"
+      }
+    }
+  }
+}

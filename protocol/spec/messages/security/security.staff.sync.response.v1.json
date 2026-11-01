@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:xcore:protocol:messages:security:security.staff.sync.response:v1",
+  "title": "SecurityStaffSyncResponseV1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "messageType",
+    "messageVersion",
+    "server",
+    "operationId",
+    "revision",
+    "changed"
+  ],
+  "properties": {
+    "messageType": {
+      "const": "security.staff.sync.response"
+    },
+    "messageVersion": {
+      "const": 1
+    },
+    "server": {
+      "type": "string",
+      "minLength": 1
+    },
+    "operationId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "revision": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "changed": {
+      "type": "boolean"
+    }
+  }
+}

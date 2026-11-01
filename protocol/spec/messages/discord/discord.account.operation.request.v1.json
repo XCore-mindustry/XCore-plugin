@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:xcore:protocol:messages:discord:discord.account.operation.request:v1",
+  "title": "DiscordAccountOperationRequestV1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "messageType",
+    "messageVersion",
+    "server",
+    "operationId",
+    "action",
+    "player",
+    "discord",
+    "issuedAt",
+    "expiresAt"
+  ],
+  "properties": {
+    "messageType": {
+      "const": "discord.account.operation.request"
+    },
+    "messageVersion": {
+      "const": 1
+    },
+    "server": {
+      "type": "string",
+      "minLength": 1
+    },
+    "operationId": {
+      "type": "string",
+      "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+    },
+    "action": {
+      "type": "string",
+      "enum": ["link", "unlink"]
+    },
+    "player": {
+      "$ref": "urn:xcore:protocol:shared:types:player-ref:v1"
+    },
+    "discord": {
+      "$ref": "urn:xcore:protocol:shared:types:discord-identity-ref:v1"
+    },
+    "issuedAt": {
+      "type": "integer",
+      "format": "int64",
+      "minimum": 0
+    },
+    "expiresAt": {
+      "type": "integer",
+      "format": "int64",
+      "minimum": 0
+    },
+    "code": {
+      "type": "string",
+      "minLength": 1
+    },
+    "expectedLinkedAt": {
+      "type": "integer",
+      "format": "int64",
+      "minimum": 0
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "action": { "const": "link" } } },
+      "then": { "required": ["code"] }
+    },
+    {
+      "if": { "properties": { "action": { "const": "unlink" } } },
+      "then": { "required": ["expectedLinkedAt"] }
+    }
+  ]
+}

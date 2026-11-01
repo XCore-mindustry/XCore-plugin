@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:xcore:protocol:messages:sentinel:sentinel.subnet-rules.check.response:v1",
+  "title": "SentinelSubnetRulesCheckResponseV1",
+  "type": "object", "additionalProperties": false,
+  "required": ["messageType", "messageVersion", "request", "targetServer", "allowed", "matchedRules"],
+  "properties": {
+    "messageType": { "const": "sentinel.subnet-rules.check.response" },
+    "messageVersion": { "const": 1 },
+    "request": { "type": "string", "minLength": 1 },
+    "targetServer": { "type": "string", "minLength": 1 },
+    "allowed": { "type": "boolean" },
+    "matchedRules": { "type": "array", "items": { "type": "string", "minLength": 1 } }
+  }
+}

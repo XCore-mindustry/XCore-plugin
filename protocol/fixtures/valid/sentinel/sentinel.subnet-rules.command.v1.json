@@ -1,0 +1,16 @@
+{
+  "messageType": "sentinel.subnet-rules.command",
+  "messageVersion": 1,
+  "request": "req-1",
+  "idempotency": "idem-1",
+  "actor": {
+    "actorName": "moderator",
+    "actorType": "discord"
+  },
+  "operation": "ALLOW",
+  "targetServer": "survival-1",
+  "rules": [
+    "1.2.3.0/24"
+  ],
+  "reason": "trusted"
+}

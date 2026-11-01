@@ -1,0 +1,19 @@
+{
+  "messageType": "discord.account.operation.request",
+  "messageVersion": 1,
+  "server": "mini-pvp",
+  "operationId": "3f2a9c1e-7b4d-4e8a-9c21-5d6e7f8a9b0c",
+  "action": "merge",
+  "player": {
+    "playerUuid": "uuid-1",
+    "playerPid": 10,
+    "playerName": "LinkedPlayer"
+  },
+  "discord": {
+    "discordId": "1234567890",
+    "discordUsername": "linked-user"
+  },
+  "issuedAt": 1777000000000,
+  "expiresAt": 1777000010000,
+  "code": "ABC123"
+}

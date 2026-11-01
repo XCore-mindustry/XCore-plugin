@@ -1,0 +1,7 @@
+{
+  "messageType": "player.join-leave",
+  "messageVersion": 1,
+  "playerName": "PlayerOne",
+  "server": "mini-pvp",
+  "joined": true
+}

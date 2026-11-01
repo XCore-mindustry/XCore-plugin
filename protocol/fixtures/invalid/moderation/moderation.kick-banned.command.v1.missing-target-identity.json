@@ -1,0 +1,7 @@
+{
+  "messageType": "moderation.kick-banned.command",
+  "messageVersion": 1,
+  "target": {},
+  "server": "mini-pvp",
+  "requestedAt": "2026-04-23T13:15:00Z"
+}

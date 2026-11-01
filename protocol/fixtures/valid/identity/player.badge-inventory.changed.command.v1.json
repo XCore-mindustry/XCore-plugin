@@ -1,0 +1,8 @@
+{
+  "messageType": "player.badge-inventory.changed.command",
+  "messageVersion": 1,
+  "playerUuid": "player-uuid-123",
+  "activeBadge": "translator",
+  "unlockedBadges": ["translator", "veteran"],
+  "server": "mini-pvp"
+}

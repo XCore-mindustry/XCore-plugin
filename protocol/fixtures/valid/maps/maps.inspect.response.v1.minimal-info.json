@@ -1,0 +1,14 @@
+{
+  "messageType": "maps.inspect.response",
+  "messageVersion": 1,
+  "server": "mini-pvp",
+  "status": "ok",
+  "info": {
+    "name": "Ancient Caldera",
+    "width": 120,
+    "height": 80,
+    "sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+    "sizeBytes": 2048
+  },
+  "findings": []
+}

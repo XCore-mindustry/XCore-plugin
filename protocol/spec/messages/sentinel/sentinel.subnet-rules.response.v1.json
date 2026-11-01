@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:xcore:protocol:messages:sentinel:sentinel.subnet-rules.response:v1",
+  "title": "SentinelSubnetRulesResponseV1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["messageType", "messageVersion", "request", "success"],
+  "properties": {
+    "messageType": { "const": "sentinel.subnet-rules.response" },
+    "messageVersion": { "const": 1 },
+    "request": { "type": "string", "minLength": 1 },
+    "success": { "type": "boolean" },
+    "targetServer": { "type": "string", "minLength": 1 },
+    "error": { "type": "string", "minLength": 1 },
+    "rules": { "type": "array", "items": { "type": "string", "minLength": 1 } }
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "messageType": "sentinel.subnet-rules.response",
+  "messageVersion": 1,
+  "request": "req-1",
+  "success": true,
+  "targetServer": "survival-1",
+  "rules": [
+    "1.2.3.0/24"
+  ]
+}

@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:xcore:protocol:messages:rating:rating.prize.grant.update.response:v1",
+  "title": "RatingPrizeGrantUpdateResponseV1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "messageType",
+    "messageVersion",
+    "server",
+    "season",
+    "place",
+    "updated"
+  ],
+  "properties": {
+    "messageType": {
+      "const": "rating.prize.grant.update.response"
+    },
+    "messageVersion": {
+      "const": 1
+    },
+    "server": {
+      "type": "string",
+      "minLength": 1
+    },
+    "season": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "place": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "updated": {
+      "type": "integer",
+      "minimum": 0
+    }
+  }
+}

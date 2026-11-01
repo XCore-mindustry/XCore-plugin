@@ -1,0 +1,1 @@
+"""Protocol models package placeholder."""

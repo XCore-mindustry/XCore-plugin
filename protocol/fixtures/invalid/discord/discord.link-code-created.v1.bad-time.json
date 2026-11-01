@@ -1,0 +1,13 @@
+{
+  "messageType": "discord.link-code-created",
+  "messageVersion": 1,
+  "code": "ABCD23",
+  "player": {
+    "playerUuid": "uuid-7",
+    "playerPid": 7,
+    "playerName": "Target"
+  },
+  "server": "mini-pvp",
+  "createdAt": 1777377600000,
+  "expiresAt": "2026-04-28T12:10:00Z"
+}

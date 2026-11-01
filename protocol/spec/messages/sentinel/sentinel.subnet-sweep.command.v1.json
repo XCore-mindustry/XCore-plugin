@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:xcore:protocol:messages:sentinel:sentinel.subnet-sweep.command:v1",
+  "title": "SentinelSubnetSweepCommandV1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["messageType", "messageVersion"],
+  "properties": {
+    "messageType": {
+      "const": "sentinel.subnet-sweep.command"
+    },
+    "messageVersion": {
+      "const": 1
+    },
+    "actor": {
+      "type": "string",
+      "minLength": 1
+    },
+    "reason": {
+      "type": "string",
+      "minLength": 1
+    },
+    "occurredAt": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}

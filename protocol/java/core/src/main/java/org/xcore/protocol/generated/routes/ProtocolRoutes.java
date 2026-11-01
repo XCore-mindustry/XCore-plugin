@@ -1,0 +1,1071 @@
+package org.xcore.protocol.generated.routes;
+
+import static java.util.Map.entry;
+
+import java.util.Map;
+import org.xcore.protocol.generated.runtime.ProtocolPayload;
+import org.xcore.protocol.generated.messages.cases.CasesMessages;
+import org.xcore.protocol.generated.messages.chat.ChatMessages;
+import org.xcore.protocol.generated.messages.discord.DiscordMessages;
+import org.xcore.protocol.generated.messages.identity.IdentityMessages;
+import org.xcore.protocol.generated.messages.maps.MapsMessages;
+import org.xcore.protocol.generated.messages.moderation.ModerationMessages;
+import org.xcore.protocol.generated.messages.rating.RatingMessages;
+import org.xcore.protocol.generated.messages.security.SecurityMessages;
+import org.xcore.protocol.generated.messages.sentinel.SentinelMessages;
+import org.xcore.protocol.generated.messages.server.ServerMessages;
+
+public final class ProtocolRoutes {
+    private ProtocolRoutes() {
+        throw new AssertionError("No org.xcore.protocol.generated.routes.ProtocolRoutes instances");
+    }
+
+    public record MessageKey(String messageType, int messageVersion) {}
+
+    public record RouteResponseDescriptor(
+            String messageType,
+            int messageVersion,
+            Class<? extends ProtocolPayload> payloadType,
+            String stream,
+            Map<String, String> bindings
+    ) {}
+
+    public record RouteDescriptor(
+            String family,
+            String methodName,
+            String messageType,
+            int messageVersion,
+            Class<? extends ProtocolPayload> payloadType,
+            String kind,
+            String stream,
+            Map<String, String> bindings,
+            String targetScope,
+            int ttlMs,
+            boolean replayable,
+            boolean idempotentConsumerRecommended,
+            String owner,
+            RouteResponseDescriptor response
+    ) {}
+
+    public static final RouteDescriptor MAPS_LIST_REQUEST_V1 = new RouteDescriptor(
+            "maps",
+            "mapsListRequestV1Route",
+            "maps.list.request",
+            1,
+            MapsMessages.MapsListRequestV1.class,
+            "rpc-request",
+            "xcore:rpc:req:{server}",
+            Map.of("server", "payload.server"),
+            "server",
+            10000,
+            false,
+            false,
+            "maps",
+            new RouteResponseDescriptor(
+                    "maps.list.response",
+                    1,
+                    MapsMessages.MapsListResponseV1.class,
+                    "xcore:rpc:resp:{requester}",
+                    Map.of("requester", "rpc.requester")
+            )
+    );
+
+    public static final RouteDescriptor MAPS_REMOVE_REQUEST_V1 = new RouteDescriptor(
+            "maps",
+            "mapsRemoveRequestV1Route",
+            "maps.remove.request",
+            1,
+            MapsMessages.MapsRemoveRequestV1.class,
+            "rpc-request",
+            "xcore:rpc:req:{server}",
+            Map.of("server", "payload.server"),
+            "server",
+            10000,
+            false,
+            true,
+            "maps",
+            new RouteResponseDescriptor(
+                    "maps.remove.response",
+                    1,
+                    MapsMessages.MapsRemoveResponseV1.class,
+                    "xcore:rpc:resp:{requester}",
+                    Map.of("requester", "rpc.requester")
+            )
+    );
+
+    public static final RouteDescriptor MAPS_LOAD_COMMAND_V1 = new RouteDescriptor(
+            "maps",
+            "mapsLoadCommandV1Route",
+            "maps.load.command",
+            1,
+            MapsMessages.MapsLoadCommandV1.class,
+            "command",
+            "xcore:cmd:maps-load:{server}",
+            Map.of("server", "payload.server"),
+            "server",
+            300000,
+            false,
+            true,
+            "maps",
+            null
+    );
+
+    public static final RouteDescriptor MAPS_UPLOAD_REQUEST_V1 = new RouteDescriptor(
+            "maps",
+            "mapsUploadRequestV1Route",
+            "maps.upload.request",
+            1,
+            MapsMessages.MapsUploadRequestV1.class,
+            "rpc-request",
+            "xcore:rpc:req:{server}",
+            Map.of("server", "payload.server"),
+            "server",
+            180000,
+            false,
+            true,
+            "maps",
+            new RouteResponseDescriptor(
+                    "maps.upload.response",
+                    1,
+                    MapsMessages.MapsUploadResponseV1.class,
+                    "xcore:rpc:resp:{requester}",
+                    Map.of("requester", "rpc.requester")
+            )
+    );
+
+    public static final RouteDescriptor MAPS_INSPECT_REQUEST_V1 = new RouteDescriptor(
+            "maps",
+            "mapsInspectRequestV1Route",
+            "maps.inspect.request",
+            1,
+            MapsMessages.MapsInspectRequestV1.class,
+            "rpc-request",
+            "xcore:rpc:req:{server}",
+            Map.of("server", "payload.server"),
+            "server",
+            60000,
+            false,
+            false,
+            "maps",
+            new RouteResponseDescriptor(
+                    "maps.inspect.response",
+                    1,
+                    MapsMessages.MapsInspectResponseV1.class,
+                    "xcore:rpc:resp:{requester}",
+                    Map.of("requester", "rpc.requester")
+            )
+    );
+
+    public static final RouteDescriptor CASES_REPORT_SUBMITTED_V1 = new RouteDescriptor(
+            "cases",
+            "casesReportSubmittedV1Route",
+            "cases.report.submitted",
+            1,
+            CasesMessages.CasesReportSubmittedV1.class,
+            "event",
+            "xcore:evt:cases:report",
+            Map.of(),
+            "broadcast",
+            604800000,
+            true,
+            true,
+            "cases",
+            null
+    );
+
+    public static final RouteDescriptor CASES_NOTICE_COMMAND_V1 = new RouteDescriptor(
+            "cases",
+            "casesNoticeCommandV1Route",
+            "cases.notice.command",
+            1,
+            CasesMessages.CasesNoticeCommandV1.class,
+            "command",
+            "xcore:cmd:cases-notice:{server}",
+            Map.of("server", "payload.server"),
+            "server",
+            120000,
+            false,
+            true,
+            "cases",
+            null
+    );
+
+    public static final RouteDescriptor CASES_EVIDENCE_REQUEST_V1 = new RouteDescriptor(
+            "cases",
+            "casesEvidenceRequestV1Route",
+            "cases.evidence.request",
+            1,
+            CasesMessages.CasesEvidenceRequestV1.class,
+            "rpc-request",
+            "xcore:rpc:req:{server}",
+            Map.of("server", "payload.server"),
+            "server",
+            15000,
+            false,
+            false,
+            "cases",
+            new RouteResponseDescriptor(
+                    "cases.evidence.response",
+                    1,
+                    CasesMessages.CasesEvidenceResponseV1.class,
+                    "xcore:rpc:resp:{requester}",
+                    Map.of("requester", "rpc.requester")
+            )
+    );
+
+    public static final RouteDescriptor CHAT_MESSAGE_V1 = new RouteDescriptor(
+            "chat",
+            "chatMessageV1Route",
+            "chat.message",
+            1,
+            ChatMessages.ChatMessageV1.class,
+            "event",
+            "xcore:evt:chat:message",
+            Map.of(),
+            "broadcast",
+            60000,
+            true,
+            false,
+            "chat",
+            null
+    );
+
+    public static final RouteDescriptor CHAT_GLOBAL_V1 = new RouteDescriptor(
+            "chat",
+            "chatGlobalV1Route",
+            "chat.global",
+            1,
+            ChatMessages.ChatGlobalV1.class,
+            "event",
+            "xcore:evt:chat:global",
+            Map.of(),
+            "broadcast",
+            60000,
+            true,
+            false,
+            "chat",
+            null
+    );
+
+    public static final RouteDescriptor CHAT_DISCORD_INGRESS_COMMAND_V1 = new RouteDescriptor(
+            "chat",
+            "chatDiscordIngressCommandV1Route",
+            "chat.discord-ingress.command",
+            1,
+            ChatMessages.ChatDiscordIngressCommandV1.class,
+            "command",
+            "xcore:cmd:discord-message:{server}",
+            Map.of("server", "payload.server"),
+            "server",
+            60000,
+            false,
+            true,
+            "chat",
+            null
+    );
+
+    public static final RouteDescriptor CHAT_PRIVATE_V1 = new RouteDescriptor(
+            "chat",
+            "chatPrivateV1Route",
+            "chat.private",
+            1,
+            ChatMessages.ChatPrivateV1.class,
+            "event",
+            "xcore:evt:chat:private",
+            Map.of(),
+            "broadcast",
+            60000,
+            true,
+            false,
+            "chat",
+            null
+    );
+
+    public static final RouteDescriptor PLAYER_JOIN_LEAVE_V1 = new RouteDescriptor(
+            "identity",
+            "playerJoinLeaveV1Route",
+            "player.join-leave",
+            1,
+            IdentityMessages.PlayerJoinLeaveV1.class,
+            "event",
+            "xcore:evt:player:joinleave",
+            Map.of(),
+            "broadcast",
+            60000,
+            true,
+            false,
+            "player-session",
+            null
+    );
+
+    public static final RouteDescriptor PLAYER_CUSTOM_NICKNAME_CHANGED_COMMAND_V1 = new RouteDescriptor(
+            "identity",
+            "playerCustomNicknameChangedCommandV1Route",
+            "player.custom-nickname.changed.command",
+            1,
+            IdentityMessages.PlayerCustomNicknameChangedCommandV1.class,
+            "command",
+            "xcore:cmd:player-custom-nickname:{server}",
+            Map.of("server", "payload.server"),
+            "server",
+            120000,
+            false,
+            true,
+            "player-session",
+            null
+    );
+
+    public static final RouteDescriptor PLAYER_ACTIVE_BADGE_CHANGED_COMMAND_V1 = new RouteDescriptor(
+            "identity",
+            "playerActiveBadgeChangedCommandV1Route",
+            "player.active-badge.changed.command",
+            1,
+            IdentityMessages.PlayerActiveBadgeChangedCommandV1.class,
+            "command",
+            "xcore:cmd:player-active-badge:{server}",
+            Map.of("server", "payload.server"),
+            "server",
+            120000,
+            false,
+            true,
+            "player-session",
+            null
+    );
+
+    public static final RouteDescriptor PLAYER_BADGE_INVENTORY_CHANGED_COMMAND_V1 = new RouteDescriptor(
+            "identity",
+            "playerBadgeInventoryChangedCommandV1Route",
+            "player.badge-inventory.changed.command",
+            1,
+            IdentityMessages.PlayerBadgeInventoryChangedCommandV1.class,
+            "command",
+            "xcore:cmd:player-badge-inventory:{server}",
+            Map.of("server", "payload.server"),
+            "server",
+            120000,
+            false,
+            true,
+            "player-session",
+            null
+    );
+
+    public static final RouteDescriptor PLAYER_BADGE_SYMBOL_COLOR_MODE_CHANGED_COMMAND_V1 = new RouteDescriptor(
+            "identity",
+            "playerBadgeSymbolColorModeChangedCommandV1Route",
+            "player.badge-symbol-color-mode.changed.command",
+            1,
+            IdentityMessages.PlayerBadgeSymbolColorModeChangedCommandV1.class,
+            "command",
+            "xcore:cmd:player-badge-symbol-color-mode:{server}",
+            Map.of("server", "payload.server"),
+            "server",
+            120000,
+            false,
+            true,
+            "player-session",
+            null
+    );
+
+    public static final RouteDescriptor SERVER_ACTION_V1 = new RouteDescriptor(
+            "server",
+            "serverActionV1Route",
+            "server.action",
+            1,
+            ServerMessages.ServerActionV1.class,
+            "event",
+            "xcore:evt:server:action",
+            Map.of(),
+            "broadcast",
+            60000,
+            true,
+            false,
+            "server-runtime",
+            null
+    );
+
+    public static final RouteDescriptor SERVER_COMMAND_EXECUTE_COMMAND_V1 = new RouteDescriptor(
+            "server",
+            "serverCommandExecuteCommandV1Route",
+            "server-command.execute.command",
+            1,
+            ServerMessages.ServerCommandExecuteCommandV1.class,
+            "command",
+            "xcore:cmd:execute-command:broadcast",
+            Map.of(),
+            "broadcast",
+            120000,
+            false,
+            false,
+            "server-runtime",
+            null
+    );
+
+    public static final RouteDescriptor PLAYER_DATA_CACHE_RELOAD_COMMAND_V1 = new RouteDescriptor(
+            "server",
+            "playerDataCacheReloadCommandV1Route",
+            "player-data-cache.reload.command",
+            1,
+            ServerMessages.PlayerDataCacheReloadCommandV1.class,
+            "command",
+            "xcore:cmd:reload-cache:{server}",
+            Map.of("server", "payload.server"),
+            "server",
+            120000,
+            false,
+            true,
+            "player-session",
+            null
+    );
+
+    public static final RouteDescriptor SERVER_HEARTBEAT_V1 = new RouteDescriptor(
+            "server",
+            "serverHeartbeatV1Route",
+            "server.heartbeat",
+            1,
+            ServerMessages.ServerHeartbeatV1.class,
+            "event",
+            "xcore:evt:server:heartbeat",
+            Map.of(),
+            "broadcast",
+            60000,
+            true,
+            false,
+            "server-runtime",
+            null
+    );
+
+    public static final RouteDescriptor SECURITY_PERMISSIONS_CHANGED_V1 = new RouteDescriptor(
+            "security",
+            "securityPermissionsChangedV1Route",
+            "security.permissions.changed",
+            1,
+            SecurityMessages.SecurityPermissionsChangedV1.class,
+            "event",
+            "xcore:evt:security:permissions-changed",
+            Map.of(),
+            "broadcast",
+            300000,
+            true,
+            true,
+            "permissions",
+            null
+    );
+
+    public static final RouteDescriptor SECURITY_STAFF_SYNC_REQUEST_V1 = new RouteDescriptor(
+            "security",
+            "securityStaffSyncRequestV1Route",
+            "security.staff.sync.request",
+            1,
+            SecurityMessages.SecurityStaffSyncRequestV1.class,
+            "rpc-request",
+            "xcore:rpc:req:{server}",
+            Map.of("server", "payload.server"),
+            "server",
+            10000,
+            false,
+            true,
+            "permissions",
+            new RouteResponseDescriptor(
+                    "security.staff.sync.response",
+                    1,
+                    SecurityMessages.SecurityStaffSyncResponseV1.class,
+                    "xcore:rpc:resp:{requester}",
+                    Map.of("requester", "rpc.requester")
+            )
+    );
+
+    public static final RouteDescriptor SECURITY_STAFF_RESET_PASSWORD_REQUEST_V1 = new RouteDescriptor(
+            "security",
+            "securityStaffResetPasswordRequestV1Route",
+            "security.staff.reset-password.request",
+            1,
+            SecurityMessages.SecurityStaffResetPasswordRequestV1.class,
+            "rpc-request",
+            "xcore:rpc:req:{server}",
+            Map.of("server", "payload.server"),
+            "server",
+            10000,
+            false,
+            true,
+            "permissions",
+            new RouteResponseDescriptor(
+                    "security.staff.reset-password.response",
+                    1,
+                    SecurityMessages.SecurityStaffResetPasswordResponseV1.class,
+                    "xcore:rpc:resp:{requester}",
+                    Map.of("requester", "rpc.requester")
+            )
+    );
+
+    public static final RouteDescriptor DISCORD_LINK_CODE_CREATED_V1 = new RouteDescriptor(
+            "discord",
+            "discordLinkCodeCreatedV1Route",
+            "discord.link-code-created",
+            1,
+            DiscordMessages.DiscordLinkCodeCreatedV1.class,
+            "event",
+            "xcore:evt:discord:link-code",
+            Map.of(),
+            "broadcast",
+            120000,
+            true,
+            true,
+            "discord-linking",
+            null
+    );
+
+    public static final RouteDescriptor DISCORD_LINK_CONFIRM_COMMAND_V1 = new RouteDescriptor(
+            "discord",
+            "discordLinkConfirmCommandV1Route",
+            "discord.link.confirm.command",
+            1,
+            DiscordMessages.DiscordLinkConfirmCommandV1.class,
+            "command",
+            "xcore:cmd:discord-link-confirm:{server}",
+            Map.of("server", "payload.server"),
+            "server",
+            120000,
+            false,
+            true,
+            "discord-linking",
+            null
+    );
+
+    public static final RouteDescriptor DISCORD_UNLINK_COMMAND_V1 = new RouteDescriptor(
+            "discord",
+            "discordUnlinkCommandV1Route",
+            "discord.unlink.command",
+            1,
+            DiscordMessages.DiscordUnlinkCommandV1.class,
+            "command",
+            "xcore:cmd:discord-unlink:{server}",
+            Map.of("server", "payload.server"),
+            "server",
+            120000,
+            false,
+            true,
+            "discord-linking",
+            null
+    );
+
+    public static final RouteDescriptor DISCORD_LINK_STATUS_CHANGED_V1 = new RouteDescriptor(
+            "discord",
+            "discordLinkStatusChangedV1Route",
+            "discord.link.status-changed",
+            1,
+            DiscordMessages.DiscordLinkStatusChangedV1.class,
+            "event",
+            "xcore:evt:discord:link-status",
+            Map.of(),
+            "broadcast",
+            120000,
+            true,
+            true,
+            "discord-linking",
+            null
+    );
+
+    public static final RouteDescriptor DISCORD_ACCOUNT_OPERATION_REQUEST_V1 = new RouteDescriptor(
+            "discord",
+            "discordAccountOperationRequestV1Route",
+            "discord.account.operation.request",
+            1,
+            DiscordMessages.DiscordAccountOperationRequestV1.class,
+            "rpc-request",
+            "xcore:rpc:req:{server}",
+            Map.of("server", "payload.server"),
+            "server",
+            10000,
+            false,
+            true,
+            "discord-linking",
+            new RouteResponseDescriptor(
+                    "discord.account.operation.response",
+                    1,
+                    DiscordMessages.DiscordAccountOperationResponseV1.class,
+                    "xcore:rpc:resp:{requester}",
+                    Map.of("requester", "rpc.requester")
+            )
+    );
+
+    public static final RouteDescriptor MODERATION_BAN_CREATED_V1 = new RouteDescriptor(
+            "moderation",
+            "moderationBanCreatedV1Route",
+            "moderation.ban.created",
+            1,
+            ModerationMessages.ModerationBanCreatedV1.class,
+            "event",
+            "xcore:evt:moderation:ban",
+            Map.of(),
+            "broadcast",
+            120000,
+            true,
+            true,
+            "moderation",
+            null
+    );
+
+    public static final RouteDescriptor MODERATION_MUTE_CREATED_V1 = new RouteDescriptor(
+            "moderation",
+            "moderationMuteCreatedV1Route",
+            "moderation.mute.created",
+            1,
+            ModerationMessages.ModerationMuteCreatedV1.class,
+            "event",
+            "xcore:evt:moderation:mute",
+            Map.of(),
+            "broadcast",
+            120000,
+            true,
+            true,
+            "moderation",
+            null
+    );
+
+    public static final RouteDescriptor MODERATION_VOTE_KICK_CREATED_V1 = new RouteDescriptor(
+            "moderation",
+            "moderationVoteKickCreatedV1Route",
+            "moderation.vote-kick.created",
+            1,
+            ModerationMessages.ModerationVoteKickCreatedV1.class,
+            "event",
+            "xcore:evt:moderation:votekick",
+            Map.of(),
+            "broadcast",
+            120000,
+            true,
+            true,
+            "moderation",
+            null
+    );
+
+    public static final RouteDescriptor MODERATION_KICK_BANNED_COMMAND_V1 = new RouteDescriptor(
+            "moderation",
+            "moderationKickBannedCommandV1Route",
+            "moderation.kick-banned.command",
+            1,
+            ModerationMessages.ModerationKickBannedCommandV1.class,
+            "command",
+            "xcore:cmd:kick-banned:{server}",
+            Map.of("server", "payload.server"),
+            "server",
+            120000,
+            false,
+            true,
+            "moderation",
+            null
+    );
+
+    public static final RouteDescriptor MODERATION_PARDON_COMMAND_V1 = new RouteDescriptor(
+            "moderation",
+            "moderationPardonCommandV1Route",
+            "moderation.pardon.command",
+            1,
+            ModerationMessages.ModerationPardonCommandV1.class,
+            "command",
+            "xcore:cmd:pardon-player:{server}",
+            Map.of("server", "payload.server"),
+            "server",
+            120000,
+            false,
+            true,
+            "moderation",
+            null
+    );
+
+    public static final RouteDescriptor MODERATION_AUDIT_APPENDED_V1 = new RouteDescriptor(
+            "moderation",
+            "moderationAuditAppendedV1Route",
+            "moderation.audit.appended",
+            1,
+            ModerationMessages.ModerationAuditAppendedV1.class,
+            "event",
+            "xcore:evt:moderation:audit",
+            Map.of(),
+            "broadcast",
+            120000,
+            true,
+            true,
+            "moderation",
+            null
+    );
+
+    public static final RouteDescriptor SENTINEL_SUBNET_RULES_INVALIDATED_V1 = new RouteDescriptor(
+            "sentinel",
+            "sentinelSubnetRulesInvalidatedV1Route",
+            "sentinel.subnet-rules.invalidated",
+            1,
+            SentinelMessages.SentinelSubnetRulesInvalidatedV1.class,
+            "event",
+            "xcore:evt:sentinel:subnet:invalidated",
+            Map.of(),
+            "broadcast",
+            60000,
+            true,
+            true,
+            "sentinel",
+            null
+    );
+
+    public static final RouteDescriptor SENTINEL_SUBNET_SWEEP_COMMAND_V1 = new RouteDescriptor(
+            "sentinel",
+            "sentinelSubnetSweepCommandV1Route",
+            "sentinel.subnet-sweep.command",
+            1,
+            SentinelMessages.SentinelSubnetSweepCommandV1.class,
+            "command",
+            "xcore:cmd:sentinel:subnet:sweep:broadcast",
+            Map.of(),
+            "broadcast",
+            60000,
+            false,
+            true,
+            "sentinel",
+            null
+    );
+
+    public static final RouteDescriptor SENTINEL_SUBNET_RULES_COMMAND_V1 = new RouteDescriptor(
+            "sentinel",
+            "sentinelSubnetRulesCommandV1Route",
+            "sentinel.subnet-rules.command",
+            1,
+            SentinelMessages.SentinelSubnetRulesCommandV1.class,
+            "rpc-request",
+            "xcore:rpc:req:{targetServer}",
+            Map.of("targetServer", "payload.targetServer"),
+            "server",
+            10000,
+            false,
+            true,
+            "sentinel",
+            new RouteResponseDescriptor(
+                    "sentinel.subnet-rules.response",
+                    1,
+                    SentinelMessages.SentinelSubnetRulesResponseV1.class,
+                    "xcore:rpc:resp:{requester}",
+                    Map.of("requester", "rpc.requester")
+            )
+    );
+
+    public static final RouteDescriptor SENTINEL_SUBNET_RULES_LIST_REQUEST_V1 = new RouteDescriptor(
+            "sentinel",
+            "sentinelSubnetRulesListRequestV1Route",
+            "sentinel.subnet-rules.list.request",
+            1,
+            SentinelMessages.SentinelSubnetRulesListRequestV1.class,
+            "rpc-request",
+            "xcore:rpc:req:{targetServer}",
+            Map.of("targetServer", "payload.targetServer"),
+            "server",
+            10000,
+            false,
+            false,
+            "sentinel",
+            new RouteResponseDescriptor(
+                    "sentinel.subnet-rules.list.response",
+                    1,
+                    SentinelMessages.SentinelSubnetRulesListResponseV1.class,
+                    "xcore:rpc:resp:{requester}",
+                    Map.of("requester", "rpc.requester")
+            )
+    );
+
+    public static final RouteDescriptor SENTINEL_SUBNET_RULES_CHECK_REQUEST_V1 = new RouteDescriptor(
+            "sentinel",
+            "sentinelSubnetRulesCheckRequestV1Route",
+            "sentinel.subnet-rules.check.request",
+            1,
+            SentinelMessages.SentinelSubnetRulesCheckRequestV1.class,
+            "rpc-request",
+            "xcore:rpc:req:{targetServer}",
+            Map.of("targetServer", "payload.targetServer"),
+            "server",
+            10000,
+            false,
+            false,
+            "sentinel",
+            new RouteResponseDescriptor(
+                    "sentinel.subnet-rules.check.response",
+                    1,
+                    SentinelMessages.SentinelSubnetRulesCheckResponseV1.class,
+                    "xcore:rpc:resp:{requester}",
+                    Map.of("requester", "rpc.requester")
+            )
+    );
+
+    public static final RouteDescriptor RATING_SEASON_STARTED_V1 = new RouteDescriptor(
+            "rating",
+            "ratingSeasonStartedV1Route",
+            "rating.season.started",
+            1,
+            RatingMessages.RatingSeasonStartedV1.class,
+            "event",
+            "xcore:evt:rating:season-started",
+            Map.of(),
+            "broadcast",
+            86400000,
+            true,
+            true,
+            "rating-seasons",
+            null
+    );
+
+    public static final RouteDescriptor RATING_SEASON_ENDING_SOON_V1 = new RouteDescriptor(
+            "rating",
+            "ratingSeasonEndingSoonV1Route",
+            "rating.season.ending-soon",
+            1,
+            RatingMessages.RatingSeasonEndingSoonV1.class,
+            "event",
+            "xcore:evt:rating:season-ending-soon",
+            Map.of(),
+            "broadcast",
+            86400000,
+            true,
+            true,
+            "rating-seasons",
+            null
+    );
+
+    public static final RouteDescriptor RATING_SEASON_ENDED_V1 = new RouteDescriptor(
+            "rating",
+            "ratingSeasonEndedV1Route",
+            "rating.season.ended",
+            1,
+            RatingMessages.RatingSeasonEndedV1.class,
+            "event",
+            "xcore:evt:rating:season-ended",
+            Map.of(),
+            "broadcast",
+            86400000,
+            true,
+            true,
+            "rating-seasons",
+            null
+    );
+
+    public static final RouteDescriptor RATING_SEASON_RESCHEDULED_V1 = new RouteDescriptor(
+            "rating",
+            "ratingSeasonRescheduledV1Route",
+            "rating.season.rescheduled",
+            1,
+            RatingMessages.RatingSeasonRescheduledV1.class,
+            "event",
+            "xcore:evt:rating:season-rescheduled",
+            Map.of(),
+            "broadcast",
+            86400000,
+            true,
+            true,
+            "rating-seasons",
+            null
+    );
+
+    public static final RouteDescriptor RATING_SEASON_RESCHEDULE_REQUEST_V1 = new RouteDescriptor(
+            "rating",
+            "ratingSeasonRescheduleRequestV1Route",
+            "rating.season.reschedule.request",
+            1,
+            RatingMessages.RatingSeasonRescheduleRequestV1.class,
+            "rpc-request",
+            "xcore:rpc:req:{server}",
+            Map.of("server", "payload.server"),
+            "server",
+            10000,
+            false,
+            true,
+            "rating-seasons",
+            new RouteResponseDescriptor(
+                    "rating.season.reschedule.response",
+                    1,
+                    RatingMessages.RatingSeasonRescheduleResponseV1.class,
+                    "xcore:rpc:resp:{requester}",
+                    Map.of("requester", "rpc.requester")
+            )
+    );
+
+    public static final RouteDescriptor RATING_ACCOUNTS_MERGE_REQUEST_V1 = new RouteDescriptor(
+            "rating",
+            "ratingAccountsMergeRequestV1Route",
+            "rating.accounts.merge.request",
+            1,
+            RatingMessages.RatingAccountsMergeRequestV1.class,
+            "rpc-request",
+            "xcore:rpc:req:{server}",
+            Map.of("server", "payload.server"),
+            "server",
+            10000,
+            false,
+            true,
+            "rating-accounts",
+            new RouteResponseDescriptor(
+                    "rating.accounts.merge.response",
+                    1,
+                    RatingMessages.RatingAccountsMergeResponseV1.class,
+                    "xcore:rpc:resp:{requester}",
+                    Map.of("requester", "rpc.requester")
+            )
+    );
+
+    public static final RouteDescriptor RATING_SEASON_PRIZES_SET_REQUEST_V1 = new RouteDescriptor(
+            "rating",
+            "ratingSeasonPrizesSetRequestV1Route",
+            "rating.season.prizes.set.request",
+            1,
+            RatingMessages.RatingSeasonPrizesSetRequestV1.class,
+            "rpc-request",
+            "xcore:rpc:req:{server}",
+            Map.of("server", "payload.server"),
+            "server",
+            10000,
+            false,
+            true,
+            "rating-prizes",
+            new RouteResponseDescriptor(
+                    "rating.season.prizes.set.response",
+                    1,
+                    RatingMessages.RatingSeasonPrizesSetResponseV1.class,
+                    "xcore:rpc:resp:{requester}",
+                    Map.of("requester", "rpc.requester")
+            )
+    );
+
+    public static final RouteDescriptor RATING_PRIZE_GRANT_UPDATE_REQUEST_V1 = new RouteDescriptor(
+            "rating",
+            "ratingPrizeGrantUpdateRequestV1Route",
+            "rating.prize.grant.update.request",
+            1,
+            RatingMessages.RatingPrizeGrantUpdateRequestV1.class,
+            "rpc-request",
+            "xcore:rpc:req:{server}",
+            Map.of("server", "payload.server"),
+            "server",
+            10000,
+            false,
+            true,
+            "rating-prizes",
+            new RouteResponseDescriptor(
+                    "rating.prize.grant.update.response",
+                    1,
+                    RatingMessages.RatingPrizeGrantUpdateResponseV1.class,
+                    "xcore:rpc:resp:{requester}",
+                    Map.of("requester", "rpc.requester")
+            )
+    );
+
+    public static final Map<MessageKey, RouteDescriptor> ROUTES_BY_MESSAGE = Map.ofEntries(
+            entry(key("maps.list.request", 1), MAPS_LIST_REQUEST_V1),
+            entry(key("maps.remove.request", 1), MAPS_REMOVE_REQUEST_V1),
+            entry(key("maps.load.command", 1), MAPS_LOAD_COMMAND_V1),
+            entry(key("maps.upload.request", 1), MAPS_UPLOAD_REQUEST_V1),
+            entry(key("maps.inspect.request", 1), MAPS_INSPECT_REQUEST_V1),
+            entry(key("cases.report.submitted", 1), CASES_REPORT_SUBMITTED_V1),
+            entry(key("cases.notice.command", 1), CASES_NOTICE_COMMAND_V1),
+            entry(key("cases.evidence.request", 1), CASES_EVIDENCE_REQUEST_V1),
+            entry(key("chat.message", 1), CHAT_MESSAGE_V1),
+            entry(key("chat.global", 1), CHAT_GLOBAL_V1),
+            entry(key("chat.discord-ingress.command", 1), CHAT_DISCORD_INGRESS_COMMAND_V1),
+            entry(key("chat.private", 1), CHAT_PRIVATE_V1),
+            entry(key("player.join-leave", 1), PLAYER_JOIN_LEAVE_V1),
+            entry(key("player.custom-nickname.changed.command", 1), PLAYER_CUSTOM_NICKNAME_CHANGED_COMMAND_V1),
+            entry(key("player.active-badge.changed.command", 1), PLAYER_ACTIVE_BADGE_CHANGED_COMMAND_V1),
+            entry(key("player.badge-inventory.changed.command", 1), PLAYER_BADGE_INVENTORY_CHANGED_COMMAND_V1),
+            entry(key("player.badge-symbol-color-mode.changed.command", 1), PLAYER_BADGE_SYMBOL_COLOR_MODE_CHANGED_COMMAND_V1),
+            entry(key("server.action", 1), SERVER_ACTION_V1),
+            entry(key("server-command.execute.command", 1), SERVER_COMMAND_EXECUTE_COMMAND_V1),
+            entry(key("player-data-cache.reload.command", 1), PLAYER_DATA_CACHE_RELOAD_COMMAND_V1),
+            entry(key("server.heartbeat", 1), SERVER_HEARTBEAT_V1),
+            entry(key("security.permissions.changed", 1), SECURITY_PERMISSIONS_CHANGED_V1),
+            entry(key("security.staff.sync.request", 1), SECURITY_STAFF_SYNC_REQUEST_V1),
+            entry(key("security.staff.reset-password.request", 1), SECURITY_STAFF_RESET_PASSWORD_REQUEST_V1),
+            entry(key("discord.link-code-created", 1), DISCORD_LINK_CODE_CREATED_V1),
+            entry(key("discord.link.confirm.command", 1), DISCORD_LINK_CONFIRM_COMMAND_V1),
+            entry(key("discord.unlink.command", 1), DISCORD_UNLINK_COMMAND_V1),
+            entry(key("discord.link.status-changed", 1), DISCORD_LINK_STATUS_CHANGED_V1),
+            entry(key("discord.account.operation.request", 1), DISCORD_ACCOUNT_OPERATION_REQUEST_V1),
+            entry(key("moderation.ban.created", 1), MODERATION_BAN_CREATED_V1),
+            entry(key("moderation.mute.created", 1), MODERATION_MUTE_CREATED_V1),
+            entry(key("moderation.vote-kick.created", 1), MODERATION_VOTE_KICK_CREATED_V1),
+            entry(key("moderation.kick-banned.command", 1), MODERATION_KICK_BANNED_COMMAND_V1),
+            entry(key("moderation.pardon.command", 1), MODERATION_PARDON_COMMAND_V1),
+            entry(key("moderation.audit.appended", 1), MODERATION_AUDIT_APPENDED_V1),
+            entry(key("sentinel.subnet-rules.invalidated", 1), SENTINEL_SUBNET_RULES_INVALIDATED_V1),
+            entry(key("sentinel.subnet-sweep.command", 1), SENTINEL_SUBNET_SWEEP_COMMAND_V1),
+            entry(key("sentinel.subnet-rules.command", 1), SENTINEL_SUBNET_RULES_COMMAND_V1),
+            entry(key("sentinel.subnet-rules.list.request", 1), SENTINEL_SUBNET_RULES_LIST_REQUEST_V1),
+            entry(key("sentinel.subnet-rules.check.request", 1), SENTINEL_SUBNET_RULES_CHECK_REQUEST_V1),
+            entry(key("rating.season.started", 1), RATING_SEASON_STARTED_V1),
+            entry(key("rating.season.ending-soon", 1), RATING_SEASON_ENDING_SOON_V1),
+            entry(key("rating.season.ended", 1), RATING_SEASON_ENDED_V1),
+            entry(key("rating.season.rescheduled", 1), RATING_SEASON_RESCHEDULED_V1),
+            entry(key("rating.season.reschedule.request", 1), RATING_SEASON_RESCHEDULE_REQUEST_V1),
+            entry(key("rating.accounts.merge.request", 1), RATING_ACCOUNTS_MERGE_REQUEST_V1),
+            entry(key("rating.season.prizes.set.request", 1), RATING_SEASON_PRIZES_SET_REQUEST_V1),
+            entry(key("rating.prize.grant.update.request", 1), RATING_PRIZE_GRANT_UPDATE_REQUEST_V1)
+    );
+
+    @SuppressWarnings("unchecked")
+    public static final Map<Class<? extends ProtocolPayload>, RouteDescriptor> ROUTES_BY_PAYLOAD_TYPE = Map.ofEntries(
+            entry((Class<? extends ProtocolPayload>) MapsMessages.MapsListRequestV1.class, MAPS_LIST_REQUEST_V1),
+            entry((Class<? extends ProtocolPayload>) MapsMessages.MapsRemoveRequestV1.class, MAPS_REMOVE_REQUEST_V1),
+            entry((Class<? extends ProtocolPayload>) MapsMessages.MapsLoadCommandV1.class, MAPS_LOAD_COMMAND_V1),
+            entry((Class<? extends ProtocolPayload>) MapsMessages.MapsUploadRequestV1.class, MAPS_UPLOAD_REQUEST_V1),
+            entry((Class<? extends ProtocolPayload>) MapsMessages.MapsInspectRequestV1.class, MAPS_INSPECT_REQUEST_V1),
+            entry((Class<? extends ProtocolPayload>) CasesMessages.CasesReportSubmittedV1.class, CASES_REPORT_SUBMITTED_V1),
+            entry((Class<? extends ProtocolPayload>) CasesMessages.CasesNoticeCommandV1.class, CASES_NOTICE_COMMAND_V1),
+            entry((Class<? extends ProtocolPayload>) CasesMessages.CasesEvidenceRequestV1.class, CASES_EVIDENCE_REQUEST_V1),
+            entry((Class<? extends ProtocolPayload>) ChatMessages.ChatMessageV1.class, CHAT_MESSAGE_V1),
+            entry((Class<? extends ProtocolPayload>) ChatMessages.ChatGlobalV1.class, CHAT_GLOBAL_V1),
+            entry((Class<? extends ProtocolPayload>) ChatMessages.ChatDiscordIngressCommandV1.class, CHAT_DISCORD_INGRESS_COMMAND_V1),
+            entry((Class<? extends ProtocolPayload>) ChatMessages.ChatPrivateV1.class, CHAT_PRIVATE_V1),
+            entry((Class<? extends ProtocolPayload>) IdentityMessages.PlayerJoinLeaveV1.class, PLAYER_JOIN_LEAVE_V1),
+            entry((Class<? extends ProtocolPayload>) IdentityMessages.PlayerCustomNicknameChangedCommandV1.class, PLAYER_CUSTOM_NICKNAME_CHANGED_COMMAND_V1),
+            entry((Class<? extends ProtocolPayload>) IdentityMessages.PlayerActiveBadgeChangedCommandV1.class, PLAYER_ACTIVE_BADGE_CHANGED_COMMAND_V1),
+            entry((Class<? extends ProtocolPayload>) IdentityMessages.PlayerBadgeInventoryChangedCommandV1.class, PLAYER_BADGE_INVENTORY_CHANGED_COMMAND_V1),
+            entry((Class<? extends ProtocolPayload>) IdentityMessages.PlayerBadgeSymbolColorModeChangedCommandV1.class, PLAYER_BADGE_SYMBOL_COLOR_MODE_CHANGED_COMMAND_V1),
+            entry((Class<? extends ProtocolPayload>) ServerMessages.ServerActionV1.class, SERVER_ACTION_V1),
+            entry((Class<? extends ProtocolPayload>) ServerMessages.ServerCommandExecuteCommandV1.class, SERVER_COMMAND_EXECUTE_COMMAND_V1),
+            entry((Class<? extends ProtocolPayload>) ServerMessages.PlayerDataCacheReloadCommandV1.class, PLAYER_DATA_CACHE_RELOAD_COMMAND_V1),
+            entry((Class<? extends ProtocolPayload>) ServerMessages.ServerHeartbeatV1.class, SERVER_HEARTBEAT_V1),
+            entry((Class<? extends ProtocolPayload>) SecurityMessages.SecurityPermissionsChangedV1.class, SECURITY_PERMISSIONS_CHANGED_V1),
+            entry((Class<? extends ProtocolPayload>) SecurityMessages.SecurityStaffSyncRequestV1.class, SECURITY_STAFF_SYNC_REQUEST_V1),
+            entry((Class<? extends ProtocolPayload>) SecurityMessages.SecurityStaffResetPasswordRequestV1.class, SECURITY_STAFF_RESET_PASSWORD_REQUEST_V1),
+            entry((Class<? extends ProtocolPayload>) DiscordMessages.DiscordLinkCodeCreatedV1.class, DISCORD_LINK_CODE_CREATED_V1),
+            entry((Class<? extends ProtocolPayload>) DiscordMessages.DiscordLinkConfirmCommandV1.class, DISCORD_LINK_CONFIRM_COMMAND_V1),
+            entry((Class<? extends ProtocolPayload>) DiscordMessages.DiscordUnlinkCommandV1.class, DISCORD_UNLINK_COMMAND_V1),
+            entry((Class<? extends ProtocolPayload>) DiscordMessages.DiscordLinkStatusChangedV1.class, DISCORD_LINK_STATUS_CHANGED_V1),
+            entry((Class<? extends ProtocolPayload>) DiscordMessages.DiscordAccountOperationRequestV1.class, DISCORD_ACCOUNT_OPERATION_REQUEST_V1),
+            entry((Class<? extends ProtocolPayload>) ModerationMessages.ModerationBanCreatedV1.class, MODERATION_BAN_CREATED_V1),
+            entry((Class<? extends ProtocolPayload>) ModerationMessages.ModerationMuteCreatedV1.class, MODERATION_MUTE_CREATED_V1),
+            entry((Class<? extends ProtocolPayload>) ModerationMessages.ModerationVoteKickCreatedV1.class, MODERATION_VOTE_KICK_CREATED_V1),
+            entry((Class<? extends ProtocolPayload>) ModerationMessages.ModerationKickBannedCommandV1.class, MODERATION_KICK_BANNED_COMMAND_V1),
+            entry((Class<? extends ProtocolPayload>) ModerationMessages.ModerationPardonCommandV1.class, MODERATION_PARDON_COMMAND_V1),
+            entry((Class<? extends ProtocolPayload>) ModerationMessages.ModerationAuditAppendedV1.class, MODERATION_AUDIT_APPENDED_V1),
+            entry((Class<? extends ProtocolPayload>) SentinelMessages.SentinelSubnetRulesInvalidatedV1.class, SENTINEL_SUBNET_RULES_INVALIDATED_V1),
+            entry((Class<? extends ProtocolPayload>) SentinelMessages.SentinelSubnetSweepCommandV1.class, SENTINEL_SUBNET_SWEEP_COMMAND_V1),
+            entry((Class<? extends ProtocolPayload>) SentinelMessages.SentinelSubnetRulesCommandV1.class, SENTINEL_SUBNET_RULES_COMMAND_V1),
+            entry((Class<? extends ProtocolPayload>) SentinelMessages.SentinelSubnetRulesListRequestV1.class, SENTINEL_SUBNET_RULES_LIST_REQUEST_V1),
+            entry((Class<? extends ProtocolPayload>) SentinelMessages.SentinelSubnetRulesCheckRequestV1.class, SENTINEL_SUBNET_RULES_CHECK_REQUEST_V1),
+            entry((Class<? extends ProtocolPayload>) RatingMessages.RatingSeasonStartedV1.class, RATING_SEASON_STARTED_V1),
+            entry((Class<? extends ProtocolPayload>) RatingMessages.RatingSeasonEndingSoonV1.class, RATING_SEASON_ENDING_SOON_V1),
+            entry((Class<? extends ProtocolPayload>) RatingMessages.RatingSeasonEndedV1.class, RATING_SEASON_ENDED_V1),
+            entry((Class<? extends ProtocolPayload>) RatingMessages.RatingSeasonRescheduledV1.class, RATING_SEASON_RESCHEDULED_V1),
+            entry((Class<? extends ProtocolPayload>) RatingMessages.RatingSeasonRescheduleRequestV1.class, RATING_SEASON_RESCHEDULE_REQUEST_V1),
+            entry((Class<? extends ProtocolPayload>) RatingMessages.RatingAccountsMergeRequestV1.class, RATING_ACCOUNTS_MERGE_REQUEST_V1),
+            entry((Class<? extends ProtocolPayload>) RatingMessages.RatingSeasonPrizesSetRequestV1.class, RATING_SEASON_PRIZES_SET_REQUEST_V1),
+            entry((Class<? extends ProtocolPayload>) RatingMessages.RatingPrizeGrantUpdateRequestV1.class, RATING_PRIZE_GRANT_UPDATE_REQUEST_V1)
+    );
+
+    public static RouteDescriptor routeFor(String messageType, int messageVersion) {
+        return ROUTES_BY_MESSAGE.get(new MessageKey(messageType, messageVersion));
+    }
+
+    @SuppressWarnings("unchecked")
+    public static RouteDescriptor routeFor(ProtocolPayload payload) {
+        return ROUTES_BY_PAYLOAD_TYPE.get((Class<? extends ProtocolPayload>) payload.getClass());
+    }
+
+    private static MessageKey key(String messageType, int messageVersion) {
+        return new MessageKey(messageType, messageVersion);
+    }
+}

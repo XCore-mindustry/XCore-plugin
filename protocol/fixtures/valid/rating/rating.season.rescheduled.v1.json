@@ -1,0 +1,20 @@
+{
+  "messageType": "rating.season.rescheduled",
+  "messageVersion": 1,
+  "season": {
+    "ladder": "mini-pvp",
+    "season": 3,
+    "name": "Season 3",
+    "startsAt": "2026-07-01T00:00:00Z",
+    "endsAt": "2026-10-15T00:00:00Z"
+  },
+  "previousEndsAt": "2026-10-01T00:00:00Z",
+  "actor": {
+    "actorName": "Admin",
+    "actorDiscordId": "222222222222222222",
+    "actorType": "discord"
+  },
+  "reason": "Tournament week",
+  "server": "mini-pvp",
+  "occurredAt": "2026-09-20T12:00:00Z"
+}

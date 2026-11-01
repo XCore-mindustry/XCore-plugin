@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:xcore:protocol:envelopes:dlq-envelope:v1",
+  "title": "DlqEnvelopeV1",
+  "type": "object",
+  "unevaluatedProperties": false,
+  "allOf": [
+    {
+      "$ref": "urn:xcore:protocol:envelopes:envelope-base:v1"
+    },
+    {
+      "type": "object",
+      "required": [
+        "message_kind",
+        "source_stream",
+        "source_group",
+        "source_id",
+        "failed_at",
+        "failure_reason",
+        "attempts"
+      ],
+      "properties": {
+        "message_kind": {
+          "const": "dlq"
+        },
+        "source_stream": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source_group": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "failed_at": {
+          "type": "string",
+          "pattern": "^[0-9]+$"
+        },
+        "attempts": {
+          "type": "string",
+          "pattern": "^[0-9]+$"
+        },
+        "failure_reason": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    }
+  ]
+}

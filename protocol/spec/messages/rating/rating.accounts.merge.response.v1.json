@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:xcore:protocol:messages:rating:rating.accounts.merge.response:v1",
+  "title": "RatingAccountsMergeResponseV1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "messageType",
+    "messageVersion",
+    "server",
+    "standingsMerged"
+  ],
+  "properties": {
+    "messageType": {
+      "const": "rating.accounts.merge.response"
+    },
+    "messageVersion": {
+      "const": 1
+    },
+    "server": {
+      "type": "string",
+      "minLength": 1
+    },
+    "standingsMerged": {
+      "type": "integer",
+      "minimum": 0
+    }
+  }
+}

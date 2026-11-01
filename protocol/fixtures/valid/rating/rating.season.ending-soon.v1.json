@@ -1,0 +1,30 @@
+{
+  "messageType": "rating.season.ending-soon",
+  "messageVersion": 1,
+  "season": {
+    "ladder": "mini-pvp",
+    "season": 3,
+    "name": "Season 3",
+    "startsAt": "2026-07-01T00:00:00Z",
+    "endsAt": "2026-10-01T00:00:00Z"
+  },
+  "notice": "7d",
+  "server": "mini-pvp",
+  "occurredAt": "2026-09-24T00:00:02Z",
+  "prizes": [
+    {
+      "placeFrom": 1,
+      "placeTo": 1,
+      "kind": "badge",
+      "value": "season-champion",
+      "description": "Season champion badge"
+    },
+    {
+      "placeFrom": 1,
+      "placeTo": 3,
+      "kind": "custom",
+      "value": "Discord Nitro, 1 month",
+      "description": "Nitro for the top three"
+    }
+  ]
+}
