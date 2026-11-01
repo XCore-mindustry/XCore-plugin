@@ -17,6 +17,7 @@ permissions:
 
 jobs:
   publish:
+    if: ${{ !startsWith(inputs.tag || github.ref_name, 'tilelogger/') }}
     runs-on: ubuntu-latest
     environment: release
     outputs:
@@ -128,4 +129,33 @@ jobs:
       - uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ needs.publish.outputs.tag }}
-          files: protocol/dist/*
+          files: |
+            protocol/dist/*.whl
+            protocol/dist/*.tar.gz
+            protocol/dist/*.publish.attestation
+
+  tilelogger-native:
+    if: startsWith(inputs.tag || github.ref_name, 'tilelogger/')
+    uses: ./.github/workflows/tilelogger-native.yml
+    with:
+      ref: ${{ inputs.tag || github.ref_name }}
+      release: true
+
+  tilelogger-release:
+    permissions:
+      contents: write
+      actions: read
+    needs: tilelogger-native
+    runs-on: ubuntu-latest
+    environment: release
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: tilelogger-*
+          merge-multiple: true
+          path: release
+      - uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ inputs.tag || github.ref_name }}
+          fail_on_unmatched_files: true
+          files: release/*.jar

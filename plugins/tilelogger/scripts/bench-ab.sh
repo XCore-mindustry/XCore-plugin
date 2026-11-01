@@ -26,8 +26,10 @@ for ((i=0; i<${#args[@]}; i+=2)); do
     }
 done
 
-root=$(git rev-parse --show-toplevel)
-base=$(git -C "$root" rev-parse --verify --end-of-options "$base^{commit}")
+root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+repo=$(git -C "$root" rev-parse --show-toplevel)
+component=${root#"$repo"/}
+base=$(git -C "$repo" rev-parse --verify --end-of-options "$base^{commit}")
 mkdir -p "$root/build/bench"
 out=$(mktemp -d "$root/build/bench/run-XXXXXX")
 worktree=$out/base-tree
@@ -41,21 +43,21 @@ flags=(-std=c++20 -O3 -DNDEBUG -pthread)  # matches the Gradle release variant
 mkdir -p "$data"
 read -r -a prefix <<< "${BENCH_PREFIX:-}"
 
-trap 'git -C "$root" worktree remove "$worktree" 2>/dev/null || true; rmdir "$data" 2>/dev/null || true' EXIT
-git -C "$root" worktree add --quiet --detach "$worktree" "$base"
+trap 'git -C "$repo" worktree remove "$worktree" 2>/dev/null || true; rmdir "$data" 2>/dev/null || true' EXIT
+git -C "$repo" worktree add --quiet --detach "$worktree" "$base"
 for side in base head; do
     tree=$root
-    [[ $side == base ]] && tree=$worktree
+    [[ $side == base ]] && tree=$worktree/$component
     "$cxx" "${flags[@]}" -I "$tree/native/src/main/headers" "$root/native/src/bench/Bench.cpp" -o "$out/bench-$side"
     "$cxx" "${flags[@]}" -DTILELOGGER_BENCH_MEMORY -I "$tree/native/src/main/headers" \
         "$root/native/src/bench/Bench.cpp" -o "$out/memory-$side"
 done
 
-head=$(git -C "$root" rev-parse HEAD)
-[[ -z $(git -C "$root" status --porcelain -- native/src/main) ]] || head+="+dirty"
+head=$(git -C "$repo" rev-parse HEAD)
+[[ -z $(git -C "$repo" status --porcelain -- "$component/native/src/main") ]] || head+="+dirty"
 results=$out/results.tsv
 {
-    echo "# base=$(git -C "$root" rev-parse --short "$base") head=$head rounds=$rounds args=$*"
+    echo "# base=$(git -C "$repo" rev-parse --short "$base") head=$head rounds=$rounds args=$*"
     echo "# cxx=$("$cxx" --version | head -1) flags=${flags[*]} prefix=${BENCH_PREFIX:-none}"
     echo "# host=$(uname -srm) data=$data fs=$(findmnt -n -o FSTYPE -T "$data" 2>/dev/null || echo unknown)"
     echo "# harness-sha256=$(sha256sum "$root/native/src/bench/Bench.cpp" | cut -d ' ' -f 1)"

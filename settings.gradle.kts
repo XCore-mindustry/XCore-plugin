@@ -18,4 +18,6 @@ include(
     ":libs:mindustry-testkit:fixtures",
     ":protocol",
     ":plugins:xcore",
+    ":plugins:tilelogger",
+    ":plugins:tilelogger:native",
 )

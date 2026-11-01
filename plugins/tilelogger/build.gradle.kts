@@ -13,14 +13,11 @@ plugins {
     alias(libs.plugins.jmh)
 }
 
+group = "org.xcore.plugin"
+version = groovy.json.JsonSlurper().parse(file("plugin.json")).let { (it as Map<*, *>)["version"].toString() }
+
 java {
-    toolchain.languageVersion.set(
-        JavaLanguageVersion.of(
-            libs.versions.java
-                .get()
-                .toInt(),
-        ),
-    )
+    toolchain.languageVersion.set(JavaLanguageVersion.of(25))
 }
 
 toxopid {
@@ -30,11 +27,9 @@ toxopid {
 }
 
 repositories {
-    mavenLocal()
     anukeXpdustry()
     mavenCentral()
     maven("https://maven.x-core.org/releases")
-    maven("https://maven.x-core.org/snapshots")
 }
 
 dependencies {
@@ -42,23 +37,23 @@ dependencies {
     compileOnly(toxopid.dependencies.mindustryCore)
     compileOnly(toxopid.dependencies.mindustryHeadless)
 
-    compileOnly(libs.xcore.plugin)
-    compileOnly(libs.flubundle)
-    compileOnly(libs.cloud.mindustry)
+    compileOnly(project(":plugins:xcore"))
+    compileOnly(project(":libs:flubundle"))
+    compileOnly(project(":libs:cloud-mindustry:lib"))
 
     compileOnly(libs.avaje.inject)
-    annotationProcessor(libs.avaje.inject.gen)
+    annotationProcessor(libs.avaje.inject.generator)
 
-    testImplementation(platform("org.junit:junit-bom:6.1.3"))
-    testImplementation("org.junit.jupiter:junit-jupiter")
+    testImplementation(platform(libs.junit.bom))
+    testImplementation(libs.junit.jupiter)
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
-    testImplementation(libs.flubundle)
-    testImplementation(libs.xcore.plugin)
+    testImplementation(project(":libs:flubundle"))
+    testImplementation(project(":plugins:xcore"))
     testImplementation(libs.avaje.inject)
-    testImplementation("org.assertj:assertj-core:3.27.7")
-    testImplementation("org.mockito:mockito-core:5.24.0")
-    testImplementation("org.mockito:mockito-junit-jupiter:5.24.0")
-    testImplementation("org.xcore.testkit:fixtures:0.1.0-SNAPSHOT")
+    testImplementation(libs.assertj.core)
+    testImplementation(libs.mockito.core)
+    testImplementation(libs.mockito.junit.jupiter)
+    testImplementation(project(":libs:mindustry-testkit:fixtures"))
     testImplementation(toxopid.dependencies.arcCore)
     testImplementation(toxopid.dependencies.mindustryCore)
     testImplementation(toxopid.dependencies.mindustryHeadless)
@@ -78,11 +73,12 @@ jmh {
     resultFormat.set("JSON")
 }
 dependencies {
-    "jmhImplementation"(libs.xcore.plugin)
+    "jmhImplementation"(project(":plugins:xcore"))
     "jmhImplementation"(toxopid.dependencies.mindustryCore)
     "jmhImplementation"(toxopid.dependencies.arcCore)
 }
 tasks.named<ShadowJar>("jmhJar") {
+    archiveFileName.set("TileLogger-jmh.jar")
     configurations = listOf(project.configurations.getByName("jmhRuntimeClasspath"))
     mergeServiceFiles()
     // The JMH plugin's legacy Shadow integration emits a thin class path on Shadow 9.
@@ -98,11 +94,13 @@ tasks.named<JavaCompile>("compileTestJava") {
 }
 
 tasks.named<Jar>("jar") {
-    archiveFileName.set("${project.name}.jar")
-    from(rootDir) { include("plugin.json") }
+    archiveFileName.set("TileLogger.jar")
+    from(projectDir) { include("plugin.json") }
 }
 
 fun ShadowJar.applyCommonSettings() {
+    archiveBaseName.set("TileLogger")
+    archiveVersion.set("")
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
     mergeServiceFiles()
     filesMatching("META-INF/services/**") {
@@ -110,7 +108,7 @@ fun ShadowJar.applyCommonSettings() {
     }
     isReproducibleFileOrder = true
     isPreserveFileTimestamps = false
-    from(rootDir) { include("plugin.json") }
+    from(projectDir) { include("plugin.json") }
 
     configurations = listOf(project.configurations.runtimeClasspath.get())
     from(
@@ -121,7 +119,7 @@ fun ShadowJar.applyCommonSettings() {
 }
 tasks.named<ShadowJar>("shadowJar") {
     applyCommonSettings()
-    archiveFileName.set("${project.name}.jar")
+    archiveFileName.set("TileLogger.jar")
 }
 
 fun registerNativeJar(variant: String) {
@@ -130,7 +128,7 @@ fun registerNativeJar(variant: String) {
         description = "Assembles shadow JAR with $variant native library."
         archiveClassifier.set(variant.lowercase(Locale.getDefault()))
         applyCommonSettings()
-        val nativeTask = project(":native").tasks.named<LinkSharedLibrary>("link$variant")
+        val nativeTask = project(":plugins:tilelogger:native").tasks.named<LinkSharedLibrary>("link$variant")
         dependsOn(nativeTask)
         from(nativeTask.map { it.linkedFile })
     }
@@ -143,7 +141,7 @@ tasks.named("build") {
 
 gradle.projectsEvaluated {
     tasks.named<Test>("test") {
-        val linkDebug = project(":native").tasks.named<LinkSharedLibrary>("linkDebug")
+        val linkDebug = project(":plugins:tilelogger:native").tasks.named<LinkSharedLibrary>("linkDebug")
         dependsOn(linkDebug)
         classpath +=
             files(
@@ -154,11 +152,17 @@ gradle.projectsEvaluated {
                 },
             )
     }
-    val linkRelease = project(":native").tasks.named<LinkSharedLibrary>("linkRelease")
+    val linkRelease = project(":plugins:tilelogger:native").tasks.named<LinkSharedLibrary>("linkRelease")
     dependencies {
         "jmhRuntimeOnly"(files(linkRelease.map { it.linkedFile.get().asFile.parentFile }).builtBy(linkRelease))
     }
 }
 
 // Benchmarks are never run by check, but must keep compiling against the API.
-tasks.named("check") { dependsOn(":native:check", "compileJmhJava") }
+tasks.named("check") { dependsOn(":plugins:tilelogger:native:check", "compileJmhJava") }
+
+// This plugin ships through GitHub releases, not Maven.
+tasks.register("getProjectVersion") {
+    val releaseVersion = project.version.toString()
+    doLast { println(releaseVersion) }
+}

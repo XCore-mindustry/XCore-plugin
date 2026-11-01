@@ -71,9 +71,11 @@ Dedicated wire codecs emit default fields, disable polymorphic Java class hints,
 
 ## Verification
 
+Run these commands from the monorepo root; Java 25 and a C++20 toolchain are required.
+
 ```sh
-./gradlew check jarRelease
-./gradlew :native:check -PnativeSanitizers=true
+./gradlew :plugins:tilelogger:check :plugins:tilelogger:jarRelease
+./gradlew :plugins:tilelogger:native:check -PnativeSanitizers=true
 ```
 
 `check` includes the C++ executable, deterministic/reference regression cases, Java headless tests, archive/FFM tests, and FTL compilation/consistency. JVM tests enable native access and deny any unapproved native access. The sanitizer run is separate because ASan-instrumented native libraries must not be loaded by the ordinary JVM test process.
@@ -83,14 +85,14 @@ Dedicated wire codecs emit default fields, disable polymorphic Java class hints,
 The suite compares revisions on the same machine. CPU scenarios run in an optimized Linux C++ binary (`-O3 -DNDEBUG`), separate from Gradle's debug correctness tests. ASan builds and unoptimized builds are rejected.
 
 ```sh
-scripts/bench-ab.sh master                         # 3 rounds, n = 1,000,000 total records
-scripts/bench-ab.sh master 5 -- --n 10000000 --reps 3
-BENCH_PREFIX="taskset -c 3" scripts/bench-ab.sh HEAD   # A/A against unchanged core headers
-BENCH_DATA_DIR=/path/on/server-like/disk scripts/bench-ab.sh HEAD
-python3 scripts/test-compare-bench.py               # report validation regressions
+plugins/tilelogger/scripts/bench-ab.sh main                         # 3 rounds, n = 1,000,000 total records
+plugins/tilelogger/scripts/bench-ab.sh main 5 -- --n 10000000 --reps 3
+BENCH_PREFIX="taskset -c 3" plugins/tilelogger/scripts/bench-ab.sh HEAD   # A/A against unchanged core headers
+BENCH_DATA_DIR=/path/on/server-like/disk plugins/tilelogger/scripts/bench-ab.sh HEAD
+python3 plugins/tilelogger/scripts/test-compare-bench.py               # report validation regressions
 ```
 
-Each invocation creates an isolated directory under `build/bench/run-*`, compiles the same harness against base and working-tree headers, and alternates which side goes first. Raw output and binaries remain in that directory. Worktrees and empty data directories are removed; failed archive fixtures may remain for diagnosis. `--n` includes the 768-record griefing tail. Compiler, flags, harness hash/version, parameters and filesystem are recorded.
+Each invocation creates an isolated directory under `plugins/tilelogger/build/bench/run-*`, compiles the same harness against base and working-tree headers, and alternates which side goes first. Raw output and binaries remain in that directory. Worktrees and empty data directories are removed; failed archive fixtures may remain for diagnosis. `--n` includes the 768-record griefing tail. Compiler, flags, harness hash/version, parameters and filesystem are recorded.
 
 | Group | What it measures |
 |---|---|
@@ -113,15 +115,23 @@ Journal files must live on representative storage. tmpfs is diagnosed, since it 
 ### Java/native calls
 
 ```sh
-./gradlew jmh                                     # full forked run, fail on any benchmark error
-./gradlew jmhJar
-java --enable-native-access=ALL-UNNAMED -jar build/libs/TileLogger-jmh.jar
+./gradlew :plugins:tilelogger:jmh                                     # full forked run, fail on any benchmark error
+./gradlew :plugins:tilelogger:jmhJar
+java --enable-native-access=ALL-UNNAMED -jar plugins/tilelogger/build/libs/TileLogger-jmh.jar
 ```
 
-JMH uses the release native library through FFM, and writes JSON results under `build/results/jmh/`. The runnable benchmark jar includes its runtime dependencies and the release library. `check` compiles the benchmarks but never times them. Linux CI also runs a small native A/A and runnable-jar smoke check, with no timing thresholds.
+JMH uses the release native library through FFM, and writes JSON results under `plugins/tilelogger/build/results/jmh/`. The runnable benchmark jar includes its runtime dependencies and the release library. `check` compiles the benchmarks but never times them. Linux CI also runs a small native A/A and runnable-jar smoke check, with no timing thresholds.
 
 `history32`, `history4097` and `currentState` measure complete API calls with recent answers. `record` uses single-shot, fixed batches of 16,384 records, resetting the session outside timing for every iteration; scores are normalized per record. Keep its single-shot mode and batch size of one. These include native encoding/storage work as well as argument conversion; they are not the cost of the Java/native transition alone. One JMH thread is required because the native store is global; multi-threaded runs are rejected before accessing it.
 
 Compare revisions on the same machine/JVM, check every expected result is present, and compare uncertainty as well as scores. Crash/power-loss and disk-fault testing remain separate correctness work.
 
-For AdminTools: `./gradlew build -Prelease`. Release jars exclude `admintools/dev/**` and include Android DEX. The existing in-engine DevHarness can capture the history view in portrait, landscape, and desktop modes, including v2 action labels, time beyond 65,535 seconds, and paging state.
+In the separate AdminTools repository: `./gradlew build -Prelease`. Release jars exclude `admintools/dev/**` and include Android DEX. The existing in-engine DevHarness can capture the history view in portrait, landscape, and desktop modes, including v2 action labels, time beyond 65,535 seconds, and paging state.
+
+## Releases
+
+Bump `plugins/tilelogger/plugin.json` and push `tilelogger/vX.Y.Z` in the monorepo.
+The release workflow verifies the version, runs Linux x64/ARM and Windows x64
+builds plus native sanitizers, and uploads one jar per platform. Use the jar for
+the server's platform; XCore remains a separate required plugin. The GPL-3.0
+license and archive formats are unchanged by the repository move.

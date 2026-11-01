@@ -1,0 +1,99 @@
+name: TileLogger native checks
+
+on:
+  workflow_call:
+    inputs:
+      ref:
+        required: true
+        type: string
+      release:
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: linux
+            arch: x64
+            runner: ubuntu-latest
+          - os: linux
+            arch: arm
+            runner: ubuntu-22.04-arm
+          - os: windows
+            arch: x64
+            runner: windows-latest
+    runs-on: ${{ matrix.runner }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref }}
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '25'
+      - uses: gradle/actions/setup-gradle@v5
+        with:
+          cache-read-only: ${{ github.event_name == 'pull_request' }}
+      - name: Tag matches plugin version
+        if: inputs.release
+        env:
+          TAG: ${{ inputs.ref }}
+        run: |
+          [[ "$TAG" =~ ^tilelogger/v([0-9]+\.[0-9]+\.[0-9]+)$ ]] || exit 1
+          version=${BASH_REMATCH[1]}
+          actual=$(./gradlew -q :plugins:tilelogger:getProjectVersion | tail -n 1)
+          [[ "$actual" == "$version" ]] || { echo "Plugin is $actual, tag says $version" >&2; exit 1; }
+      - name: Test Java, native code and benchmark compilation
+        run: ./gradlew :plugins:tilelogger:check :plugins:tilelogger:jarRelease
+      - name: Check benchmark tooling (no timing thresholds)
+        if: matrix.os == 'linux' && matrix.arch == 'x64'
+        run: |
+          python3 plugins/tilelogger/scripts/test-compare-bench.py
+          plugins/tilelogger/scripts/bench-ab.sh HEAD 1 -- --n 10000 --reps 1 --seconds 1 --rate 120
+          ./gradlew :plugins:tilelogger:jmhJar
+          mkdir -p plugins/tilelogger/build/results/jmh
+          java --enable-native-access=ALL-UNNAMED -jar plugins/tilelogger/build/libs/TileLogger-jmh.jar -foe true -f 1 -wi 1 -i 1 -w 100ms -r 100ms -rf json -rff plugins/tilelogger/build/results/jmh/smoke.json
+      - name: Name platform jar
+        env:
+          PLATFORM: ${{ matrix.os }}-${{ matrix.arch }}
+        run: |
+          mkdir -p plugins/tilelogger/build/release
+          cp plugins/tilelogger/build/libs/TileLogger-release.jar "plugins/tilelogger/build/release/TileLogger-$PLATFORM.jar"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: tilelogger-${{ matrix.os }}-${{ matrix.arch }}
+          path: plugins/tilelogger/build/release/*.jar
+          if-no-files-found: error
+      - name: Upload diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: tilelogger-reports-${{ matrix.os }}-${{ matrix.arch }}
+          path: |
+            plugins/tilelogger/build/reports/
+            plugins/tilelogger/build/test-results/
+            plugins/tilelogger/native/build/test-results/
+
+  native-sanitizers:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref }}
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '25'
+      - uses: gradle/actions/setup-gradle@v5
+        with:
+          cache-read-only: ${{ github.event_name == 'pull_request' }}
+      - run: ./gradlew :plugins:tilelogger:native:check -PnativeSanitizers=true

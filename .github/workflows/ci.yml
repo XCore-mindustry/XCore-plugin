@@ -17,6 +17,7 @@ jobs:
       menus: ${{ steps.filter.outputs.menus }}
       renderer: ${{ steps.filter.outputs.renderer }}
       protocol: ${{ steps.filter.outputs.protocol }}
+      tilelogger: ${{ steps.filter.outputs.tilelogger }}
     steps:
       - uses: actions/checkout@v7
       - uses: dorny/paths-filter@v3
@@ -47,6 +48,13 @@ jobs:
             renderer:
               - .github/workflows/ci.yml
               - libs/mindustry-testkit/render/**
+            tilelogger:
+              - *shared
+              - plugins/tilelogger/native/**
+              - plugins/tilelogger/scripts/**
+              - plugins/tilelogger/src/jmh/**
+              - plugins/tilelogger/*.gradle.kts
+              - plugins/tilelogger/plugin.json
             protocol:
               - .github/workflows/ci.yml
               - protocol/**
@@ -138,9 +146,16 @@ jobs:
         working-directory: /tmp
         run: uv run --isolated --with "$GITHUB_WORKSPACE"/protocol/dist/*.whl python -c 'import xcore_protocol'
 
+  tilelogger-native:
+    needs: changes
+    if: needs.changes.outputs.tilelogger == 'true'
+    uses: ./.github/workflows/tilelogger-native.yml
+    with:
+      ref: ${{ github.sha }}
+
   # The only required check. Jobs skipped by the path filter count as passed.
   ci-ok:
-    needs: [changes, gradle, menu-render, renderer-selfcheck, protocol]
+    needs: [changes, gradle, menu-render, renderer-selfcheck, protocol, tilelogger-native]
     if: always()
     runs-on: ubuntu-latest
     steps:
