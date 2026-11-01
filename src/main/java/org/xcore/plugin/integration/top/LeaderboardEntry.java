@@ -39,10 +39,7 @@ public record LeaderboardEntry(
         displayText = displayText == null ? "" : displayText;
     }
 
-    /**
-     * Attributes every player card understands: nickname override, active badge, PID and
-     * the admin mark. Providers add their own on top.
-     */
+    /** Attributes every player card understands: nickname override, active badge and PID. */
     public static Map<String, String> profileAttributes(PlayerData player) {
         Map<String, String> attributes = new HashMap<>();
         if (player == null) {
@@ -58,7 +55,6 @@ public record LeaderboardEntry(
         if (PlayerPids.isAssigned(player.pid)) {
             attributes.put("pid", String.valueOf(player.pid));
         }
-        attributes.put("admin", String.valueOf(player.admin));
         return attributes;
     }
 

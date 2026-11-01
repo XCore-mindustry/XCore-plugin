@@ -233,7 +233,9 @@ public class PlayerMenu extends Menu {
         // Somebody else's settings are theirs to change only for a viewer who outranks them.
         hierarchy.whenAllowed(session, targetData.uuid, () -> {
             var controller = new PlayerSettingsUiController(this, profileSettings, session, targetData);
-            var initialModel = PlayerSettingsUiController.createModel(session, targetData, tab);
+            Session targetSession = sessionService.get(targetData.uuid);
+            var initialModel = PlayerSettingsUiController.createModel(session, targetData, tab,
+                    targetSession != null ? targetSession.player : null);
             // Filling the screen is what lets the cards scroll on a screen shorter than the settings.
             menuService.openUi(session, controller, initialModel, true);
         }, () -> session.locale().send(TargetHierarchy.DENIED_KEY));

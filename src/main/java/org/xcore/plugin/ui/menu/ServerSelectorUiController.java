@@ -310,7 +310,7 @@ public class ServerSelectorUiController implements UiController<ServerSelectorUi
             return rejected("player-servers-offline", Bundle.args("server", target.template().name()));
         }
 
-        boolean isAdmin = session.data != null && session.data.admin;
+        boolean isAdmin = session.player.admin;
         if (target.isFull() && !isAdmin) {
             return rejected("player-servers-full", Bundle.args("server", target.template().name()));
         }

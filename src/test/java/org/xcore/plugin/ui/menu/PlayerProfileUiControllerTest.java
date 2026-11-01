@@ -41,6 +41,34 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 class PlayerProfileUiControllerTest {
+    @Test
+    void profileAndOnlineFiltersUseRuntimeAdminFlag() {
+        Session viewer = createTestSession("viewer", false);
+        Session target = createTestSession("target", false);
+        SessionService sessions = mock(SessionService.class);
+        when(sessions.get("target")).thenReturn(target);
+        when(sessions.streamCached()).thenAnswer(i -> Stream.of(target));
+        for (boolean admin : new boolean[]{true, false}) {
+            target.player.admin = admin;
+            target.data.admin = !admin;
+            var model = PlayerProfileUiController.createModel(viewer, target.data,
+                    PlayerProfileUiController.Tab.OVERVIEW, null, sessions, null);
+            assertThat(model.isTargetAdmin()).isEqualTo(admin);
+            var controller = new PlayerProfileUiController(null, null, sessions, null, viewer, viewer.data);
+            assertThat(controller.update(model, new PlayerProfileUiController.ProfileEvent.InspectPlayer("target"), null)
+                    .model().isTargetAdmin()).isEqualTo(admin);
+            assertThat(model.onlinePlayers()).singleElement().satisfies(row -> assertThat(row.isAdmin()).isEqualTo(admin));
+            assertThat(PlayerProfileUiController.resolveOnlinePlayers(viewer, sessions, null,
+                    PlayerProfileUiController.AdminFilter.ADMINS_ONLY)).hasSize(admin ? 1 : 0);
+            assertThat(PlayerProfileUiController.resolveOnlinePlayers(viewer, sessions, null,
+                    PlayerProfileUiController.AdminFilter.NON_ADMINS)).hasSize(admin ? 0 : 1);
+        }
+        when(sessions.get("target")).thenReturn(null);
+        target.data.admin = true;
+        assertThat(PlayerProfileUiController.createModel(viewer, target.data,
+                PlayerProfileUiController.Tab.OVERVIEW, null, sessions, null).isTargetAdmin()).isFalse();
+    }
+
     private static final ProfileSectionView SECTION = local -> new ProfileSection(
             "Duel: Titanium 1642", List.of("12 matches", "place 4"), List.of("Season 3 ends in 12d"));
 

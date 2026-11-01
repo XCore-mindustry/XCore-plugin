@@ -49,6 +49,22 @@ import static org.mockito.Mockito.*;
 
 class PlayerSettingsUiControllerTest {
 
+    @Test
+    void adminBadgeUsesTargetRuntimeFlag() {
+        Session viewer = createTestSession("viewer", false);
+        Session target = createTestSession("target", false);
+        for (boolean admin : new boolean[]{true, false}) {
+            target.player.admin = admin;
+            target.data.admin = !admin;
+            var model = PlayerSettingsUiController.createModel(viewer, target.data,
+                    PlayerSettingsUiController.Tab.BADGES, target.player);
+            assertThat(model.isAdmin()).isEqualTo(admin);
+            assertThat(PlayerSettingsUiController.createModel(target, target.data).isAdmin()).isEqualTo(admin);
+        }
+        target.data.admin = true;
+        assertThat(PlayerSettingsUiController.createModel(viewer, target.data).isAdmin()).isFalse();
+    }
+
     private static Bundle realBundle;
 
     @SuppressWarnings("unchecked")

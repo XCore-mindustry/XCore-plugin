@@ -2,6 +2,7 @@ package org.xcore.plugin.ui.menu;
 
 import arc.util.Strings;
 import mindustry.gen.Iconc;
+import mindustry.gen.Player;
 import mindustry.ui.builder.MenuResult;
 import org.xcore.plugin.localization.Localization;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
@@ -318,14 +319,19 @@ public class PlayerSettingsUiController implements UiController<PlayerSettingsUi
     }
 
     public static SettingsModel createModel(Session session, PlayerData targetData, Tab initialTab) {
+        boolean isSelf = session != null && session.data != null && targetData != null
+                && Objects.equals(session.data.uuid, targetData.uuid);
+        return createModel(session, targetData, initialTab, isSelf ? session.player : null);
+    }
+
+    public static SettingsModel createModel(Session session, PlayerData targetData, Tab initialTab, Player targetPlayer) {
         Objects.requireNonNull(targetData, "targetData");
         String customNick = targetData.customNickname != null ? targetData.customNickname : "";
         String desc = targetData.description != null ? targetData.description : "";
         String playerColorHex = resolvePlayerColorHex(session, targetData);
 
         Set<String> unlocked = targetData.unlockedBadges != null ? targetData.unlockedBadges : Set.of();
-        boolean isSelf = session != null && session.data != null && Objects.equals(session.data.uuid, targetData.uuid);
-        boolean admin = targetData.admin || (isSelf && session.player != null && session.player.admin);
+        boolean admin = targetPlayer != null && targetPlayer.admin;
 
         String activeBadge = targetData.activeBadge != null ? targetData.activeBadge : "";
         String initialPreview = !activeBadge.isBlank()
@@ -433,11 +439,6 @@ public class PlayerSettingsUiController implements UiController<PlayerSettingsUi
             return t(local, "none");
         }
         return badgeLabel(local, badge);
-    }
-
-    public static String systemBadgeName(Localization local, PlayerData targetData) {
-        if (targetData == null) return t(local, "none");
-        return targetData.admin ? badgeLabel(local, Badge.ADMIN) : t(local, "none");
     }
 
     public static String badgeLabel(Localization local, Badge badge) {
