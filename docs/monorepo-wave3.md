@@ -31,13 +31,15 @@ policy. The bot's original MIT notice is preserved as LICENSE.MIT.
 The existing services were inspected read-only: both run via uv in separate tmux
 sessions. The bot uses Python 3.14, gateway Python 3.13. A local bot wrapper and
 configuration files, plus modified gateway observability assets, must be kept.
-No production process, environment file or operator edit is changed by this PR.
+The deployed gateway dashboard/rules files match the imported upstream files
+byte for byte. No production process, environment file or operator edit is
+changed by this PR.
 
 Before switching:
 
 1. Keep the old checkouts and launch wrappers for rollback. Back up local
    configuration and preserve any uncommitted dashboard/Prometheus edits outside
-   the new checkout. Those private/operator files are not imported here.
+   the new checkout. Private configuration/wrapper files are not imported here.
 2. Check out the reviewed monorepo commit separately. Build/test it before
    stopping a running service. Keep the old working directory so relative paths
    in existing configuration retain their meaning.
