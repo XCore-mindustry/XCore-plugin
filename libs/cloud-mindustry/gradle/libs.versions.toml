@@ -1,6 +1,6 @@
 [versions]
 cloud = "2.1.0"
-mindustry = "v154.3"
+mindustry = "v160"
 shadow = "9.6.1"
 toxopid = "4.2.0"
 junit-jupiter = "6.1.3"

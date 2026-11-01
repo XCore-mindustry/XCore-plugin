@@ -5,6 +5,7 @@ import arc.util.CommandHandler;
 import mindustry.Vars;
 import mindustry.core.ContentLoader;
 import mindustry.core.GameState;
+import mindustry.core.World;
 import mindustry.game.Team;
 import mindustry.gen.Groups;
 import mindustry.gen.Player;
@@ -40,6 +41,8 @@ class TargetSelectorCommandIntegrationTest {
     @BeforeAll
     static void initMindustry() {
         Vars.state = new GameState();
+        // since v160 adding a physics unit registers it with PhysicsProcess, which reads the world bounds
+        if (Vars.world == null) Vars.world = new World();
         Vars.headless = true;
         Vars.net = new mindustry.net.Net(null);
         if (Vars.content == null) {
