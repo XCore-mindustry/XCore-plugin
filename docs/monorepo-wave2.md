@@ -5,7 +5,9 @@ into `plugins/tilelogger` with its full branch history. Bare issue references ar
 qualified as `XCore-mindustry/TileLogger#N`; historical tags become
 `tilelogger/v2.1.0` and `tilelogger/v2.1.1` locally. They must not be pushed as
 new release events. The original repository stays available until the first
-successful release from the monorepo. Its GPL-3.0 license is preserved.
+successful release from the monorepo. Its GPL-3.0 license is preserved. Historical GitHub PATs in old CI workflow versions are
+removed from the imported history. The source repository is unaffected; any
+still-active exposed tokens must be revoked.
 
 TileLogger and its native subproject join the root Gradle build and catalog.
 Production dependencies on XCore, FluBundle and cloud-mindustry, and test
@@ -28,3 +30,12 @@ Historical benchmark result documents are retained as historical instructions.
 
 Before merge: require all native matrix entries, sanitizer checks and `ci-ok`.
 No runtime deployment or repository archiving is part of this wave.
+
+## Local verification
+
+The root Gradle build, native tests, benchmark compilation and runnable JMH
+smoke pass on Linux x64. Native A/A comparison and the 9 benchmark-report
+regressions pass. The standalone HEAD release jar and the monorepo release jar
+have identical Java/resources/plugin metadata. The native libraries match after
+removing debug/build-ID metadata and normalizing the embedded compilation time.
+Windows and ARM builds remain CI gates before merge.
