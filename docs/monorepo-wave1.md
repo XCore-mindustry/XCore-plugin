@@ -14,11 +14,11 @@ component release tags (`*/v*`). Repository Maven secrets remain available.
 
 | Component | Version | Status |
 | --- | --- | --- |
-| FluBundle | 2.1.3 | Prepared |
-| cloud-mindustry | 0.4.1 | Prepared |
-| xcore-ui | 0.3.0 | Existing unreleased version, prepared |
-| testkit (core, ui, fixtures) | 0.2.0 | Existing unreleased version, prepared |
-| protocol (Java and Python) | 0.17.1 | Prepared; owner confirmed PyPI trusted publisher setup |
+| FluBundle | 2.1.3 | Published |
+| cloud-mindustry | 0.4.1 | Published |
+| xcore-ui | 0.3.0 | Published |
+| testkit (core, ui, fixtures) | 0.2.0 | Published |
+| protocol (Java and Python) | 0.17.1 | Published to Maven and PyPI |
 
 ## Before the first release
 
@@ -31,7 +31,8 @@ component release tags (`*/v*`). Repository Maven secrets remain available.
 - Build satellite consumers against the new published artifacts before archiving
   source repositories. Archive each source only after its first successful release.
 
-TileLogger, Python services, web and the replacement dev tool are later waves.
+All five release workflows succeeded and satellite builds passed; see PR #58.
+TileLogger is wave 2 (see `monorepo-wave2.md`). Python services, web and the replacement dev tool are later waves.
 
 ## Secret scan
 

@@ -4,6 +4,7 @@ mindustry = "v160"
 # Plugins
 toxopid = "4.2.0"
 shadow = "9.6.1"
+jmh-plugin = "0.7.3"
 
 # Dependencies
 cloud = "2.1.0"
@@ -23,6 +24,8 @@ assertj = "3.27.7"
 testcontainers = "2.0.5"
 
 [plugins]
+avaje-inject = { id = "io.avaje.inject", version.ref = "avaje" }
+jmh = { id = "me.champeau.jmh", version.ref = "jmh-plugin" }
 toxopid = { id = "com.xpdustry.toxopid", version.ref = "toxopid" }
 shadow = { id = "com.gradleup.shadow", version.ref = "shadow" }
 

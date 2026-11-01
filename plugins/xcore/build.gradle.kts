@@ -99,6 +99,7 @@ val generateModInfo by tasks.registering {
 
 tasks.jar {
     archiveBaseName.set("XCore-plugin")
+    archiveClassifier.set("plain")
     from(generateModInfo)
 }
 
