@@ -245,8 +245,8 @@ game state, but selector and `Player` arguments will fail under it.
   it; it throws `IllegalStateException`. Hop through `mgr.simulationExecutor()` first (see *Threads*).
 - **Breaking:** `MindustryCommandManager.create` now coordinates the whole pipeline on the game thread.
   The three-argument constructor still takes your coordinator as is.
-- `SelectorResolutionBridge` is deprecated, unused by the library and will be removed in the next release.
-  The game thread is no longer guessed from thread names or set by whoever constructs a manager last.
+- `SelectorResolutionBridge` is gone (removed in 0.4.0). The game thread is no longer guessed from thread
+  names or set by whoever constructs a manager last.
 - `SpatialSelectorEngine` keeps no state between calls; `new SpatialSelectorEngine(simulationExecutor)`
   binds it to a thread explicitly.
 
@@ -259,4 +259,4 @@ game state, but selector and `Player` arguments will fail under it.
 - `SelectorCaptionProvider` no longer answers captions it doesn't know, which used to blank out
   Cloud's standard messages.
 - `ConsoleSender` strips Mindustry color tags before logging.
-- `SelectorGuard.LAST_SELECTOR_SPEC_KEY` is deprecated in favour of `SelectorGuard.selectorSpecs(command, context)`.
+- `SelectorGuard.LAST_SELECTOR_SPEC_KEY` is gone (removed in 0.4.0); use `SelectorGuard.selectorSpecs(command, context)`.

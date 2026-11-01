@@ -30,13 +30,6 @@ public final class SelectorGuard {
             CloudKey.of("mindustry:deny_selectors_reason", String.class);
     public static final CloudKey<SelectorKind[]> ALLOWED_SELECTORS_KEY =
             CloudKey.of("mindustry:allowed_selectors", SelectorKind[].class);
-    /**
-     * @deprecated only holds the last parsed selector, which may belong to a branch the parser
-     * abandoned; use {@link #selectorSpecs(Command, CommandContext)}
-     */
-    @Deprecated
-    public static final CloudKey<TargetSelectorSpec> LAST_SELECTOR_SPEC_KEY =
-            CloudKey.of("mindustry:last_selector_spec", TargetSelectorSpec.class);
 
     /** Every recorded selector, keyed by the parsing attempt that produced it. */
     private static final CloudKey<Map<Object, TargetSelectorSpec>> SPECS_KEY =
@@ -62,7 +55,6 @@ public final class SelectorGuard {
         }
         List<? extends ParsingContext<?>> attempts = context.parsingContexts();
         specs.put(attempts.isEmpty() ? NO_PARSING_CONTEXT : attempts.get(attempts.size() - 1), spec);
-        context.store(LAST_SELECTOR_SPEC_KEY, spec);
     }
 
     /**
