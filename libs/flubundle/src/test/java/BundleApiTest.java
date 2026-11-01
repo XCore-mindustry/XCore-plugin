@@ -69,9 +69,18 @@ public class BundleApiTest {
         Instant date = Instant.parse("2026-11-01T14:48:00Z");
         for (Locale locale : locales) {
             String expected = DateTimeFormatter.ofLocalizedDateTime(FormatStyle.MEDIUM, FormatStyle.SHORT)
-                    .withLocale(locale).withZone(ZoneOffset.UTC).format(date);
+                    .withLocale(locale).withZone(ZoneOffset.UTC).format(date)
+                    .replace('\u202F', ' ').replace('\u00A0', ' ');
             assertEquals(expected, bundle.format(locale, "expires", Map.of("date", date)), locale.toString());
         }
+    }
+
+    @Test
+    void numbersUseSpacesTheClientFontCanDraw() {
+        Bundle bundle = bundleWith("players = { $count } players\n", Locale.ENGLISH);
+        add(bundle, "players = { $count } joueurs\n", Locale.FRENCH);
+
+        assertEquals("1 234 567 joueurs", bundle.format(Locale.FRENCH, "players", Map.of("count", 1234567)));
     }
 
     @Test

@@ -346,7 +346,7 @@ public class Bundle {
 
             var message = bundle.message(id);
             if (message.isPresent() && message.get().hasAttribute(attribute)) {
-                return bundle.format(id, attribute, safeArgs);
+                return drawable(bundle.format(id, attribute, safeArgs));
             }
         }
 
@@ -369,11 +369,16 @@ public class Bundle {
             }
 
             if (bundle.message(id).isPresent()) {
-                return bundle.format(id, safeArgs);
+                return drawable(bundle.format(id, safeArgs));
             }
         }
 
         return missingKey.onMissing(id, safeArgs, normalizeLocale(requestedLocale));
+    }
+
+    /** Mindustry's font has no (narrow) no-break space, which CLDR number and date formats use in many locales. */
+    private static String drawable(String text) {
+        return text.replace('\u202F', ' ').replace('\u00A0', ' ');
     }
 
     /**
@@ -392,7 +397,7 @@ public class Bundle {
 
         Map<String, Object> safeArgs = args == null ? Collections.emptyMap() : args;
         if (bundle.message(id).isPresent()) {
-            return bundle.format(id, safeArgs);
+            return drawable(bundle.format(id, safeArgs));
         }
 
         return missingKeyPolicy.onMissing(id, safeArgs, requestedLocale);
