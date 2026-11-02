@@ -108,9 +108,10 @@ rsync -az --delete .next/standalone/ <server>:services/xcore-web/
 ssh <server> systemctl --user restart xcore-web
 ```
 
-When switching an existing standalone install to the monorepo layout, update
-its start path to `web/.next/standalone/web/server.js` (relative to the monorepo
-root), and copy public/static assets as shown above. Keep runtime environment
+When switching the rsync deployment above to this layout, update the unit to
+start `~/services/xcore-web/web/server.js`. For a build run directly from a
+monorepo checkout, the path is `web/.next/standalone/web/server.js` relative to
+the checkout root. Copy public/static assets as shown above. Keep runtime environment
 files outside the checkout. This import does not restart the production unit.
 
 ## Where things live
