@@ -106,6 +106,7 @@ services/
   metrics-gateway/
 web/                  x-core.org
 devtools/             the ./dev command, Compose stack and seed data
+ops/                  production units and the deploy script
 build-logic/          shared Gradle conventions
 docs/                 notes on the monorepo migration
 ```
@@ -126,7 +127,7 @@ Every component has its own version. To release one, bump the version, merge, an
 | mindustry-testkit | `libs/mindustry-testkit/build.gradle.kts` | `testkit/vX.Y.Z` |
 | protocol | `protocol/pyproject.toml` (Java and Python share it) | `protocol/vX.Y.Z` |
 
-The release workflow checks that the tag matches the version, publishes to Maven (and PyPI for the protocol), and creates the GitHub release with the jars. The bot, the gateway and the website are not released; they are deployed from `main`.
+The release workflow checks that the tag matches the version, publishes to Maven (and PyPI for the protocol), and creates the GitHub release with the jars. The bot, the gateway and the website are not released; they are deployed from `main` with [`ops/deploy`](ops/README.md).
 
 ## Contributing
 

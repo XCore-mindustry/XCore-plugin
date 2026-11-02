@@ -101,14 +101,7 @@ is `/app/web/server.js` because standalone tracing includes the repository root.
 
 ## Deploy
 
-x-core.org runs the standalone build on the game server: a systemd user unit `xcore-web` runs `node server.js` in `~/services/xcore-web/web` on 127.0.0.1:3100, and Caddy proxies the domain to it. The runtime environment is `~/services/xcore-web/.env`, loaded by the unit. After a build and the two `cp` steps above:
-
-```bash
-rsync -az --delete --exclude=/.env .next/standalone/ <server>:services/xcore-web/
-ssh <server> systemctl --user restart xcore-web
-```
-
-Keep `--exclude=/.env`: without it `--delete` removes the runtime environment.
+x-core.org runs the standalone build on the game server as the systemd user unit `xcore-web`, on 127.0.0.1:3100 behind Caddy. Deploy it with `ops/deploy <ssh-host> web`, which builds the site locally and copies it; see [ops/README.md](../ops/README.md).
 
 ## Where things live
 

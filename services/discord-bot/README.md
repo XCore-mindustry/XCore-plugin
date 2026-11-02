@@ -139,7 +139,7 @@ The protocol dependency is the local `protocol/` workspace member. The root
 `uv.lock` covers protocol, the bot and metrics-gateway; no sibling protocol clone
 or git-tag dependency is used. The bot loads environment variables from `.env`;
 pass its path explicitly when launching from a different working directory.
-For an existing deployment, see [the cutover guide](../../docs/monorepo-wave3.md).
+Production runs it as a systemd user unit, deployed with `ops/deploy <ssh-host> bot`; see [ops/README.md](../../ops/README.md).
 
 ## Docker smoke run
 

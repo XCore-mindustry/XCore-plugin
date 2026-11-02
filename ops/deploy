@@ -1,0 +1,110 @@
+#!/usr/bin/env bash
+# Deploys the Discord bot, the metrics gateway and the website to the server.
+# Usage: ops/deploy <ssh-host> <bot|gateway|web|all>... [--ref <git-ref>]
+# See ops/README.md for the server layout.
+set -euo pipefail
+
+usage() {
+  echo "usage: ops/deploy <ssh-host> <bot|gateway|web|all>... [--ref <git-ref>]" >&2
+  exit 2
+}
+
+root=$(cd "$(dirname "$0")/.." && pwd)
+host=${1:-}
+[[ -n $host && $host != -* ]] || usage
+shift
+ref=origin/main
+services=()
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    --ref) ref=${2:?}; shift 2 ;;
+    bot | gateway | web) services+=("$1"); shift ;;
+    all) services+=(bot gateway web); shift ;;
+    *) usage ;;
+  esac
+done
+[[ ${#services[@]} -gt 0 ]] || usage
+
+git -C "$root" fetch -q origin
+sha=$(git -C "$root" rev-parse --verify "$ref^{commit}")
+# The server checks the commit out from GitHub, so it has to be on main there.
+git -C "$root" merge-base --is-ancestor "$sha" origin/main ||
+  { echo "$ref ($sha) is not on origin/main" >&2; exit 1; }
+echo "deploying ${services[*]} at $(git -C "$root" log -1 --format='%h %s' "$sha")"
+
+if [[ " ${services[*]} " == *" web "* ]]; then
+  tmp=$(mktemp -d)
+  trap 'git -C "$root" worktree remove --force "$tmp/src" 2>/dev/null; rm -rf "$tmp"' EXIT
+  git -C "$root" worktree add -q --detach "$tmp/src" "$sha"
+  (
+    cd "$tmp/src/web"
+    bun install --frozen-lockfile
+    bun run build
+    cp -r public .next/standalone/web/
+    cp -r .next/static .next/standalone/web/.next/
+  )
+  ssh "$host" mkdir -p services/web
+  rsync -az --delete --link-dest=../web "$tmp/src/web/.next/standalone/" "$host:services/web.next/"
+fi
+
+ssh "$host" bash -s -- "$sha" "${services[@]}" <<'REMOTE'
+set -euo pipefail
+sha=$1; shift
+uv=$(command -v uv || echo ~/.local/bin/uv)
+repo=~/services/xcore
+[[ -d $repo ]] || git clone -q https://github.com/XCore-mindustry/xcore.git "$repo"
+git -C "$repo" fetch -q origin
+git -C "$repo" checkout -q --detach "$sha"
+mkdir -p ~/.config/systemd/user ~/services/deployed
+
+wait_for() { # seconds, command...
+  local deadline=$((SECONDS + $1)); shift
+  until "$@" >/dev/null 2>&1; do
+    ((SECONDS < deadline)) || return 1
+    sleep 2
+  done
+}
+
+for svc in "$@"; do
+  case $svc in
+    bot) unit=xcore-discord-bot pkg=xcore-discord-bot python=3.14 ;;
+    gateway) unit=xcore-metrics-gateway pkg=xcore-metrics-gateway python=3.13 ;;
+    web) unit=xcore-web ;;
+  esac
+  echo "== $svc"
+  [[ -f ~/.config/xcore/${unit#xcore-}.env ]] || { echo "missing ~/.config/xcore/${unit#xcore-}.env" >&2; exit 1; }
+
+  if [[ $svc == web ]]; then
+    rm -rf ~/services/web.prev
+    mv ~/services/web ~/services/web.prev
+    mv ~/services/web.next ~/services/web
+  else
+    # Non-editable, so later checkouts do not change the code of a running service.
+    UV_PROJECT_ENVIRONMENT=~/services/venvs/${unit#xcore-} "$uv" sync -q --locked --no-dev --no-editable \
+      --python "$python" --package "$pkg" --project "$repo"
+  fi
+
+  install -m 644 "$repo/ops/systemd/$unit.service" ~/.config/systemd/user/
+  systemctl --user daemon-reload
+  systemctl --user enable -q "$unit"
+  since=$(date +%s)
+  systemctl --user restart "$unit"
+
+  case $svc in
+    bot) check() { journalctl --user -u "$unit" --since "@$since" | grep -q 'Discord bot connected'; }; limit=90 ;;
+    gateway)
+      port=$(sed -n 's/^GATEWAY_HTTP_PORT=//p' ~/.config/xcore/metrics-gateway.env)
+      check() { curl -fsS "http://127.0.0.1:${port:-9100}/ready"; }; limit=30 ;;
+    web) check() { curl -fsS -o /dev/null http://127.0.0.1:3100/en; }; limit=30 ;;
+  esac
+  if ! wait_for "$limit" check || ! systemctl --user is-active -q "$unit"; then
+    journalctl --user -u "$unit" --since "@$since" --no-pager | tail -30
+    echo "$svc failed its health check." >&2
+    [[ -f ~/services/deployed/$svc ]] &&
+      echo "Previous commit: $(cat ~/services/deployed/$svc); redeploy it with --ref." >&2
+    exit 1
+  fi
+  echo "$sha" > ~/services/deployed/"$svc"
+  echo "$svc ok"
+done
+REMOTE
