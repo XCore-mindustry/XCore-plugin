@@ -101,18 +101,14 @@ is `/app/web/server.js` because standalone tracing includes the repository root.
 
 ## Deploy
 
-x-core.org runs the standalone build on the game server: a systemd user unit `xcore-web` serves `~/services/xcore-web` on 127.0.0.1:3100, and Caddy proxies the domain to it. After a build and the two `cp` steps above:
+x-core.org runs the standalone build on the game server: a systemd user unit `xcore-web` runs `node server.js` in `~/services/xcore-web/web` on 127.0.0.1:3100, and Caddy proxies the domain to it. The runtime environment is `~/services/xcore-web/.env`, loaded by the unit. After a build and the two `cp` steps above:
 
 ```bash
-rsync -az --delete .next/standalone/ <server>:services/xcore-web/
+rsync -az --delete --exclude=/.env .next/standalone/ <server>:services/xcore-web/
 ssh <server> systemctl --user restart xcore-web
 ```
 
-When switching the rsync deployment above to this layout, update the unit to
-start `~/services/xcore-web/web/server.js`. For a build run directly from a
-monorepo checkout, the path is `web/.next/standalone/web/server.js` relative to
-the checkout root. Copy public/static assets as shown above. Keep runtime environment
-files outside the checkout. This import does not restart the production unit.
+Keep `--exclude=/.env`: without it `--delete` removes the runtime environment.
 
 ## Where things live
 
