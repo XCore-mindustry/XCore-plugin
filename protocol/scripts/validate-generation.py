@@ -18,8 +18,8 @@ def run_step(repo_root: Path, *args: str) -> None:
 def main() -> int:
     repo_root = REPO_ROOT
     for family_name in entrypoint_family_names():
-        run_step(repo_root, "uv", "run", "python", "-m", "generators", "generate", "--family", family_name)
-        run_step(repo_root, "uv", "run", "python", "-m", "generators", "check", "--family", family_name)
+        run_step(repo_root, sys.executable, "-m", "generators", "generate", "--family", family_name)
+        run_step(repo_root, sys.executable, "-m", "generators", "check", "--family", family_name)
     return 0
 
 

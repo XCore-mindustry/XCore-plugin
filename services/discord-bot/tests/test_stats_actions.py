@@ -1,0 +1,595 @@
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+from datetime import UTC, datetime
+from types import SimpleNamespace
+from typing import Any, cast
+
+import discord
+import pytest
+from backends import real_bot
+from bot_fakes import make_bot, make_settings
+from mongo_fakes import Database
+from pymongo.errors import PyMongoError
+
+from xcore_discord_bot.bot import XCoreDiscordBot
+from xcore_discord_bot.dto import PlayerRecord
+from xcore_discord_bot.game_stats import GAMES
+from xcore_discord_bot.handlers_stats import cmd_stats, cmd_stats_audit
+from xcore_discord_bot.i18n import LocalePref
+from xcore_discord_bot.moderation_modals import StatsBanModal, StatsMuteModal
+from xcore_discord_bot.moderation_views import StatsActionsView
+from xcore_discord_bot.rating_store import SEASONS
+
+
+@dataclass
+class _Role:
+    id: int
+
+
+@dataclass
+class _User:
+    id: int
+    display_name: str
+    roles: list[_Role]
+
+
+@dataclass
+class _Message:
+    edits: list[dict[str, Any]] = field(default_factory=list)
+
+    async def edit(self, *, view: Any = None) -> None:
+        self.edits.append({"view": view})
+
+
+@dataclass
+class _Response:
+    sent: list[dict[str, Any]] = field(default_factory=list)
+    modals: list[Any] = field(default_factory=list)
+
+    async def send_message(
+        self,
+        content: str | None = None,
+        *,
+        embed: Any = None,
+        ephemeral: bool = False,
+        view: Any = None,
+    ) -> None:
+        self.sent.append(
+            {
+                "content": content,
+                "embed": embed,
+                "ephemeral": ephemeral,
+                "view": view,
+            }
+        )
+
+    async def send_modal(self, modal: Any) -> None:
+        self.modals.append(modal)
+
+
+@dataclass
+class _Interaction:
+    id: int
+    user: _User
+    client: Any | None = None
+    response: _Response = field(default_factory=_Response)
+    _message: _Message = field(default_factory=_Message)
+    locale: Any = None
+
+    async def original_response(self) -> _Message:
+        return self._message
+
+
+VORTEX = {
+    "pid": 123,
+    "nickname": "Vortex",
+    "username": "br",
+    "uuid": "uuid-123",
+    "discord_id": "discord-123",
+    "custom_nickname": "",
+    "description": "Profile text",
+    "local_language": "ru",
+    "translator_language": "uk",
+    "hexed_rank": 0,
+    "hexed_points": 0,
+    "total_play_time": 10,
+    "leaderboard": False,
+    "unlocked_badges": ["developer", "translator"],
+    "active_badge": "translator",
+    "created_at": 0,
+    "updated_at": 0,
+}
+# Two accounts linked to Discord user 77.
+LINKED = [
+    {"pid": -4, "uuid": "uuid-alt", "nickname": "Alt", "total_play_time": 5},
+    {"pid": 9, "uuid": "uuid-main", "nickname": "Main", "total_play_time": 900},
+]
+OCCURRED = datetime(2026, 4, 11, 15, 30, tzinfo=UTC)
+
+
+async def _stats_bot() -> tuple[XCoreDiscordBot, Database]:
+    """A bot whose store holds Vortex (#123, @br), the accounts linked to user 77, a ban
+    an admin gave Vortex and a mute Vortex gave someone else."""
+    bot, db = await real_bot(settings=make_settings(discord_admin_role_id=5))
+    await db["players"].insert_one(dict(VORTEX))
+    for player in LINKED:
+        await db["players"].insert_one({**player, "discord_id": "77"})
+    audit = bot.container.audit
+    await audit.append_moderation_audit(
+        action="BAN",
+        target_uuid="uuid-123",
+        target_pid=123,
+        target_name="Vortex",
+        target_ip=None,
+        actor_discord_id="1",
+        actor_name="Admin",
+        reason="Rule 1",
+        occurred_at=OCCURRED,
+    )
+    await audit.append_moderation_audit(
+        action="MUTE",
+        target_uuid="uuid-target",
+        target_pid=50,
+        target_name="Target",
+        target_ip=None,
+        actor_discord_id="discord-123",
+        actor_name="Vortex",
+        reason="Flood",
+        occurred_at=OCCURRED,
+    )
+    return bot, db
+
+
+def _break(db: Database, collection: str, method: str) -> None:
+    """Make every ``method`` call on ``collection`` fail, as when Mongo is unreachable."""
+
+    async def broken(*args: Any, **kwargs: Any) -> Any:
+        raise PyMongoError(f"{collection} is unreachable")
+
+    setattr(db[collection], method, broken)
+
+
+@pytest.mark.asyncio
+async def test_cmd_stats_attaches_actions_view() -> None:
+    bot, db = await _stats_bot()
+    _break(db, SEASONS, "distinct")
+    _break(db, GAMES, "aggregate")
+
+    interaction = _Interaction(
+        id=1,
+        user=_User(id=9, display_name="admin", roles=[_Role(5)]),
+        client=bot,
+    )
+    await cmd_stats(bot, cast(Any, interaction), 123)
+
+    assert len(interaction.response.sent) == 1
+    sent = interaction.response.sent[0]
+    assert sent["embed"] is not None
+    assert sent["ephemeral"] is True
+    assert isinstance(sent["view"], StatsActionsView)
+    assert sent["view"].message is interaction._message
+    assert len(sent["view"].children) == 4
+    embed = sent["embed"]
+    assert embed.title == "Vortex"
+    assert "`#123`" in embed.description
+    assert "🎖️ Translator" in embed.description
+    assert "> Profile text" in embed.description
+    fields = {field.name: field.value for field in embed.fields}
+    assert fields["🎖️ Badges"] == "Developer · **Translator** (shown)"
+    # what only the admins are shown
+    assert "🔨 Ban: none" in fields["🔒 Staff notes"]
+    assert "🔇 Mute: none" in fields["🔒 Staff notes"]
+    assert "🌐 Language: `ru` · translator: `uk`" in fields["🔒 Staff notes"]
+    assert "🙈 Hidden from the leaderboards" in fields["🔒 Staff notes"]
+    # a bot that cannot reach the ladders or the games still opens the profile
+    assert fields["🏆 Season ratings"] == "Unavailable right now"
+    assert fields["🎮 Games"] == "Unavailable right now"
+
+
+@pytest.mark.asyncio
+async def test_cmd_stats_hides_actions_for_non_admin() -> None:
+    bot, _ = await _stats_bot()
+
+    interaction = _Interaction(
+        id=5,
+        user=_User(id=10, display_name="guest", roles=[_Role(2)]),
+        client=bot,
+    )
+    await cmd_stats(bot, cast(Any, interaction), 123)
+
+    assert len(interaction.response.sent) == 1
+    sent = interaction.response.sent[0]
+    assert sent["embed"] is not None
+    assert sent["view"] is None
+    assert sent["ephemeral"] is False
+    assert "🔒 Staff notes" not in {field.name for field in sent["embed"].fields}
+
+
+@pytest.mark.asyncio
+async def test_cmd_stats_without_a_player_opens_the_linked_account() -> None:
+    bot, _ = await _stats_bot()
+
+    interaction = _Interaction(
+        id=6,
+        user=_User(id=77, display_name="guest", roles=[_Role(2)]),
+        client=bot,
+    )
+    await cmd_stats(bot, cast(Any, interaction))
+
+    sent = interaction.response.sent[0]
+    assert sent["ephemeral"] is True
+    embed = sent["embed"]
+    # the most played of the linked accounts, the other one named below it
+    assert embed.title == "Main"
+    assert embed.footer.text == "Also linked: #-4 Alt"
+
+
+@pytest.mark.asyncio
+async def test_cmd_stats_own_profile_by_id_is_private() -> None:
+    bot, db = await _stats_bot()
+    await db["players"].update_one({"pid": 123}, {"$set": {"discord_id": "77"}})
+    interaction = _Interaction(
+        id=13,
+        user=_User(id=77, display_name="player", roles=[]),
+        client=bot,
+    )
+
+    await cmd_stats(bot, cast(Any, interaction), 123)
+
+    sent = interaction.response.sent[0]
+    assert sent["ephemeral"] is True
+    fields = {field.name: field.value for field in sent["embed"].fields}
+    assert fields["🔗 Discord"] == "<@77>"
+    assert "🔒 Staff notes" not in fields
+
+
+@pytest.mark.asyncio
+async def test_cmd_stats_without_a_linked_account_says_how_to_link() -> None:
+    bot, _ = await _stats_bot()
+
+    interaction = _Interaction(
+        id=7,
+        user=_User(id=10, display_name="guest", roles=[_Role(2)]),
+        client=bot,
+    )
+    await cmd_stats(bot, cast(Any, interaction))
+
+    sent = interaction.response.sent[0]
+    assert sent["embed"] is None
+    assert sent["ephemeral"] is True
+    assert "/link" in sent["content"]
+
+
+@pytest.mark.asyncio
+async def test_cmd_stats_answers_in_the_viewers_language() -> None:
+    bot, _ = await _stats_bot()
+
+    interaction = _Interaction(
+        id=12,
+        user=_User(id=9, display_name="admin", roles=[_Role(5)]),
+        client=bot,
+        locale=discord.Locale.russian,
+    )
+    await cmd_stats(bot, cast(Any, interaction), 123)
+
+    sent = interaction.response.sent[0]
+    fields = {field.name: field.value for field in sent["embed"].fields}
+    assert fields["⏱️ Время в игре"] == "`10 мин`"
+    assert fields["🎖️ Значки"] == "Разработчик · **Переводчик** (показан)"
+    assert "🔒 Заметки для персонала" in fields
+    # the admin's buttons under the profile are in the same language
+    assert [item.label for item in sent["view"].children] == [
+        "Бан",
+        "Мут",
+        "История",
+        "Действия",
+    ]
+
+
+@pytest.mark.asyncio
+async def test_cmd_stats_without_a_linked_account_in_the_chosen_language() -> None:
+    bot, _ = await _stats_bot()
+    bot.container.cases.store.cached_locale_pref = lambda discord_id: LocalePref(
+        "uk", "manual"
+    )
+
+    interaction = _Interaction(
+        id=13,
+        user=_User(id=10, display_name="guest", roles=[_Role(2)]),
+        client=bot,
+        locale=discord.Locale.russian,
+    )
+    await cmd_stats(bot, cast(Any, interaction))
+
+    assert interaction.response.sent[0]["content"] == (
+        "У вас немає прив’язаного ігрового акаунта. "
+        "Отримайте код у грі та скористайтеся `/link` або вкажіть ID гравця."
+    )
+
+
+@pytest.mark.asyncio
+async def test_cmd_stats_by_discord_user_is_for_admins() -> None:
+    bot, _ = await _stats_bot()
+    linked = _User(id=77, display_name="linked", roles=[])
+
+    guest = _Interaction(
+        id=8, user=_User(id=10, display_name="guest", roles=[_Role(2)]), client=bot
+    )
+    await cmd_stats(bot, cast(Any, guest), None, cast(Any, linked))
+
+    assert guest.response.sent[0]["embed"] is None
+    assert guest.response.sent[0]["ephemeral"] is True
+    assert "Only admins" in guest.response.sent[0]["content"]
+
+    admin = _Interaction(
+        id=9, user=_User(id=9, display_name="admin", roles=[_Role(5)]), client=bot
+    )
+    await cmd_stats(bot, cast(Any, admin), None, cast(Any, linked))
+
+    assert admin.response.sent[0]["embed"].title == "Main"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("reference", ["123", "#123", "@br", "@BR", "br"])
+async def test_stats_accepts_text_without_a_separate_search(reference: str) -> None:
+    bot, _ = await _stats_bot()
+    interaction = _Interaction(
+        id=10, user=_User(id=10, display_name="guest", roles=[]), client=bot
+    )
+
+    await cmd_stats(bot, cast(Any, interaction), reference)
+
+    assert interaction.response.sent[0]["embed"].title == "Vortex"
+    assert interaction.response.sent[0]["view"] is None
+
+
+@pytest.mark.asyncio
+async def test_stats_unknown_username_replies_without_an_embed() -> None:
+    bot, _ = await _stats_bot()
+    interaction = _Interaction(
+        id=11, user=_User(id=10, display_name="guest", roles=[]), client=bot
+    )
+
+    await cmd_stats(bot, cast(Any, interaction), "@missing")
+
+    sent = interaction.response.sent[0]
+    assert sent["ephemeral"] is True
+    assert sent["embed"] is None
+    assert "Player not found" in sent["content"]
+
+
+@pytest.mark.asyncio
+async def test_stats_actions_view_blocks_non_admin() -> None:
+    bot = make_bot(settings=make_settings(discord_admin_role_id=5))
+
+    async def _no_op_ban(
+        _interaction: Any, _player_id: int, _period: str, _reason: str
+    ) -> None:
+        return None
+
+    async def _no_op_mute(
+        _interaction: Any, _player_id: int, _period: str, _reason: str
+    ) -> None:
+        return None
+
+    view = StatsActionsView(
+        settings=bot.settings,
+        player_id=123,
+        player=PlayerRecord(pid=1, nickname="Vortex"),
+        create_ban_modal=lambda **kwargs: StatsBanModal(
+            player_id=kwargs["player_id"],
+            player=kwargs["player"],
+            on_submit_ban=cast(Any, _no_op_ban),
+        ),
+        create_mute_modal=lambda **kwargs: StatsMuteModal(
+            player_id=kwargs["player_id"],
+            player=kwargs["player"],
+            on_submit_mute=cast(Any, _no_op_mute),
+        ),
+        open_target_audit=lambda *_args, **_kwargs: None,
+        open_actor_audit=lambda *_args, **_kwargs: None,
+    )
+
+    interaction = _Interaction(
+        id=2,
+        user=_User(id=8, display_name="guest", roles=[_Role(3)]),
+    )
+    allowed = await view.interaction_check(cast(Any, interaction))
+
+    assert allowed is False
+    assert interaction.response.sent == [
+        {
+            "content": "Access denied. Required admin role.",
+            "embed": None,
+            "ephemeral": True,
+            "view": None,
+        }
+    ]
+
+
+@pytest.mark.asyncio
+async def test_stats_actions_view_ban_button_opens_modal() -> None:
+    bot = make_bot(settings=make_settings(discord_admin_role_id=5))
+
+    async def _no_op_ban(
+        _interaction: Any, _player_id: int, _period: str, _reason: str
+    ) -> None:
+        return None
+
+    async def _no_op_mute(
+        _interaction: Any, _player_id: int, _period: str, _reason: str
+    ) -> None:
+        return None
+
+    view = StatsActionsView(
+        settings=bot.settings,
+        player_id=123,
+        player=PlayerRecord(pid=1, nickname="Vortex"),
+        create_ban_modal=lambda **kwargs: StatsBanModal(
+            player_id=kwargs["player_id"],
+            player=kwargs["player"],
+            on_submit_ban=cast(Any, _no_op_ban),
+        ),
+        create_mute_modal=lambda **kwargs: StatsMuteModal(
+            player_id=kwargs["player_id"],
+            player=kwargs["player"],
+            on_submit_mute=cast(Any, _no_op_mute),
+        ),
+        open_target_audit=lambda *_args, **_kwargs: None,
+        open_actor_audit=lambda *_args, **_kwargs: None,
+    )
+
+    interaction = _Interaction(
+        id=3,
+        user=_User(id=9, display_name="admin", roles=[_Role(5)]),
+    )
+
+    ban_button = view.children[0]
+    callback = ban_button.callback
+    assert callback is not None
+    await callback(cast(Any, interaction))
+
+    assert len(interaction.response.modals) == 1
+    assert isinstance(interaction.response.modals[0], StatsBanModal)
+
+
+@pytest.mark.asyncio
+async def test_stats_actions_view_history_button_opens_paginated_audit() -> None:
+    bot, _ = await _stats_bot()
+
+    async def _no_op_ban(
+        _interaction: Any, _player_id: int, _period: str, _reason: str
+    ) -> None:
+        return None
+
+    async def _no_op_mute(
+        _interaction: Any, _player_id: int, _period: str, _reason: str
+    ) -> None:
+        return None
+
+    interaction = _Interaction(
+        id=6,
+        user=_User(id=9, display_name="admin", roles=[_Role(5)]),
+    )
+    view = StatsActionsView(
+        settings=bot.settings,
+        player_id=123,
+        player=PlayerRecord(
+            pid=1, nickname="Vortex", uuid="uuid-123", discord_id="discord-123"
+        ),
+        create_ban_modal=lambda **kwargs: StatsBanModal(
+            player_id=kwargs["player_id"],
+            player=kwargs["player"],
+            on_submit_ban=cast(Any, _no_op_ban),
+        ),
+        create_mute_modal=lambda **kwargs: StatsMuteModal(
+            player_id=kwargs["player_id"],
+            player=kwargs["player"],
+            on_submit_mute=cast(Any, _no_op_mute),
+        ),
+        open_target_audit=lambda inter, pid, player: cmd_stats_audit(
+            bot, inter, pid, player, mode="target"
+        ),
+        open_actor_audit=lambda inter, pid, player: cmd_stats(bot, inter, pid),
+    )
+
+    history_button = view.children[2]
+    callback = history_button.callback
+    assert callback is not None
+    await callback(cast(Any, interaction))
+
+    assert len(interaction.response.sent) == 1
+    embed = interaction.response.sent[0]["embed"]
+    assert embed.title == "History • Vortex"
+    # the ban Vortex was given, not the mute Vortex gave
+    entries = " ".join(f"{field.name} {field.value}" for field in embed.fields)
+    assert "Rule 1" in entries
+    assert "Flood" not in entries
+
+
+@pytest.mark.asyncio
+async def test_stats_actions_view_actions_button_opens_actor_audit() -> None:
+    bot, _ = await _stats_bot()
+
+    async def _no_op_ban(
+        _interaction: Any, _player_id: int, _period: str, _reason: str
+    ) -> None:
+        return None
+
+    async def _no_op_mute(
+        _interaction: Any, _player_id: int, _period: str, _reason: str
+    ) -> None:
+        return None
+
+    from xcore_discord_bot.handlers_stats import cmd_stats_audit
+
+    interaction = _Interaction(
+        id=7,
+        user=_User(id=9, display_name="admin", roles=[_Role(5)]),
+    )
+    view = StatsActionsView(
+        settings=bot.settings,
+        player_id=123,
+        player=PlayerRecord(
+            pid=1, nickname="Vortex", uuid="uuid-123", discord_id="discord-123"
+        ),
+        create_ban_modal=lambda **kwargs: StatsBanModal(
+            player_id=kwargs["player_id"],
+            player=kwargs["player"],
+            on_submit_ban=cast(Any, _no_op_ban),
+        ),
+        create_mute_modal=lambda **kwargs: StatsMuteModal(
+            player_id=kwargs["player_id"],
+            player=kwargs["player"],
+            on_submit_mute=cast(Any, _no_op_mute),
+        ),
+        open_target_audit=lambda inter, pid, player: cmd_stats(bot, inter, pid),
+        open_actor_audit=lambda inter, pid, player: cmd_stats_audit(
+            bot, inter, pid, player, mode="actor"
+        ),
+    )
+
+    actions_button = view.children[3]
+    callback = actions_button.callback
+    assert callback is not None
+    await callback(cast(Any, interaction))
+
+    assert len(interaction.response.sent) == 1
+    sent = interaction.response.sent[0]
+    assert sent["embed"] is not None
+    assert sent["embed"].title == "Actions • Vortex"
+    # the mute Vortex gave, not the ban Vortex was given
+    entries = " ".join(f"{field.name} {field.value}" for field in sent["embed"].fields)
+    assert "Flood" in entries
+    assert "Rule 1" not in entries
+
+
+@pytest.mark.asyncio
+async def test_stats_mute_modal_calls_cmd_mute() -> None:
+    calls: list[tuple[int, str, str]] = []
+
+    async def _fake_cmd_mute(
+        interaction: Any,
+        player_id: int,
+        period: str,
+        reason: str,
+    ) -> None:
+        del interaction
+        calls.append((player_id, period, reason))
+
+    modal = StatsMuteModal(
+        player_id=123,
+        player=PlayerRecord(pid=1, nickname="Vortex"),
+        on_submit_mute=cast(Any, _fake_cmd_mute),
+    )
+    cast(Any, modal).period = SimpleNamespace(value="10m")
+    cast(Any, modal).reason = SimpleNamespace(value="")
+
+    interaction = _Interaction(
+        id=4,
+        user=_User(id=9, display_name="admin", roles=[_Role(5)]),
+    )
+    await modal.on_submit(cast(Any, interaction))
+
+    assert calls == [(123, "10m", "Not Specified")]

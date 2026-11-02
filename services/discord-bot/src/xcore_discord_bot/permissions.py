@@ -1,0 +1,81 @@
+from __future__ import annotations
+
+from collections.abc import Iterable
+
+from discord import Interaction
+
+from .settings import Settings
+
+
+def role_mention(role_id: int | None) -> str:
+    if role_id is None:
+        return "configured role"
+    return f"<@&{role_id}>"
+
+
+def member_role_ids(user: object) -> set[int]:
+    roles = getattr(user, "roles", None)
+    if roles is None:
+        return set()
+
+    result: set[int] = set()
+    for role in roles:
+        role_id = getattr(role, "id", None)
+        if isinstance(role_id, int):
+            result.add(role_id)
+    return result
+
+
+def settings_from_interaction(interaction: Interaction) -> Settings | None:
+    # The bot's own client always carries settings; foreign clients (tests,
+    # embeds) may not, so fall back to None instead of raising.
+    return getattr(interaction.client, "settings", None)
+
+
+def has_any_role(user: object, role_ids: Iterable[int | None]) -> bool:
+    member_roles = member_role_ids(user)
+    return any(role_id in member_roles for role_id in role_ids if role_id is not None)
+
+
+def admin_role_ids(settings: Settings) -> tuple[int, ...]:
+    return (settings.discord_admin_role_id,)
+
+
+def general_admin_role_ids(settings: Settings) -> tuple[int, ...]:
+    general_role = (
+        settings.discord_general_admin_role_id
+        if settings.discord_general_admin_role_id is not None
+        else settings.discord_admin_role_id
+    )
+    return (settings.discord_admin_role_id, general_role)
+
+
+def head_admin_role_ids(settings: Settings) -> tuple[int, ...]:
+    """Head administrators only; the plain admin role is not enough."""
+    head_role = (
+        settings.discord_general_admin_role_id
+        if settings.discord_general_admin_role_id is not None
+        else settings.discord_admin_role_id
+    )
+    return (head_role,)
+
+
+def map_reviewer_role_ids(settings: Settings) -> tuple[int, ...]:
+    reviewer_role = (
+        settings.discord_map_reviewer_role_id
+        if settings.discord_map_reviewer_role_id is not None
+        else settings.discord_admin_role_id
+    )
+    return (reviewer_role,)
+
+
+async def ensure_any_role(
+    interaction: Interaction,
+    *,
+    role_ids: Iterable[int | None],
+    denied_message: str,
+) -> bool:
+    if has_any_role(interaction.user, role_ids):
+        return True
+    await interaction.response.send_message(denied_message, ephemeral=True)
+    return False

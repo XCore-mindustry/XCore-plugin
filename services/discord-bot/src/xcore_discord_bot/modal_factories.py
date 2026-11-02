@@ -1,0 +1,50 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+import discord
+
+from .handlers_moderation import cmd_ban, cmd_mute
+from .moderation_modals import StatsBanModal, StatsMuteModal
+
+if TYPE_CHECKING:
+    from .bot import XCoreDiscordBot
+    from .dto import PlayerRecord
+
+
+def create_stats_ban_modal(
+    bot: XCoreDiscordBot,
+    *,
+    player_id: int,
+    player: PlayerRecord,
+) -> discord.ui.Modal:
+    return StatsBanModal(
+        player_id=player_id,
+        player=player,
+        on_submit_ban=lambda interaction, pid, period, reason: cmd_ban(
+            bot,
+            interaction,
+            pid,
+            period,
+            reason,
+        ),
+    )
+
+
+def create_stats_mute_modal(
+    bot: XCoreDiscordBot,
+    *,
+    player_id: int,
+    player: PlayerRecord,
+) -> discord.ui.Modal:
+    return StatsMuteModal(
+        player_id=player_id,
+        player=player,
+        on_submit_mute=lambda interaction, pid, period, reason: cmd_mute(
+            bot,
+            interaction,
+            pid,
+            period,
+            reason,
+        ),
+    )

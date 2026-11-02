@@ -1,0 +1,127 @@
+from __future__ import annotations
+
+from collections.abc import Mapping
+
+from .dto import BanRecord, MuteRecord, PlayerRecord
+from .player_pids import NO_PID, or_none
+
+
+def _normalized_optional_str(value: object) -> str | None:
+    if value is None:
+        return None
+    normalized = str(value).strip()
+    return normalized or None
+
+
+def _int_or_default(value: object, *, default: int = 0) -> int:
+    if isinstance(value, bool):
+        return 1 if value else 0
+    if isinstance(value, int):
+        return value
+    if isinstance(value, str):
+        normalized = value.strip()
+        if (
+            normalized
+            and (normalized[1:] if normalized[0] == "-" else normalized).isdigit()
+        ):
+            try:
+                return int(normalized)
+            except ValueError:
+                return default
+    return default
+
+
+def _bool_or_default(value: object, *, default: bool) -> bool:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, int):
+        return value != 0
+    if isinstance(value, str):
+        normalized = value.strip().lower()
+        if normalized in {"true", "1", "yes", "on"}:
+            return True
+        if normalized in {"false", "0", "no", "off"}:
+            return False
+    return default
+
+
+def _normalized_str_tuple(value: object) -> tuple[str, ...]:
+    if not isinstance(value, (list, tuple, set, frozenset)):
+        return ()
+
+    result: list[str] = []
+    seen: set[str] = set()
+    for item in value:
+        normalized = _normalized_optional_str(item)
+        if normalized is None or normalized in seen:
+            continue
+        seen.add(normalized)
+        result.append(normalized)
+    return tuple(result)
+
+
+def player_record_from_doc(doc: Mapping[str, object]) -> PlayerRecord:
+    nickname = _normalized_optional_str(doc.get("nickname")) or "Unknown"
+    return PlayerRecord(
+        pid=_int_or_default(doc.get("pid"), default=NO_PID),
+        nickname=nickname,
+        uuid=_normalized_optional_str(doc.get("uuid")),
+        username=_normalized_optional_str(doc.get("username")),
+        # The plugin stores a player's IP as last_ip (see XCore-plugin V1 migration).
+        ip=_normalized_optional_str(doc.get("last_ip")),
+        custom_nickname=_normalized_optional_str(doc.get("custom_nickname")),
+        description=_normalized_optional_str(doc.get("description")),
+        language=_normalized_optional_str(doc.get("local_language")),
+        translator_language=_normalized_optional_str(doc.get("translator_language")),
+        total_play_time=_int_or_default(doc.get("total_play_time"), default=0),
+        hexed_rank=_int_or_default(doc.get("hexed_rank"), default=0),
+        hexed_points=_int_or_default(doc.get("hexed_points"), default=0),
+        leaderboard=_bool_or_default(doc.get("leaderboard"), default=True),
+        unlocked_badges=_normalized_str_tuple(doc.get("unlocked_badges")),
+        active_badge=_normalized_optional_str(doc.get("active_badge")),
+        blocked_private_uuids=_normalized_str_tuple(doc.get("blocked_private_uuids")),
+        discord_id=_normalized_optional_str(doc.get("discord_id")),
+        discord_username=_normalized_optional_str(doc.get("discord_username")),
+        discord_linked_at=(
+            _int_or_default(doc.get("discord_linked_at"), default=0)
+            if doc.get("discord_linked_at") is not None
+            else None
+        ),
+        online=_bool_or_default(doc.get("online"), default=False),
+        online_since=(
+            _int_or_default(doc.get("online_since"), default=0)
+            if doc.get("online_since") is not None
+            else None
+        ),
+        online_server=_normalized_optional_str(doc.get("online_server")),
+        created_at=doc.get("created_at"),
+        updated_at=doc.get("updated_at"),
+    )
+
+
+def ban_record_from_doc(doc: Mapping[str, object]) -> BanRecord:
+    return BanRecord(
+        ban_id=_int_or_default(doc.get("ban_id")) or None,
+        case_number=_int_or_default(doc.get("case_number")) or None,
+        uuid=_normalized_optional_str(doc.get("uuid")),
+        ip=_normalized_optional_str(doc.get("ip")),
+        pid=or_none(_int_or_default(doc.get("pid"), default=NO_PID)),
+        name=_normalized_optional_str(doc.get("name")) or "Unknown",
+        admin_name=_normalized_optional_str(doc.get("admin_name")) or "Unknown",
+        admin_discord_id=_normalized_optional_str(doc.get("admin_discord_id")),
+        reason=_normalized_optional_str(doc.get("reason")) or "Not Specified",
+        expire_date=doc.get("expire_date"),
+    )
+
+
+def mute_record_from_doc(doc: Mapping[str, object]) -> MuteRecord:
+    return MuteRecord(
+        case_number=_int_or_default(doc.get("case_number")) or None,
+        uuid=_normalized_optional_str(doc.get("uuid")),
+        pid=or_none(_int_or_default(doc.get("pid"), default=NO_PID)),
+        name=_normalized_optional_str(doc.get("name")) or "Unknown",
+        admin_name=_normalized_optional_str(doc.get("admin_name")) or "Unknown",
+        admin_discord_id=_normalized_optional_str(doc.get("admin_discord_id")),
+        reason=_normalized_optional_str(doc.get("reason")) or "Not Specified",
+        expire_date=doc.get("expire_date"),
+    )

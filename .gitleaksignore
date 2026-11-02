@@ -20,3 +20,18 @@
 6aecfda4b664f8741a6b5a639c231dca6290f972:protocol/fixtures/valid/maps/maps.load.command.v1.discord-upload.json:discord-client-id:16
 f7d3f849951b2e7b1609d69211528852fa14de09:docs/architecture/map-discord-attribution.md:discord-client-id:18
 f7d3f849951b2e7b1609d69211528852fa14de09:docs/architecture/map-discord-attribution.md:discord-client-id:20
+
+# Python history: fixture Discord IDs, an action_token argument, and fictional privacy-test text.
+1e35c2a3657144f8afe1c3c9b880be82c171ec64:services/discord-bot/tests/test_handlers_misc_maps.py:discord-client-id:275
+3b031b62781e2b4ad008fd670e20a9afec7f9fbe:services/discord-bot/tests/fixtures/player_document.json:discord-client-id:19
+3b031b62781e2b4ad008fd670e20a9afec7f9fbe:services/discord-bot/tests/test_player_document_contract.py:discord-client-id:42
+627035a0172af443d8a08c6b90f97f29b35fa5f7:services/discord-bot/tests/test_bot_upload_map.py:discord-client-id:124
+627035a0172af443d8a08c6b90f97f29b35fa5f7:services/discord-bot/tests/test_handlers_misc_maps.py:discord-client-id:214
+627035a0172af443d8a08c6b90f97f29b35fa5f7:services/discord-bot/tests/test_handlers_misc_maps.py:discord-client-id:216
+627035a0172af443d8a08c6b90f97f29b35fa5f7:services/discord-bot/tests/test_handlers_misc_maps.py:discord-client-id:245
+627035a0172af443d8a08c6b90f97f29b35fa5f7:services/discord-bot/tests/test_handlers_misc_maps.py:discord-client-id:247
+627035a0172af443d8a08c6b90f97f29b35fa5f7:services/discord-bot/tests/test_redis_bus_rpc_maps.py:discord-client-id:162
+627035a0172af443d8a08c6b90f97f29b35fa5f7:services/discord-bot/tests/test_redis_bus_rpc_maps.py:discord-client-id:166
+8d58a4b220d96b972334123702f63a5259b5f968:services/discord-bot/tests/test_cases_ui.py:discord-client-id:844
+cca6a4d0345390ad9967b89600b60b34c9e27082:services/discord-bot/tests/test_cases_maps.py:generic-api-key:731
+dd147fda9821cbdebf3dd9fd009e6782f90b979c:services/discord-bot/src/xcore_discord_bot/cases/actions.py:generic-api-key:284
