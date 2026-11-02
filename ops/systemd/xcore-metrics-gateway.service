@@ -1,0 +1,14 @@
+[Unit]
+Description=XCore metrics gateway
+
+[Service]
+WorkingDirectory=%h/services/xcore/services/metrics-gateway
+EnvironmentFile=%h/.config/xcore/metrics-gateway.env
+ExecStart=%h/services/venvs/metrics-gateway/bin/xcore-metrics-gateway
+Restart=on-failure
+RestartSec=5
+KillSignal=SIGINT
+TimeoutStopSec=15
+
+[Install]
+WantedBy=default.target

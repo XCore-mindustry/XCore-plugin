@@ -176,48 +176,15 @@ gateway and Grafana behind your normal network and secret-management controls.
 
 ## Non-Docker deploy
 
-Prerequisites: Python 3.11+, `uv`, Redis reachable from the host.
-
-Install and start the gateway as a system service:
-
-```bash
-git clone https://github.com/XCore-mindustry/xcore.git
-cd xcore
-sudo env REDIS_URL=redis://<redis-host>:6379 ./services/metrics-gateway/ops/systemd/install.sh
-```
-
-If the repository is owned by a non-sudo user such as `xcore`, run the same installer as
-root from that checkout:
-
-```bash
-cd /opt/xcore
-REDIS_URL=redis://<redis-host>:6379 ./services/metrics-gateway/ops/systemd/install.sh
-```
-
-The installer:
-
-- syncs the gateway and local protocol from the root lock into a service-specific `.venv`
-- creates `/etc/xcore/xcore-metrics-gateway.env` if it does not exist
-- installs `/etc/systemd/system/xcore-metrics-gateway.service`
-- enables and starts `xcore-metrics-gateway`
-
-It uses the owner of the cloned repository as the service user by default and writes the
-systemd unit for that checkout. The service user does not need sudo, and no unit file
-editing is needed.
+In production the gateway runs as a systemd user unit, deployed with
+`ops/deploy <ssh-host> gateway`; see [ops/README.md](../../ops/README.md).
 
 Validate the service:
 
 ```bash
-systemctl status xcore-metrics-gateway
+systemctl --user status xcore-metrics-gateway
 curl http://127.0.0.1:9100/ready
 curl http://127.0.0.1:9100/metrics
-```
-
-Update an existing install:
-
-```bash
-git pull --ff-only
-sudo ./services/metrics-gateway/ops/systemd/install.sh
 ```
 
 To add a scrape job to an existing Prometheus:

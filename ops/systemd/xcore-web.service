@@ -1,0 +1,13 @@
+[Unit]
+Description=XCore website (x-core.org)
+
+[Service]
+WorkingDirectory=%h/services/web/web
+EnvironmentFile=%h/.config/xcore/web.env
+Environment=NODE_ENV=production PORT=3100 HOSTNAME=127.0.0.1
+ExecStart=/usr/bin/node server.js
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target

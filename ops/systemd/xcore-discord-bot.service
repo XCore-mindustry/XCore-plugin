@@ -1,0 +1,14 @@
+[Unit]
+Description=XCore Discord bot
+
+[Service]
+WorkingDirectory=%h/services/xcore/services/discord-bot
+EnvironmentFile=%h/.config/xcore/discord-bot.env
+ExecStart=%h/services/venvs/discord-bot/bin/xcore-discord-bot
+Restart=on-failure
+RestartSec=5
+KillSignal=SIGINT
+TimeoutStopSec=30
+
+[Install]
+WantedBy=default.target
