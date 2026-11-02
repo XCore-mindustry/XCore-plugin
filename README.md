@@ -1,76 +1,149 @@
+<div align="center">
+
+<img src="web/src/app/icon.png" width="96" alt="">
+
 # XCore
 
-Plugins, libraries and the protocol behind the XCore Mindustry servers.
+The plugins, libraries, services and website behind the XCore Mindustry servers.
 
-| Path | What | Published as | License |
+[![CI](https://github.com/XCore-mindustry/xcore/actions/workflows/ci.yml/badge.svg)](https://github.com/XCore-mindustry/xcore/actions/workflows/ci.yml)
+[![XCore release](https://img.shields.io/maven-metadata/v?metadataUrl=https%3A%2F%2Fmaven.x-core.org%2Freleases%2Forg%2Fxcore%2Fplugin%2FXCore-plugin%2Fmaven-metadata.xml&label=XCore)](https://github.com/XCore-mindustry/xcore/releases)
+[![Discord](https://img.shields.io/discord/1058023472661549176?label=Discord&logo=discord&logoColor=white&color=5865F2)](https://discord.gg/RUMCCa9QAC)
+[![Translations](https://img.shields.io/badge/translate-Weblate-2ECCAA)](https://weblate.x-core.org/)
+
+[Website](https://x-core.org) · [Discord](https://discord.gg/RUMCCa9QAC) · [Releases](https://github.com/XCore-mindustry/xcore/releases) · [Maven](https://maven.x-core.org)
+
+</div>
+
+## What's here
+
+### Server plugins
+
+| Plugin | |
+|---|---|
+| [**XCore**](plugins/xcore) | The main plugin: player profiles and ratings, cross-server chat, moderation, map voting, badges, Discord linking and the in-game menus. |
+| [**TileLogger**](plugins/tilelogger) | Tile history, player activity evidence and rollback, backed by a native store. Runs alongside XCore. |
+
+### Libraries
+
+Published to [maven.x-core.org](https://maven.x-core.org). Usable in any Mindustry plugin, not only XCore.
+
+| Library | Coordinates | Latest | |
 |---|---|---|---|
-| `plugins/xcore` | The main server plugin | `org.xcore.plugin:XCore-plugin`, GitHub releases | [AGPL-3.0 + plugin exception](plugins/xcore/LICENSE-EXCEPTION) |
-| `plugins/tilelogger` | Tile history and rollback with native storage | Platform jars on GitHub releases | [GPL-3.0](plugins/tilelogger/LICENSE) |
-| `libs/flubundle` | Fluent localization for Mindustry | `com.ospx:flubundle` | [MPL-2.0](libs/flubundle/LICENSE) |
-| `libs/cloud-mindustry` | Cloud command framework integration | `org.xcore:cloud-mindustry` | [MPL-2.0](libs/cloud-mindustry/LICENSE) |
-| `libs/xcore-ui` | Server-driven menu UI | `org.xcore:xcore-ui` | [MPL-2.0](libs/xcore-ui/LICENSE) |
-| `libs/mindustry-testkit` | Test toolkit and real-client menu renderer | `org.xcore.testkit:{core,ui,fixtures}` | [MPL-2.0](libs/mindustry-testkit/LICENSE) |
-| `services/discord-bot` | Discord transport and commands | Docker image / uv entrypoint | [AGPL-3.0 + plugin exception](services/discord-bot/LICENSE-EXCEPTION) |
-| `services/metrics-gateway` | Prometheus telemetry gateway | Docker image / uv entrypoint | [AGPL-3.0 + plugin exception](services/metrics-gateway/LICENSE-EXCEPTION) |
-| `web` | Website and player accounts | Standalone Next.js image | [AGPL-3.0 + plugin exception](web/LICENSE-EXCEPTION) |
-| `protocol` | Message spec and generated Java/Python/TypeScript bindings | `org.xcore:xcore-protocol-java`, `xcore-protocol` on PyPI | [MPL-2.0](protocol/LICENSE) |
+| [FluBundle](libs/flubundle) | `com.ospx:flubundle` | ![](https://img.shields.io/maven-metadata/v?metadataUrl=https%3A%2F%2Fmaven.x-core.org%2Freleases%2Fcom%2Fospx%2Fflubundle%2Fmaven-metadata.xml&label=) | Localization with [Project Fluent](https://projectfluent.org): plurals, numbers and dates per locale |
+| [cloud-mindustry](libs/cloud-mindustry) | `org.xcore:cloud-mindustry` | ![](https://img.shields.io/maven-metadata/v?metadataUrl=https%3A%2F%2Fmaven.x-core.org%2Freleases%2Forg%2Fxcore%2Fcloud-mindustry%2Fmaven-metadata.xml&label=) | [Incendo Cloud](https://github.com/Incendo/cloud) commands for Mindustry |
+| [xcore-ui](libs/xcore-ui) | `org.xcore:xcore-ui` | ![](https://img.shields.io/maven-metadata/v?metadataUrl=https%3A%2F%2Fmaven.x-core.org%2Freleases%2Forg%2Fxcore%2Fxcore-ui%2Fmaven-metadata.xml&label=) | Type-safe, reactive server-driven menus |
+| [mindustry-testkit](libs/mindustry-testkit) | `org.xcore.testkit:core`, `:ui`, `:fixtures` | ![](https://img.shields.io/maven-metadata/v?metadataUrl=https%3A%2F%2Fmaven.x-core.org%2Freleases%2Forg%2Fxcore%2Ftestkit%2Fui%2Fmaven-metadata.xml&label=) | Test helpers, plus a renderer that opens menus in the real game client |
+| [protocol](protocol) | `org.xcore:xcore-protocol-java`, PyPI `xcore-protocol` | ![](https://img.shields.io/maven-metadata/v?metadataUrl=https%3A%2F%2Fmaven.x-core.org%2Freleases%2Forg%2Fxcore%2Fxcore-protocol-java%2Fmaven-metadata.xml&label=) | The message spec the servers, bot, gateway and website share, with generated Java, Python and TypeScript |
 
-Everything else in the repository is under the [MPL-2.0](LICENSE).
+```kotlin
+repositories {
+    maven("https://maven.x-core.org/releases")
+}
 
-## Building
-
-Java 25 and a C++20 toolchain are required for the full build. Everything JVM-based is one Gradle build:
-
-```
-./gradlew build                          # all components and their tests
-./gradlew :plugins:xcore:shadowJar       # the XCore jar, in plugins/xcore/build/libs
-./gradlew :plugins:tilelogger:jarRelease # TileLogger jar with the host native library
+dependencies {
+    implementation("com.ospx:flubundle:<version>")
+}
 ```
 
-Inside this repository the plugin always builds against the libraries from the same commit.
+### Services
 
-## Python workspace
+| Service | |
+|---|---|
+| [Discord bot](services/discord-bot) | Links the game servers with the community Discord: chat bridge, moderation, account linking |
+| [Metrics gateway](services/metrics-gateway) | Collects server telemetry for Prometheus and Grafana |
+| [Website](web) | [x-core.org](https://x-core.org): player profiles, leaderboards, match history and Discord sign-in, in English, Ukrainian and Russian |
 
-Protocol, the Discord bot and metrics-gateway share one `uv.lock` and use the
-protocol from the same checkout. Python 3.14 is the development default; protocol
-is also checked on 3.11, and gateway on 3.13 for existing deployments.
+## Running a server
+
+Take the jars from [Releases](https://github.com/XCore-mindustry/xcore/releases) and put them into the server's `config/mods`. The server must run Mindustry v160 on Java 25. XCore also needs MongoDB 6.0+ running as a replica set (it uses transactions) and Redis. TileLogger ships one jar per platform: Linux x64, Linux ARM64 and Windows x64.
+
+Configuration is covered in each plugin's README: [XCore](plugins/xcore/README.md), [TileLogger](plugins/tilelogger/README.md).
+
+## Development
+
+You need Java 25, Docker Compose v2 and Python 3.11+. TileLogger's native part also needs a C++20 compiler, and the website needs [Bun](https://bun.sh).
+
+The quickest way to try a change is `./dev`. Name what you are working on, and it builds that and starts it together with everything it depends on:
 
 ```sh
-uv sync --locked --all-packages --all-groups --all-extras
-uv run --package xcore-discord-bot --env-file /path/to/bot.env xcore-discord-bot
-uv run --package xcore-metrics-gateway --env-file /path/to/gateway.env xcore-metrics-gateway
+./dev up xcore         # game server with XCore, MongoDB and Redis
+./dev up tilelogger    # TileLogger; XCore gets built too, since TileLogger needs it
+./dev up web           # the website with demo data, no game server
+./dev reload           # rebuild; the server restarts only if a jar changed
+./dev down             # stop everything, keep the data
 ```
 
-Service Dockerfiles use the repository root as build context. Existing service
-cutover and separate runtime environments are described in
-[the wave 3 guide](docs/monorepo-wave3.md).
+Settings such as Discord OAuth or paths to plugins from other repositories go into `devtools/local.toml`, which is not tracked. The [development guide](devtools/README.md) covers the rest.
 
-## Development stack
+Building directly:
 
 ```sh
-./dev up xcore             # build and run the server plus Mongo/Redis
-./dev up tilelogger        # resolve and build XCore automatically
-./dev up web               # website and demo data, without the game server
-./dev reload               # rebuild the active set; restart game only on changes
-./dev check --json
-./dev down                 # keep volumes
+./gradlew build                            # every JVM component, with tests
+./gradlew :plugins:xcore:shadowJar         # plugins/xcore/build/libs/XCore-plugin-*.jar
+./gradlew :plugins:tilelogger:jarRelease   # TileLogger for this platform
+
+uv sync --locked --all-packages --all-groups --all-extras   # protocol, bot and gateway
+cd web && bun install && bun run dev
 ```
 
-Configuration is optional: copy `devtools/local.example.toml` to
-`devtools/local.toml` for OAuth, bot credentials or explicit satellite paths.
-Targets replace the previous selection; databases, saves and live configs persist.
-`./dev reset` requires confirmation before deleting volumes. See
-[the development guide](devtools/README.md) for config backups and satellite builds.
+Inside this repository everything builds against the code in the same commit: a change to a library is immediately what XCore uses.
+
+## Repository layout
+
+```
+plugins/
+  xcore/              main server plugin
+  tilelogger/         tile history plugin, with native/ code
+libs/
+  flubundle/          localization
+  cloud-mindustry/    commands
+  xcore-ui/           menus
+  mindustry-testkit/  test helpers and menu renderer
+protocol/             message spec and generated bindings
+services/
+  discord-bot/
+  metrics-gateway/
+web/                  x-core.org
+devtools/             the ./dev command, Compose stack and seed data
+build-logic/          shared Gradle conventions
+docs/                 notes on the monorepo migration
+```
+
+One Gradle build covers the JVM code (`settings.gradle.kts`), and one uv workspace covers the Python code (`pyproject.toml`).
 
 ## Releasing
 
-Each component has its own version in its build files (the protocol keeps it in `protocol/pyproject.toml`).
-To release one, bump that version and push a tag `<component>/vX.Y.Z`, where component is
-`xcore`, `flubundle`, `cloud-mindustry`, `xcore-ui`, `testkit`, `protocol` or `tilelogger`. The release workflow
-checks the tag against the build version, publishes Maven components to `maven.x-core.org` and creates the GitHub release. TileLogger versions live in `plugins/tilelogger/plugin.json`; its release runs the native matrix and uploads Linux x64/ARM and Windows x64 jars.
+Every component has its own version. To release one, bump the version, merge, and push a tag:
+
+| Component | Version lives in | Tag |
+|---|---|---|
+| XCore | `plugins/xcore/build.gradle.kts` | `xcore/vX.Y.Z` |
+| TileLogger | `plugins/tilelogger/plugin.json` | `tilelogger/vX.Y.Z` |
+| FluBundle | `libs/flubundle/build.gradle` | `flubundle/vX.Y.Z` |
+| cloud-mindustry | `libs/cloud-mindustry/build.gradle.kts` | `cloud-mindustry/vX.Y.Z` |
+| xcore-ui | `libs/xcore-ui/build.gradle.kts` | `xcore-ui/vX.Y.Z` |
+| mindustry-testkit | `libs/mindustry-testkit/build.gradle.kts` | `testkit/vX.Y.Z` |
+| protocol | `protocol/pyproject.toml` (Java and Python share it) | `protocol/vX.Y.Z` |
+
+The release workflow checks that the tag matches the version, publishes to Maven (and PyPI for the protocol), and creates the GitHub release with the jars. The bot, the gateway and the website are not released; they are deployed from `main`.
+
+## Contributing
+
+Issues and pull requests go to this repository. A pull request may touch several components at once. CI runs only the checks for what changed, and `ci-ok` sums them up.
+
+Translations are done on [Weblate](https://weblate.x-core.org/).
+
+## License
+
+| | License |
+|---|---|
+| XCore, Discord bot, metrics gateway, website | [AGPL-3.0](plugins/xcore/LICENSE), with an [exception](plugins/xcore/LICENSE-EXCEPTION) for separate plugins that use XCore's API |
+| TileLogger | [GPL-3.0](plugins/tilelogger/LICENSE) |
+| Libraries, protocol, everything else | [MPL-2.0](LICENSE) |
+
+Each component has its own `LICENSE`. Code contributed while a component was under the MIT License keeps that notice in `LICENSE.MIT`.
 
 ## History
 
-These components used to live in separate repositories, which remain available during the migration. Their history was
-imported with paths moved into their directories. Old tags are renamed to `<component>/vX.Y.Z`, and
-`#123` in imported commit messages is rewritten to `XCore-mindustry/<old-repo>#123`.
+Until November 2026 these components lived in separate repositories, which are archived as their migration completes. Their history was imported with each project moved into its directory: old tags are renamed to `<component>/vX.Y.Z`, and `#123` in imported commit messages points to `XCore-mindustry/<old-repo>#123`. XCore's own history and tags are unchanged. Details are in [docs/monorepo-migration.md](docs/monorepo-migration.md).
