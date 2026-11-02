@@ -47,8 +47,9 @@ def load(path):
                 raise CommandError(f"Invalid type for {section}.{key}.")
         result[section] = defaults | values
     game_values(result["game"])
-    if result["bot"]["guild_id"] < 0:
-        raise CommandError("bot.guild_id must be nonnegative.")
+    guild = result["bot"]["guild_id"]
+    if guild != 0 and not 10_000 <= guild < 10**25:
+        raise CommandError("bot.guild_id must be zero or a Discord id of 5 to 25 digits.")
     if result["bot"]["discord_bot_token"] and not result["bot"]["guild_id"]:
         raise CommandError("bot.guild_id is required with a bot token.")
     satellites = raw.get("satellite", {})

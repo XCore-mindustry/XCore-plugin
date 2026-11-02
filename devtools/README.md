@@ -51,9 +51,9 @@ Conflicting game overrides in selected satellites fail validation.
 
 OAuth uses the callback `<web.origin>/api/auth/discord/callback`. Without OAuth
 credentials, public pages still work. With no bot token, the bot image idles.
-A configured bot token requires a positive guild_id. Default dev permissions have
-no staff grants/bindings; configure the permission seed before first startup if
-needed. The generated guild seed is shared with the bot. Live game permission
+A configured bot token requires a guild_id of 5 to 25 digits. Default dev
+permissions have no staff grants/bindings. The generated guild seed is shared
+with the bot. Live game permission
 files are preserved, so changing guild after initialization requires updating the
 live permission file as well; it is not silently overwritten.
 

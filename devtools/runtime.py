@@ -97,5 +97,8 @@ def prepare(run, settings, write_permission=False):
     if not write_permission:
         return
     permission = run / "permissions.toml"
-    permission.write_text(f'schemaVersion = 1\n[discord]\nguildId = {settings["bot"]["guild_id"]}\n')
+    content = "schemaVersion = 1\n"
+    if guild := settings["bot"]["guild_id"]:
+        content += f'[discord]\nguildId = "{guild}"\n'
+    permission.write_text(content)
     permission.chmod(0o600)

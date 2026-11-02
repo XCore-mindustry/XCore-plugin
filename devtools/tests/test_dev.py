@@ -4,6 +4,7 @@ import io
 import json
 import subprocess
 import tempfile
+import tomllib
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
@@ -91,7 +92,7 @@ class DevelopmentTest(unittest.TestCase):
             self.resolve(["a", "b"], {})
 
     def test_config_rejects_unknown_keys_missing_tasks_and_wrong_types(self):
-        for text in ['unknown="hidden"', '[game]\nauto_start="hidden"', '[satellite.a]\nrepo="source"\njar="a.jar"', '[satellite.a]\ntask="build"\njar="a.jar"', '[bot]\nguild_id=true']:
+        for text in ['unknown="hidden"', '[game]\nauto_start="hidden"', '[satellite.a]\nrepo="source"\njar="a.jar"', '[satellite.a]\ntask="build"\njar="a.jar"', '[bot]\nguild_id=true', '[bot]\nguild_id=1']:
             self.path.write_text(text)
             with self.subTest(text=text), self.assertRaises(settings.CommandError) as error:
                 settings.load(self.path)
@@ -107,6 +108,16 @@ class DevelopmentTest(unittest.TestCase):
         item = settings.load(self.path)["satellite"]["a"]
         self.assertEqual(self.root / "source/build/a.jar", item["jar"])
         self.assertEqual(content, self.path.read_text())
+
+    def test_permission_seed_omits_disabled_discord_and_quotes_configured_guild(self):
+        run = self.root / ".run"
+        prepare(run, self.settings, write_permission=True)
+        seed = run / "permissions.toml"
+        self.assertEqual({"schemaVersion": 1}, tomllib.loads(seed.read_text()))
+        self.settings["bot"]["guild_id"] = 123456789012345678
+        prepare(run, self.settings, write_permission=True)
+        self.assertEqual({"schemaVersion": 1, "discord": {"guildId": "123456789012345678"}}, tomllib.loads(seed.read_text()))
+        self.assertEqual(0o600, seed.stat().st_mode & 0o777)
 
     def test_staging_replaces_previous_set_and_restores_on_publish_error(self):
         run = self.root / ".run"
