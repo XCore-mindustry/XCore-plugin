@@ -1,0 +1,10 @@
+[admission]
+enabled = true
+mode = "observe"
+[nickname]
+enabled = true
+block_on_match = false
+[ip_reputation]
+enabled = false
+[proxy_leak]
+enabled = false

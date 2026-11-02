@@ -11,3 +11,8 @@
 **/dist
 **/.env
 **/.env.*
+
+**/node_modules
+**/.next
+devtools/local.toml
+devtools/.run

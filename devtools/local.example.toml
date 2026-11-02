@@ -1,0 +1,27 @@
+[game]
+server_name = "dev"
+gamemode = "survival"
+auto_start = true
+jvm_opts = "-Xmx2G"
+
+[web]
+origin = "http://localhost:3100"
+discord_client_id = ""
+discord_client_secret = ""
+
+[bot]
+discord_bot_token = ""
+guild_id = 0
+
+# Ready jar; paths are relative to this file, ~ is supported.
+# [satellite.hexed]
+# jar = "~/jars/hexedcore-plugin.jar"
+# mod = "hexedcore-plugin"
+# game = { auto_start = false, gamemode = "pvp" }
+
+# Source satellite; jar is relative to repo, task is one Gradle task name.
+# [satellite.sentinel]
+# repo = "~/src/xcore-sentinel"
+# task = "shadowJar"
+# jar = "build/libs/xcore-sentinel.jar"
+# mod = "xcore-sentinel"

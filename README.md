@@ -12,6 +12,7 @@ Plugins, libraries and the protocol behind the XCore Mindustry servers.
 | `libs/mindustry-testkit` | Test toolkit and real-client menu renderer | `org.xcore.testkit:{core,ui,fixtures}` | [MPL-2.0](libs/mindustry-testkit/LICENSE) |
 | `services/discord-bot` | Discord transport and commands | Docker image / uv entrypoint | [AGPL-3.0 + plugin exception](services/discord-bot/LICENSE-EXCEPTION) |
 | `services/metrics-gateway` | Prometheus telemetry gateway | Docker image / uv entrypoint | [AGPL-3.0 + plugin exception](services/metrics-gateway/LICENSE-EXCEPTION) |
+| `web` | Website and player accounts | Standalone Next.js image | [AGPL-3.0 + plugin exception](web/LICENSE-EXCEPTION) |
 | `protocol` | Message spec and generated Java/Python/TypeScript bindings | `org.xcore:xcore-protocol-java`, `xcore-protocol` on PyPI | [MPL-2.0](protocol/LICENSE) |
 
 Everything else in the repository is under the [MPL-2.0](LICENSE).
@@ -43,6 +44,23 @@ uv run --package xcore-metrics-gateway --env-file /path/to/gateway.env xcore-met
 Service Dockerfiles use the repository root as build context. Existing service
 cutover and separate runtime environments are described in
 [the wave 3 guide](docs/monorepo-wave3.md).
+
+## Development stack
+
+```sh
+./dev up xcore             # build and run the server plus Mongo/Redis
+./dev up tilelogger        # resolve and build XCore automatically
+./dev up web               # website and demo data, without the game server
+./dev reload               # rebuild the active set; restart game only on changes
+./dev check --json
+./dev down                 # keep volumes
+```
+
+Configuration is optional: copy `devtools/local.example.toml` to
+`devtools/local.toml` for OAuth, bot credentials or explicit satellite paths.
+Targets replace the previous selection; databases, saves and live configs persist.
+`./dev reset` requires confirmation before deleting volumes. See
+[the development guide](devtools/README.md) for config backups and satellite builds.
 
 ## Releasing
 
