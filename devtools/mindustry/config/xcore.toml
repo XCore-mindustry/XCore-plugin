@@ -1,0 +1,25 @@
+version = 1
+[server]
+name = "dev"
+public_host_override = "127.0.0.1"
+player_limit = 30
+auto_start = true
+auto_start_gamemode = "survival"
+[paths]
+global_config_directory = "/server/config"
+[discord]
+channel_id = "0"
+website_link_url = "http://localhost:3100/discord/link"
+[transport.redis]
+url = "redis://redis:6379"
+group_prefix = "xcore:cg"
+consumer_name = "dev-game"
+[telemetry]
+enabled = true
+server_id = "dev-game"
+flush_interval_seconds = 5
+[translation]
+enabled = false
+pipeline = []
+[announcements]
+enabled = false

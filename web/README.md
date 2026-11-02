@@ -17,9 +17,9 @@ The build uses `output: "standalone"`, so `next start` does not serve it. Run th
 
 ```bash
 bun run build
-cp -r public .next/standalone/
-cp -r .next/static .next/standalone/.next/
-PORT=3000 node .next/standalone/server.js
+cp -r public .next/standalone/web/
+cp -r .next/static .next/standalone/web/.next/
+PORT=3000 node .next/standalone/web/server.js
 ```
 
 ## Player accounts and statistics
@@ -40,7 +40,7 @@ Set the plugin's `[discord] website_link_url` to `${WEB_ORIGIN}/discord/link`. T
 
 Login, stored sessions and statistics use Mongo and remain independent of Redis, the bot and game-server uptime. Changing a binding requires Redis and a writable game executor. Discord roles synchronize asynchronously through the bot and its reconciliation loop.
 
-The TypeScript account contract is generated in the sibling `xcore-protocol` checkout. Keep that submodule alongside `xcore-web` when building; do not hand-edit generated payload types. Until protocol 0.17.0 is released, the bot uses the sibling checkout and the plugin uses its `gradle/local-protocol.init.gradle` composite-build helper.
+The TypeScript account contract is generated in `../protocol/typescript` in this monorepo. Do not hand-edit generated payload types; update the canonical spec and regenerate them.
 
 ## Checks
 
@@ -84,15 +84,20 @@ docker stop xcore-web-test-mongo xcore-web-test-redis
 
 ## Docker
 
-From the workspace root: `docker compose --profile web up --build`. This profile includes Mongo initialization and Redis; the website has no startup dependency on the bot or Redis. Its default loopback port is 3100; change `WEB_ORIGIN` to the public origin behind Caddy.
+From the monorepo root, `./dev up web` starts the website, shared dev Mongo/Redis
+and an idempotent demo seed. OAuth credentials are optional for browsing public
+pages; configure them in `devtools/local.toml` for real Discord login. Register
+`http://localhost:3100/api/auth/discord/callback` for the default local origin.
 
-For a standalone image build from this directory, provide the canonical protocol as a named BuildKit context:
+For a standalone image build from the monorepo root:
 
 ```bash
-docker build --build-context xcore_protocol=../xcore-protocol -t xcore-web .
+docker build -f web/Dockerfile -t xcore-web .
 ```
 
-BuildKit/buildx is required for named contexts. Runtime secrets are never passed into the image build or copied into the image.
+Runtime secrets are supplied through the container environment; the build context
+excludes `devtools/local.toml`, `.run` and environment files. The runtime entrypoint
+is `/app/web/server.js` because standalone tracing includes the repository root.
 
 ## Deploy
 
@@ -102,6 +107,11 @@ x-core.org runs the standalone build on the game server: a systemd user unit `xc
 rsync -az --delete .next/standalone/ <server>:services/xcore-web/
 ssh <server> systemctl --user restart xcore-web
 ```
+
+When switching an existing standalone install to the monorepo layout, update
+its start path to `web/.next/standalone/web/server.js` (relative to the monorepo
+root), and copy public/static assets as shown above. Keep runtime environment
+files outside the checkout. This import does not restart the production unit.
 
 ## Where things live
 
@@ -130,3 +140,8 @@ python3 -I scripts/glyph-atlas.py ~/.gradle/caches/toxopid/github-assets/Anuken/
 Team colours are swapped the way the game tints a unit's cell: `#ffa664` becomes the team colour, `#d06b53` the team colour times `#dcc6c6`. Every raster carries its origin in PNG metadata.
 
 Mindustry and its art are by Anuken, GPL-3.0.
+
+## License
+
+[AGPL-3.0](LICENSE) with the [plugin exception](LICENSE-EXCEPTION). The original
+[MIT notice](LICENSE.MIT) is retained; Mindustry assets keep their own notices.

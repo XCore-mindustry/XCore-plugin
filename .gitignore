@@ -16,3 +16,6 @@ dist/
 .env
 .env.*
 !.env.example
+
+devtools/local.toml
+devtools/.run/

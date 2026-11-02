@@ -35,3 +35,14 @@ f7d3f849951b2e7b1609d69211528852fa14de09:docs/architecture/map-discord-attributi
 8d58a4b220d96b972334123702f63a5259b5f968:services/discord-bot/tests/test_cases_ui.py:discord-client-id:844
 cca6a4d0345390ad9967b89600b60b34c9e27082:services/discord-bot/tests/test_cases_maps.py:generic-api-key:731
 dd147fda9821cbdebf3dd9fd009e6782f90b979c:services/discord-bot/src/xcore_discord_bot/cases/actions.py:generic-api-key:284
+
+# Web history: reviewed synthetic Discord snowflakes in test fixtures.
+b4ddf3c0b6ee655538b40a51514145a6d8ac0915:web/tests/routes.test.ts:discord-client-id:14
+b4ddf3c0b6ee655538b40a51514145a6d8ac0915:web/tests/routes.test.ts:discord-client-id:27
+121c7d9df644a2d4e7f6978b5d49358eff83a05f:web/tests/oauth.test.ts:discord-client-id:21
+121c7d9df644a2d4e7f6978b5d49358eff83a05f:web/tests/oauth.test.ts:discord-client-id:96
+121c7d9df644a2d4e7f6978b5d49358eff83a05f:web/tests/integration-fixture.ts:discord-client-id:3
+121c7d9df644a2d4e7f6978b5d49358eff83a05f:web/tests/stats.test.ts:discord-client-id:337
+121c7d9df644a2d4e7f6978b5d49358eff83a05f:web/tests/stats.test.ts:discord-client-id:356
+121c7d9df644a2d4e7f6978b5d49358eff83a05f:web/tests/stats.test.ts:discord-client-id:374
+121c7d9df644a2d4e7f6978b5d49358eff83a05f:web/tests/integration.test.ts:discord-client-id:83

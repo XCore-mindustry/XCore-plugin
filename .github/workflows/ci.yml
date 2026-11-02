@@ -19,6 +19,8 @@ jobs:
       protocol: ${{ steps.filter.outputs.protocol }}
       tilelogger: ${{ steps.filter.outputs.tilelogger }}
       python: ${{ steps.filter.outputs.python }}
+      web: ${{ steps.filter.outputs.web }}
+      dev: ${{ steps.filter.outputs.dev }}
     steps:
       - uses: actions/checkout@v7
       - uses: dorny/paths-filter@v3
@@ -32,6 +34,17 @@ jobs:
               - '*.gradle.kts'
               - gradle.properties
               - gradlew
+            web:
+              - .github/workflows/ci.yml
+              - .dockerignore
+              - web/**
+              - protocol/typescript/**
+            dev:
+              - .github/workflows/ci.yml
+              - dev
+              - devtools/**
+              - web/Dockerfile
+              - plugins/xcore/build.gradle.kts
             python: &python
               - .github/workflows/ci.yml
               - .github/workflows/release.yml
@@ -247,9 +260,84 @@ jobs:
           docker run --rm --network none -e MODULE --entrypoint python xcore-service:ci -c \
             'import importlib, os; import xcore_protocol; importlib.import_module(os.environ["MODULE"] + ".main")'
 
+  web:
+    needs: changes
+    if: needs.changes.outputs.web == 'true'
+    runs-on: ubuntu-latest
+    services:
+      mongo:
+        image: mongo:7.0
+        ports: ['27017:27017']
+        options: >-
+          --health-cmd "mongosh --quiet --eval 'db.adminCommand({ping:1})'"
+          --health-interval 5s --health-timeout 5s --health-retries 12
+      redis:
+        image: redis:7.4-alpine
+        ports: ['6379:6379']
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s --health-timeout 5s --health-retries 12
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v7
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: '1.4.0'
+      - run: bun install --frozen-lockfile
+      - run: bun run lint
+      - run: bun test
+      - name: Real disposable Mongo and Redis integration tests
+        env:
+          XCORE_WEB_INTEGRATION: '1'
+          MONGO_URI: mongodb://127.0.0.1:27017
+          GAME_MONGO_URI: mongodb://127.0.0.1:27017
+          WEB_MONGO_URI: mongodb://127.0.0.1:27017
+          MONGO_DB_NAME: xcore_web_test_game
+          WEB_MONGO_DB_NAME: xcore_web_test_auth
+          REDIS_URL: redis://127.0.0.1:6379
+          WEB_ORIGIN: http://localhost:3000
+          XCORE_ACCOUNT_SERVERS: qa-game
+        run: bun test tests/integration.test.ts
+      - run: bun run build
+
+  dev:
+    needs: changes
+    if: needs.changes.outputs.dev == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '25'
+      - uses: gradle/actions/setup-gradle@v5
+        with:
+          cache-read-only: ${{ github.event_name == 'pull_request' }}
+      - run: python3 -m unittest discover -s devtools/tests -v
+      - name: Clean-checkout stack smoke
+        run: |
+          ./dev up xcore
+          python3 devtools/tests/wait-ready.py
+          ./dev up web
+          python3 devtools/tests/wait-ready.py
+          ./dev check --json
+      - name: Stack diagnostics
+        if: failure()
+        run: |
+          ./dev status
+          python3 -c 'from devtools.runtime import Compose; from devtools.settings import load; from pathlib import Path; c=load(Path("devtools/local.toml")); print(Compose(Path.cwd(),c,c["game"]).compose("logs", "--tail", "80"))'
+      - run: ./dev down
+        if: always()
+
   # The only required check. Jobs skipped by the path filter count as passed.
   ci-ok:
-    needs: [changes, gradle, menu-render, renderer-selfcheck, protocol, tilelogger-native, python-services, gateway-compat, python-images]
+    needs: [changes, gradle, menu-render, renderer-selfcheck, protocol, tilelogger-native, python-services, gateway-compat, python-images, web, dev]
     if: always()
     runs-on: ubuntu-latest
     steps:

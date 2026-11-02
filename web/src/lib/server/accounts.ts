@@ -4,7 +4,7 @@ import { createClient } from "redis";
 import type {
   DiscordAccountOperationRequestV1,
   DiscordAccountOperationResponseV1,
-} from "../../../../xcore-protocol/typescript/discord-accounts";
+} from "../../../../protocol/typescript/discord-accounts";
 import { getGameDb } from "./db";
 import { sessionDb, rateLimit, type WebSession } from "./session";
 import { RequestError } from "./security";

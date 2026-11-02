@@ -233,3 +233,10 @@ tasks.register<Test>("exportUiFixtures") {
     // A removed locale or fixture must not leave a stale packet in the render matrix.
     doFirst { delete(output) }
 }
+
+// Stable local-dev output; published and distributed jar names remain versioned.
+tasks.register<Sync>("devJar") {
+    from(tasks.shadowJar)
+    into(layout.buildDirectory.dir("dev"))
+    rename { "XCore-plugin.jar" }
+}

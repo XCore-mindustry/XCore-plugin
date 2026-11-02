@@ -5,6 +5,7 @@ import com.google.gson.Gson;
 import io.avaje.inject.Bean;
 import io.avaje.inject.Factory;
 import jakarta.inject.Named;
+import java.util.Map;
 import org.xcore.plugin.common.PLog;
 
 import static mindustry.Vars.dataDirectory;
@@ -18,6 +19,7 @@ public class ConfigFactory {
         logSource("Config", result.file, result.source);
 
         TomlXcoreConfig config = result.config;
+        applyEnvironmentOverrides(config, System.getenv());
         config.normalize();
         return config;
     }
@@ -46,6 +48,20 @@ public class ConfigFactory {
         tomlSecretsConfig.normalize();
         tomlSecretsConfig.validate(result.file);
         return tomlSecretsConfig;
+    }
+
+    static void applyEnvironmentOverrides(TomlXcoreConfig config, Map<String, String> environment) {
+        String name = environment.get("MINDUSTRY_SERVER_NAME");
+        if (name != null && !name.isBlank()) config.server.name = name.trim();
+        String gamemode = environment.get("MINDUSTRY_GAMEMODE");
+        if (gamemode != null && !gamemode.isBlank()) config.server.autoStartGamemode = gamemode;
+        String autoStart = environment.get("XCORE_AUTO_START");
+        if (autoStart != null && !autoStart.isBlank()) {
+            if (!autoStart.equalsIgnoreCase("true") && !autoStart.equalsIgnoreCase("false")) {
+                throw new IllegalArgumentException("XCORE_AUTO_START must be true or false");
+            }
+            config.server.autoStart = Boolean.parseBoolean(autoStart);
+        }
     }
 
     private static void logSource(String label, Fi file, ConfigTomlLoader.Source source) {

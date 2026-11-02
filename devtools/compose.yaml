@@ -1,0 +1,144 @@
+services:
+  mongo:
+    image: mongo:7.0
+    command: [mongod, --replSet, rs0, --bind_ip_all]
+    ports: ['127.0.0.1:27017:27017']
+    volumes: [mongo-data:/data/db]
+    healthcheck:
+      test: [CMD, mongosh, --quiet, --eval, 'quit(db.hello().isWritablePrimary ? 0 : 1)']
+      interval: 3s
+      timeout: 3s
+      retries: 40
+  mongo-init:
+    image: mongo:7.0
+    depends_on:
+      mongo: {condition: service_started}
+    entrypoint: [/bin/bash, /scripts/init-rs.sh]
+    volumes: [./mongo/init-rs.sh:/scripts/init-rs.sh:ro]
+    environment:
+      MONGO_HOST: mongo
+      REPLSET_NAME: rs0
+  redis:
+    image: redis:7.4-alpine
+    command: [redis-server, --appendonly, 'yes']
+    ports: ['127.0.0.1:6379:6379']
+    volumes: [redis-data:/data]
+    healthcheck:
+      test: [CMD, redis-cli, ping]
+      interval: 3s
+      timeout: 2s
+      retries: 20
+  game:
+    build:
+      context: ..
+      dockerfile: devtools/mindustry/Dockerfile
+    stdin_open: true
+    tty: true
+    ports: ['127.0.0.1:6567:6567/tcp', '127.0.0.1:6567:6567/udp']
+    environment:
+      JAVA_TOOL_OPTIONS: ${JAVA_TOOL_OPTIONS:--Xmx2G --enable-native-access=ALL-UNNAMED}
+      MINDUSTRY_SERVER_NAME: ${MINDUSTRY_SERVER_NAME:-dev}
+      MINDUSTRY_GAMEMODE: ${MINDUSTRY_GAMEMODE:-survival}
+      XCORE_AUTO_START: ${XCORE_AUTO_START:-true}
+    volumes:
+      - ./.run/mods:/staged-mods:ro
+      - ./mindustry/config:/server/config-seed:ro
+      - ./.run/permissions.toml:/server/config-seed/permissions.toml:ro
+      - ./mindustry/tools:/dev-tools:ro
+      - game-data:/server/config
+    depends_on:
+      mongo: {condition: service_healthy}
+      mongo-init: {condition: service_completed_successfully}
+      redis: {condition: service_healthy}
+  web-seed:
+    image: mongo:7.0
+    command: [mongosh, 'mongodb://mongo:27017/xcore_dev?replicaSet=rs0', /seed/demo.js]
+    volumes: [./seed:/seed:ro]
+    depends_on:
+      mongo: {condition: service_healthy}
+      mongo-init: {condition: service_completed_successfully}
+  web:
+    build:
+      context: ..
+      dockerfile: web/Dockerfile
+    ports: ['127.0.0.1:3100:3000']
+    environment:
+      WEB_ORIGIN: ${WEB_ORIGIN:-http://localhost:3100}
+      DISCORD_CLIENT_ID: ${DISCORD_CLIENT_ID:-}
+      DISCORD_CLIENT_SECRET: ${DISCORD_CLIENT_SECRET:-}
+      GAME_MONGO_URI: mongodb://mongo:27017/?replicaSet=rs0
+      MONGO_DB_NAME: xcore_dev
+      WEB_MONGO_URI: mongodb://mongo:27017/?replicaSet=rs0
+      WEB_MONGO_DB_NAME: xcore_web_dev
+      REDIS_URL: redis://redis:6379
+      XCORE_ACCOUNT_SERVERS: ${XCORE_ACCOUNT_SERVERS:-dev}
+    depends_on:
+      web-seed: {condition: service_completed_successfully}
+      redis: {condition: service_healthy}
+  discord-bot:
+    build:
+      context: ..
+      dockerfile: services/discord-bot/Dockerfile
+    environment:
+      DISCORD_BOT_TOKEN: ${DISCORD_BOT_TOKEN:-}
+      DISCORD_GUILD_ID: ${DISCORD_GUILD_ID:-0}
+      DISCORD_ADMIN_ROLE_ID: '0'
+      DISCORD_PRIVATE_CHANNEL_ID: '0'
+      PERMISSIONS_CONFIG_PATH: /config/permissions.toml
+      PERMISSIONS_RPC_SERVER: ${PERMISSIONS_RPC_SERVER:-dev}
+      REDIS_URL: redis://redis:6379
+      MONGO_URI: mongodb://mongo:27017/?replicaSet=rs0
+      MONGO_DB_NAME: xcore_dev
+    volumes: [./.run/permissions.toml:/config/permissions.toml:ro]
+    depends_on:
+      mongo: {condition: service_healthy}
+      mongo-init: {condition: service_completed_successfully}
+      redis: {condition: service_healthy}
+  metrics-gateway:
+    build:
+      context: ..
+      dockerfile: services/metrics-gateway/Dockerfile
+    ports: ['127.0.0.1:9100:9100']
+    environment:
+      REDIS_URL: redis://redis:6379
+      GATEWAY_HTTP_HOST: 0.0.0.0
+      GATEWAY_HTTP_PORT: 9100
+    networks:
+      default:
+        aliases: [gateway]
+    depends_on:
+      redis: {condition: service_healthy}
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:9100/ready', timeout=3)"]
+      interval: 5s
+      timeout: 4s
+      retries: 20
+  prometheus:
+    image: prom/prometheus:v3.5.0
+    ports: ['127.0.0.1:9090:9090']
+    command: [--config.file=/etc/prometheus/prometheus.yml, --storage.tsdb.path=/prometheus]
+    volumes:
+      - ../services/metrics-gateway/ops/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ../services/metrics-gateway/ops/prometheus/xcore.rules.yml:/etc/prometheus/rules/xcore.rules.yml:ro
+      - prometheus-data:/prometheus
+    depends_on:
+      metrics-gateway: {condition: service_healthy}
+  grafana:
+    image: grafana/grafana:12.2.0
+    ports: ['127.0.0.1:3000:3000']
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_USERS_ALLOW_SIGN_UP: 'false'
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ../services/metrics-gateway/ops/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ../services/metrics-gateway/ops/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on:
+      prometheus: {condition: service_started}
+volumes:
+  mongo-data:
+  redis-data:
+  game-data:
+  prometheus-data:
+  grafana-data:
