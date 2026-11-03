@@ -16,8 +16,6 @@ import org.xcore.plugin.session.Session;
 import org.xcore.plugin.session.SessionService;
 import org.xcore.plugin.startup.ShutdownOrder;
 
-import java.util.Objects;
-
 import static com.ospx.flubundle.Bundle.args;
 
 @Singleton
@@ -83,11 +81,18 @@ public class PlayerActivityService {
         if (session != null) session.activeSinceTick = true;
     }
 
-    /** Called once a minute; true once the player has neither moved, aimed, chatted nor built for {@link #AFK_AFTER_MINUTES}. */
+    /** What the minute check compares; aim is in 8-unit steps. */
+    public record Pose(int tileX, int tileY, int aimX, int aimY, boolean shooting) {
+    }
+
+    /**
+     * Called once a minute; true once the player has had the same tile, aim and shooting state at
+     * {@link #AFK_AFTER_MINUTES} checks in a row, without chatting or starting to build in between.
+     */
     static boolean idle(Session session, Player player) {
-        int pose = Objects.hash(player.tileX(), player.tileY(),
+        var pose = new Pose(player.tileX(), player.tileY(),
                 (int) player.mouseX >> 3, (int) player.mouseY >> 3, player.shooting);
-        session.idleMinutes = pose == session.lastPose && !session.activeSinceTick ? session.idleMinutes + 1 : 0;
+        session.idleMinutes = pose.equals(session.lastPose) && !session.activeSinceTick ? session.idleMinutes + 1 : 0;
         session.lastPose = pose;
         session.activeSinceTick = false;
         return session.idleMinutes >= AFK_AFTER_MINUTES;

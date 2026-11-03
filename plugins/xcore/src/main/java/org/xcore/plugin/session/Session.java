@@ -14,6 +14,7 @@ import org.xcore.plugin.localization.Localization;
 import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.permission.PermissionService;
 import org.xcore.plugin.permission.role.PermissionSet;
+import org.xcore.plugin.service.PlayerActivityService;
 import org.xcore.plugin.ui.MenuBuilder;
 import org.xcore.plugin.ui.MenuService;
 import org.xcore.plugin.ui.flow.ActiveMenuPrompt;
@@ -54,7 +55,7 @@ public class Session {
     public Integer lastPrivateTargetPid;
     public long lastPrivateMessageAt;
     /** AFK state for play time, touched on the game thread only; see PlayerActivityService. */
-    public int lastPose;
+    public PlayerActivityService.Pose lastPose;
     public int idleMinutes;
     public boolean activeSinceTick;
     private boolean observing;

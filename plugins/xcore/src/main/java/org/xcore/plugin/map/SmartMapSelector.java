@@ -5,9 +5,12 @@ import arc.math.Mathf;
 import arc.struct.ObjectMap;
 import arc.struct.Seq;
 import arc.util.Log;
+import io.avaje.inject.PostConstruct;
+import io.avaje.inject.PreDestroy;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import mindustry.Vars;
+import mindustry.game.EventType.PlayEvent;
 import mindustry.game.Gamemode;
 import mindustry.maps.Map;
 import mindustry.maps.Maps.MapProvider;
@@ -15,17 +18,20 @@ import org.bson.types.ObjectId;
 import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.database.repository.EventDataRepository;
 import org.xcore.plugin.database.repository.MapDataRepository;
+import org.xcore.plugin.event.EventSubscriptions;
 import org.xcore.plugin.model.EventData;
 import org.xcore.plugin.model.MapData;
 import org.xcore.plugin.service.EventService;
+import org.xcore.plugin.startup.ShutdownOrder;
 
 @Singleton
 public class SmartMapSelector implements MapProvider {
 
     private static final String HISTORY_KEY = "xcore-recent-maps";
     private static final int HISTORY_SIZE = 5;
-    /** Map file names, kept in the server settings so a restart or map reload does not forget them. */
+    /** Paths of the maps played last, newest last, kept in the server settings so a restart or map reload does not forget them. */
     private Seq<String> recentMaps;
+    private final EventSubscriptions subscriptions = new EventSubscriptions();
 
     private final TomlXcoreConfig config;
 
@@ -40,6 +46,30 @@ public class SmartMapSelector implements MapProvider {
         this.eventDataRepository = eventDataRepository;
         this.mapDataRepository = mapDataRepository;
         this.eventService = eventService;
+    }
+
+    @PostConstruct
+    public void start() {
+        // recorded when a map starts, so votes, events and the map running at a restart count too
+        subscriptions.on(PlayEvent.class, event -> played(Vars.state.map));
+    }
+
+    @PreDestroy(priority = ShutdownOrder.STOP_PRODUCERS)
+    public void stop() {
+        subscriptions.close();
+    }
+
+    void played(Map map) {
+        if (map == null || map.file == null) return; // the empty placeholder map has no file
+        Seq<String> recent = recentMaps();
+        String path = map.file.path();
+        if (!recent.isEmpty() && recent.peek().equals(path)) return;
+        recent.add(path);
+        if (recent.size > HISTORY_SIZE) recent.remove(0);
+        if (Core.settings != null) {
+            Core.settings.put(HISTORY_KEY, recent.toString("\n"));
+            Core.settings.forceSave();
+        }
     }
 
     @Override
@@ -73,19 +103,8 @@ public class SmartMapSelector implements MapProvider {
         }
 
         Seq<String> recent = recentMaps();
-        if (previous != null) {
-            recent.add(previous.file.name());
-            if (recent.size > HISTORY_SIZE) {
-                recent.remove(0);
-            }
-            if (Core.settings != null) {
-                Core.settings.put(HISTORY_KEY, recent.toString("\n"));
-                Core.settings.forceSave();
-            }
-        }
-
         Seq<Map> allMaps = Vars.maps.customMaps().isEmpty() ? Vars.maps.defaultMaps() : Vars.maps.customMaps();
-        Seq<Map> candidates = allMaps.select(m -> !recent.contains(m.file.name()));
+        Seq<Map> candidates = allMaps.select(m -> !recent.contains(m.file.path()));
 
         if (candidates.isEmpty()) candidates = allMaps;
         if (candidates.isEmpty()) return null;

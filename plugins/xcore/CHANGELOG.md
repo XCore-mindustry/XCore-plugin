@@ -5,8 +5,8 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Changed
-- Play time stops counting after 5 minutes in which a player has not moved, aimed, chatted or built, so idling no longer unlocks votekick, global chat or commands gated by play time.
-- The map rotation remembers its last 5 maps across restarts and map reloads (server setting `xcore-recent-maps`), and is installed through `Maps.setMapProvider` instead of reflection.
+- Play time stops counting after 5 minutes in which a player has not moved, aimed, started or stopped shooting, chatted or built, so idling no longer unlocks votekick, global chat or commands gated by play time.
+- The map rotation remembers the last 5 maps played, however they were chosen, across restarts and map reloads (server setting `xcore-recent-maps`), and is installed through `Maps.setMapProvider` instead of reflection.
 
 ## [5.3.0] - 2026-11-01
 
