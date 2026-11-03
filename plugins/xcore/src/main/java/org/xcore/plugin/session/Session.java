@@ -53,6 +53,10 @@ public class Session {
     public Consumer<String> textHandler;
     public Integer lastPrivateTargetPid;
     public long lastPrivateMessageAt;
+    /** AFK state for play time, touched on the game thread only; see PlayerActivityService. */
+    public int lastPose;
+    public int idleMinutes;
+    public boolean activeSinceTick;
     private boolean observing;
     private Team observerReturnTeam;
 
