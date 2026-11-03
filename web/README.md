@@ -133,5 +133,5 @@ Mindustry and its art are by Anuken, GPL-3.0.
 
 ## License
 
-[AGPL-3.0](LICENSE) with the [plugin exception](LICENSE-EXCEPTION). The original
+[Apache-2.0](LICENSE), see also [NOTICE](NOTICE). The original
 [MIT notice](LICENSE.MIT) is retained; Mindustry assets keep their own notices.

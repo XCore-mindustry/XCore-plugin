@@ -253,5 +253,5 @@ Flow modules are written against the [flow and transport contract](src/xcore_dis
 
 ## License
 
-[AGPL-3.0](LICENSE) with the [plugin exception](LICENSE-EXCEPTION).
+[Apache-2.0](LICENSE), see also [NOTICE](NOTICE).
 The original [MIT notice](LICENSE.MIT) is retained for code received under MIT.

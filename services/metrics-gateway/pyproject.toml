@@ -1,7 +1,7 @@
 [project]
 name = "xcore-metrics-gateway"
 version = "0.1.0"
-license = "AGPL-3.0-only"
+license = "Apache-2.0"
 description = "Prometheus-facing telemetry gateway for XCore Mindustry servers"
 readme = "README.md"
 authors = [

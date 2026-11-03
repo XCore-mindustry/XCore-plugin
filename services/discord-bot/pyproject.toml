@@ -1,7 +1,7 @@
 [project]
 name = "xcore-discord-bot"
 version = "0.1.0"
-license = "AGPL-3.0-only"
+license = "Apache-2.0"
 description = "Standalone Discord bot for XCore Redis transport"
 readme = "README.md"
 authors = [
