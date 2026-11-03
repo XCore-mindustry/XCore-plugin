@@ -108,7 +108,6 @@ web/                  x-core.org
 devtools/             the ./dev command, Compose stack and seed data
 ops/                  production units and the deploy script
 build-logic/          shared Gradle conventions
-docs/                 notes on the monorepo migration
 ```
 
 One Gradle build covers the JVM code (`settings.gradle.kts`), and one uv workspace covers the Python code (`pyproject.toml`).
@@ -147,4 +146,4 @@ Each component has its own `LICENSE`. Code contributed while a component was und
 
 ## History
 
-Until November 2026 these components lived in separate repositories, which are archived as their migration completes. Their history was imported with each project moved into its directory: old tags are renamed to `<component>/vX.Y.Z`, and `#123` in imported commit messages points to `XCore-mindustry/<old-repo>#123`. XCore's own history and tags are unchanged. Details are in [docs/monorepo-migration.md](docs/monorepo-migration.md).
+Until November 2026 these components lived in separate repositories, which are now archived. Their history was imported with each project moved into its directory: old tags are renamed to `<component>/vX.Y.Z`, and `#123` in imported commit messages points to `XCore-mindustry/<old-repo>#123`. XCore's own history and tags are unchanged.
