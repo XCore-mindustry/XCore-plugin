@@ -6,13 +6,13 @@
 
 ## 0. Статус реализации (2026-11-02)
 
-Миграция завершена; осталось только удалить суперрепо.
+Миграция завершена (2026-11-03).
 
 - P0–P4 выполнены, PR #57–#59 смёржены; первые релизы библиотек опубликованы.
 - P5: код перенесён, PR #60 смёржен. 2026-11-02 бот и gateway переключены на код из монорепо. Конфиги и версии Python прежние, у каждого сервиса своё окружение.
 - P6: PR #61 смёржен. Уточнение: команда `./dev`, каталог `devtools/` (файл и каталог с одним именем невозможны). 2026-11-02 x-core.org переведён на сборку из `web/`.
-- P7: FluBundle, cloud-mindustry, xcore-ui, mindustry-testkit, xcore-protocol, TileLogger, XCore-discord-bot, xcore-metrics-gateway и xcore-web заархивированы, в README каждого ссылка на монорепо. TileLogger 2.1.2 выпущен из монорепо (PR #62). Суперрепо заархивировано и удаляется по разделу 12.
-- P8: renovate.json, проверка SNAPSHOT в CI и удаление snapshots-репозитория в xcore-sentinel, HexedCore-plugin и AdminTools. Renovate установлен для организации. rvsb и Tower-defence от артефактов XCore не зависят.
+- P7: FluBundle, cloud-mindustry, xcore-ui, mindustry-testkit, xcore-protocol, TileLogger, XCore-discord-bot, xcore-metrics-gateway и xcore-web заархивированы, в README каждого ссылка на монорепо. TileLogger 2.1.2 выпущен из монорепо (PR #62). Суперрепо удалено 2026-11-03.
+- P8: renovate.json, проверка SNAPSHOT в CI и удаление snapshots-репозитория в xcore-sentinel, HexedCore-plugin и AdminTools. Renovate установлен для организации; первые сгруппированные PR в xcore-sentinel и HexedCore-plugin смёржены. rvsb и Tower-defence от артефактов XCore не зависят.
 
 ## 1. Итоговые решения
 
