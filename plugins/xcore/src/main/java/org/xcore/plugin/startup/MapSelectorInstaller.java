@@ -1,6 +1,5 @@
 package org.xcore.plugin.startup;
 
-import arc.util.Reflect;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import mindustry.Vars;
@@ -17,6 +16,6 @@ public class MapSelectorInstaller {
     }
 
     public void install() {
-        Reflect.set(Vars.maps, "shuffler", mapSelector);
+        Vars.maps.setMapProvider(mapSelector);
     }
 }

@@ -1,5 +1,6 @@
 package org.xcore.plugin.map;
 
+import arc.Core;
 import arc.math.Mathf;
 import arc.struct.ObjectMap;
 import arc.struct.Seq;
@@ -21,8 +22,10 @@ import org.xcore.plugin.service.EventService;
 @Singleton
 public class SmartMapSelector implements MapProvider {
 
-    private final Seq<Map> recentMaps = new Seq<>();
+    private static final String HISTORY_KEY = "xcore-recent-maps";
     private static final int HISTORY_SIZE = 5;
+    /** Map file names, kept in the server settings so a restart or map reload does not forget them. */
+    private Seq<String> recentMaps;
 
     private final TomlXcoreConfig config;
 
@@ -69,15 +72,20 @@ public class SmartMapSelector implements MapProvider {
             }
         }
 
+        Seq<String> recent = recentMaps();
         if (previous != null) {
-            recentMaps.add(previous);
-            if (recentMaps.size > HISTORY_SIZE) {
-                recentMaps.remove(0);
+            recent.add(previous.file.name());
+            if (recent.size > HISTORY_SIZE) {
+                recent.remove(0);
+            }
+            if (Core.settings != null) {
+                Core.settings.put(HISTORY_KEY, recent.toString("\n"));
+                Core.settings.forceSave();
             }
         }
 
         Seq<Map> allMaps = Vars.maps.customMaps().isEmpty() ? Vars.maps.defaultMaps() : Vars.maps.customMaps();
-        Seq<Map> candidates = allMaps.select(m -> !recentMaps.contains(m));
+        Seq<Map> candidates = allMaps.select(m -> !recent.contains(m.file.name()));
 
         if (candidates.isEmpty()) candidates = allMaps;
         if (candidates.isEmpty()) return null;
@@ -121,6 +129,14 @@ public class SmartMapSelector implements MapProvider {
         }
 
         return selectedMap;
+    }
+
+    private Seq<String> recentMaps() {
+        if (recentMaps == null) {
+            String saved = Core.settings == null ? "" : Core.settings.getString(HISTORY_KEY, "");
+            recentMaps = Seq.with(saved.split("\n")).select(name -> !name.isEmpty());
+        }
+        return recentMaps;
     }
 
     private Map findMindustryMap(ObjectId mapId) {
