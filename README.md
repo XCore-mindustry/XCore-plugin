@@ -139,7 +139,7 @@ Translations are done on [Weblate](https://weblate.x-core.org/).
 
 | | License |
 |---|---|
-| XCore, Discord bot, metrics gateway, website | [AGPL-3.0](plugins/xcore/LICENSE), with an [exception](plugins/xcore/LICENSE-EXCEPTION) for separate plugins that use XCore's API |
+| XCore, Discord bot, metrics gateway, website | [Apache-2.0](plugins/xcore/LICENSE); keep each component's `NOTICE` when redistributing |
 | TileLogger | [GPL-3.0](plugins/tilelogger/LICENSE) |
 | Libraries, protocol, everything else | [MPL-2.0](LICENSE) |
 

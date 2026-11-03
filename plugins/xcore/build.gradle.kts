@@ -101,6 +101,7 @@ tasks.jar {
     archiveBaseName.set("XCore-plugin")
     archiveClassifier.set("plain")
     from(generateModInfo)
+    from("LICENSE", "NOTICE")
 }
 
 tasks.assemble {
@@ -114,6 +115,7 @@ fun ShadowJar.applyCommonSettings() {
     destinationDirectory.set(layout.buildDirectory.dir("libs"))
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
     from(generateModInfo)
+    from("LICENSE", "NOTICE")
     mergeServiceFiles()
     filesMatching("META-INF/services/**") {
         duplicatesStrategy = DuplicatesStrategy.INCLUDE

@@ -214,4 +214,4 @@ covered by [the cutover guide](../../docs/monorepo-wave3.md).
 
 ## License
 
-[AGPL-3.0](LICENSE) with the [plugin exception](LICENSE-EXCEPTION).
+[Apache-2.0](LICENSE), see also [NOTICE](NOTICE).
