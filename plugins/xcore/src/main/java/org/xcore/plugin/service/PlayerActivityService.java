@@ -4,8 +4,12 @@ import io.avaje.inject.PostConstruct;
 import io.avaje.inject.PreDestroy;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
+import mindustry.game.EventType.BlockBuildBeginEvent;
+import mindustry.game.EventType.PlayerChatEvent;
+import mindustry.gen.Player;
 import org.xcore.plugin.concurrent.ScheduledTasks;
 import org.xcore.plugin.config.TomlSecretsConfig;
+import org.xcore.plugin.event.EventSubscriptions;
 import org.xcore.plugin.localization.Localization;
 import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.session.Session;
@@ -17,10 +21,14 @@ import static com.ospx.flubundle.Bundle.args;
 @Singleton
 public class PlayerActivityService {
 
+    /** Unchanged minutes after which a player stops earning play time, which gates votekick and global chat. */
+    static final int AFK_AFTER_MINUTES = 5;
+
     private final SessionService sessionService;
     private final FindService findService;
     private final TomlSecretsConfig secretsConfig;
     private final ScheduledTasks tasks = new ScheduledTasks(PlayerActivityService.class);
+    private final EventSubscriptions subscriptions = new EventSubscriptions();
 
     @Inject
     public PlayerActivityService(SessionService sessionService,
@@ -33,11 +41,15 @@ public class PlayerActivityService {
 
     @PostConstruct
     public void start() {
+        subscriptions.on(PlayerChatEvent.class, event -> markActive(event.player));
+        subscriptions.on(BlockBuildBeginEvent.class, event -> {
+            if (event.unit != null) markActive(event.unit.getPlayer());
+        });
         tasks.every(0, 60, () -> {
             for (Session session : sessionService.getAllCachedSnapshot()) {
                 if (session == null || session.data == null) continue;
                 var player = findService.playerByUuid(session.data.uuid);
-                if (player == null) continue;
+                if (player == null || idle(session, player)) continue;
 
                 PlayerData data = session.data;
                 Localization local = session.locale();
@@ -60,5 +72,29 @@ public class PlayerActivityService {
     @PreDestroy(priority = ShutdownOrder.STOP_PRODUCERS)
     public void stop() {
         tasks.close();
+        subscriptions.close();
+    }
+
+    private void markActive(Player player) {
+        if (player == null) return;
+        var session = sessionService.get(player.uuid());
+        if (session != null) session.activeSinceTick = true;
+    }
+
+    /** What the minute check compares; aim is in 8-unit steps. */
+    public record Pose(int tileX, int tileY, int aimX, int aimY, boolean shooting) {
+    }
+
+    /**
+     * Called once a minute; true once the player has had the same tile, aim and shooting state at
+     * {@link #AFK_AFTER_MINUTES} checks in a row, without chatting or starting to build in between.
+     */
+    static boolean idle(Session session, Player player) {
+        var pose = new Pose(player.tileX(), player.tileY(),
+                (int) player.mouseX >> 3, (int) player.mouseY >> 3, player.shooting);
+        session.idleMinutes = pose.equals(session.lastPose) && !session.activeSinceTick ? session.idleMinutes + 1 : 0;
+        session.lastPose = pose;
+        session.activeSinceTick = false;
+        return session.idleMinutes >= AFK_AFTER_MINUTES;
     }
 }
