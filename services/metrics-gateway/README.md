@@ -209,9 +209,6 @@ uv run --no-sync ruff check
 uv run --no-sync ruff format --check
 ```
 
-Existing tmux deployments and preservation of local observability edits are
-covered by [the cutover guide](../../docs/monorepo-wave3.md).
-
 ## License
 
 [Apache-2.0](LICENSE), see also [NOTICE](NOTICE).
