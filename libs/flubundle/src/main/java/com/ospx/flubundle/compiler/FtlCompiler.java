@@ -42,10 +42,21 @@ public class FtlCompiler {
 
     private final FunctionCatalog functionCatalog;
     private final boolean strictPluralDefaults;
+    private final Set<String> externalReferences;
 
     public FtlCompiler(FunctionCatalog functionCatalog, boolean strictPluralDefaults) {
+        this(functionCatalog, strictPluralDefaults, Set.of());
+    }
+
+    /**
+     * @param externalReferences ids that messages may reference although the checked files do not
+     *                           define them, e.g. a term of another plugin's bundle: {@code message}
+     *                           or {@code -term}
+     */
+    public FtlCompiler(FunctionCatalog functionCatalog, boolean strictPluralDefaults, Collection<String> externalReferences) {
         this.functionCatalog = Objects.requireNonNull(functionCatalog, "functionCatalog must not be null");
         this.strictPluralDefaults = strictPluralDefaults;
+        this.externalReferences = Set.copyOf(externalReferences);
     }
 
     public static FtlCompiler createDefault() {
@@ -87,17 +98,20 @@ public class FtlCompiler {
         List<Diagnostic> diagnostics = new ArrayList<>();
         Map<Path, Set<String>> messageKeysByFile = new LinkedHashMap<>();
         int totalMessages = 0;
+        ReferenceChecker references = new ReferenceChecker();
 
         for (Path file : allFtlFiles) {
             Set<String> keys = new LinkedHashSet<>();
-            totalMessages += compileFile(file, diagnostics, keys);
+            totalMessages += compileFile(file, diagnostics, keys, references);
             messageKeysByFile.put(file, keys);
         }
+        references.check(externalReferences, diagnostics);
 
         return new CompilationResult(diagnostics, allFtlFiles.size(), totalMessages, messageKeysByFile);
     }
 
-    private int compileFile(Path file, List<Diagnostic> diagnostics, Set<String> collectedKeys) {
+    private int compileFile(Path file, List<Diagnostic> diagnostics, Set<String> collectedKeys,
+                            ReferenceChecker references) {
         String content;
         try {
             content = Files.readString(file, StandardCharsets.UTF_8);
@@ -108,6 +122,7 @@ public class FtlCompiler {
 
         Map<String, Integer> lineByMessageId = indexMessageLines(content);
         FluentResource resource = FTLParser.parse(content, FTLParser.ParseOptions.EXTENDED);
+        references.add(file, content, resource, diagnostics);
 
         for (FTLParseException parseError : resource.errors()) {
             diagnostics.add(Diagnostic.error(file, parseError.line(), null, "Syntax error: " + parseError.getMessage()));
@@ -254,11 +269,6 @@ public class FtlCompiler {
 
         } else if (expr instanceof PatternElement.Placeable placeable) {
             validateExpression(placeable.expression(), file, line, messageId, diagnostics);
-
-        } else if (expr instanceof InlineExpression.TermReference termRef) {
-            for (NamedArgument named : termRef.namedArguments()) {
-                // Term argument patterns can be validated if needed
-            }
         }
     }
 
@@ -316,6 +326,7 @@ public class FtlCompiler {
     public static class Builder {
         private FunctionCatalog catalog = FunctionCatalog.defaults();
         private boolean strictPluralDefaults = true;
+        private final Set<String> externalReferences = new LinkedHashSet<>();
 
         public Builder functionCatalog(FunctionCatalog catalog) {
             this.catalog = Objects.requireNonNull(catalog, "catalog must not be null");
@@ -327,8 +338,17 @@ public class FtlCompiler {
             return this;
         }
 
+        /**
+         * Ids that messages may reference although the checked files do not define them, such as
+         * a term from another plugin's bundle: {@code message} or {@code -term}.
+         */
+        public Builder externalReferences(String... ids) {
+            externalReferences.addAll(Arrays.asList(ids));
+            return this;
+        }
+
         public FtlCompiler build() {
-            return new FtlCompiler(catalog, strictPluralDefaults);
+            return new FtlCompiler(catalog, strictPluralDefaults, externalReferences);
         }
     }
 }

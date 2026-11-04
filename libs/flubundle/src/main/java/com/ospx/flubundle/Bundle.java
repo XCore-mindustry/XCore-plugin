@@ -60,7 +60,8 @@ public class Bundle {
     private final Map<String, Locale> localeAliases = new ConcurrentHashMap<>();
     private final FluentFunctionRegistry.Builder registryBuilder = FluentFunctionRegistry.builder();
     private final Set<String> reportedFormatErrors = ConcurrentHashMap.newKeySet();
-    private FluentFunctionRegistry functionRegistry;
+    /** Written under the bundle's lock, read without it on every {@code format}. */
+    private volatile FluentFunctionRegistry functionRegistry;
     private volatile LocaleResolver localeResolver = LocaleResolver.CLIENT;
     private volatile Consumer<FluentBundle.ErrorContext> formatErrorHandler = this::logFormatError;
 
@@ -475,11 +476,17 @@ public class Bundle {
                 (content, scope) -> ContentNames.vanilla().name(content, scope.locale()));
     }
 
-    private synchronized FluentFunctionRegistry ensureRegistry() {
-        if (functionRegistry == null) {
-            functionRegistry = registryBuilder.build();
+    private FluentFunctionRegistry ensureRegistry() {
+        var registry = functionRegistry;
+        if (registry != null) {
+            return registry;
         }
-        return functionRegistry;
+        synchronized (this) {
+            if (functionRegistry == null) {
+                functionRegistry = registryBuilder.build();
+            }
+            return functionRegistry;
+        }
     }
 
     /**

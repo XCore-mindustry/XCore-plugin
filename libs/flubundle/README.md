@@ -102,6 +102,12 @@ void bundles() {
     LocaleConsistencyChecker.check(Path.of("src/main/resources/bundles"), "en").assertSuccess();
 }
 ```
+`FtlCompiler` fails on syntax errors, unknown functions and options, and on references to messages,
+terms or attributes the locale does not define (`{ welcom }`, `{ -servr }`); files of one locale
+(`bundle_en.ftl`, `extra_en.ftl`) see each other's ids. An id defined twice is a warning. A reference
+to an id another plugin's bundle defines is allowed with
+`FtlCompiler.builder().externalReferences("-xcore").build()`.
+
 `LocaleConsistencyChecker` fails when a translation uses a `$variable` the English message does not,
 and warns about dropped variables, orphan keys and untranslated keys.
 
