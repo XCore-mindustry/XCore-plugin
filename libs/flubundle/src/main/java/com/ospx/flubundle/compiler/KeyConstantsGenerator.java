@@ -121,8 +121,9 @@ public final class KeyConstantsGenerator {
 
         for (var entry : methods.entrySet()) {
             var key = entry.getValue();
+            // Text renders the value only, so variables of the message's attributes are not parameters.
             appendTextMethod(out, entry.getKey(), constantName(key),
-                    MessageVariables.of(messages.get(key), messages::get));
+                    MessageVariables.ofValue(messages.get(key), messages::get));
         }
         out.append("}\n");
         return out.toString();
@@ -158,9 +159,17 @@ public final class KeyConstantsGenerator {
         out.append("    }\n");
     }
 
-    /** {@code player-joined} and {@code player_joined} become {@code playerJoined}. */
+    /** Methods of {@code Object}: a static method with one of these names does not compile. */
+    private static final Set<String> OBJECT_METHODS = Set.of("clone", "equals", "finalize", "getClass",
+            "hashCode", "notify", "notifyAll", "toString", "wait");
+
+    /**
+     * {@code player-joined} and {@code player_joined} become {@code playerJoined}; a name of an
+     * {@code Object} method ({@code to-string}) gets a trailing {@code _}.
+     */
     static String methodName(String key) {
-        return identifier(key);
+        var method = identifier(key);
+        return OBJECT_METHODS.contains(method) ? method + "_" : method;
     }
 
     /** A lower camel case Java identifier for a Fluent identifier; keywords get a trailing {@code _}. */

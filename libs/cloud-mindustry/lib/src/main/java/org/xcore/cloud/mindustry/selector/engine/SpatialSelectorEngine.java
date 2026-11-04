@@ -16,6 +16,7 @@ import mindustry.gen.Unit;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.xcore.cloud.mindustry.MindustrySender;
 import org.xcore.cloud.mindustry.SimulationExecutor;
+import org.xcore.cloud.mindustry.parser.PlayerNameInput;
 import org.xcore.cloud.mindustry.selector.SelectorKind;
 import org.xcore.cloud.mindustry.selector.SortOrder;
 import org.xcore.cloud.mindustry.selector.TargetSelectorSpec;
@@ -43,6 +44,11 @@ public final class SpatialSelectorEngine {
     }
 
     public @NonNull Seq<Player> resolvePlayers(@NonNull MindustrySender sender, @NonNull TargetSelectorSpec spec) {
+        return resolvePlayers(sender, spec, TargetSelectorSpec.MAX_ENTITIES_HARD_CAP);
+    }
+
+    /** @param cap the most players returned, whatever the spec's limit */
+    private Seq<Player> resolvePlayers(MindustrySender sender, TargetSelectorSpec spec, int cap) {
         simulation.requireOnThread();
 
         // 1. Literal Resolution
@@ -112,7 +118,7 @@ public final class SpatialSelectorEngine {
         applyPlayerSorting(matches, spec.sort(), ox, oy);
 
         // 6. Limit Truncation
-        int limit = Math.min(spec.limit(), TargetSelectorSpec.MAX_ENTITIES_HARD_CAP);
+        int limit = Math.min(spec.limit(), cap);
         if (matches.size > limit) {
             matches.truncate(limit);
         }
@@ -203,18 +209,23 @@ public final class SpatialSelectorEngine {
     }
 
     /**
-     * The units of the players a player selector matches. Players are matched without the limit,
-     * so that players without a unit, or with a unit of the wrong type, do not use it up.
+     * The units of the players a player selector matches. Every matching player is considered, so
+     * that players without a unit, or with a unit of the wrong team or type, do not use up the limit.
      */
     private Seq<Unit> resolvePlayerUnits(MindustrySender sender, TargetSelectorSpec spec) {
         int limit = Math.min(spec.limit(), TargetSelectorSpec.MAX_ENTITIES_HARD_CAP);
-        Seq<Player> players = resolvePlayers(sender, spec.withLimit(TargetSelectorSpec.MAX_ENTITIES_HARD_CAP));
+        Seq<Player> players = resolvePlayers(sender, spec.withLimit(Integer.MAX_VALUE), Integer.MAX_VALUE);
 
         Seq<Unit> units = new Seq<>(false, Math.min(players.size, limit));
         for (Player player : players) {
             if (units.size >= limit) break;
             Unit unit = player.unit();
             if (unit == null || !unit.isAdded() || unit.dead) continue;
+            // @s and literals skip the player filters, so the team is checked on the unit too.
+            if (spec.team() != null) {
+                boolean teamMatch = unit.team == spec.team();
+                if (spec.invertTeam() ? teamMatch : !teamMatch) continue;
+            }
             if (spec.unitType() != null) {
                 boolean typeMatch = unit.type == spec.unitType();
                 if (spec.invertType() ? typeMatch : !typeMatch) continue;
@@ -318,12 +329,8 @@ public final class SpatialSelectorEngine {
             }
         }
 
-        // Exact Clean Name
-        Player found = Groups.player.find(p -> Strings.stripColors(p.plainName()).equalsIgnoreCase(nameOrId));
-        if (found != null) return found;
-
-        // Raw Name
-        found = Groups.player.find(p -> p.plainName().equalsIgnoreCase(nameOrId));
+        // Name, as PlayerNameInput read it: no colors, any case, spacing ignored
+        Player found = Groups.player.find(p -> PlayerNameInput.matches(p.plainName(), nameOrId));
         if (found != null) return found;
 
         // Console UUID / IP match

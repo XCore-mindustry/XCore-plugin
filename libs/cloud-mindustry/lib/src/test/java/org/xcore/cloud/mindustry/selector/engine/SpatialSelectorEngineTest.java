@@ -303,4 +303,56 @@ class SpatialSelectorEngineTest {
         assertEquals(1, resolved.size);
         assertEquals(flare, resolved.first());
     }
+
+    @Test
+    @DisplayName("@s for units honours a team filter, like the other player selectors")
+    void resolveUnits_selfHonoursTeam() {
+        Player me = playerWithUnit(1, "Me", Team.sharded, Vars.content.unit("dagger"), 11, 100, 100);
+        MindustrySender sender = new MindustrySender.PlayerSender(me);
+
+        assertEquals(0, engine.resolveUnits(sender, SelectorSyntaxParser.parse("@s[team=crux]")).size);
+        assertEquals(1, engine.resolveUnits(sender, SelectorSyntaxParser.parse("@s[team=sharded]")).size);
+    }
+
+    @Test
+    @DisplayName("player selectors for units look past the first 100 players without a unit")
+    void resolveUnits_playersBeyondTheCap() {
+        for (int i = 0; i < 120; i++) {
+            createMockPlayer(100 + i, "Idle" + i, Team.sharded, 10, 10, false);
+        }
+        Player active = playerWithUnit(1, "Active", Team.sharded, Vars.content.unit("dagger"), 11, 100, 100);
+
+        Seq<Unit> resolved = engine.resolveUnits(new MindustrySender.ConsoleSender(), SelectorSyntaxParser.parse("@a"));
+
+        assertEquals(1, resolved.size);
+        assertEquals(active.unit(), resolved.first());
+    }
+
+    @Test
+    @DisplayName("a literal name matches without colors, surrounding spaces or repeated spaces")
+    void resolve_literalIgnoresSpacing() {
+        Player p = createMockPlayer(5, "Big  Bob [white]", Team.sharded, 10, 10, false);
+
+        Seq<Player> resolved = engine.resolvePlayers(new MindustrySender.ConsoleSender(), SelectorSyntaxParser.parse("big bob"));
+
+        assertEquals(1, resolved.size);
+        assertEquals(p, resolved.first());
+    }
+
+    @Test
+    @DisplayName("@e with a distance sorts every unit in range before the limit applies")
+    void resolveUnits_spatialSortBeforeLimit() {
+        UnitType dagger = Vars.content.unit("dagger");
+        createMockUnit(10, dagger, Team.crux, 60, 0, 100);
+        Unit nearest = createMockUnit(11, dagger, Team.crux, 10, 0, 100);
+        // The game loop fills the unit tree each frame (EntityCollisions.updatePhysics); do it here.
+        Groups.resize(-200, -200, 400, 400);
+        Groups.unit.tree().fill(Groups.unit.rawSeq());
+
+        Seq<Unit> resolved = engine.resolveUnits(new MindustrySender.ConsoleSender(),
+                SelectorSyntaxParser.parse("@e[x=0,y=0,distance=..20,sort=nearest,limit=1]"));
+
+        assertEquals(1, resolved.size);
+        assertEquals(nearest, resolved.first());
+    }
 }

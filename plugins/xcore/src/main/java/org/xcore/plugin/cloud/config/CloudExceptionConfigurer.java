@@ -107,7 +107,7 @@ public class CloudExceptionConfigurer {
      */
     private void sendParserException(CommandContext<XCoreSender> context, ParserException parserEx) {
         String message = context.formatCaption(parserEx.errorCaption(), parserEx.captionVariables());
-        boolean translated = bundle.has(CloudCaptionConfigurer.bundleKey(parserEx.errorCaption()));
+        boolean translated = bundle.has(context.sender().locale(), CloudCaptionConfigurer.bundleKey(parserEx.errorCaption()));
         // Bundle messages carry their own colors; the English defaults have none.
         context.sender().sendMessage(translated ? message : "[scarlet]" + message);
     }

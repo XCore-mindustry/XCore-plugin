@@ -139,4 +139,22 @@ public class KeyConstantsGeneratorTest {
         assertEquals(0, Files.getLastModifiedTime(file).toMillis(), "unchanged output is not rewritten");
         assertFalse(modified.toMillis() == 0);
     }
+
+    @Test
+    void factoriesTakeOnlyTheVariablesTheirValueRenders() throws IOException {
+        Files.writeString(dir.resolve("bundle_en.ftl"), """
+                title = Title
+                    .tooltip = For { $name }
+                menu = { title } and { help.hint }
+                help = Help
+                    .hint = Ask { $admin }
+                to-string = Text
+                """);
+
+        String source = KeyConstantsGenerator.generate(dir, "en", "p", "K");
+
+        assertTrue(source.contains("public static com.ospx.flubundle.Text title() {"), source);
+        assertTrue(source.contains("public static com.ospx.flubundle.Text menu(Object admin) {"), source);
+        assertTrue(source.contains("public static com.ospx.flubundle.Text toString_() {"), source);
+    }
 }

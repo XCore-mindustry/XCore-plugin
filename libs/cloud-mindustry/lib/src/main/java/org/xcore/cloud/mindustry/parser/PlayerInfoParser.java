@@ -65,23 +65,22 @@ public final class PlayerInfoParser<C> implements ArgumentParser<C, PlayerInfo>,
         if (admins == null) {
             return failure(Reason.NOT_FOUND, input.readString(), 0, context);
         }
-        String token = input.peekString().startsWith("#")
-                ? input.readString()
-                : PlayerNameInput.read(input, knownNames(admins));
-
-        if (token.startsWith("#")) {
-            Player player = arc.util.Strings.canParseInt(token.substring(1))
-                    ? Groups.player.getByID(arc.util.Strings.parseInt(token.substring(1)))
-                    : null;
+        // A #id or a UUID is one word; only a name needs the (larger) list of known names.
+        int start = input.cursor();
+        String word = input.readString();
+        if (word.startsWith("#") && arc.util.Strings.canParseInt(word.substring(1))) {
+            Player player = Groups.player.getByID(arc.util.Strings.parseInt(word.substring(1)));
             return player == null
-                    ? failure(Reason.NOT_FOUND, token, 0, context)
+                    ? failure(Reason.NOT_FOUND, word, 0, context)
                     : ArgumentParseResult.success(admins.getInfo(player.uuid()));
         }
-
-        PlayerInfo byUuid = admins.getInfoOptional(token);
+        PlayerInfo byUuid = admins.getInfoOptional(word);
         if (byUuid != null) {
             return ArgumentParseResult.success(byUuid);
         }
+
+        input.cursor(start);
+        String token = PlayerNameInput.read(input, knownNames(admins));
 
         List<PlayerInfo> matches = new ArrayList<>();
         for (PlayerInfo info : admins.playerInfo.values()) {
@@ -128,7 +127,7 @@ public final class PlayerInfoParser<C> implements ArgumentParser<C, PlayerInfo>,
     }
 
     private static boolean matchesName(String used, String name) {
-        return used != null && (used.equalsIgnoreCase(name) || arc.util.Strings.stripColors(used).trim().equalsIgnoreCase(name));
+        return used != null && (used.equalsIgnoreCase(name) || PlayerNameInput.matches(used, name));
     }
 
     private boolean isConsole(CommandContext<C> context) {

@@ -43,7 +43,9 @@ public final class BundleCaptionFormatter implements CaptionFormatter<XCoreSende
     public String formatCaption(Caption captionKey, XCoreSender recipient, String caption,
                                 List<CaptionVariable> variables) {
         String key = CloudCaptionConfigurer.bundleKey(captionKey);
-        if (bundle.has(key)) {
+        // The recipient's locale chain, as format() uses it: a key only another locale defines would
+        // otherwise render as the missing-key text.
+        if (bundle.has(recipient.locale(), key)) {
             return bundle.format(recipient.locale(), key, arguments(variables));
         }
 

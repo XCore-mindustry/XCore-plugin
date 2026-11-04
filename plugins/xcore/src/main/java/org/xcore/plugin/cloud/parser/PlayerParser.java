@@ -46,9 +46,7 @@ public class PlayerParser implements ArgumentParser<XCoreSender, Player>, Blocki
         // A name may contain spaces: quoted, or the longest run of words an online player is called.
         List<String> online = new ArrayList<>();
         Groups.player.each(p -> online.add(p.name));
-        String input = commandInput.peekString().startsWith("#")
-                ? commandInput.readString()
-                : PlayerNameInput.read(commandInput, online);
+        String input = PlayerNameInput.read(commandInput, online);
         XCoreSender sender = commandContext.sender();
         boolean isServer = !sender.isPlayer();
 
@@ -62,7 +60,8 @@ public class PlayerParser implements ArgumentParser<XCoreSender, Player>, Blocki
             }
         }
 
-        Player exactMatch = Groups.player.find(p -> TextUtils.deepEquals(p.name, input));
+        Player exactMatch = Groups.player.find(p -> TextUtils.deepEquals(p.name, input)
+                || PlayerNameInput.matches(p.name, input));
         if (exactMatch != null) {
             return ArgumentParseResult.success(exactMatch);
         }

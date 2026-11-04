@@ -68,7 +68,7 @@ class CloudExceptionHandlingIntegrationTest {
         var sessionService = mock(SessionService.class);
         var bundle = mock(Bundle.class);
         when(bundle.format(any(), anyString(), anyMap())).thenAnswer(i -> "msg:" + i.getArgument(1));
-        when(bundle.has(anyString())).thenReturn(true);
+        when(bundle.has(any(), anyString())).thenReturn(true);
         this.bundle = bundle;
 
         player = mock(Player.class);
@@ -215,7 +215,7 @@ class CloudExceptionHandlingIntegrationTest {
     @Test
     @DisplayName("a parser caption the bundle does not translate falls back to its default text, not the raw key")
     void untranslatedParserCaption_usesDefaultText() {
-        when(bundle.has("argument-parse-failure-player-info")).thenReturn(false);
+        when(bundle.has(any(), org.mockito.ArgumentMatchers.eq("argument-parse-failure-player-info"))).thenReturn(false);
         parser.parse(new Object() {
             @Command("seen <who>")
             public void seen(XCoreSender sender, @Argument("who") Administration.PlayerInfo who) {
@@ -279,10 +279,17 @@ class CloudExceptionHandlingIntegrationTest {
             }
         });
 
+        Player hash = Player.create();
+        hash.id = 8;
+        hash.name = "#Big Bob";
+        hash.add();
+
         runAsConsole("look Big Bob now");
         runAsConsole("look \"big bob\"");
+        runAsConsole("look #Big Bob");
+        runAsConsole("look #7");
 
-        assertThat(targets).containsExactly("Big Bob|now", "Big Bob|null");
+        assertThat(targets).containsExactly("Big Bob|now", "Big Bob|null", "#Big Bob|null", "Big Bob|null");
         assertThat(consoleMessages).isEmpty();
     }
 }

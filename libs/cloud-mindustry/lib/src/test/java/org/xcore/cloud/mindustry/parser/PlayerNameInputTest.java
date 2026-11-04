@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class PlayerNameInputTest {
 
@@ -55,5 +56,16 @@ class PlayerNameInputTest {
 
         assertEquals("\"Some", PlayerNameInput.read(input, NAMES));
         assertEquals("rest", input.remainingInput().strip());
+    }
+
+    @Test
+    @DisplayName("the name is returned as typed, repeated spaces included, and matches ignore spacing")
+    void spacingIsKept() {
+        CommandInput input = CommandInput.of("Big  Bob rest");
+
+        assertEquals("Big  Bob", PlayerNameInput.read(input, List.of("Big  Bob")));
+        assertEquals("rest", input.remainingInput().strip());
+        assertEquals("Big  Bob", PlayerNameInput.read(CommandInput.of("\"Big  Bob\""), List.of()));
+        assertTrue(PlayerNameInput.matches("[gold]Big  Bob [white]", "big bob"));
     }
 }
