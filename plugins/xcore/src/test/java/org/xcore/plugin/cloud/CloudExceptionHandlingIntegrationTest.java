@@ -84,7 +84,7 @@ class CloudExceptionHandlingIntegrationTest {
 
         var metrics = new DefaultMetricsService(new LocalMetricRegistry(), new TomlXcoreConfig());
         var factory = new CloudManagerFactory(bundle, () -> sessionService, metrics,
-                new PermissionService(), new RemoteConsoleScope(), mock(CloudCaptionConfigurer.class));
+                new PermissionService(), new RemoteConsoleScope(), new CloudCaptionConfigurer(bundle));
         manager = factory.createManager(new CommandHandler(""));
         new CloudParserConfigurer(mock(TimeService.class), mock(TranslatorLanguagesProvider.class)).configure(manager);
         new CloudExceptionConfigurer(bundle, () -> sessionService).configure(manager);

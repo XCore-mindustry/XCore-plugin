@@ -6,7 +6,6 @@ import jakarta.inject.Inject;
 import jakarta.inject.Provider;
 import jakarta.inject.Singleton;
 import mindustry.gen.Player;
-import org.incendo.cloud.caption.CaptionVariable;
 import org.incendo.cloud.context.CommandContext;
 import org.incendo.cloud.exception.ArgumentParseException;
 import org.incendo.cloud.exception.InvalidSyntaxException;
@@ -17,7 +16,6 @@ import org.xcore.plugin.cloud.XCoreSender;
 import org.xcore.plugin.cloud.exception.XCoreCommandException;
 import org.xcore.plugin.session.SessionService;
 
-import java.util.HashMap;
 import java.util.Map;
 
 import static com.ospx.flubundle.Bundle.args;
@@ -103,23 +101,15 @@ public class CloudExceptionConfigurer {
     }
 
     /**
-     * A parser failure with a Cloud caption: the bundle message when XCore translates it, otherwise
-     * the caption's own text (the English default of Cloud or cloud-mindustry), never the raw key.
+     * A parser failure with a Cloud caption, rendered by the manager's caption formatter
+     * ({@link BundleCaptionFormatter}): the bundle message when XCore translates the key, otherwise the
+     * caption's own text (the English default of Cloud or cloud-mindustry), never the raw key.
      */
     private void sendParserException(CommandContext<XCoreSender> context, ParserException parserEx) {
-        XCoreSender sender = context.sender();
-        String key = CloudCaptionConfigurer.bundleKey(parserEx.errorCaption());
-
-        if (bundle.has(key)) {
-            Map<String, Object> arguments = new HashMap<>();
-            for (CaptionVariable variable : parserEx.captionVariables()) {
-                arguments.put(variable.key(), variable.value());
-            }
-            send(sender, key, arguments);
-            return;
-        }
-
-        sender.sendMessage("[scarlet]" + context.formatCaption(parserEx.errorCaption(), parserEx.captionVariables()));
+        String message = context.formatCaption(parserEx.errorCaption(), parserEx.captionVariables());
+        boolean translated = bundle.has(CloudCaptionConfigurer.bundleKey(parserEx.errorCaption()));
+        // Bundle messages carry their own colors; the English defaults have none.
+        context.sender().sendMessage(translated ? message : "[scarlet]" + message);
     }
 
     private <T extends Throwable> T findCause(Throwable throwable, Class<T> type) {
