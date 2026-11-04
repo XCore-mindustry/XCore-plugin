@@ -237,14 +237,24 @@ public class MindustryCommandManager<C> extends CommandManager<C> {
 
             CompletableFuture<CommandResult<C>> result = new CompletableFuture<>();
             try {
-                simulationExecutor.execute(() -> delegate.executeCommand(sender, input, contextConsumer)
-                        .whenComplete((value, failure) -> {
-                            if (failure != null) {
-                                result.completeExceptionally(failure);
-                            } else {
-                                result.complete(value);
-                            }
-                        }));
+                simulationExecutor.execute(() -> {
+                    try {
+                        delegate.executeCommand(sender, input, contextConsumer)
+                                .whenComplete((value, failure) -> {
+                                    if (failure != null) {
+                                        result.completeExceptionally(failure);
+                                    } else {
+                                        result.complete(value);
+                                    }
+                                });
+                    } catch (RuntimeException e) {
+                        // Thrown before Cloud returned a future, e.g. by the context consumer.
+                        // Without this the caller would wait forever; rethrowing would only
+                        // reach the game loop.
+                        Log.err("[cloud] Command '" + input + "' failed before it was handled", e);
+                        result.completeExceptionally(e);
+                    }
+                });
             } catch (RejectedExecutionException e) {
                 result.completeExceptionally(e);
             }

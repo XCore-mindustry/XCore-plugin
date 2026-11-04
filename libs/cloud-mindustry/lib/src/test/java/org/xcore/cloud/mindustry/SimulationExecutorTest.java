@@ -138,6 +138,20 @@ class SimulationExecutorTest {
     }
 
     @Test
+    @DisplayName("A queued command that throws before Cloud returns a future still completes the caller's future")
+    void queuedCommand_synchronousFailure_completesFuture() {
+        var manager = manager(loop.simulation, ExecutionCoordinator.coordinatorFor(loop.simulation));
+        manager.command(manager.commandBuilder("noop").handler(ctx -> {}));
+
+        var future = manager.commandExecutor().executeCommand(console(), "noop", context -> {
+            throw new IllegalStateException("context consumer failed");
+        });
+
+        var thrown = assertThrows(java.util.concurrent.ExecutionException.class, () -> future.get(10, TimeUnit.SECONDS));
+        assertEquals("context consumer failed", thrown.getCause().getMessage());
+    }
+
+    @Test
     @DisplayName("A command that has failed before Cloud attaches its error handling is still answered on the simulation thread")
     void alreadyFailedCommand_isAnsweredOnOwner() {
         // Cloud handles the failure on whichever thread finds the future completed; a coordinator

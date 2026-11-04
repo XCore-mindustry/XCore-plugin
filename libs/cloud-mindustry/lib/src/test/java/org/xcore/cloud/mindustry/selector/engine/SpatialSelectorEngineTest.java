@@ -31,6 +31,11 @@ class SpatialSelectorEngineTest {
     @BeforeAll
     static void initMindustry() {
         Vars.state = new GameState();
+        // Adding units and giving players one goes through Call, which needs a Net, and the
+        // unit cap would kill units beyond what a team without cores may have.
+        Vars.headless = true;
+        Vars.net = new mindustry.net.Net(null);
+        Vars.state.rules.disableUnitCap = true;
         // since v160 adding a physics unit registers it with PhysicsProcess, which reads the world bounds
         if (Vars.world == null) Vars.world = new World();
         if (Vars.content == null) {
@@ -165,5 +170,137 @@ class SpatialSelectorEngineTest {
 
         TargetSelectorSpec notFound = SelectorSyntaxParser.parse("NonExistentPlayer");
         assertThrows(NoSuchTargetException.class, () -> engine.resolvePlayers(console, notFound));
+    }
+
+    private Player playerWithUnit(int id, String name, Team team, UnitType type, int unitId, float x, float y) {
+        Player p = createMockPlayer(id, name, team, x, y, false);
+        Unit u = createMockUnit(unitId, type, team, x, y, 100);
+        p.unit(u);
+        return p;
+    }
+
+    @Test
+    @DisplayName("@s for units resolves the sender's own unit, not whichever unit comes first")
+    void resolveUnits_selfIsSendersUnit() {
+        UnitType dagger = Vars.content.unit("dagger");
+        createMockUnit(10, dagger, Team.crux, 900, 900, 100);
+        Player me = playerWithUnit(1, "Me", Team.sharded, dagger, 11, 100, 100);
+
+        Seq<Unit> resolved = engine.resolveUnits(new MindustrySender.PlayerSender(me), SelectorSyntaxParser.parse("@s"));
+
+        assertEquals(1, resolved.size);
+        assertEquals(me.unit(), resolved.first());
+    }
+
+    @Test
+    @DisplayName("@s for units from the console needs a player")
+    void resolveUnits_selfFromConsoleThrows() {
+        createMockUnit(10, Vars.content.unit("dagger"), Team.crux, 900, 900, 100);
+
+        assertThrows(SelectorSenderRequirementException.class,
+                () -> engine.resolveUnits(new MindustrySender.ConsoleSender(), SelectorSyntaxParser.parse("@s")));
+    }
+
+    @Test
+    @DisplayName("@a for units selects the units players control, skipping players without one")
+    void resolveUnits_allPlayersSelectsPlayerUnits() {
+        UnitType dagger = Vars.content.unit("dagger");
+        createMockUnit(10, dagger, Team.crux, 50, 50, 100);
+        Player alice = playerWithUnit(1, "Alice", Team.sharded, dagger, 11, 100, 100);
+        Player bob = playerWithUnit(2, "Bob", Team.crux, dagger, 12, 200, 200);
+        createMockPlayer(3, "Unitless", Team.sharded, 300, 300, false);
+
+        Seq<Unit> resolved = engine.resolveUnits(new MindustrySender.ConsoleSender(), SelectorSyntaxParser.parse("@a"));
+
+        assertEquals(2, resolved.size);
+        assertTrue(resolved.contains(alice.unit(), true));
+        assertTrue(resolved.contains(bob.unit(), true));
+    }
+
+    @Test
+    @DisplayName("player selectors for units honour player filters and the unit type")
+    void resolveUnits_playerSelectorFilters() {
+        UnitType dagger = Vars.content.unit("dagger");
+        UnitType flare = Vars.content.unit("flare");
+        playerWithUnit(1, "Alice", Team.sharded, dagger, 11, 100, 100);
+        Player bob = playerWithUnit(2, "Bob", Team.crux, flare, 12, 200, 200);
+        Player carol = playerWithUnit(3, "Carol", Team.crux, dagger, 13, 300, 300);
+        MindustrySender console = new MindustrySender.ConsoleSender();
+
+        Seq<Unit> crux = engine.resolveUnits(console, SelectorSyntaxParser.parse("@a[team=crux]"));
+        assertEquals(2, crux.size);
+
+        Seq<Unit> flares = engine.resolveUnits(console, SelectorSyntaxParser.parse("@a[type=flare]"));
+        assertEquals(1, flares.size);
+        assertEquals(bob.unit(), flares.first());
+
+        Seq<Unit> nearestDagger = engine.resolveUnits(console,
+                SelectorSyntaxParser.parse("@p[x=40,y=40,type=dagger,team=crux]"));
+        assertEquals(1, nearestDagger.size);
+        assertEquals(carol.unit(), nearestDagger.first());
+    }
+
+    @Test
+    @DisplayName("a player name for units selects that player's unit")
+    void resolveUnits_literalSelectsPlayersUnit() {
+        UnitType dagger = Vars.content.unit("dagger");
+        createMockUnit(10, dagger, Team.crux, 50, 50, 100);
+        Player bob = playerWithUnit(2, "Bob", Team.crux, dagger, 12, 200, 200);
+        MindustrySender console = new MindustrySender.ConsoleSender();
+
+        Seq<Unit> resolved = engine.resolveUnits(console, SelectorSyntaxParser.parse("Bob"));
+        assertEquals(1, resolved.size);
+        assertEquals(bob.unit(), resolved.first());
+
+        assertThrows(NoSuchTargetException.class,
+                () -> engine.resolveUnits(console, SelectorSyntaxParser.parse("Nobody")));
+    }
+
+    @Test
+    @DisplayName("@e[sort=nearest] sorts every candidate before the limit applies")
+    void resolveUnits_sortBeforeLimit() {
+        UnitType dagger = Vars.content.unit("dagger");
+        for (int i = 0; i < 5; i++) {
+            createMockUnit(100 + i, dagger, Team.crux, 5000, 5000 + i * 10, 100);
+        }
+        Unit nearest = createMockUnit(200, dagger, Team.crux, 12, 12, 100);
+
+        Seq<Unit> resolved = engine.resolveUnits(new MindustrySender.ConsoleSender(),
+                SelectorSyntaxParser.parse("@e[x=0,y=0,sort=nearest,limit=1]"));
+
+        assertEquals(1, resolved.size);
+        assertEquals(nearest, resolved.first());
+    }
+
+    @Test
+    @DisplayName("@e[type=...,sort=health] sorts every unit of that type before the limit applies")
+    void resolveUnits_sortBeforeLimitByType() {
+        UnitType dagger = Vars.content.unit("dagger");
+        for (int i = 0; i < 5; i++) {
+            createMockUnit(100 + i, dagger, Team.crux, 5000, 5000 + i * 10, 100);
+        }
+        Unit weakest = createMockUnit(200, dagger, Team.crux, 3000, 3000, 10);
+
+        Seq<Unit> resolved = engine.resolveUnits(new MindustrySender.ConsoleSender(),
+                SelectorSyntaxParser.parse("@e[type=dagger,sort=health,limit=1]"));
+
+        assertEquals(1, resolved.size);
+        assertEquals(weakest, resolved.first());
+    }
+
+    @Test
+    @DisplayName("@e finds units beyond the first few hundred")
+    void resolveUnits_noScanCeiling() {
+        UnitType dagger = Vars.content.unit("dagger");
+        for (int i = 0; i < 600; i++) {
+            createMockUnit(1000 + i, dagger, Team.sharded, 100, 100, 100);
+        }
+        Unit flare = createMockUnit(5000, Vars.content.unit("flare"), Team.sharded, 100, 100, 100);
+
+        Seq<Unit> resolved = engine.resolveUnits(new MindustrySender.ConsoleSender(),
+                SelectorSyntaxParser.parse("@e[type=flare]"));
+
+        assertEquals(1, resolved.size);
+        assertEquals(flare, resolved.first());
     }
 }
