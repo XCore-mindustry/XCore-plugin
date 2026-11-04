@@ -125,8 +125,9 @@ to an id another plugin's bundle defines is allowed with
 and warns about dropped variables, orphan keys and untranslated keys.
 
 ### Key constants
-`KeyConstantsGenerator` turns the base locale into a class of `String` constants, so a renamed key
-breaks compilation:
+`KeyConstantsGenerator` turns the base locale into a class with a `String` constant per key and a
+method per message that takes exactly its variables, so a renamed key or a missing argument breaks
+compilation:
 ```kotlin
 val generateBundleKeys by tasks.registering(JavaExec::class) {
     val output = layout.buildDirectory.dir("generated/sources/bundleKeys")
@@ -140,6 +141,7 @@ sourceSets.main { java.srcDir(generateBundleKeys) }
 ```
 ```java
 messenger.to(player).send(BundleKeys.HEXED_ROUND_STARTED);
+messenger.all().announce(BundleKeys.hexedCountdownTick(5));   // Text with $seconds = 5
 ```
 
 ## Features
