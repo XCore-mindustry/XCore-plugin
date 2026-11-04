@@ -355,4 +355,15 @@ class SpatialSelectorEngineTest {
         assertEquals(1, resolved.size);
         assertEquals(nearest, resolved.first());
     }
+
+    @Test
+    @DisplayName("a literal name prefers the exact name over one that differs only in spacing")
+    void resolve_literalPrefersExactName() {
+        Player doubleSpaced = createMockPlayer(1, "Big  Bob", Team.sharded, 10, 10, false);
+        Player single = createMockPlayer(2, "Big Bob", Team.sharded, 20, 20, false);
+        MindustrySender console = new MindustrySender.ConsoleSender();
+
+        assertEquals(single, engine.resolvePlayers(console, SelectorSyntaxParser.parse("Big Bob")).first());
+        assertEquals(doubleSpaced, engine.resolvePlayers(console, SelectorSyntaxParser.parse("Big  Bob")).first());
+    }
 }

@@ -329,8 +329,12 @@ public final class SpatialSelectorEngine {
             }
         }
 
-        // Name, as PlayerNameInput read it: no colors, any case, spacing ignored
-        Player found = Groups.player.find(p -> PlayerNameInput.matches(p.plainName(), nameOrId));
+        // The exact name first (no colors, any case), so "Big  Bob" does not select "Big Bob"
+        Player found = Groups.player.find(p -> Strings.stripColors(p.plainName()).equalsIgnoreCase(nameOrId));
+        if (found != null) return found;
+
+        // Then as PlayerNameInput reads it: spacing ignored as well
+        found = Groups.player.find(p -> PlayerNameInput.matches(p.plainName(), nameOrId));
         if (found != null) return found;
 
         // Console UUID / IP match

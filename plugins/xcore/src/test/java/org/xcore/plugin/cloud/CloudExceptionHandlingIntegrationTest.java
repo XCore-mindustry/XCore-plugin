@@ -225,6 +225,7 @@ class CloudExceptionHandlingIntegrationTest {
         assertThat(run("seen nobody"))
                 .singleElement()
                 .satisfies(message -> assertThat(message)
+                        .startsWith("[scarlet]")
                         .contains("No player record matches")
                         .doesNotContain("argument-parse-failure-player-info"));
     }
@@ -291,5 +292,31 @@ class CloudExceptionHandlingIntegrationTest {
 
         assertThat(targets).containsExactly("Big Bob|now", "Big Bob|null", "#Big Bob|null", "Big Bob|null");
         assertThat(consoleMessages).isEmpty();
+    }
+
+    @Test
+    @DisplayName("an exact player name wins over one that differs only in spacing")
+    void playerNameExactMatchFirst() {
+        mindustry.gen.Groups.init();
+        Player doubleSpaced = Player.create();
+        doubleSpaced.id = 1;
+        doubleSpaced.name = "Big  Bob";
+        doubleSpaced.add();
+        Player single = Player.create();
+        single.id = 2;
+        single.name = "Big Bob";
+        single.add();
+        var targets = new ArrayList<Integer>();
+        parser.parse(new Object() {
+            @Command("pick <target>")
+            public void pick(XCoreSender sender, @Argument("target") Player target) {
+                targets.add(target.id);
+            }
+        });
+
+        runAsConsole("pick Big Bob");
+        runAsConsole("pick \"Big  Bob\"");
+
+        assertThat(targets).containsExactly(2, 1);
     }
 }

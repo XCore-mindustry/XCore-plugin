@@ -60,8 +60,11 @@ public class PlayerParser implements ArgumentParser<XCoreSender, Player>, Blocki
             }
         }
 
-        Player exactMatch = Groups.player.find(p -> TextUtils.deepEquals(p.name, input)
-                || PlayerNameInput.matches(p.name, input));
+        // The exact name first, so a "Big  Bob" online does not take "/cmd Big Bob" from "Big Bob".
+        Player exactMatch = Groups.player.find(p -> TextUtils.deepEquals(p.name, input));
+        if (exactMatch == null) {
+            exactMatch = Groups.player.find(p -> PlayerNameInput.matches(p.name, input));
+        }
         if (exactMatch != null) {
             return ArgumentParseResult.success(exactMatch);
         }

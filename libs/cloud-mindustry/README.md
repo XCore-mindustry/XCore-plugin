@@ -211,7 +211,7 @@ record of, online or not: by UUID, by any name they have used, by `#id` if they 
 console by IP.
 
 - A name or IP that matches several records is an error; the parser never picks one.
-- A name of up to 8 words works as typed when some record has that name; any name works in quotes: `"Some Name"`.
+- A name of up to 8 words works as typed when some record has that name; any name without a `"` in it works in quotes: `"Some Name"`.
 - Suggestions list online players only.
 
 ### 11. Threads
