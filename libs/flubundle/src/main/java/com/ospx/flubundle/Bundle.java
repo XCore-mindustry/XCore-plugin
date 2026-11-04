@@ -474,6 +474,10 @@ public class Bundle {
                 (team, scope) -> ContentNames.vanilla().name(team, scope.locale()));
         registryBuilder.addDefaultFormatter(UnlockableContent.class,
                 (content, scope) -> ContentNames.vanilla().name(content, scope.locale()));
+        // Arguments rendered in the locale of the message that contains them.
+        registryBuilder.addDefaultFormatter(Localized.class,
+                (value, scope) -> String.valueOf(value.render(scope.locale())));
+        registryBuilder.addDefaultFormatterExact(Text.class, (text, scope) -> format(scope.locale(), text));
     }
 
     private FluentFunctionRegistry ensureRegistry() {

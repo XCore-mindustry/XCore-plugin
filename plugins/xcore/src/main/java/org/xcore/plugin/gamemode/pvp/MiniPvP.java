@@ -8,7 +8,10 @@ import org.xcore.plugin.startup.ShutdownOrder;
 import arc.struct.Seq;
 import com.ospx.flubundle.Args;
 import com.ospx.flubundle.Bundle;
+import com.ospx.flubundle.Localized;
+import com.ospx.flubundle.Text;
 import com.ospx.flubundle.mindustry.ContentNames;
+import com.ospx.flubundle.mindustry.Messenger;
 import io.avaje.inject.PostConstruct;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
@@ -33,7 +36,6 @@ import org.xcore.plugin.session.ObserverService;
 import org.xcore.plugin.session.Session;
 import org.xcore.plugin.session.SessionService;
 
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
@@ -224,12 +226,9 @@ public class MiniPvP {
         }
 
         // Rendered once per locale: team names and the HUD label are localized.
-        Bundle bundle = Bundle.INSTANCE;
-        Map<Locale, String> rendered = new HashMap<>();
-        Groups.player.each(player -> {
-            if (player.con == null) return;
-            String text = rendered.computeIfAbsent(bundle.locale(player), locale -> bundle.format(locale,
-                    "pvp-hud-status", Args.of("teams", teamsLine(alive, locale), "time", timeStr)));
+        Text status = Text.of("pvp-hud-status",
+                Args.of("teams", Localized.by(locale -> teamsLine(alive, locale)), "time", timeStr));
+        Messenger.of(Bundle.INSTANCE).filter(player -> player.con != null).deliver(status, (player, text) -> {
             try {
                 Call.setHudText(player.con, text);
             } catch (Exception ignored) {

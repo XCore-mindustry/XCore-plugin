@@ -47,6 +47,16 @@ messenger.filter(p -> p.admin).popup(text, Popup.at(Align.top).duration(5f));
 messenger.to(players).deliver(text, (player, message) -> customTransport(player, message));
 ```
 
+### Arguments that depend on the locale
+A `Localized` argument is rendered in the locale of the message that contains it, so one broadcast
+still renders once per locale. A `Text` argument is rendered the same way:
+```java
+messenger.all().hud("pvp-hud-status", Args.of(
+        "teams", Localized.by(locale -> teamsLine(alive, locale)),
+        "time", time));
+messenger.to(player).send("ban-notice", Args.of("reason", Text.of("ban-reason-griefing")));
+```
+
 ### Vanilla content names
 A dedicated server loads no game bundles. FluBundle ships the names of vanilla blocks, units, items,
 liquids, status effects, teams, planets, sectors and weather in every language Mindustry is
