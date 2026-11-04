@@ -1287,7 +1287,7 @@ ban-menu-confirm-content =
 ban-menu-confirm-action = [scarlet]Zabanovat hráče
 error-invalid-syntax = [scarlet]⚠ Neplatná syntaxe příkazu. Použití: [lightgray]/'{ $syntax }'.
 error-invalid-sender = [scarlet]⚠ Neplatný odesílatel příkazu. Tento příkaz vyžaduje: '[lightgray]{ $type }[]'.
-error-argument-parse-generic = [scarlet]⚠ Neplatný argument: '{ $error }'.
+error-argument-parse-generic = [scarlet]⚠ Neplatný argument.
 exception-unexpected = [scarlet]⚠ Při provádění tohoto příkazu došlo k interní chybě.
 exception-invalid-argument = [scarlet]⚠ Neplatný argument příkazu: '{ $cause }'.
 exception-no-such-command = [scarlet]⚠ Neznámý příkaz.
@@ -1322,6 +1322,10 @@ argument-parse-failure-selector-sender-required = [scarlet]⚠ Selektor '{ $kind
 argument-parse-failure-selector-limit-exceeded = [scarlet]⚠ Selektor odpovídá { $count } cílům, limit je { $limit }.
 argument-parse-failure-team = [scarlet]⚠ Tým '{ $input }' nebyl nalezen.
 argument-parse-failure-content = [scarlet]⚠ '{ $input }' není platná hodnota typu { $type }.
+argument-parse-failure-player-info = [scarlet]⚠ Žádný záznam hráče neodpovídá '{ $input }'.
+argument-parse-failure-player-info-ambiguous = [scarlet]⚠ '{ $input }' odpovídá více záznamům hráčů ({ $count }); použijte UUID.
+argument-parse-failure-player-info-ip-denied = [scarlet]⚠ Hráče lze podle IP vyhledávat pouze z konzole.
+mindustry-sender-player-required = [scarlet]⚠ Tento příkaz mohou používat pouze hráči.
 # ==============================================================================
 # Button Status
 # ==============================================================================

@@ -1273,7 +1273,7 @@ ban-menu-confirm-content =
 ban-menu-confirm-action = [scarlet]Banear jugador
 error-invalid-syntax = [scarlet]⚠ Sintaxis del comando no válida. Uso: [lightgray]/'{ $syntax }'.
 error-invalid-sender = [scarlet]⚠ Emisor del comando no válido. Este comando requiere: '[lightgray]{ $type }[]'.
-error-argument-parse-generic = [scarlet]⚠ Argumento no válido: '{ $error }'.
+error-argument-parse-generic = [scarlet]⚠ Argumento no válido.
 exception-unexpected = [scarlet]⚠ Se produjo un error interno al ejecutar este comando.
 exception-invalid-argument = [scarlet]⚠ Argumento del comando no válido: '{ $cause }'.
 exception-no-such-command = [scarlet]⚠ Comando desconocido.
@@ -1308,6 +1308,10 @@ argument-parse-failure-selector-sender-required = [scarlet]⚠ El selector '{ $k
 argument-parse-failure-selector-limit-exceeded = [scarlet]⚠ El selector coincide con { $count } objetivos, el límite es { $limit }.
 argument-parse-failure-team = [scarlet]⚠ Equipo '{ $input }' no encontrado.
 argument-parse-failure-content = [scarlet]⚠ '{ $input }' no es un { $type } válido.
+argument-parse-failure-player-info = [scarlet]⚠ Ningún registro de jugador coincide con '{ $input }'.
+argument-parse-failure-player-info-ambiguous = [scarlet]⚠ '{ $input }' coincide con varios registros de jugadores ({ $count }); usa un UUID.
+argument-parse-failure-player-info-ip-denied = [scarlet]⚠ Solo se puede buscar jugadores por IP desde la consola.
+mindustry-sender-player-required = [scarlet]⚠ Este comando solo puede usarse por jugadores.
 # ==============================================================================
 # Button Status
 # ==============================================================================

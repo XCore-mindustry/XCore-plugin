@@ -1215,7 +1215,7 @@ ban-menu-confirm-content =
 ban-menu-confirm-action = [scarlet]Забанить игрока
 error-invalid-syntax = [scarlet]⚠ Неверный синтаксис команды. Использование: [lightgray]/'{ $syntax }'.
 error-invalid-sender = [scarlet]⚠ Неверный отправитель команды. Требуется: '[lightgray]{ $type }[]'.
-error-argument-parse-generic = [scarlet]⚠ Ошибка аргумента: '{ $error }'.
+error-argument-parse-generic = [scarlet]⚠ Ошибка аргумента.
 exception-unexpected = [scarlet]⚠ Внутренняя ошибка при выполнении команды.
 exception-invalid-argument = [scarlet]⚠ Неверный аргумент команды: '{ $cause }'.
 exception-no-such-command = [scarlet]⚠ Неизвестная команда.
@@ -1250,6 +1250,10 @@ argument-parse-failure-selector-sender-required = [scarlet]⚠ Селектор 
 argument-parse-failure-selector-limit-exceeded = [scarlet]⚠ Селектор нашёл { $count } целей, лимит — { $limit }.
 argument-parse-failure-team = [scarlet]⚠ Команда '{ $input }' не найдена.
 argument-parse-failure-content = [scarlet]⚠ '{ $input }' не является допустимым { $type }.
+argument-parse-failure-player-info = [scarlet]⚠ Нет записи об игроке '{ $input }'.
+argument-parse-failure-player-info-ambiguous = [scarlet]⚠ '{ $input }' подходит под несколько записей игроков ({ $count }); укажите UUID.
+argument-parse-failure-player-info-ip-denied = [scarlet]⚠ Искать игроков по IP можно только из консоли.
+mindustry-sender-player-required = [scarlet]⚠ Эту команду могут использовать только игроки.
 # ==============================================================================
 # Button Status
 # ==============================================================================

@@ -7,6 +7,7 @@ import jakarta.inject.Provider;
 import jakarta.inject.Singleton;
 import mindustry.gen.Player;
 import org.incendo.cloud.caption.CaptionVariable;
+import org.incendo.cloud.context.CommandContext;
 import org.incendo.cloud.exception.ArgumentParseException;
 import org.incendo.cloud.exception.InvalidSyntaxException;
 import org.incendo.cloud.exception.NoPermissionException;
@@ -21,6 +22,12 @@ import java.util.Map;
 
 import static com.ospx.flubundle.Bundle.args;
 
+/**
+ * Turns command failures into localized messages, for players and the console alike.
+ *
+ * <p>Exception messages are never shown to the sender: they can carry internal details (thread
+ * names, SQL, stack-derived text). Unexpected failures are logged with their stack trace instead.
+ */
 @Singleton
 public class CloudExceptionConfigurer {
 
@@ -38,32 +45,14 @@ public class CloudExceptionConfigurer {
         manager.exceptionController().registerHandler(XCoreCommandException.class, ctx -> {
             XCoreCommandException ex = ctx.exception();
             if (ex.isSilent()) return;
-
-            XCoreSender sender = ctx.context().sender();
-            sendXCoreException(sender, ex);
+            sendXCoreException(ctx.context().sender(), ex);
         });
 
-        manager.exceptionController().registerHandler(InvalidSyntaxException.class, ctx -> {
-            InvalidSyntaxException ex = ctx.exception();
-            String correctSyntax = ex.correctSyntax();
-            XCoreSender sender = ctx.context().sender();
-            if (sender.isPlayer()) {
-                sendToPlayer(sender.player(), "error-invalid-syntax", args("syntax", correctSyntax));
-            } else {
-                sender.sendMessage("Invalid Syntax. Usage: " + correctSyntax);
-            }
-        });
+        manager.exceptionController().registerHandler(InvalidSyntaxException.class, ctx ->
+                send(ctx.context().sender(), "error-invalid-syntax", args("syntax", ctx.exception().correctSyntax())));
 
-        manager.exceptionController().registerHandler(NoPermissionException.class, ctx -> {
-            XCoreSender sender = ctx.context().sender();
-            String key = "error-access-denied";
-
-            if (sender.isPlayer()) {
-                sendToPlayer(sender.player(), key, args());
-            } else {
-                sender.sendMessage("Error: " + key);
-            }
-        });
+        manager.exceptionController().registerHandler(NoPermissionException.class, ctx ->
+                send(ctx.context().sender(), "error-access-denied", args()));
 
         manager.exceptionController().registerHandler(ArgumentParseException.class, ctx -> {
             Throwable exception = ctx.exception();
@@ -78,65 +67,59 @@ public class CloudExceptionConfigurer {
 
             ParserException parserEx = findCause(exception, ParserException.class);
             if (parserEx != null) {
-                String key = CloudCaptionConfigurer.bundleKey(parserEx.errorCaption());
-
-                Map<String, Object> arguments = new HashMap<>();
-                for (CaptionVariable variable : parserEx.captionVariables()) {
-                    arguments.put(variable.key(), variable.value());
-                }
-
-                if (sender.isPlayer()) {
-                    sendToPlayer(sender.player(), key, arguments);
-                } else {
-                    sender.sendMessage("Parse Error (" + key + "): " + parserEx.getMessage());
-                }
+                sendParserException(ctx.context(), parserEx);
                 return;
             }
 
-            Throwable cause = rootCause(exception);
-            String errorMsg = cause.getMessage();
-            if (sender.isPlayer()) {
-                sendToPlayer(sender.player(), "error-argument-parse-generic", args("error", errorMsg));
-            } else {
-                sender.sendMessage("Parse Error: " + errorMsg);
-            }
+            // A parser rejected the input with a plain exception. Its message was written for
+            // developers, so it goes to the log and the sender gets the generic text.
+            Throwable cause = exception.getCause() != null ? exception.getCause() : exception;
+            Log.warn("[cloud] Argument rejected for @: @: @", sender.isPlayer() ? sender.player().plainName() : "console",
+                    cause.getClass().getSimpleName(), cause.getMessage());
+            send(sender, "error-argument-parse-generic", args());
         });
 
         manager.exceptionController().registerHandler(Exception.class, ctx -> {
             Throwable exception = ctx.exception();
+            XCoreSender sender = ctx.context().sender();
 
             XCoreCommandException xcoreEx = findCause(exception, XCoreCommandException.class);
             if (xcoreEx != null) {
                 if (xcoreEx.isSilent()) return;
-                XCoreSender sender = ctx.context().sender();
                 sendXCoreException(sender, xcoreEx);
                 return;
             }
 
-            Throwable cause = rootCause(exception);
-            String messageKey = "error-internal";
-
-            if (findCause(exception, InvalidSyntaxException.class) != null) {
-                messageKey = "error-invalid-syntax";
+            InvalidSyntaxException syntax = findCause(exception, InvalidSyntaxException.class);
+            if (syntax != null) {
+                send(sender, "error-invalid-syntax", args("syntax", syntax.correctSyntax()));
+                return;
             }
 
-            XCoreSender sender = ctx.context().sender();
-            if (sender.isPlayer()) {
-                Log.err("Command failed for player " + sender.player().plainName(), exception);
-                sendToPlayer(sender.player(), messageKey, args());
-            } else {
-                Log.err("Command failed", exception);
-                sender.sendMessage("[red]System Error: " + cause.getMessage());
-            }
+            Log.err("Command failed for " + (sender.isPlayer() ? "player " + sender.player().plainName() : "console"),
+                    exception);
+            send(sender, "error-internal", args());
         });
     }
 
-    private Throwable rootCause(Throwable throwable) {
-        Throwable current = throwable;
-        while (current.getCause() != null && current.getCause() != current) {
-            current = current.getCause();
+    /**
+     * A parser failure with a Cloud caption: the bundle message when XCore translates it, otherwise
+     * the caption's own text (the English default of Cloud or cloud-mindustry), never the raw key.
+     */
+    private void sendParserException(CommandContext<XCoreSender> context, ParserException parserEx) {
+        XCoreSender sender = context.sender();
+        String key = CloudCaptionConfigurer.bundleKey(parserEx.errorCaption());
+
+        if (bundle.has(key)) {
+            Map<String, Object> arguments = new HashMap<>();
+            for (CaptionVariable variable : parserEx.captionVariables()) {
+                arguments.put(variable.key(), variable.value());
+            }
+            send(sender, key, arguments);
+            return;
         }
-        return current;
+
+        sender.sendMessage("[scarlet]" + context.formatCaption(parserEx.errorCaption(), parserEx.captionVariables()));
     }
 
     private <T extends Throwable> T findCause(Throwable throwable, Class<T> type) {
@@ -155,11 +138,16 @@ public class CloudExceptionConfigurer {
     }
 
     private void sendXCoreException(XCoreSender sender, XCoreCommandException ex) {
+        send(sender, ex.getKey(), ex.getArgs());
+    }
+
+    /** Sends a bundle message in the sender's language; the console gets the default locale. */
+    private void send(XCoreSender sender, String key, Map<String, Object> args) {
         if (sender.isPlayer()) {
-            sendToPlayer(sender.player(), ex.getKey(), ex.getArgs());
+            sendToPlayer(sender.player(), key, args);
             return;
         }
-        sender.sendMessage(bundle.format(sender.locale(), ex.getKey(), ex.getArgs()));
+        sender.sendMessage(bundle.format(sender.locale(), key, args));
     }
 
     private void sendToPlayer(Player player, String key, Map<String, Object> args) {

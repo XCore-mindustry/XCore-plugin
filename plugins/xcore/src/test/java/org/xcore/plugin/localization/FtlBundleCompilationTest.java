@@ -6,6 +6,13 @@ import com.ospx.flubundle.compiler.LocaleConsistencyChecker;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import org.incendo.cloud.caption.Caption;
+import org.xcore.cloud.mindustry.parser.MindustryCaptionKeys;
+import org.xcore.cloud.mindustry.selector.caption.SelectorCaptionKeys;
+import org.xcore.plugin.cloud.config.CloudCaptionConfigurer;
+
+import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
@@ -84,6 +91,39 @@ class FtlBundleCompilationTest {
 
         assertThat(missing)
                 .withFailMessage("Primary locale bundles are missing standard cloud caption keys:%n%s",
+                        String.join(System.lineSeparator(), missing))
+                .isEmpty();
+    }
+
+    @Test
+    @DisplayName("primary locales cover every caption cloud-mindustry can show")
+    void primaryLocalesCoverCloudMindustryCaptions() throws IllegalAccessException {
+        // XCore renders its own help, so the MindustryHelp captions are not needed.
+        var keys = new LinkedHashSet<String>();
+        for (Class<?> holder : List.of(MindustryCaptionKeys.class, SelectorCaptionKeys.class)) {
+            for (Field field : holder.getFields()) {
+                if (Modifier.isStatic(field.getModifiers()) && field.getType() == Caption.class) {
+                    Caption caption = (Caption) field.get(null);
+                    if (!caption.key().startsWith("mindustry.help.")) {
+                        keys.add(CloudCaptionConfigurer.bundleKey(caption));
+                    }
+                }
+            }
+        }
+        assertThat(keys).isNotEmpty();
+
+        CompilationResult result = FtlCompiler.compile(BUNDLES_DIR);
+        var missing = new ArrayList<String>();
+        for (var filename : List.of("bundle_en.ftl", "bundle_ru.ftl", "bundle_uk_UA.ftl")) {
+            var missingKeys = new LinkedHashSet<>(keys);
+            missingKeys.removeAll(result.messageKeysForFile(BUNDLES_DIR.resolve(filename)));
+            if (!missingKeys.isEmpty()) {
+                missing.add(filename + " -> " + missingKeys);
+            }
+        }
+
+        assertThat(missing)
+                .withFailMessage("Primary locale bundles are missing cloud-mindustry caption keys:%n%s",
                         String.join(System.lineSeparator(), missing))
                 .isEmpty();
     }

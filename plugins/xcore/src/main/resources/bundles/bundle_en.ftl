@@ -1271,7 +1271,7 @@ ban-menu-confirm-content =
 ban-menu-confirm-action = [scarlet]Ban player
 error-invalid-syntax = [scarlet]⚠ Invalid command syntax. Usage: [lightgray]/'{ $syntax }'.
 error-invalid-sender = [scarlet]⚠ Invalid command sender. This command requires: '[lightgray]{ $type }[]'.
-error-argument-parse-generic = [scarlet]⚠ Invalid argument: '{ $error }'.
+error-argument-parse-generic = [scarlet]⚠ Invalid argument.
 exception-unexpected = [scarlet]⚠ An internal error occurred while performing this command.
 exception-invalid-argument = [scarlet]⚠ Invalid command argument: '{ $cause }'.
 exception-no-such-command = [scarlet]⚠ Unknown command.
@@ -1306,6 +1306,10 @@ argument-parse-failure-selector-sender-required = [scarlet]⚠ Selector '{ $kind
 argument-parse-failure-selector-limit-exceeded = [scarlet]⚠ Selector matched { $count } targets, the limit is { $limit }.
 argument-parse-failure-team = [scarlet]⚠ Team '{ $input }' not found.
 argument-parse-failure-content = [scarlet]⚠ '{ $input }' is not a valid { $type }.
+argument-parse-failure-player-info = [scarlet]⚠ No player record matches '{ $input }'.
+argument-parse-failure-player-info-ambiguous = [scarlet]⚠ '{ $input }' matches several player records ({ $count }); use a UUID instead.
+argument-parse-failure-player-info-ip-denied = [scarlet]⚠ Players can only be looked up by IP from the console.
+mindustry-sender-player-required = [scarlet]⚠ This command can only be used by a player.
 # ==============================================================================
 # Button Status
 # ==============================================================================

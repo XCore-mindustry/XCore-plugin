@@ -1299,7 +1299,7 @@ ban-menu-confirm-content =
 ban-menu-confirm-action = [scarlet]Заблакаваць гульца
 error-invalid-syntax = [scarlet]⚠ Няправільны сінтаксіс каманды. Выкарыстанне: [lightgray]/'{ $syntax }'.
 error-invalid-sender = [scarlet]⚠ Няправільны адпраўнік каманды. Каманда патрабуе: '[lightgray]{ $type }[]'.
-error-argument-parse-generic = [scarlet]⚠ Няправільны аргумент: '{ $error }'.
+error-argument-parse-generic = [scarlet]⚠ Няправільны аргумент.
 exception-unexpected = [scarlet]⚠ Пры выкананні каманды адбылася ўнутраная памылка.
 exception-invalid-argument = [scarlet]⚠ Няправільны аргумент каманды: '{ $cause }'.
 exception-no-such-command = [scarlet]⚠ Невядомая каманда.
@@ -1334,6 +1334,10 @@ argument-parse-failure-selector-sender-required = [scarlet]⚠ Селектар 
 argument-parse-failure-selector-limit-exceeded = [scarlet]⚠ Селектар адпавядае { $count } мэтам, ліміт — { $limit }.
 argument-parse-failure-team = [scarlet]⚠ Каманда '{ $input }' не знойдзена.
 argument-parse-failure-content = [scarlet]⚠ '{ $input }' — не правільнае значэнне тыпу { $type }.
+argument-parse-failure-player-info = [scarlet]⚠ Няма запісу пра гульца '{ $input }'.
+argument-parse-failure-player-info-ambiguous = [scarlet]⚠ '{ $input }' адпавядае некалькім запісам гульцоў ({ $count }); пакажыце UUID.
+argument-parse-failure-player-info-ip-denied = [scarlet]⚠ Шукаць гульцоў па IP можна толькі з кансолі.
+mindustry-sender-player-required = [scarlet]⚠ Гэтая каманда даступная толькі гульцам.
 # ==============================================================================
 # Button Status
 # ==============================================================================

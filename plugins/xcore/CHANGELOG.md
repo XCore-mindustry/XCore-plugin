@@ -8,6 +8,11 @@ All notable changes to this project will be documented in this file.
 - Play time stops counting after 5 minutes in which a player has not moved, aimed, started or stopped shooting, chatted or built, so idling no longer unlocks votekick, global chat or commands gated by play time.
 - The map rotation remembers the last 5 maps played, however they were chosen, across restarts and map reloads (server setting `xcore-recent-maps`), and is installed through `Maps.setMapProvider` instead of reflection.
 
+### Fixed
+- `/killunits` and `/heal` act on the right units: `@s` is your own unit, and `@a`, `@p`, `@r` and player names select the units of those players. They used to pick arbitrary units, for example `/killunits @s` killed whichever unit the server listed first. `@e[sort=...]` now sorts all matching units before `limit` applies and no longer stops after the first 500 (cloud-mindustry).
+- Command errors no longer show exception text: a parser that fails with a plain exception gives "Invalid argument", and the console gets the same localized error, syntax and access messages as players instead of `System Error: ...` and raw keys. The details are logged.
+- Player lookups by record (`argument-parse-failure-player-info*`) and player-only commands have localized messages; a parser error XCore does not translate shows cloud-mindustry's English text instead of the raw key.
+
 ## [5.3.0] - 2026-11-01
 
 ### Changed
