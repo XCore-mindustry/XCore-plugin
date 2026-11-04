@@ -47,6 +47,16 @@ messenger.filter(p -> p.admin).popup(text, Popup.at(Align.top).duration(5f));
 messenger.to(players).deliver(text, (player, message) -> customTransport(player, message));
 ```
 
+### Arguments that depend on the locale
+A `Localized` argument is rendered in the locale of the message that contains it, so one broadcast
+still renders once per locale. A `Text` argument is rendered the same way:
+```java
+messenger.all().hud("pvp-hud-status", Args.of(
+        "teams", Localized.by(locale -> teamsLine(alive, locale)),
+        "time", time));
+messenger.to(player).send("ban-notice", Args.of("reason", Text.of("ban-reason-griefing")));
+```
+
 ### Vanilla content names
 A dedicated server loads no game bundles. FluBundle ships the names of vanilla blocks, units, items,
 liquids, status effects, teams, planets, sectors and weather in every language Mindustry is
@@ -98,16 +108,26 @@ bundle.formatAttribute(locale, "menu", "title", Args.empty());
 ```java
 @Test
 void bundles() {
-    FtlCompiler.check(Path.of("src/main/resources/bundles"));
-    LocaleConsistencyChecker.check(Path.of("src/main/resources/bundles"), "en").assertSuccess();
+    BundleChecks.of(Path.of("src/main/resources/bundles")).assertValid();
 }
 ```
+`BundleChecks` runs every check below and throws with the full report on an error. Options:
+`baseLocale("en")`, `externalReferences("-xcore")`, and `requireKeys(locales, keys)` for keys some
+locales must translate themselves. `FtlCompiler` and `LocaleConsistencyChecker` can also be run alone.
+
+`FtlCompiler` fails on syntax errors, unknown functions and options, and on references to messages,
+terms or attributes the locale does not define (`{ welcom }`, `{ -servr }`); files of one locale
+(`bundle_en.ftl`, `extra_en.ftl`) see each other's ids. An id defined twice is a warning. A reference
+to an id another plugin's bundle defines is allowed with
+`FtlCompiler.builder().externalReferences("-xcore").build()`.
+
 `LocaleConsistencyChecker` fails when a translation uses a `$variable` the English message does not,
 and warns about dropped variables, orphan keys and untranslated keys.
 
 ### Key constants
-`KeyConstantsGenerator` turns the base locale into a class of `String` constants, so a renamed key
-breaks compilation:
+`KeyConstantsGenerator` turns the base locale into a class with a `String` constant per key and a
+method per message that takes exactly its variables, so a renamed key or a missing argument breaks
+compilation:
 ```kotlin
 val generateBundleKeys by tasks.registering(JavaExec::class) {
     val output = layout.buildDirectory.dir("generated/sources/bundleKeys")
@@ -121,6 +141,7 @@ sourceSets.main { java.srcDir(generateBundleKeys) }
 ```
 ```java
 messenger.to(player).send(BundleKeys.HEXED_ROUND_STARTED);
+messenger.all().announce(BundleKeys.hexedCountdownTick(5));   // Text with $seconds = 5
 ```
 
 ## Features

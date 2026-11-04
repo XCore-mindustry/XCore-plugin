@@ -2,6 +2,8 @@ package org.xcore.plugin.command.controller.client;
 
 import arc.struct.Seq;
 import arc.util.Nullable;
+import com.ospx.flubundle.Bundle;
+import com.ospx.flubundle.mindustry.Messenger;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import java.util.List;
@@ -18,18 +20,22 @@ import org.xcore.plugin.permission.PermissionNodes;
 import org.xcore.plugin.command.controller.CloudClientController;
 import org.xcore.plugin.service.AnnouncementService;
 
+import static com.ospx.flubundle.Bundle.args;
+
 @Singleton
 public class BroadcastController implements CloudClientController {
 
     private final AnnouncementService announcementService;
+    private final Messenger messenger;
 
     @Inject
-    public BroadcastController(AnnouncementService announcementService) {
+    public BroadcastController(AnnouncementService announcementService, Messenger messenger) {
         this.announcementService = announcementService;
+        this.messenger = messenger;
     }
 
     public BroadcastController() {
-        this(null);
+        this(null, Messenger.of(Bundle.INSTANCE));
     }
 
     @Command("alert <targets> <message>")
@@ -40,15 +46,10 @@ public class BroadcastController implements CloudClientController {
             @Argument("targets") MultiplePlayerSelector targets,
             @Argument("message") @Greedy String message
     ) {
-        Seq<Player> list = targets.resolve(sender.getHandle());
-        int count = 0;
-        for (Player p : list) {
-            if (p.con != null) {
-                Call.announce(p.con, "[gold][Alert][white] " + message);
-                count++;
-            }
-        }
-        sender.sendMessage("[accent]Alert sent to [green]" + count + " [accent]player(s).");
+        Seq<Player> list = targets.resolve(sender.getHandle()).select(p -> p.con != null);
+        // The banner prefix is in each target's language; the message is the admin's own text.
+        messenger.to(list).announce("admin-cmd-alert-message", args("message", message));
+        sender.send("admin-cmd-alert-done", args("count", list.size));
     }
 
     @Command("toast <targets> <message>")
@@ -67,7 +68,7 @@ public class BroadcastController implements CloudClientController {
                 count++;
             }
         }
-        sender.sendMessage("[accent]Toast sent to [green]" + count + " [accent]player(s).");
+        sender.send("admin-cmd-toast-done", args("count", count));
     }
 
     @Command("announcement [key]")
@@ -78,28 +79,28 @@ public class BroadcastController implements CloudClientController {
             @Argument("key") @Nullable String key
     ) {
         if (announcementService == null) {
-            sender.sendMessage("[scarlet]Announcement service is not available.");
+            sender.send("admin-cmd-announcement-unavailable");
             return;
         }
 
         if (key != null && !key.isBlank()) {
             if ("list".equalsIgnoreCase(key.trim())) {
                 List<String> active = announcementService.getActiveMessages();
-                sender.sendMessage("[accent]Active announcements ([gold]" + active.size() + "[accent]): [white]" +
-                        String.join(", ", active) + " [gray](use_custom_list=" +
-                        announcementService.isCustomListEnabled() + ")");
+                sender.send("admin-cmd-announcement-list", args("count", active.size(),
+                        "keys", String.join(", ", active),
+                        "custom", String.valueOf(announcementService.isCustomListEnabled())));
                 return;
             }
 
             String resolvedKey = key.startsWith("announcement-") ? key : "announcement-" + key;
             int sent = announcementService.broadcast(resolvedKey);
-            sender.sendMessage("[accent]Announcement [white]'" + resolvedKey + "'[accent] sent to [green]" + sent + " [accent]player(s).");
+            sender.send("admin-cmd-announcement-sent", args("key", resolvedKey, "count", sent));
         } else {
             String sentKey = announcementService.broadcastNext();
             if (sentKey != null) {
-                sender.sendMessage("[accent]Rotated announcement [white]'" + sentKey + "'[accent] sent.");
+                sender.send("admin-cmd-announcement-rotated", args("key", sentKey));
             } else {
-                sender.sendMessage("[scarlet]Announcement skipped (disabled, no players, or not in game).");
+                sender.send("admin-cmd-announcement-skipped");
             }
         }
     }

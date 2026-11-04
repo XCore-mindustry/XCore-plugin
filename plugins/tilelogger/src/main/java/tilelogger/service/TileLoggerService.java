@@ -9,6 +9,7 @@ import arc.util.io.Reads;
 import arc.util.io.Writes;
 import com.ospx.flubundle.Args;
 import com.ospx.flubundle.Bundle;
+import com.ospx.flubundle.mindustry.Markup;
 import com.ospx.flubundle.mindustry.Messenger;
 import io.avaje.inject.PreDestroy;
 import jakarta.inject.Inject;
@@ -418,7 +419,7 @@ public class TileLoggerService {
                 + "\n" + TileLogger.status();
     }
     private static String escape(String value) {
-        return value == null ? "" : value.replace("[", "[[");
+        return value == null ? "" : Markup.escape(value);
     }
     private static String mb(long bytes) {
         return String.format(Locale.ROOT, "%.2f", bytes / 1e6);

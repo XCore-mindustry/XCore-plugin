@@ -178,7 +178,7 @@ commands-badge-description = Abre el menú de insignias y gestiona tu insignia a
 commands-tr-success = [accent]¡El idioma del traductor ahora es [grey]{ $translatorLanguage }[]!
 commands-tr-off = [accent]¡El traductor está [scarlet]desactivado[]!
 commands-tr-not-found = [scarlet]⚠ Ese idioma no existe.
-discord-chat-format = [#5865F2][DISCORD][] [lightgray]| [accent]{ $author }[lightgray] >> [white]{ $message }
+discord-chat-format = [#5865F2][DISCORD][] [lightgray]| [accent]{ ESCAPE($author) }[lightgray] >> [white]{ ESCAPE($message) }
 global-chat-format = [royal][[[orange]GLOBAL [lightgray](desde [accent]{ $server }[])[] { $author }[]]: [white]{ $message }
 private-message-received = [sky][MP][] [lightgray]de [accent]{ $author } [gray]#{ $pid }[lightgray]: [white]{ $message }
 private-message-sent = [sky][MP][] [lightgray]para [accent]{ $target } [gray]#{ $pid }[lightgray]: [white]{ $message }
@@ -384,7 +384,7 @@ commands-votekick-description = Vota para expulsar a un jugador del servidor.
 commands-vote-description = Vota en la votación activa.
 commands-vote-vote-with = [scarlet]⚠ Vota con [orange]/vote <y/n/c>
 votekick-vote =
-    { $starter } [grey]#[white]{ $starterId }[lightgray] ha votado expulsar a { $target } [grey]#[white]{ $targetId }[lightgray] por [orange]{ $reason }[lightgray]. ([accent]{ $votes }[]/[accent]{ $required }[])
+    { $starter } [grey]#[white]{ $starterId }[lightgray] ha votado expulsar a { $target } [grey]#[white]{ $targetId }[lightgray] por [orange]{ ESCAPE($reason) }[lightgray]. ([accent]{ $votes }[]/[accent]{ $required }[])
     [lightgray]Escribe [orange]/vote <y/n>[] para votar.
 votekick-left = { $player }[lightgray] se ha ido. Su voto se ha cancelado. ([accent]{ $votes }[]/[accent]{ $required }[])
 votekick-fail = [lightgray]La votación ha fallado. No hay votos suficientes para expulsar a { $target }[lightgray].
@@ -1273,7 +1273,7 @@ ban-menu-confirm-content =
 ban-menu-confirm-action = [scarlet]Banear jugador
 error-invalid-syntax = [scarlet]⚠ Sintaxis del comando no válida. Uso: [lightgray]/'{ $syntax }'.
 error-invalid-sender = [scarlet]⚠ Emisor del comando no válido. Este comando requiere: '[lightgray]{ $type }[]'.
-error-argument-parse-generic = [scarlet]⚠ Argumento no válido: '{ $error }'.
+error-argument-parse-generic = [scarlet]⚠ Argumento no válido.
 exception-unexpected = [scarlet]⚠ Se produjo un error interno al ejecutar este comando.
 exception-invalid-argument = [scarlet]⚠ Argumento del comando no válido: '{ $cause }'.
 exception-no-such-command = [scarlet]⚠ Comando desconocido.
@@ -1308,6 +1308,10 @@ argument-parse-failure-selector-sender-required = [scarlet]⚠ El selector '{ $k
 argument-parse-failure-selector-limit-exceeded = [scarlet]⚠ El selector coincide con { $count } objetivos, el límite es { $limit }.
 argument-parse-failure-team = [scarlet]⚠ Equipo '{ $input }' no encontrado.
 argument-parse-failure-content = [scarlet]⚠ '{ $input }' no es un { $type } válido.
+argument-parse-failure-player-info = [scarlet]⚠ Ningún registro de jugador coincide con '{ $input }'.
+argument-parse-failure-player-info-ambiguous = [scarlet]⚠ '{ $input }' coincide con varios registros de jugadores ({ $count }); usa un UUID.
+argument-parse-failure-player-info-ip-denied = [scarlet]⚠ Solo se puede buscar jugadores por IP desde la consola.
+mindustry-sender-player-required = [scarlet]⚠ Este comando solo puede usarse por jugadores.
 # ==============================================================================
 # Button Status
 # ==============================================================================

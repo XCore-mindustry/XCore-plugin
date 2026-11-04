@@ -178,7 +178,7 @@ commands-badge-description = Open the badge menu and manage your active badge.
 commands-tr-success = [accent]The translator language has been successfully changed to [grey]{ $translatorLanguage }[]!
 commands-tr-off = [accent]Translator is [scarlet]off[]!
 commands-tr-not-found = [scarlet]⚠ There is no such language.
-discord-chat-format = [#5865F2][DISCORD][] [lightgray]| [accent]{ $author }[lightgray] >> [white]{ $message }
+discord-chat-format = [#5865F2][DISCORD][] [lightgray]| [accent]{ ESCAPE($author) }[lightgray] >> [white]{ ESCAPE($message) }
 global-chat-format = [royal][[[orange]GLOBAL [lightgray](from [accent]{ $server }[])[] { $author }[]]: [white]{ $message }
 private-message-received = [sky][PM][] [lightgray]from [accent]{ $author } [gray]#{ $pid }[lightgray]: [white]{ $message }
 private-message-sent = [sky][PM][] [lightgray]to [accent]{ $target } [gray]#{ $pid }[lightgray]: [white]{ $message }
@@ -382,7 +382,7 @@ commands-votekick-description = Vote to kick a player from the server.
 commands-vote-description = Vote in the current active vote.
 commands-vote-vote-with = [scarlet]⚠ Vote with [orange]/vote <y/n/c>
 votekick-vote =
-    { $starter } [grey]#[white]{ $starterId }[lightgray] voted to kick { $target } [grey]#[white]{ $targetId }[lightgray] for [orange]{ $reason }[lightgray]. ([accent]{ $votes }[]/[accent]{ $required }[])
+    { $starter } [grey]#[white]{ $starterId }[lightgray] voted to kick { $target } [grey]#[white]{ $targetId }[lightgray] for [orange]{ ESCAPE($reason) }[lightgray]. ([accent]{ $votes }[]/[accent]{ $required }[])
     [lightgray]Type [orange]/vote <y/n>[] to vote.
 votekick-left = { $player }[lightgray] left. Their vote was cancelled. ([accent]{ $votes }[]/[accent]{ $required }[])
 votekick-fail = [lightgray]Vote failed. Not enough votes to kick { $target }[lightgray].
@@ -1271,7 +1271,7 @@ ban-menu-confirm-content =
 ban-menu-confirm-action = [scarlet]Ban player
 error-invalid-syntax = [scarlet]⚠ Invalid command syntax. Usage: [lightgray]/'{ $syntax }'.
 error-invalid-sender = [scarlet]⚠ Invalid command sender. This command requires: '[lightgray]{ $type }[]'.
-error-argument-parse-generic = [scarlet]⚠ Invalid argument: '{ $error }'.
+error-argument-parse-generic = [scarlet]⚠ Invalid argument.
 exception-unexpected = [scarlet]⚠ An internal error occurred while performing this command.
 exception-invalid-argument = [scarlet]⚠ Invalid command argument: '{ $cause }'.
 exception-no-such-command = [scarlet]⚠ Unknown command.
@@ -1306,6 +1306,10 @@ argument-parse-failure-selector-sender-required = [scarlet]⚠ Selector '{ $kind
 argument-parse-failure-selector-limit-exceeded = [scarlet]⚠ Selector matched { $count } targets, the limit is { $limit }.
 argument-parse-failure-team = [scarlet]⚠ Team '{ $input }' not found.
 argument-parse-failure-content = [scarlet]⚠ '{ $input }' is not a valid { $type }.
+argument-parse-failure-player-info = [scarlet]⚠ No player record matches '{ $input }'.
+argument-parse-failure-player-info-ambiguous = [scarlet]⚠ '{ $input }' matches several player records ({ $count }); use a UUID instead.
+argument-parse-failure-player-info-ip-denied = [scarlet]⚠ Players can only be looked up by IP from the console.
+mindustry-sender-player-required = [scarlet]⚠ This command can only be used by a player.
 # ==============================================================================
 # Button Status
 # ==============================================================================
@@ -1501,3 +1505,31 @@ map-upload-current-creator = [accent]{ $map }[] — { $creator }
 
 discord-link-menu-website = Open the account website
 commands-discord-link-website = [accent]Confirm your link on the website:[] { $url }
+# ==============================================================================
+# Admin commands (tp, heal, kill, alert, announcement)
+# ==============================================================================
+admin-cmd-tp-not-in-game = [scarlet]You must be an active in-game player to teleport.
+admin-cmd-tp-target-no-unit = [scarlet]Target player has no active unit.
+admin-cmd-tp-not-below = [scarlet]You cannot teleport to a player whose role is not below yours.
+admin-cmd-tp-done = [accent]Teleported to [white]{ $player }
+admin-cmd-bring-not-in-game = [scarlet]You must be an active in-game player to bring targets.
+admin-cmd-bring-done = [accent]Brought [green]{ $count } [accent]player(s) to your location.
+admin-cmd-tp-destination-no-unit = [scarlet]Destination player has no active unit.
+admin-cmd-tpto-done = [accent]Teleported [green]{ $count } [accent]player(s) to [white]{ $player }
+admin-cmd-tp-invalid-coordinates = [scarlet]Invalid coordinates: { $x }, { $y }
+admin-cmd-tppos-done = [accent]Teleported [green]{ $count } [accent]player(s) to ([white]{ $x }, { $y }[accent]).
+admin-cmd-heal-no-unit = [scarlet]You must have an active unit to heal.
+admin-cmd-heal-self-done = [accent]Your unit was fully healed.
+admin-cmd-heal-done = [accent]Healed [green]{ $count } [accent]unit(s).
+admin-cmd-killunits-done = [accent]Killed [green]{ $count } [accent]unit(s).
+admin-cmd-kill-done = [accent]Killed [green]{ $count } [accent]player(s).
+admin-cmd-suicide-no-unit = [scarlet]You must have an active unit to suicide.
+admin-cmd-suicide-done = [accent]You killed your unit.
+admin-cmd-alert-message = [gold][Alert][white] { $message }
+admin-cmd-alert-done = [accent]Alert sent to [green]{ $count } [accent]player(s).
+admin-cmd-toast-done = [accent]Toast sent to [green]{ $count } [accent]player(s).
+admin-cmd-announcement-unavailable = [scarlet]Announcement service is not available.
+admin-cmd-announcement-list = [accent]Active announcements ([gold]{ $count }[accent]): [white]{ $keys } [gray](use_custom_list={ $custom })
+admin-cmd-announcement-sent = [accent]Announcement [white]'{ $key }'[accent] sent to [green]{ $count } [accent]player(s).
+admin-cmd-announcement-rotated = [accent]Rotated announcement [white]'{ $key }'[accent] sent.
+admin-cmd-announcement-skipped = [scarlet]Announcement skipped (disabled, no players, or not in game).

@@ -18,16 +18,21 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.TreeMap;
+import javax.lang.model.SourceVersion;
 
 /**
  * Generates a Java class with one {@code String} constant per message of the base locale, so that
- * a renamed or deleted key breaks compilation instead of showing the raw key to players.
+ * a renamed or deleted key breaks compilation instead of showing the raw key to players, and one
+ * method per message that returns a {@link com.ospx.flubundle.Text} and takes exactly the message's
+ * variables, so a missing or misspelt argument breaks compilation too.
  *
  * <pre>{@code
  * // generated from bundles/bundle_en.ftl
  * public final class BundleKeys {
  *     // Javadoc lists the variables: $seconds
  *     public static final String HEXED_COUNTDOWN_TICK = "hexed_countdown_tick";
+ *
+ *     public static Text hexedCountdownTick(Object seconds) { ... }
  * }
  * }</pre>
  *
@@ -80,11 +85,17 @@ public final class KeyConstantsGenerator {
         }
 
         var constants = new TreeMap<String, String>();
+        var methods = new TreeMap<String, String>();
         for (var key : messages.keySet()) {
             var name = constantName(key);
             var previous = constants.put(name, key);
             if (previous != null) {
                 throw new IllegalStateException("Keys '" + previous + "' and '" + key + "' both map to constant " + name);
+            }
+            var method = methodName(key);
+            previous = methods.put(method, key);
+            if (previous != null) {
+                throw new IllegalStateException("Keys '" + previous + "' and '" + key + "' both map to method " + method);
             }
         }
 
@@ -107,8 +118,78 @@ public final class KeyConstantsGenerator {
             out.append("    public static final String ").append(entry.getKey())
                     .append(" = \"").append(key).append("\";\n");
         }
+
+        for (var entry : methods.entrySet()) {
+            var key = entry.getValue();
+            // Text renders the value only, so variables of the message's attributes are not parameters.
+            appendTextMethod(out, entry.getKey(), constantName(key),
+                    MessageVariables.ofValue(messages.get(key), messages::get));
+        }
         out.append("}\n");
         return out.toString();
+    }
+
+    /**
+     * {@code public static Text hexedCountdownTick(Object seconds)}: the message with exactly its
+     * variables, so a missing or misspelt argument is a compile error.
+     */
+    private static void appendTextMethod(StringBuilder out, String method, String constant, Set<String> variables) {
+        var parameters = new LinkedHashMap<String, String>();
+        for (var variable : variables) {
+            var parameter = identifier(variable);
+            while (parameters.containsValue(parameter)) {
+                parameter = parameter + "_";
+            }
+            parameters.put(variable, parameter);
+        }
+
+        out.append('\n');
+        out.append("    /** {@link #").append(constant).append("} with its variables. */\n");
+        out.append("    public static com.ospx.flubundle.Text ").append(method).append('(');
+        out.append(String.join(", ", parameters.values().stream().map(p -> "Object " + p).toList()));
+        out.append(") {\n");
+        if (parameters.isEmpty()) {
+            out.append("        return com.ospx.flubundle.Text.of(").append(constant).append(");\n");
+        } else {
+            out.append("        return com.ospx.flubundle.Text.of(").append(constant).append(", com.ospx.flubundle.Args.builder()");
+            parameters.forEach((variable, parameter) ->
+                    out.append("\n                .put(\"").append(variable).append("\", ").append(parameter).append(')'));
+            out.append("\n                .build());\n");
+        }
+        out.append("    }\n");
+    }
+
+    /** Methods of {@code Object}: a static method with one of these names does not compile. */
+    private static final Set<String> OBJECT_METHODS = Set.of("clone", "equals", "finalize", "getClass",
+            "hashCode", "notify", "notifyAll", "toString", "wait");
+
+    /**
+     * {@code player-joined} and {@code player_joined} become {@code playerJoined}; a name of an
+     * {@code Object} method ({@code to-string}) gets a trailing {@code _}.
+     */
+    static String methodName(String key) {
+        var method = identifier(key);
+        return OBJECT_METHODS.contains(method) ? method + "_" : method;
+    }
+
+    /** A lower camel case Java identifier for a Fluent identifier; keywords get a trailing {@code _}. */
+    private static String identifier(String name) {
+        var result = new StringBuilder();
+        boolean upper = false;
+        for (int i = 0; i < name.length(); i++) {
+            char c = name.charAt(i);
+            if (!Character.isLetterOrDigit(c)) {
+                upper = !result.isEmpty();
+                continue;
+            }
+            result.append(upper ? Character.toUpperCase(c) : result.isEmpty() ? Character.toLowerCase(c) : c);
+            upper = false;
+        }
+        if (result.isEmpty() || Character.isDigit(result.charAt(0))) {
+            result.insert(0, '_');
+        }
+        var identifier = result.toString();
+        return SourceVersion.isKeyword(identifier) ? identifier + "_" : identifier;
     }
 
     /** {@code player-joined} and {@code player_joined} become {@code PLAYER_JOINED}. */

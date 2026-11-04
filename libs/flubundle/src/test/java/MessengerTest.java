@@ -2,6 +2,7 @@ import arc.files.Fi;
 import arc.util.Align;
 import com.ospx.flubundle.Args;
 import com.ospx.flubundle.Bundle;
+import com.ospx.flubundle.Localized;
 import com.ospx.flubundle.Text;
 import com.ospx.flubundle.mindustry.Messenger;
 import com.ospx.flubundle.mindustry.Popup;
@@ -138,5 +139,35 @@ public class MessengerTest {
         assertEquals(new Popup(Popup.DEFAULT_DURATION, Align.top, 0, 0, 0, 0), base);
         assertEquals(new Popup(5f, Align.top, 80, 1, 2, 3), styled);
         assertEquals(Align.center, Popup.center().align());
+    }
+
+    @Test
+    void localizedArgumentsRenderOncePerLocaleInTheMessagesLocale() {
+        var calls = new java.util.ArrayList<Locale>();
+        Localized team = Localized.by(locale -> {
+            calls.add(locale);
+            return locale.getLanguage().equals("ru") ? "Багровые" : "Crux";
+        });
+        var players = List.of(player("a", "en"), player("b", "ru"), player("c", "ru_RU"), player("d", "de"));
+
+        var received = collect(transport ->
+                messenger.to(players).deliver(Text.of("greeting", Args.of("name", team)), transport));
+
+        assertEquals(Map.of(
+                "a", "Hello, Crux!",
+                "b", "Привет, Багровые!",
+                "c", "Привет, Багровые!",
+                "d", "Hello, Crux!"), received);
+        assertEquals(2, calls.size(), calls.toString());
+    }
+
+    @Test
+    void textArgumentsAreRenderedInTheEnclosingLocale() {
+        add("reason-griefing = griefing\n", Locale.ENGLISH);
+        add("reason-griefing = гриферство\n", Locale.of("ru"));
+        Text reason = Text.of("reason-griefing");
+
+        assertEquals("Hello, griefing!", bundle.format(Locale.ENGLISH, "greeting", Args.of("name", reason)));
+        assertEquals("Привет, гриферство!", bundle.format(Locale.of("ru"), "greeting", Args.of("name", reason)));
     }
 }

@@ -178,7 +178,7 @@ commands-badge-description = Адкрыць меню бэйджаў і кіра�
 commands-tr-success = [accent]Мова перакладчыка зменена на [grey]{ $translatorLanguage }[]!
 commands-tr-off = [accent]Перакладчык [scarlet]выключаны[]!
 commands-tr-not-found = [scarlet]⚠ Такой мовы няма.
-discord-chat-format = [#5865F2][DISCORD][] [lightgray]| [accent]{ $author }[lightgray] >> [white]{ $message }
+discord-chat-format = [#5865F2][DISCORD][] [lightgray]| [accent]{ ESCAPE($author) }[lightgray] >> [white]{ ESCAPE($message) }
 global-chat-format = [royal][[[orange]ГЛАБАЛЬНЫ [lightgray](з [accent]{ $server }[])[] { $author }[]]: [white]{ $message }
 private-message-received = [sky][АП][] [lightgray]ад [accent]{ $author } [gray]#{ $pid }[lightgray]: [white]{ $message }
 private-message-sent = [sky][АП][] [lightgray]для [accent]{ $target } [gray]#{ $pid }[lightgray]: [white]{ $message }
@@ -388,7 +388,7 @@ commands-votekick-description = Галасаванне за выключэнне
 commands-vote-description = Прагаласаваць у бягучым галасаванні.
 commands-vote-vote-with = [scarlet]⚠ Галасуйце праз [orange]/vote <y/n/c>
 votekick-vote =
-    { $starter } [grey]#[white]{ $starterId }[lightgray] прагаласаваў за выключэнне { $target } [grey]#[white]{ $targetId }[lightgray] з прычыны [orange]{ $reason }[lightgray]. ([accent]{ $votes }[]/[accent]{ $required }[])
+    { $starter } [grey]#[white]{ $starterId }[lightgray] прагаласаваў за выключэнне { $target } [grey]#[white]{ $targetId }[lightgray] з прычыны [orange]{ ESCAPE($reason) }[lightgray]. ([accent]{ $votes }[]/[accent]{ $required }[])
     [lightgray]Увядзіце [orange]/vote <y/n>[], каб прагаласаваць.
 votekick-left = { $player }[lightgray] выйшаў. Яго голас адменены. ([accent]{ $votes }[]/[accent]{ $required }[])
 votekick-fail = [lightgray]Галасаванне не прайшло. Недастаткова галасоў, каб выключыць { $target }[lightgray].
@@ -1299,7 +1299,7 @@ ban-menu-confirm-content =
 ban-menu-confirm-action = [scarlet]Заблакаваць гульца
 error-invalid-syntax = [scarlet]⚠ Няправільны сінтаксіс каманды. Выкарыстанне: [lightgray]/'{ $syntax }'.
 error-invalid-sender = [scarlet]⚠ Няправільны адпраўнік каманды. Каманда патрабуе: '[lightgray]{ $type }[]'.
-error-argument-parse-generic = [scarlet]⚠ Няправільны аргумент: '{ $error }'.
+error-argument-parse-generic = [scarlet]⚠ Няправільны аргумент.
 exception-unexpected = [scarlet]⚠ Пры выкананні каманды адбылася ўнутраная памылка.
 exception-invalid-argument = [scarlet]⚠ Няправільны аргумент каманды: '{ $cause }'.
 exception-no-such-command = [scarlet]⚠ Невядомая каманда.
@@ -1334,6 +1334,10 @@ argument-parse-failure-selector-sender-required = [scarlet]⚠ Селектар 
 argument-parse-failure-selector-limit-exceeded = [scarlet]⚠ Селектар адпавядае { $count } мэтам, ліміт — { $limit }.
 argument-parse-failure-team = [scarlet]⚠ Каманда '{ $input }' не знойдзена.
 argument-parse-failure-content = [scarlet]⚠ '{ $input }' — не правільнае значэнне тыпу { $type }.
+argument-parse-failure-player-info = [scarlet]⚠ Няма запісу пра гульца '{ $input }'.
+argument-parse-failure-player-info-ambiguous = [scarlet]⚠ '{ $input }' адпавядае некалькім запісам гульцоў ({ $count }); пакажыце UUID.
+argument-parse-failure-player-info-ip-denied = [scarlet]⚠ Шукаць гульцоў па IP можна толькі з кансолі.
+mindustry-sender-player-required = [scarlet]⚠ Гэтая каманда даступная толькі гульцам.
 # ==============================================================================
 # Button Status
 # ==============================================================================

@@ -60,7 +60,8 @@ public class Bundle {
     private final Map<String, Locale> localeAliases = new ConcurrentHashMap<>();
     private final FluentFunctionRegistry.Builder registryBuilder = FluentFunctionRegistry.builder();
     private final Set<String> reportedFormatErrors = ConcurrentHashMap.newKeySet();
-    private FluentFunctionRegistry functionRegistry;
+    /** Written under the bundle's lock, read without it on every {@code format}. */
+    private volatile FluentFunctionRegistry functionRegistry;
     private volatile LocaleResolver localeResolver = LocaleResolver.CLIENT;
     private volatile Consumer<FluentBundle.ErrorContext> formatErrorHandler = this::logFormatError;
 
@@ -473,13 +474,23 @@ public class Bundle {
                 (team, scope) -> ContentNames.vanilla().name(team, scope.locale()));
         registryBuilder.addDefaultFormatter(UnlockableContent.class,
                 (content, scope) -> ContentNames.vanilla().name(content, scope.locale()));
+        // Arguments rendered in the locale of the message that contains them.
+        registryBuilder.addDefaultFormatter(Localized.class,
+                (value, scope) -> String.valueOf(value.render(scope.locale())));
+        registryBuilder.addDefaultFormatterExact(Text.class, (text, scope) -> format(scope.locale(), text));
     }
 
-    private synchronized FluentFunctionRegistry ensureRegistry() {
-        if (functionRegistry == null) {
-            functionRegistry = registryBuilder.build();
+    private FluentFunctionRegistry ensureRegistry() {
+        var registry = functionRegistry;
+        if (registry != null) {
+            return registry;
         }
-        return functionRegistry;
+        synchronized (this) {
+            if (functionRegistry == null) {
+                functionRegistry = registryBuilder.build();
+            }
+            return functionRegistry;
+        }
     }
 
     /**

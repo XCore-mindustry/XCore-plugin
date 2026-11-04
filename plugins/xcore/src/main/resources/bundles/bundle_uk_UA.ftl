@@ -182,7 +182,7 @@ commands-badge-description = Відкрити меню відзнак і кер�
 commands-tr-success = [accent]Мову перекладача успішно змінено на [grey]{ $translatorLanguage }[]!
 commands-tr-off = [accent]Перекладач [scarlet]вимкнено[]!
 commands-tr-not-found = [scarlet]⚠ Такої мови не існує.
-discord-chat-format = [#5865F2][DISCORD][] [lightgray]| [accent]{ $author }[lightgray] >> [white]{ $message }
+discord-chat-format = [#5865F2][DISCORD][] [lightgray]| [accent]{ ESCAPE($author) }[lightgray] >> [white]{ ESCAPE($message) }
 global-chat-format = [royal][[[orange]GLOBAL [lightgray](з [accent]{ $server }[])[] { $author }[]]: [white]{ $message }
 private-message-received = [sky][ПП][] [lightgray]від [accent]{ $author } [gray]#{ $pid }[lightgray]: [white]{ $message }
 private-message-sent = [sky][ПП][] [lightgray]для [accent]{ $target } [gray]#{ $pid }[lightgray]: [white]{ $message }
@@ -394,7 +394,7 @@ commands-votekick-description = Голосування за вигнання г�
 commands-vote-description = Проголосувати в поточному активному голосуванні.
 commands-vote-vote-with = [scarlet]⚠ Голосуйте за допомогою [orange]/vote <y/n/c>
 votekick-vote =
-    { $starter } [grey]#[white]{ $starterId }[lightgray] хоче вигнати { $target } [grey]#[white]{ $targetId }[lightgray]. Причина: [orange]{ $reason }[lightgray]. ([accent]{ $votes }[]/[accent]{ $required }[])
+    { $starter } [grey]#[white]{ $starterId }[lightgray] хоче вигнати { $target } [grey]#[white]{ $targetId }[lightgray]. Причина: [orange]{ ESCAPE($reason) }[lightgray]. ([accent]{ $votes }[]/[accent]{ $required }[])
     [lightgray]Напишіть [orange]/vote <y/n>[], щоб проголосувати.
 votekick-left = { $player }[lightgray] покинув гру. Голос анульовано. ([accent]{ $votes }[]/[accent]{ $required }[])
 votekick-fail = [lightgray]Голосування не відбулося. Недостатньо голосів для вигнання { $target }[lightgray].
@@ -1311,7 +1311,7 @@ ban-menu-confirm-content =
 ban-menu-confirm-action = [scarlet]Заблокувати гравця
 error-invalid-syntax = [scarlet]⚠ Невірний синтаксис команди. Використання: [lightgray]/'{ $syntax }'.
 error-invalid-sender = [scarlet]⚠ Невірний відправник команди. Потрібно: '[lightgray]{ $type }[]'.
-error-argument-parse-generic = [scarlet]⚠ Помилка аргументу: '{ $error }'.
+error-argument-parse-generic = [scarlet]⚠ Помилка аргументу.
 exception-unexpected = [scarlet]⚠ Внутрішня помилка під час виконання команди.
 exception-invalid-argument = [scarlet]⚠ Невірний аргумент команди: '{ $cause }'.
 exception-no-such-command = [scarlet]⚠ Невідома команда.
@@ -1346,6 +1346,10 @@ argument-parse-failure-selector-sender-required = [scarlet]⚠ Селектор 
 argument-parse-failure-selector-limit-exceeded = [scarlet]⚠ Селектор знайшов { $count } цілей, ліміт — { $limit }.
 argument-parse-failure-team = [scarlet]⚠ Команду '{ $input }' не знайдено.
 argument-parse-failure-content = [scarlet]⚠ '{ $input }' не є допустимим { $type }.
+argument-parse-failure-player-info = [scarlet]⚠ Немає запису про гравця '{ $input }'.
+argument-parse-failure-player-info-ambiguous = [scarlet]⚠ '{ $input }' відповідає кільком записам гравців ({ $count }); вкажіть UUID.
+argument-parse-failure-player-info-ip-denied = [scarlet]⚠ Шукати гравців за IP можна лише з консолі.
+mindustry-sender-player-required = [scarlet]⚠ Цю команду можуть використовувати лише гравці.
 
 # ==============================================================================
 # Button Status
@@ -1541,3 +1545,31 @@ map-upload-date = Завантажена: [lightgray]{ $date }[] (UTC)
 map-upload-current-creator = [accent]{ $map }[] — { $creator }
 discord-link-menu-website = Відкрити сайт облікового запису
 commands-discord-link-website = [accent]Підтвердьте прив’язку на сайті:[] { $url }
+# ==============================================================================
+# Admin commands (tp, heal, kill, alert, announcement)
+# ==============================================================================
+admin-cmd-tp-not-in-game = [scarlet]Щоб телепортуватися, потрібно бути в грі й керувати юнітом.
+admin-cmd-tp-target-no-unit = [scarlet]У вибраного гравця немає юніта.
+admin-cmd-tp-not-below = [scarlet]Не можна телепортуватися до гравця, чия роль не нижча за вашу.
+admin-cmd-tp-done = [accent]Вас телепортовано до [white]{ $player }
+admin-cmd-bring-not-in-game = [scarlet]Щоб перенести гравців до себе, потрібно бути в грі й керувати юнітом.
+admin-cmd-bring-done = [accent]Перенесено до вас гравців: [green]{ $count }[accent].
+admin-cmd-tp-destination-no-unit = [scarlet]У гравця-цілі немає юніта.
+admin-cmd-tpto-done = [accent]Телепортовано гравців: [green]{ $count }[accent], до [white]{ $player }
+admin-cmd-tp-invalid-coordinates = [scarlet]Невірні координати: { $x }, { $y }
+admin-cmd-tppos-done = [accent]Телепортовано гравців: [green]{ $count }[accent], у точку ([white]{ $x }, { $y }[accent]).
+admin-cmd-heal-no-unit = [scarlet]Щоб вилікуватися, потрібен юніт.
+admin-cmd-heal-self-done = [accent]Ваш юніт повністю вилікувано.
+admin-cmd-heal-done = [accent]Вилікувано юнітів: [green]{ $count }[accent].
+admin-cmd-killunits-done = [accent]Знищено юнітів: [green]{ $count }[accent].
+admin-cmd-kill-done = [accent]Убито гравців: [green]{ $count }[accent].
+admin-cmd-suicide-no-unit = [scarlet]Щоб знищити свій юніт, він має у вас бути.
+admin-cmd-suicide-done = [accent]Ваш юніт знищено.
+admin-cmd-alert-message = [gold][Оповіщення][white] { $message }
+admin-cmd-alert-done = [accent]Оповіщення надіслано гравцям: [green]{ $count }[accent].
+admin-cmd-toast-done = [accent]Сповіщення надіслано гравцям: [green]{ $count }[accent].
+admin-cmd-announcement-unavailable = [scarlet]Сервіс оголошень недоступний.
+admin-cmd-announcement-list = [accent]Активні оголошення ([gold]{ $count }[accent]): [white]{ $keys } [gray](use_custom_list={ $custom })
+admin-cmd-announcement-sent = [accent]Оголошення [white]'{ $key }'[accent] надіслано гравцям: [green]{ $count }[accent].
+admin-cmd-announcement-rotated = [accent]Надіслано оголошення з ротації: [white]'{ $key }'[accent].
+admin-cmd-announcement-skipped = [scarlet]Оголошення пропущено (вимкнено, немає гравців або гра не йде).

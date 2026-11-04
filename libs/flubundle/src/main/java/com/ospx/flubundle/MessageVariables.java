@@ -38,6 +38,72 @@ public final class MessageVariables {
         return Collections.unmodifiableSet(variables);
     }
 
+    /**
+     * The variables that rendering the message's value needs: its value pattern and what the
+     * messages it references render ({@code { other }} their value, {@code { other.attr }} that
+     * attribute). Variables used only in its own attributes are left out.
+     *
+     * @return variable names in order of first appearance
+     */
+    public static Set<String> ofValue(Message message, Function<String, Message> lookup) {
+        var variables = new LinkedHashSet<String>();
+        if (message != null && message.pattern() != null) {
+            var visited = new HashSet<String>();
+            visited.add(message.identifier().name());
+            collectValue(message.pattern(), lookup, variables, visited);
+        }
+        return Collections.unmodifiableSet(variables);
+    }
+
+    private static void collectValue(Pattern pattern, Function<String, Message> lookup,
+                                     Set<String> variables, Set<String> visited) {
+        for (PatternElement element : pattern.elements()) {
+            if (element instanceof PatternElement.Placeable placeable) {
+                collectValue(placeable.expression(), lookup, variables, visited);
+            }
+        }
+    }
+
+    private static void collectValue(Expression expression, Function<String, Message> lookup,
+                                     Set<String> variables, Set<String> visited) {
+        switch (expression) {
+            case InlineExpression.VariableReference variable -> variables.add(variable.identifier().name());
+            case InlineExpression.MessageReference reference -> {
+                Message target = lookup.apply(reference.identifier().name());
+                String attribute = reference.attributeID() == null ? null : reference.attributeID().name();
+                if (target == null || !visited.add(reference.identifier().name() + (attribute == null ? "" : "." + attribute))) {
+                    return;
+                }
+                Pattern pattern = attribute == null
+                        ? target.pattern()
+                        : target.attributes().stream()
+                                .filter(a -> a.identifier().name().equals(attribute))
+                                .map(Attribute::pattern)
+                                .findFirst().orElse(null);
+                if (pattern != null) {
+                    collectValue(pattern, lookup, variables, visited);
+                }
+            }
+            case InlineExpression.FunctionReference function -> {
+                CallArguments arguments = function.arguments();
+                if (arguments != null && arguments.positionals() != null) {
+                    for (Expression positional : arguments.positionals()) {
+                        collectValue(positional, lookup, variables, visited);
+                    }
+                }
+            }
+            case PatternElement.Placeable placeable -> collectValue(placeable.expression(), lookup, variables, visited);
+            case SelectExpression select -> {
+                collectValue(select.selector(), lookup, variables, visited);
+                for (Variant variant : select.variants()) {
+                    collectValue(variant.pattern(), lookup, variables, visited);
+                }
+            }
+            default -> {
+            }
+        }
+    }
+
     private static void collect(Message message, Function<String, Message> lookup,
                                 Set<String> variables, Set<String> visited) {
         if (message == null || !visited.add(message.identifier().name())) {

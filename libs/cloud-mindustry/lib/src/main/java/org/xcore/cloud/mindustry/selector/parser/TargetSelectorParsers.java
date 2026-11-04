@@ -1,11 +1,16 @@
 package org.xcore.cloud.mindustry.selector.parser;
 
+import mindustry.gen.Groups;
+import mindustry.gen.Player;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.incendo.cloud.context.CommandContext;
 import org.incendo.cloud.context.CommandInput;
 import org.incendo.cloud.parser.ArgumentParseResult;
 import org.incendo.cloud.parser.ArgumentParser;
 import org.incendo.cloud.parser.ParserDescriptor;
+import org.xcore.cloud.mindustry.MindustryCommandManager;
+import org.xcore.cloud.mindustry.SimulationExecutor;
+import org.xcore.cloud.mindustry.parser.PlayerNameInput;
 import org.xcore.cloud.mindustry.selector.SelectorKind;
 import org.xcore.cloud.mindustry.selector.SelectorRestrictions;
 import org.xcore.cloud.mindustry.selector.TargetSelector.MultiplePlayerSelector;
@@ -23,6 +28,9 @@ import org.xcore.cloud.mindustry.selector.impl.MultiplePlayerSelectorImpl;
 import org.xcore.cloud.mindustry.selector.impl.MultipleUnitSelectorImpl;
 import org.xcore.cloud.mindustry.selector.impl.SinglePlayerSelectorImpl;
 import org.xcore.cloud.mindustry.selector.impl.SingleUnitSelectorImpl;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public final class TargetSelectorParsers {
 
@@ -81,7 +89,9 @@ public final class TargetSelectorParsers {
                 @NonNull CommandContext<C> context,
                 @NonNull CommandInput input
         ) {
-            String token = input.readString();
+            String token = input.peekString().startsWith("@")
+                    ? input.readString()
+                    : PlayerNameInput.read(input, onlinePlayerNames(context));
             try {
                 TargetSelectorSpec spec = SelectorSyntaxParser.parse(token);
                 restrictions.enforce(spec);
@@ -89,10 +99,26 @@ public final class TargetSelectorParsers {
                 SelectorGuard.checkGuard(context, spec);
                 return ArgumentParseResult.success(value);
             } catch (SelectorException ex) {
+                // Anything else (a resolution off the simulation thread, a bug) is not the input's fault:
+                // it propagates and is reported as an unexpected failure, with its text kept in the log.
                 return ArgumentParseResult.failure(new SelectorParseException(getClass(), context, ex));
-            } catch (Exception ex) {
-                return ArgumentParseResult.failure(ex);
             }
+        }
+
+        /**
+         * Names a literal may match over several words. The player group is game state, so off the
+         * simulation thread a literal is one word.
+         */
+        private static List<String> onlinePlayerNames(CommandContext<?> context) {
+            SimulationExecutor simulation = context.getOrDefault(MindustryCommandManager.SIMULATION_EXECUTOR, null);
+            if (simulation != null && !simulation.isOnThread()) {
+                return List.of();
+            }
+            List<String> names = new ArrayList<>();
+            for (Player player : Groups.player) {
+                names.add(player.plainName());
+            }
+            return names;
         }
 
         /**

@@ -46,6 +46,15 @@ public record TargetSelectorSpec(
                 || limit == 1;
     }
 
+    /**
+     * @return this spec with another limit
+     */
+    public TargetSelectorSpec withLimit(int limit) {
+        return new TargetSelectorSpec(kind, literalName, team, invertTeam, unitType, invertType,
+                distanceMin, distanceMax, originX, originY, relativeX, relativeY,
+                admin, name, invertName, limit, sort);
+    }
+
     public boolean isPlayerOnly() {
         return kind != SelectorKind.ALL_ENTITIES;
     }

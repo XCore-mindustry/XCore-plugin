@@ -210,4 +210,24 @@ class PlayerInfoParserTest {
 
         assertEquals(List.of("#8", "dave"), suggestions);
     }
+
+    @Test
+    @DisplayName("A name with spaces matches as typed or in quotes, offline too")
+    void nameWithSpaces() {
+        PlayerInfo bob = record("uuid-bob", "10.0.0.2", "[gold]Big Bob");
+        manager.command(manager.commandBuilder("note")
+                .required("target", ParserDescriptor.of(new PlayerInfoParser<>(() -> admins), PlayerInfo.class))
+                .required("text", org.incendo.cloud.parser.standard.StringParser.greedyStringParser())
+                .handler(ctx -> {
+                    parsed.add(ctx.get("target"));
+                    messages.add(ctx.get("text"));
+                }));
+
+        run(sender(null), "info Big Bob");
+        run(sender(null), "info \"big bob\"");
+        run(sender(null), "note Big Bob griefed the core");
+
+        assertEquals(List.of(bob, bob, bob), parsed);
+        assertEquals(List.of("griefed the core"), messages);
+    }
 }

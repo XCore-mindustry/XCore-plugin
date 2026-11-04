@@ -132,6 +132,19 @@ public final class LocaleConsistencyChecker {
                                 + "' (expected " + variables(expected) + ")"));
             }
 
+            // A value may only use what the base value uses: generated Text factories
+            // (KeyConstantsGenerator) take the base value's variables, not its attributes'.
+            if (unexpected.isEmpty()) {
+                var expectedValue = base.valueVariables(key);
+                var unexpectedValue = new LinkedHashSet<>(translation.valueVariables(key));
+                unexpectedValue.removeAll(expectedValue);
+                if (!unexpectedValue.isEmpty()) {
+                    diagnostics.add(Diagnostic.error(file, line, key,
+                            "Value uses " + variables(unexpectedValue) + " that only an attribute of base locale '"
+                                    + baseLocale + "' uses (the base value uses " + variables(expectedValue) + ")"));
+                }
+            }
+
             var dropped = new LinkedHashSet<>(expected);
             dropped.removeAll(actual);
             if (!dropped.isEmpty()) {
@@ -211,6 +224,10 @@ public final class LocaleConsistencyChecker {
 
         Set<String> variables(String key) {
             return MessageVariables.of(messages.get(key), messages::get);
+        }
+
+        Set<String> valueVariables(String key) {
+            return MessageVariables.ofValue(messages.get(key), messages::get);
         }
     }
 

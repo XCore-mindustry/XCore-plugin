@@ -178,7 +178,7 @@ commands-badge-description = Открыть меню бейджей и упра�
 commands-tr-success = [accent]Язык переводчика был успешно изменен на [grey]{ $translatorLanguage }[]!
 commands-tr-off = [accent]Переводчик [scarlet]выключен[]!
 commands-tr-not-found = [scarlet]⚠ Нет такого языка
-discord-chat-format = [#5865F2][DISCORD][] [lightgray]| [accent]{ $author }[lightgray] >> [white]{ $message }
+discord-chat-format = [#5865F2][DISCORD][] [lightgray]| [accent]{ ESCAPE($author) }[lightgray] >> [white]{ ESCAPE($message) }
 global-chat-format = [royal][[[orange]GLOBAL [lightgray](из [accent]{ $server }[])[] { $author }[]]: [white]{ $message }
 private-message-received = [sky][ЛС][] [lightgray]от [accent]{ $author } [gray]#{ $pid }[lightgray]: [white]{ $message }
 private-message-sent = [sky][ЛС][] [lightgray]для [accent]{ $target } [gray]#{ $pid }[lightgray]: [white]{ $message }
@@ -386,7 +386,7 @@ commands-votekick-description = Голосование за кик игрока.
 commands-vote-description = Проголосовать в текущем активном голосовании
 commands-vote-vote-with = [scarlet]⚠ Голосуйте с помощью [orange]/vote <y/n/c>
 votekick-vote =
-    { $starter } [grey]#[white]{ $starterId }[lightgray] хочет выгнать { $target } [grey]#[white]{ $targetId }[lightgray]. Причина: [orange]{ $reason }[lightgray]. ([accent]{ $votes }[]/[accent]{ $required }[])
+    { $starter } [grey]#[white]{ $starterId }[lightgray] хочет выгнать { $target } [grey]#[white]{ $targetId }[lightgray]. Причина: [orange]{ ESCAPE($reason) }[lightgray]. ([accent]{ $votes }[]/[accent]{ $required }[])
     [lightgray]Напишите [orange]/vote <y/n>[], чтобы проголосовать.
 votekick-left = { $player }[lightgray] покинул игру. Голос аннулирован. ([accent]{ $votes }[]/[accent]{ $required }[])
 votekick-fail = [lightgray]Голосование не состоялось. Недостаточно голосов для изгнания { $target }[lightgray].
@@ -1215,7 +1215,7 @@ ban-menu-confirm-content =
 ban-menu-confirm-action = [scarlet]Забанить игрока
 error-invalid-syntax = [scarlet]⚠ Неверный синтаксис команды. Использование: [lightgray]/'{ $syntax }'.
 error-invalid-sender = [scarlet]⚠ Неверный отправитель команды. Требуется: '[lightgray]{ $type }[]'.
-error-argument-parse-generic = [scarlet]⚠ Ошибка аргумента: '{ $error }'.
+error-argument-parse-generic = [scarlet]⚠ Ошибка аргумента.
 exception-unexpected = [scarlet]⚠ Внутренняя ошибка при выполнении команды.
 exception-invalid-argument = [scarlet]⚠ Неверный аргумент команды: '{ $cause }'.
 exception-no-such-command = [scarlet]⚠ Неизвестная команда.
@@ -1250,6 +1250,10 @@ argument-parse-failure-selector-sender-required = [scarlet]⚠ Селектор 
 argument-parse-failure-selector-limit-exceeded = [scarlet]⚠ Селектор нашёл { $count } целей, лимит — { $limit }.
 argument-parse-failure-team = [scarlet]⚠ Команда '{ $input }' не найдена.
 argument-parse-failure-content = [scarlet]⚠ '{ $input }' не является допустимым { $type }.
+argument-parse-failure-player-info = [scarlet]⚠ Нет записи об игроке '{ $input }'.
+argument-parse-failure-player-info-ambiguous = [scarlet]⚠ '{ $input }' подходит под несколько записей игроков ({ $count }); укажите UUID.
+argument-parse-failure-player-info-ip-denied = [scarlet]⚠ Искать игроков по IP можно только из консоли.
+mindustry-sender-player-required = [scarlet]⚠ Эту команду могут использовать только игроки.
 # ==============================================================================
 # Button Status
 # ==============================================================================
@@ -1527,3 +1531,31 @@ map-upload-current-creator = [accent]{ $map }[] — { $creator }
 
 discord-link-menu-website = Открыть сайт аккаунта
 commands-discord-link-website = [accent]Подтвердите привязку на сайте:[] { $url }
+# ==============================================================================
+# Admin commands (tp, heal, kill, alert, announcement)
+# ==============================================================================
+admin-cmd-tp-not-in-game = [scarlet]Чтобы телепортироваться, нужно быть в игре и управлять юнитом.
+admin-cmd-tp-target-no-unit = [scarlet]У выбранного игрока нет юнита.
+admin-cmd-tp-not-below = [scarlet]Нельзя телепортироваться к игроку, чья роль не ниже вашей.
+admin-cmd-tp-done = [accent]Вы телепортированы к [white]{ $player }
+admin-cmd-bring-not-in-game = [scarlet]Чтобы перенести игроков к себе, нужно быть в игре и управлять юнитом.
+admin-cmd-bring-done = [accent]Перенесено к вам игроков: [green]{ $count }[accent].
+admin-cmd-tp-destination-no-unit = [scarlet]У игрока-цели нет юнита.
+admin-cmd-tpto-done = [accent]Телепортировано игроков: [green]{ $count }[accent], к [white]{ $player }
+admin-cmd-tp-invalid-coordinates = [scarlet]Неверные координаты: { $x }, { $y }
+admin-cmd-tppos-done = [accent]Телепортировано игроков: [green]{ $count }[accent], в точку ([white]{ $x }, { $y }[accent]).
+admin-cmd-heal-no-unit = [scarlet]Чтобы вылечиться, нужен юнит.
+admin-cmd-heal-self-done = [accent]Ваш юнит полностью вылечен.
+admin-cmd-heal-done = [accent]Вылечено юнитов: [green]{ $count }[accent].
+admin-cmd-killunits-done = [accent]Уничтожено юнитов: [green]{ $count }[accent].
+admin-cmd-kill-done = [accent]Убито игроков: [green]{ $count }[accent].
+admin-cmd-suicide-no-unit = [scarlet]Чтобы уничтожить свой юнит, он должен у вас быть.
+admin-cmd-suicide-done = [accent]Ваш юнит уничтожен.
+admin-cmd-alert-message = [gold][Оповещение][white] { $message }
+admin-cmd-alert-done = [accent]Оповещение отправлено игрокам: [green]{ $count }[accent].
+admin-cmd-toast-done = [accent]Уведомление отправлено игрокам: [green]{ $count }[accent].
+admin-cmd-announcement-unavailable = [scarlet]Сервис объявлений недоступен.
+admin-cmd-announcement-list = [accent]Активные объявления ([gold]{ $count }[accent]): [white]{ $keys } [gray](use_custom_list={ $custom })
+admin-cmd-announcement-sent = [accent]Объявление [white]'{ $key }'[accent] отправлено игрокам: [green]{ $count }[accent].
+admin-cmd-announcement-rotated = [accent]Отправлено объявление из ротации: [white]'{ $key }'[accent].
+admin-cmd-announcement-skipped = [scarlet]Объявление пропущено (выключено, нет игроков или игра не идёт).

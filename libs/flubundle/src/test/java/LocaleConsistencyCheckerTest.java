@@ -100,4 +100,21 @@ public class LocaleConsistencyCheckerTest {
 
         assertTrue(LocaleConsistencyChecker.check(dir, "en").hasErrors());
     }
+
+    @Test
+    void aValueMayNotUseAVariableOnlyTheBaseAttributeUses() throws IOException {
+        write("bundle_en.ftl", """
+                title = Title
+                    .tooltip = For { $name }
+                """);
+        write("bundle_ru.ftl", """
+                title = Заголовок { $name }
+                    .tooltip = Для
+                """);
+
+        CompilationResult result = LocaleConsistencyChecker.check(dir, "en");
+
+        assertEquals(1, result.errors().size(), result.formatReport());
+        assertTrue(result.errors().get(0).message().contains("Value uses $name"), result.formatReport());
+    }
 }

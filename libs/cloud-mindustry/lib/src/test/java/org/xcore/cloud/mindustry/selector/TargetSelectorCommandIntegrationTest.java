@@ -248,4 +248,26 @@ class TargetSelectorCommandIntegrationTest {
         manager.commandExecutor().executeCommand(console, "killunits @e[type=dagger]").join();
         assertTrue(cmd.executed.contains("killunits:1"));
     }
+
+    @Test
+    @DisplayName("Player names with spaces work as typed and in quotes")
+    void namesWithSpaces() {
+        Player bob = Player.create();
+        bob.id = 7;
+        bob.name = "[gold]Big Bob";
+        bob.team(Team.crux);
+        bob.add();
+
+        TestCommands cmd = new TestCommands();
+        AnnotationParser<MindustrySender> annotationParser = new AnnotationParser<>(manager, MindustrySender.class);
+        manager.registerSelectorAnnotations(annotationParser);
+        annotationParser.parse(cmd);
+        MindustrySender sender = createTestSender(null);
+
+        manager.commandExecutor().executeCommand(sender, "direct Big Bob").join();
+        manager.commandExecutor().executeCommand(sender, "direct \"big bob\"").join();
+        manager.commandExecutor().executeCommand(sender, "killall Big Bob").join();
+
+        assertEquals(List.of("direct:Big Bob", "direct:Big Bob", "killall:Big Bob"), cmd.executed);
+    }
 }

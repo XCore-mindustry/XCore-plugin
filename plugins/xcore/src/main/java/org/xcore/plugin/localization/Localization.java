@@ -1,5 +1,7 @@
 package org.xcore.plugin.localization;
 
+import arc.util.Log;
+import arc.util.Strings;
 import com.ospx.flubundle.Bundle;
 import com.ospx.flubundle.Localizer;
 import com.ospx.flubundle.mindustry.Messenger;
@@ -97,11 +99,16 @@ public class Localization {
         send(key, args());
     }
 
+    /**
+     * Sends the message to this localization's player. Without a session (the console, or a
+     * locale-only localization) there is nobody to chat to, so the message goes to the server log;
+     * use {@link Messenger#all()} to broadcast.
+     */
     public void send(String key, Map<String, Object> args) {
         if (session != null) {
             session.player.sendMessage(localizer.format(key, args));
         } else {
-            Messenger.of(bundle).all().send(key, args);
+            Log.info(Strings.stripColors(format(key, args)));
         }
     }
 

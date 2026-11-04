@@ -150,4 +150,92 @@ class FtlCompilerTest {
         assertFalse(result.hasErrors(), result.formatReport());
         assertTrue(result.messagesCount() > 0);
     }
+
+    @Test
+    void testUnknownMessageAndTermReferencesAreErrors() throws IOException {
+        createFtl("bundle_en.ftl", """
+                -server = XCore
+                welcome = Welcome to { -servr }!
+                rules = See { welcom } and { -server.missing ->
+                   *[other] x
+                }
+                menu = Menu
+                    .title = Title
+                ok = { menu.title } { menu.subtitle }
+                """);
+
+        CompilationResult result = FtlCompiler.compile(tempDir);
+        List<String> errors = result.errors().stream().map(Diagnostic::message).toList();
+
+        assertEquals(4, errors.size(), result.formatReport());
+        assertTrue(errors.contains("Unknown term '-servr'. Did you mean '-server'?"), errors.toString());
+        assertTrue(errors.contains("Unknown message 'welcom'. Did you mean 'welcome'?"), errors.toString());
+        assertTrue(errors.contains("'-server' has no attribute 'missing'"), errors.toString());
+        assertTrue(errors.contains("'menu' has no attribute 'subtitle'"), errors.toString());
+    }
+
+    @Test
+    void testReferencesResolveAcrossFilesOfOneLocaleOnly() throws IOException {
+        createFtl("bundle_en.ftl", """
+                -server = XCore
+                greeting = Hi from { -server }, see { extra }
+                """);
+        createFtl("more_en.ftl", "extra = Extra\n");
+        createFtl("bundle_ru.ftl", "greeting = Привет от { -server }\n");
+
+        CompilationResult result = FtlCompiler.compile(tempDir);
+        List<Diagnostic> errors = result.errors();
+
+        assertEquals(1, errors.size(), result.formatReport());
+        assertTrue(errors.get(0).file().endsWith("bundle_ru.ftl"));
+        assertEquals("Unknown term '-server'.", errors.get(0).message());
+    }
+
+    @Test
+    void testReferencesInsideSelectorsAndFunctionsAreChecked() throws IOException {
+        createFtl("bundle_en.ftl", """
+                -team = Team
+                    .gender = neuter
+                status = { -team.gender ->
+                    [neuter] { STRIP(missing-one) }
+                   *[other] { missing-two }
+                }
+                """);
+
+        CompilationResult result = FtlCompiler.compile(tempDir);
+        List<String> errors = result.errors().stream().map(Diagnostic::message).toList();
+
+        assertEquals(List.of("Unknown message 'missing-one'.", "Unknown message 'missing-two'."), errors,
+                result.formatReport());
+    }
+
+    @Test
+    void testExternalReferencesAreAllowed() throws IOException {
+        createFtl("bundle_en.ftl", "title = { -xcore } — { shared-footer }\n");
+
+        CompilationResult strict = FtlCompiler.compile(tempDir);
+        assertEquals(2, strict.errors().size(), strict.formatReport());
+
+        CompilationResult lenient = FtlCompiler.builder()
+                .externalReferences("-xcore", "shared-footer")
+                .build()
+                .compilePaths(List.of(tempDir));
+        assertFalse(lenient.hasErrors(), lenient.formatReport());
+    }
+
+    @Test
+    void testDuplicateIdsAreWarnings() throws IOException {
+        createFtl("bundle_en.ftl", """
+                hello = Hello
+                hello = Hello again
+                """);
+        createFtl("other_en.ftl", "hello = Third\n");
+
+        CompilationResult result = FtlCompiler.compile(tempDir);
+
+        assertFalse(result.hasErrors(), result.formatReport());
+        assertEquals(2, result.warnings().size(), result.formatReport());
+        assertTrue(result.warnings().get(0).message().contains("line 1"), result.formatReport());
+        assertTrue(result.warnings().get(1).message().contains("bundle_en.ftl"), result.formatReport());
+    }
 }

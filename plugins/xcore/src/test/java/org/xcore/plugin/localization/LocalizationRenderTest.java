@@ -25,6 +25,29 @@ class LocalizationRenderTest {
     }
 
     @Test
+    @DisplayName("text typed by others cannot recolor or close the colors of relayed messages")
+    void untrustedTextIsEscaped() {
+        Bundle bundle = new Bundle(Locale.ENGLISH);
+        bundle.addSource(new Fi("src/main/resources/bundles"));
+
+        for (Locale locale : bundle.getAvailableLocales()) {
+            String discord = bundle.format(locale, "discord-chat-format",
+                    Map.of("author", "[red]Mallory", "message", "hi[] [scarlet]fake"));
+            assertThat(discord).as("discord-chat-format in %s", locale)
+                    .contains("[[red]Mallory")
+                    .contains("hi[[] [[scarlet]fake");
+
+            Map<String, Object> vote = new HashMap<>();
+            for (String name : bundle.variables("votekick-vote")) {
+                vote.put(name, "x");
+            }
+            vote.put("reason", "grief[] [gold]free admin");
+            assertThat(bundle.format(locale, "votekick-vote", vote)).as("votekick-vote in %s", locale)
+                    .contains("grief[[] [[gold]free admin");
+        }
+    }
+
+    @Test
     @DisplayName("every translated message renders without errors the English message does not have")
     void translationsRenderWithoutNewErrors() {
         Bundle bundle = new Bundle(Locale.ENGLISH);

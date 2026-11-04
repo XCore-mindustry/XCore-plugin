@@ -5,6 +5,7 @@ import org.junit.jupiter.api.io.TempDir;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -44,8 +45,67 @@ public class KeyConstantsGeneratorTest {
 
                     /** Variables: {@code $player}. */
                     public static final String PLAYER_JOINED = "player-joined";
+
+                    /** {@link #HEXED_COUNTDOWN_TICK} with its variables. */
+                    public static com.ospx.flubundle.Text hexedCountdownTick(Object seconds) {
+                        return com.ospx.flubundle.Text.of(HEXED_COUNTDOWN_TICK, com.ospx.flubundle.Args.builder()
+                                .put("seconds", seconds)
+                                .build());
+                    }
+
+                    /** {@link #PLAIN} with its variables. */
+                    public static com.ospx.flubundle.Text plain() {
+                        return com.ospx.flubundle.Text.of(PLAIN);
+                    }
+
+                    /** {@link #PLAYER_JOINED} with its variables. */
+                    public static com.ospx.flubundle.Text playerJoined(Object player) {
+                        return com.ospx.flubundle.Text.of(PLAYER_JOINED, com.ospx.flubundle.Args.builder()
+                                .put("player", player)
+                                .build());
+                    }
                 }
                 """, source);
+    }
+
+    @Test
+    void generatedMethodsCompileAndBuildTexts() throws Exception {
+        Files.writeString(dir.resolve("bundle_en.ftl"), """
+                kick = { $class } kicked { $target-name } for { $default } ({ $class })
+                hello = Hello
+                """);
+        Path out = dir.resolve("generated");
+        Path file = KeyConstantsGenerator.write(dir, "en", "gen", "Keys", out);
+
+        var compiler = javax.tools.ToolProvider.getSystemJavaCompiler();
+        int status = compiler.run(null, null, null, "-parameters", "-d", out.toString(),
+                "-cp", System.getProperty("java.class.path"), file.toString());
+        assertEquals(0, status, "generated source compiles");
+
+        try (var loader = new java.net.URLClassLoader(new java.net.URL[]{out.toUri().toURL()},
+                getClass().getClassLoader())) {
+            Class<?> keys = loader.loadClass("gen.Keys");
+            var kick = keys.getMethod("kick", Object.class, Object.class, Object.class);
+            assertEquals(List.of("class_", "targetName", "default_"),
+                    java.util.Arrays.stream(kick.getParameters()).map(java.lang.reflect.Parameter::getName).toList());
+
+            var text = (com.ospx.flubundle.Text) kick.invoke(null, "Admin", "Bob", "griefing");
+            assertEquals("kick", text.key());
+            assertEquals(java.util.Map.of("class", "Admin", "target-name", "Bob", "default", "griefing"), text.args());
+
+            var hello = (com.ospx.flubundle.Text) keys.getMethod("hello").invoke(null);
+            assertEquals("hello", hello.key());
+            assertTrue(hello.args().isEmpty());
+        }
+    }
+
+    @Test
+    void rejectsKeysThatCollideAsMethods() throws IOException {
+        Files.writeString(dir.resolve("bundle_en.ftl"), "ab-c = 1\nabC = 2\n");
+
+        var error = assertThrows(IllegalStateException.class,
+                () -> KeyConstantsGenerator.generate(dir, "en", "p", "K"));
+        assertTrue(error.getMessage().contains("abC"), error.getMessage());
     }
 
     @Test
@@ -78,5 +138,23 @@ public class KeyConstantsGeneratorTest {
         KeyConstantsGenerator.write(bundles, "en", "org.example.i18n", "Keys", out);
         assertEquals(0, Files.getLastModifiedTime(file).toMillis(), "unchanged output is not rewritten");
         assertFalse(modified.toMillis() == 0);
+    }
+
+    @Test
+    void factoriesTakeOnlyTheVariablesTheirValueRenders() throws IOException {
+        Files.writeString(dir.resolve("bundle_en.ftl"), """
+                title = Title
+                    .tooltip = For { $name }
+                menu = { title } and { help.hint }
+                help = Help
+                    .hint = Ask { $admin }
+                to-string = Text
+                """);
+
+        String source = KeyConstantsGenerator.generate(dir, "en", "p", "K");
+
+        assertTrue(source.contains("public static com.ospx.flubundle.Text title() {"), source);
+        assertTrue(source.contains("public static com.ospx.flubundle.Text menu(Object admin) {"), source);
+        assertTrue(source.contains("public static com.ospx.flubundle.Text toString_() {"), source);
     }
 }

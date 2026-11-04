@@ -56,9 +56,9 @@ public final class PlayerSelectorAdapter<C> implements ArgumentParser<C, Player>
             MindustrySender sender = manager.senderMapper().reverse(context.sender());
             return ArgumentParseResult.success(selector.resolve(sender));
         } catch (SelectorException ex) {
+            // Anything else (a resolution off the simulation thread, a bug) is not the input's fault:
+            // it propagates and is reported as an unexpected failure, with its text kept in the log.
             return ArgumentParseResult.failure(new SelectorParseException(getClass(), context, ex));
-        } catch (Exception ex) {
-            return ArgumentParseResult.failure(ex);
         }
     }
 }

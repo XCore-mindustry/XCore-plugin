@@ -9,6 +9,7 @@ import org.incendo.cloud.parser.ArgumentParseResult;
 import org.incendo.cloud.parser.ArgumentParser;
 import org.incendo.cloud.suggestion.BlockingSuggestionProvider;
 import org.xcore.cloud.mindustry.MindustryCommandManager;
+import org.xcore.cloud.mindustry.parser.PlayerNameInput;
 import org.xcore.cloud.mindustry.selector.SelectorRestrictions;
 import org.xcore.cloud.mindustry.selector.parser.PlayerSelectorAdapter;
 import org.xcore.plugin.cloud.XCoreSender;
@@ -25,7 +26,7 @@ import java.util.List;
  * 1. Target Selectors (@p, @s, @r, @a[limit=1]) are resolved by cloud-mindustry, honouring
  *    {@code @DenySelectors} / {@code @AllowedSelectors} on the parameter.
  * 2. Checks for ID format (#123).
- * 3. Checks for Exact Name match.
+ * 3. Checks for Exact Name match; a name with spaces may be typed as is or in quotes.
  * 4. Checks for UUID/IP match (Only if sender is Console).
  */
 public class PlayerParser implements ArgumentParser<XCoreSender, Player>, BlockingSuggestionProvider.Strings<XCoreSender> {
@@ -42,7 +43,10 @@ public class PlayerParser implements ArgumentParser<XCoreSender, Player>, Blocki
             return selectors.parse(commandContext, commandInput);
         }
 
-        String input = commandInput.readString();
+        // A name may contain spaces: quoted, or the longest run of words an online player is called.
+        List<String> online = new ArrayList<>();
+        Groups.player.each(p -> online.add(p.name));
+        String input = PlayerNameInput.read(commandInput, online);
         XCoreSender sender = commandContext.sender();
         boolean isServer = !sender.isPlayer();
 
@@ -56,7 +60,19 @@ public class PlayerParser implements ArgumentParser<XCoreSender, Player>, Blocki
             }
         }
 
+        // The exact name first, so a "Big  Bob" online does not take "/cmd Big Bob" from "Big Bob".
         Player exactMatch = Groups.player.find(p -> TextUtils.deepEquals(p.name, input));
+        if (exactMatch == null) {
+            // Two players who differ only in spacing make the name ambiguous: refuse, not guess.
+            List<Player> loose = new ArrayList<>();
+            Groups.player.each(p -> {
+                if (PlayerNameInput.matches(p.name, input)) loose.add(p);
+            });
+            if (loose.size() > 1) {
+                return ArgumentParseResult.failure(new XCoreCommandException("error-player-not-found"));
+            }
+            exactMatch = loose.isEmpty() ? null : loose.get(0);
+        }
         if (exactMatch != null) {
             return ArgumentParseResult.success(exactMatch);
         }

@@ -153,6 +153,26 @@ class LocalizationUserLanguageTest {
         assertThat(bundle.locale(packet(null, "uk"))).isEqualTo(java.util.Locale.of("uk", "UA"));
     }
 
+    @Test
+    @DisplayName("a localization without a session logs instead of broadcasting to every player")
+    void sessionlessSend_logsInsteadOfBroadcasting() {
+        mindustry.gen.Groups.init();
+        Player online = mock(Player.class);
+        mindustry.gen.Groups.player.add(online);
+        var previous = arc.util.Log.logger;
+        var logged = new java.util.ArrayList<String>();
+        arc.util.Log.logger = (level, text) -> logged.add(text);
+        try {
+            new Localization(bundle).send("close");
+        } finally {
+            arc.util.Log.logger = previous;
+            mindustry.gen.Groups.player.clear();
+        }
+
+        verify(online, never()).sendMessage(org.mockito.ArgumentMatchers.anyString());
+        assertThat(logged).anySatisfy(line -> assertThat(line).contains("Close"));
+    }
+
     private Session session(String clientLocale, String savedLanguage) {
         Player player = Player.create();
         player.locale = clientLocale;

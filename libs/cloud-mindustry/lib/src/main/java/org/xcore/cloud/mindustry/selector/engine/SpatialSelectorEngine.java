@@ -16,6 +16,7 @@ import mindustry.gen.Unit;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.xcore.cloud.mindustry.MindustrySender;
 import org.xcore.cloud.mindustry.SimulationExecutor;
+import org.xcore.cloud.mindustry.parser.PlayerNameInput;
 import org.xcore.cloud.mindustry.selector.SelectorKind;
 import org.xcore.cloud.mindustry.selector.SortOrder;
 import org.xcore.cloud.mindustry.selector.TargetSelectorSpec;
@@ -43,6 +44,11 @@ public final class SpatialSelectorEngine {
     }
 
     public @NonNull Seq<Player> resolvePlayers(@NonNull MindustrySender sender, @NonNull TargetSelectorSpec spec) {
+        return resolvePlayers(sender, spec, TargetSelectorSpec.MAX_ENTITIES_HARD_CAP);
+    }
+
+    /** @param cap the most players returned, whatever the spec's limit */
+    private Seq<Player> resolvePlayers(MindustrySender sender, TargetSelectorSpec spec, int cap) {
         simulation.requireOnThread();
 
         // 1. Literal Resolution
@@ -112,7 +118,7 @@ public final class SpatialSelectorEngine {
         applyPlayerSorting(matches, spec.sort(), ox, oy);
 
         // 6. Limit Truncation
-        int limit = Math.min(spec.limit(), TargetSelectorSpec.MAX_ENTITIES_HARD_CAP);
+        int limit = Math.min(spec.limit(), cap);
         if (matches.size > limit) {
             matches.truncate(limit);
         }
@@ -120,8 +126,17 @@ public final class SpatialSelectorEngine {
         return matches;
     }
 
+    /**
+     * Resolves a selector to units. {@code @e} selects any unit; the player selectors
+     * ({@code @s}, {@code @p}, {@code @r}, {@code @a}, names and {@code #id}s) select the units the
+     * matching players control.
+     */
     public @NonNull Seq<Unit> resolveUnits(@NonNull MindustrySender sender, @NonNull TargetSelectorSpec spec) {
         simulation.requireOnThread();
+
+        if (spec.kind() != SelectorKind.ALL_ENTITIES) {
+            return resolvePlayerUnits(sender, spec);
+        }
 
         Vec2 origin = resolveOrigin(sender, spec);
         float ox = origin.x;
@@ -140,6 +155,9 @@ public final class SpatialSelectorEngine {
         float r = spec.distanceMax();
 
         int limit = Math.min(spec.limit(), TargetSelectorSpec.MAX_ENTITIES_HARD_CAP);
+        // A sorted selector has to see every candidate before the limit applies, or "nearest"
+        // would mean "nearest of the first few found".
+        int collectLimit = spec.sort() == SortOrder.ARBITRARY ? limit : Integer.MAX_VALUE;
 
         if (spec.hasDistance() && r < Float.MAX_VALUE) {
             // Spatial QuadTree Accelerated Branch
@@ -150,16 +168,16 @@ public final class SpatialSelectorEngine {
                 TeamData data = spec.team().data();
                 if (data != null && data.unitTree != null) {
                     data.unitTree.intersect(queryRect, u -> {
-                        filterAndAddUnit(u, spec, ox, oy, minDist2, maxDist2, checkFog, senderTeam, matches, seen, limit);
+                        filterAndAddUnit(u, spec, ox, oy, minDist2, maxDist2, checkFog, senderTeam, matches, seen, collectLimit);
                     });
                 }
             } else if (senderPlayer != null && spec.team() != null && spec.invertTeam() && spec.team() == senderTeam) {
                 Units.nearbyEnemies(senderTeam, queryRect.x, queryRect.y, queryRect.width, queryRect.height, u -> {
-                    filterAndAddUnit(u, spec, ox, oy, minDist2, maxDist2, checkFog, senderTeam, matches, seen, limit);
+                    filterAndAddUnit(u, spec, ox, oy, minDist2, maxDist2, checkFog, senderTeam, matches, seen, collectLimit);
                 });
             } else {
                 Groups.unit.intersect(queryRect.x, queryRect.y, queryRect.width, queryRect.height, u -> {
-                    filterAndAddUnit(u, spec, ox, oy, minDist2, maxDist2, checkFog, senderTeam, matches, seen, limit);
+                    filterAndAddUnit(u, spec, ox, oy, minDist2, maxDist2, checkFog, senderTeam, matches, seen, collectLimit);
                 });
             }
         } else if (spec.team() != null && !spec.invertTeam() && spec.unitType() != null && !spec.invertType()) {
@@ -168,18 +186,15 @@ public final class SpatialSelectorEngine {
             if (data != null && data.unitsByType != null && data.unitsByType.length > spec.unitType().id) {
                 Seq<Unit> seq = data.unitsByType[spec.unitType().id];
                 if (seq != null) {
-                    for (int i = 0; i < seq.size && matches.size < limit; i++) {
-                        filterAndAddUnit(seq.items[i], spec, ox, oy, minDist2, maxDist2, checkFog, senderTeam, matches, seen, limit);
+                    for (int i = 0; i < seq.size && matches.size < collectLimit; i++) {
+                        filterAndAddUnit(seq.items[i], spec, ox, oy, minDist2, maxDist2, checkFog, senderTeam, matches, seen, collectLimit);
                     }
                 }
             }
         } else {
-            // Linear scan bounded by safe ceiling
-            int maxScan = 500;
-            int scanned = 0;
             for (Unit u : Groups.unit) {
-                filterAndAddUnit(u, spec, ox, oy, minDist2, maxDist2, checkFog, senderTeam, matches, seen, limit);
-                if (++scanned >= maxScan || matches.size >= limit) break;
+                filterAndAddUnit(u, spec, ox, oy, minDist2, maxDist2, checkFog, senderTeam, matches, seen, collectLimit);
+                if (matches.size >= collectLimit) break;
             }
         }
 
@@ -191,6 +206,33 @@ public final class SpatialSelectorEngine {
         }
 
         return matches;
+    }
+
+    /**
+     * The units of the players a player selector matches. Every matching player is considered, so
+     * that players without a unit, or with a unit of the wrong team or type, do not use up the limit.
+     */
+    private Seq<Unit> resolvePlayerUnits(MindustrySender sender, TargetSelectorSpec spec) {
+        int limit = Math.min(spec.limit(), TargetSelectorSpec.MAX_ENTITIES_HARD_CAP);
+        Seq<Player> players = resolvePlayers(sender, spec.withLimit(Integer.MAX_VALUE), Integer.MAX_VALUE);
+
+        Seq<Unit> units = new Seq<>(false, Math.min(players.size, limit));
+        for (Player player : players) {
+            if (units.size >= limit) break;
+            Unit unit = player.unit();
+            if (unit == null || !unit.isAdded() || unit.dead) continue;
+            // @s and literals skip the player filters, so the team is checked on the unit too.
+            if (spec.team() != null) {
+                boolean teamMatch = unit.team == spec.team();
+                if (spec.invertTeam() ? teamMatch : !teamMatch) continue;
+            }
+            if (spec.unitType() != null) {
+                boolean typeMatch = unit.type == spec.unitType();
+                if (spec.invertType() ? typeMatch : !typeMatch) continue;
+            }
+            units.add(unit);
+        }
+        return units;
     }
 
     private void filterAndAddUnit(
@@ -287,13 +329,21 @@ public final class SpatialSelectorEngine {
             }
         }
 
-        // Exact Clean Name
+        // The exact name first (no colors, any case), so "Big  Bob" does not select "Big Bob"
         Player found = Groups.player.find(p -> Strings.stripColors(p.plainName()).equalsIgnoreCase(nameOrId));
         if (found != null) return found;
 
-        // Raw Name
-        found = Groups.player.find(p -> p.plainName().equalsIgnoreCase(nameOrId));
-        if (found != null) return found;
+        // Then as PlayerNameInput reads it, spacing ignored as well; two players who differ only
+        // in spacing make the name ambiguous rather than picking one of them
+        Seq<Player> loose = new Seq<>();
+        for (Player p : Groups.player) {
+            if (PlayerNameInput.matches(p.plainName(), nameOrId)) loose.add(p);
+        }
+        if (loose.size > 1) {
+            throw new TooManyTargetsException(nameOrId,
+                    "'" + nameOrId + "' matches " + loose.size + " players; type the exact name or use #id");
+        }
+        if (loose.size == 1) return loose.first();
 
         // Console UUID / IP match
         if (!sender.isPlayer()) {
