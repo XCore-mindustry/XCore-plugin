@@ -1531,3 +1531,31 @@ map-upload-current-creator = [accent]{ $map }[] — { $creator }
 
 discord-link-menu-website = Открыть сайт аккаунта
 commands-discord-link-website = [accent]Подтвердите привязку на сайте:[] { $url }
+# ==============================================================================
+# Admin commands (tp, heal, kill, alert, announcement)
+# ==============================================================================
+admin-cmd-tp-not-in-game = [scarlet]Чтобы телепортироваться, нужно быть в игре и управлять юнитом.
+admin-cmd-tp-target-no-unit = [scarlet]У выбранного игрока нет юнита.
+admin-cmd-tp-not-below = [scarlet]Нельзя телепортироваться к игроку, чья роль не ниже вашей.
+admin-cmd-tp-done = [accent]Вы телепортированы к [white]{ $player }
+admin-cmd-bring-not-in-game = [scarlet]Чтобы перенести игроков к себе, нужно быть в игре и управлять юнитом.
+admin-cmd-bring-done = [accent]Перенесено к вам игроков: [green]{ $count }[accent].
+admin-cmd-tp-destination-no-unit = [scarlet]У игрока-цели нет юнита.
+admin-cmd-tpto-done = [accent]Телепортировано игроков: [green]{ $count }[accent], к [white]{ $player }
+admin-cmd-tp-invalid-coordinates = [scarlet]Неверные координаты: { $x }, { $y }
+admin-cmd-tppos-done = [accent]Телепортировано игроков: [green]{ $count }[accent], в точку ([white]{ $x }, { $y }[accent]).
+admin-cmd-heal-no-unit = [scarlet]Чтобы вылечиться, нужен юнит.
+admin-cmd-heal-self-done = [accent]Ваш юнит полностью вылечен.
+admin-cmd-heal-done = [accent]Вылечено юнитов: [green]{ $count }[accent].
+admin-cmd-killunits-done = [accent]Уничтожено юнитов: [green]{ $count }[accent].
+admin-cmd-kill-done = [accent]Убито игроков: [green]{ $count }[accent].
+admin-cmd-suicide-no-unit = [scarlet]Чтобы уничтожить свой юнит, он должен у вас быть.
+admin-cmd-suicide-done = [accent]Ваш юнит уничтожен.
+admin-cmd-alert-message = [gold][Оповещение][white] { $message }
+admin-cmd-alert-done = [accent]Оповещение отправлено игрокам: [green]{ $count }[accent].
+admin-cmd-toast-done = [accent]Уведомление отправлено игрокам: [green]{ $count }[accent].
+admin-cmd-announcement-unavailable = [scarlet]Сервис объявлений недоступен.
+admin-cmd-announcement-list = [accent]Активные объявления ([gold]{ $count }[accent]): [white]{ $keys } [gray](use_custom_list={ $custom })
+admin-cmd-announcement-sent = [accent]Объявление [white]'{ $key }'[accent] отправлено игрокам: [green]{ $count }[accent].
+admin-cmd-announcement-rotated = [accent]Отправлено объявление из ротации: [white]'{ $key }'[accent].
+admin-cmd-announcement-skipped = [scarlet]Объявление пропущено (выключено, нет игроков или игра не идёт).

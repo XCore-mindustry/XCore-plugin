@@ -15,6 +15,8 @@ import org.xcore.plugin.cloud.XCoreSender;
 import org.xcore.plugin.permission.PermissionNodes;
 import org.xcore.plugin.command.controller.CloudClientController;
 
+import static com.ospx.flubundle.Bundle.args;
+
 @Singleton
 public class TeleportController implements CloudClientController {
 
@@ -42,25 +44,25 @@ public class TeleportController implements CloudClientController {
             @Argument("destination") SinglePlayerSelector destination
     ) {
         if (!sender.isPlayer() || sender.player().unit() == null) {
-            sender.sendMessage("[scarlet]You must be an active in-game player to teleport.");
+            sender.send("admin-cmd-tp-not-in-game");
             return;
         }
 
         Player dest = destination.resolve(sender.getHandle());
         if (dest.unit() == null) {
-            sender.sendMessage("[scarlet]Target player has no active unit.");
+            sender.send("admin-cmd-tp-target-no-unit");
             return;
         }
 
         if (!mayMove(sender, dest)) {
-            sender.sendMessage("[scarlet]You cannot teleport to a player whose role is not below yours.");
+            sender.send("admin-cmd-tp-not-below");
             return;
         }
 
         Player self = sender.player();
         self.unit().set(dest.unit().x, dest.unit().y);
         self.snapInterpolation();
-        sender.sendMessage("[accent]Teleported to [white]" + dest.plainName());
+        sender.send("admin-cmd-tp-done", args("player", dest.plainName()));
     }
 
     @Command("bring <targets>")
@@ -71,7 +73,7 @@ public class TeleportController implements CloudClientController {
             @Argument("targets") MultiplePlayerSelector targets
     ) {
         if (!sender.isPlayer() || sender.player().unit() == null) {
-            sender.sendMessage("[scarlet]You must be an active in-game player to bring targets.");
+            sender.send("admin-cmd-bring-not-in-game");
             return;
         }
 
@@ -89,7 +91,7 @@ public class TeleportController implements CloudClientController {
             }
         }
 
-        sender.sendMessage("[accent]Brought [green]" + count + " [accent]player(s) to your location.");
+        sender.send("admin-cmd-bring-done", args("count", count));
     }
 
     @Command("tpto <targets> <destination>")
@@ -102,7 +104,7 @@ public class TeleportController implements CloudClientController {
     ) {
         Player dest = destination.resolve(sender.getHandle());
         if (dest.unit() == null) {
-            sender.sendMessage("[scarlet]Destination player has no active unit.");
+            sender.send("admin-cmd-tp-destination-no-unit");
             return;
         }
 
@@ -119,7 +121,7 @@ public class TeleportController implements CloudClientController {
             }
         }
 
-        sender.sendMessage("[accent]Teleported [green]" + count + " [accent]player(s) to [white]" + dest.plainName());
+        sender.send("admin-cmd-tpto-done", args("count", count, "player", dest.plainName()));
     }
 
     @Command("tppos <targets> <x> <y>")
@@ -140,7 +142,7 @@ public class TeleportController implements CloudClientController {
             targetX = parseCoord(xCoord, ox);
             targetY = parseCoord(yCoord, oy);
         } catch (NumberFormatException e) {
-            sender.sendMessage("[scarlet]Invalid coordinates: " + xCoord + ", " + yCoord);
+            sender.send("admin-cmd-tp-invalid-coordinates", args("x", xCoord, "y", yCoord));
             return;
         }
 
@@ -154,8 +156,9 @@ public class TeleportController implements CloudClientController {
             }
         }
 
-        sender.sendMessage("[accent]Teleported [green]" + count + " [accent]player(s) to ([white]"
-                + (int) (targetX / Vars.tilesize) + ", " + (int) (targetY / Vars.tilesize) + "[accent]).");
+        // Tile coordinates as text, so they are not grouped like amounts ("1,024").
+        sender.send("admin-cmd-tppos-done", args("count", count,
+                "x", String.valueOf((int) (targetX / Vars.tilesize)), "y", String.valueOf((int) (targetY / Vars.tilesize))));
     }
 
     private float parseCoord(String val, float origin) {

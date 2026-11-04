@@ -1505,3 +1505,31 @@ map-upload-current-creator = [accent]{ $map }[] — { $creator }
 
 discord-link-menu-website = Open the account website
 commands-discord-link-website = [accent]Confirm your link on the website:[] { $url }
+# ==============================================================================
+# Admin commands (tp, heal, kill, alert, announcement)
+# ==============================================================================
+admin-cmd-tp-not-in-game = [scarlet]You must be an active in-game player to teleport.
+admin-cmd-tp-target-no-unit = [scarlet]Target player has no active unit.
+admin-cmd-tp-not-below = [scarlet]You cannot teleport to a player whose role is not below yours.
+admin-cmd-tp-done = [accent]Teleported to [white]{ $player }
+admin-cmd-bring-not-in-game = [scarlet]You must be an active in-game player to bring targets.
+admin-cmd-bring-done = [accent]Brought [green]{ $count } [accent]player(s) to your location.
+admin-cmd-tp-destination-no-unit = [scarlet]Destination player has no active unit.
+admin-cmd-tpto-done = [accent]Teleported [green]{ $count } [accent]player(s) to [white]{ $player }
+admin-cmd-tp-invalid-coordinates = [scarlet]Invalid coordinates: { $x }, { $y }
+admin-cmd-tppos-done = [accent]Teleported [green]{ $count } [accent]player(s) to ([white]{ $x }, { $y }[accent]).
+admin-cmd-heal-no-unit = [scarlet]You must have an active unit to heal.
+admin-cmd-heal-self-done = [accent]Your unit was fully healed.
+admin-cmd-heal-done = [accent]Healed [green]{ $count } [accent]unit(s).
+admin-cmd-killunits-done = [accent]Killed [green]{ $count } [accent]unit(s).
+admin-cmd-kill-done = [accent]Killed [green]{ $count } [accent]player(s).
+admin-cmd-suicide-no-unit = [scarlet]You must have an active unit to suicide.
+admin-cmd-suicide-done = [accent]You killed your unit.
+admin-cmd-alert-message = [gold][Alert][white] { $message }
+admin-cmd-alert-done = [accent]Alert sent to [green]{ $count } [accent]player(s).
+admin-cmd-toast-done = [accent]Toast sent to [green]{ $count } [accent]player(s).
+admin-cmd-announcement-unavailable = [scarlet]Announcement service is not available.
+admin-cmd-announcement-list = [accent]Active announcements ([gold]{ $count }[accent]): [white]{ $keys } [gray](use_custom_list={ $custom })
+admin-cmd-announcement-sent = [accent]Announcement [white]'{ $key }'[accent] sent to [green]{ $count } [accent]player(s).
+admin-cmd-announcement-rotated = [accent]Rotated announcement [white]'{ $key }'[accent] sent.
+admin-cmd-announcement-skipped = [scarlet]Announcement skipped (disabled, no players, or not in game).

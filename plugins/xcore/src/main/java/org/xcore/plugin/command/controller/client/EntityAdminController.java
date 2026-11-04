@@ -15,6 +15,8 @@ import org.xcore.plugin.cloud.XCoreSender;
 import org.xcore.plugin.permission.PermissionNodes;
 import org.xcore.plugin.command.controller.CloudClientController;
 
+import static com.ospx.flubundle.Bundle.args;
+
 @Singleton
 public class EntityAdminController implements CloudClientController {
 
@@ -30,13 +32,13 @@ public class EntityAdminController implements CloudClientController {
     ) {
         if (targets == null) {
             if (!sender.isPlayer() || sender.player().unit() == null) {
-                sender.sendMessage("[scarlet]You must have an active unit to heal.");
+                sender.send("admin-cmd-heal-no-unit");
                 return;
             }
             Unit u = sender.player().unit();
             u.health(u.maxHealth);
             u.clearStatuses();
-            sender.sendMessage("[accent]Your unit was fully healed.");
+            sender.send("admin-cmd-heal-self-done");
             return;
         }
 
@@ -49,7 +51,7 @@ public class EntityAdminController implements CloudClientController {
                 count++;
             }
         }
-        sender.sendMessage("[accent]Healed [green]" + count + " [accent]unit(s).");
+        sender.send("admin-cmd-heal-done", args("count", count));
     }
 
     @Command("killunits <targets>")
@@ -67,7 +69,7 @@ public class EntityAdminController implements CloudClientController {
                 count++;
             }
         }
-        sender.sendMessage("[accent]Killed [green]" + count + " [accent]unit(s).");
+        sender.send("admin-cmd-killunits-done", args("count", count));
     }
 
     @Command("kill <targets>")
@@ -85,18 +87,18 @@ public class EntityAdminController implements CloudClientController {
                 count++;
             }
         }
-        sender.sendMessage("[accent]Killed [green]" + count + " [accent]player(s).");
+        sender.send("admin-cmd-kill-done", args("count", count));
     }
 
     @Command("suicide")
     @CommandDescription("Destroys your current unit if you are stuck.")
     public void suicide(XCoreSender sender) {
         if (!sender.isPlayer() || sender.player().unit() == null) {
-            sender.sendMessage("[scarlet]You must have an active unit to suicide.");
+            sender.send("admin-cmd-suicide-no-unit");
             return;
         }
 
         sender.player().unit().kill();
-        sender.sendMessage("[accent]You killed your unit.");
+        sender.send("admin-cmd-suicide-done");
     }
 }

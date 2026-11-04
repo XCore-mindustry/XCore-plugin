@@ -1,6 +1,8 @@
 package org.xcore.plugin.command.controller.client;
 
+import arc.files.Fi;
 import arc.struct.Seq;
+import com.ospx.flubundle.Bundle;
 import mindustry.content.UnitTypes;
 import mindustry.game.Team;
 import org.junit.jupiter.api.BeforeEach;
@@ -14,7 +16,11 @@ import org.xcore.testkit.fixtures.HeadlessWorld;
 import org.xcore.testkit.fixtures.MockPlayer;
 import org.xcore.testkit.fixtures.junit.WithHeadlessWorld;
 
+import java.util.Locale;
+import java.util.Map;
+
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
@@ -22,6 +28,14 @@ import static org.mockito.Mockito.*;
 class TeleportControllerTest {
 
     private final TeleportController controller = new TeleportController();
+
+    private static final Bundle BUNDLE = englishBundle();
+
+    private static Bundle englishBundle() {
+        Bundle bundle = new Bundle(Locale.ENGLISH);
+        bundle.addSource(new Fi("src/main/resources/bundles"));
+        return bundle;
+    }
 
     @BeforeEach
     void setUp(HeadlessWorld world) {
@@ -38,6 +52,16 @@ class TeleportControllerTest {
             player.player().sendMessage(invocation.getArgument(0));
             return null;
         }).when(sender).sendMessage(anyString());
+        // Replies are bundle keys; render them in English so the tests read the real text.
+        doAnswer(invocation -> {
+            player.player().sendMessage(BUNDLE.format(Locale.ENGLISH, invocation.<String>getArgument(0),
+                    invocation.<Map<String, Object>>getArgument(1)));
+            return null;
+        }).when(sender).send(anyString(), anyMap());
+        doAnswer(invocation -> {
+            player.player().sendMessage(BUNDLE.format(Locale.ENGLISH, invocation.<String>getArgument(0)));
+            return null;
+        }).when(sender).send(anyString());
         return sender;
     }
 

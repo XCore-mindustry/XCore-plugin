@@ -1545,3 +1545,31 @@ map-upload-date = Завантажена: [lightgray]{ $date }[] (UTC)
 map-upload-current-creator = [accent]{ $map }[] — { $creator }
 discord-link-menu-website = Відкрити сайт облікового запису
 commands-discord-link-website = [accent]Підтвердьте прив’язку на сайті:[] { $url }
+# ==============================================================================
+# Admin commands (tp, heal, kill, alert, announcement)
+# ==============================================================================
+admin-cmd-tp-not-in-game = [scarlet]Щоб телепортуватися, потрібно бути в грі й керувати юнітом.
+admin-cmd-tp-target-no-unit = [scarlet]У вибраного гравця немає юніта.
+admin-cmd-tp-not-below = [scarlet]Не можна телепортуватися до гравця, чия роль не нижча за вашу.
+admin-cmd-tp-done = [accent]Вас телепортовано до [white]{ $player }
+admin-cmd-bring-not-in-game = [scarlet]Щоб перенести гравців до себе, потрібно бути в грі й керувати юнітом.
+admin-cmd-bring-done = [accent]Перенесено до вас гравців: [green]{ $count }[accent].
+admin-cmd-tp-destination-no-unit = [scarlet]У гравця-цілі немає юніта.
+admin-cmd-tpto-done = [accent]Телепортовано гравців: [green]{ $count }[accent], до [white]{ $player }
+admin-cmd-tp-invalid-coordinates = [scarlet]Невірні координати: { $x }, { $y }
+admin-cmd-tppos-done = [accent]Телепортовано гравців: [green]{ $count }[accent], у точку ([white]{ $x }, { $y }[accent]).
+admin-cmd-heal-no-unit = [scarlet]Щоб вилікуватися, потрібен юніт.
+admin-cmd-heal-self-done = [accent]Ваш юніт повністю вилікувано.
+admin-cmd-heal-done = [accent]Вилікувано юнітів: [green]{ $count }[accent].
+admin-cmd-killunits-done = [accent]Знищено юнітів: [green]{ $count }[accent].
+admin-cmd-kill-done = [accent]Убито гравців: [green]{ $count }[accent].
+admin-cmd-suicide-no-unit = [scarlet]Щоб знищити свій юніт, він має у вас бути.
+admin-cmd-suicide-done = [accent]Ваш юніт знищено.
+admin-cmd-alert-message = [gold][Оповіщення][white] { $message }
+admin-cmd-alert-done = [accent]Оповіщення надіслано гравцям: [green]{ $count }[accent].
+admin-cmd-toast-done = [accent]Сповіщення надіслано гравцям: [green]{ $count }[accent].
+admin-cmd-announcement-unavailable = [scarlet]Сервіс оголошень недоступний.
+admin-cmd-announcement-list = [accent]Активні оголошення ([gold]{ $count }[accent]): [white]{ $keys } [gray](use_custom_list={ $custom })
+admin-cmd-announcement-sent = [accent]Оголошення [white]'{ $key }'[accent] надіслано гравцям: [green]{ $count }[accent].
+admin-cmd-announcement-rotated = [accent]Надіслано оголошення з ротації: [white]'{ $key }'[accent].
+admin-cmd-announcement-skipped = [scarlet]Оголошення пропущено (вимкнено, немає гравців або гра не йде).
