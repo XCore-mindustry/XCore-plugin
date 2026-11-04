@@ -63,7 +63,15 @@ public class PlayerParser implements ArgumentParser<XCoreSender, Player>, Blocki
         // The exact name first, so a "Big  Bob" online does not take "/cmd Big Bob" from "Big Bob".
         Player exactMatch = Groups.player.find(p -> TextUtils.deepEquals(p.name, input));
         if (exactMatch == null) {
-            exactMatch = Groups.player.find(p -> PlayerNameInput.matches(p.name, input));
+            // Two players who differ only in spacing make the name ambiguous: refuse, not guess.
+            List<Player> loose = new ArrayList<>();
+            Groups.player.each(p -> {
+                if (PlayerNameInput.matches(p.name, input)) loose.add(p);
+            });
+            if (loose.size() > 1) {
+                return ArgumentParseResult.failure(new XCoreCommandException("error-player-not-found"));
+            }
+            exactMatch = loose.isEmpty() ? null : loose.get(0);
         }
         if (exactMatch != null) {
             return ArgumentParseResult.success(exactMatch);

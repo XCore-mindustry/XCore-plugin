@@ -316,7 +316,10 @@ class CloudExceptionHandlingIntegrationTest {
 
         runAsConsole("pick Big Bob");
         runAsConsole("pick \"Big  Bob\"");
+        // Matches both only when spacing is ignored: refused instead of guessing one.
+        runAsConsole("pick \"Big   Bob\"");
 
         assertThat(targets).containsExactly(2, 1);
+        assertThat(consoleMessages).containsExactly("msg:error-player-not-found");
     }
 }

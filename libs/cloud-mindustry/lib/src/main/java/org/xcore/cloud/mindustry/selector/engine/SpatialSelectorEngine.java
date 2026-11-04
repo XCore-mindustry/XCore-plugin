@@ -333,9 +333,17 @@ public final class SpatialSelectorEngine {
         Player found = Groups.player.find(p -> Strings.stripColors(p.plainName()).equalsIgnoreCase(nameOrId));
         if (found != null) return found;
 
-        // Then as PlayerNameInput reads it: spacing ignored as well
-        found = Groups.player.find(p -> PlayerNameInput.matches(p.plainName(), nameOrId));
-        if (found != null) return found;
+        // Then as PlayerNameInput reads it, spacing ignored as well; two players who differ only
+        // in spacing make the name ambiguous rather than picking one of them
+        Seq<Player> loose = new Seq<>();
+        for (Player p : Groups.player) {
+            if (PlayerNameInput.matches(p.plainName(), nameOrId)) loose.add(p);
+        }
+        if (loose.size > 1) {
+            throw new TooManyTargetsException(nameOrId,
+                    "'" + nameOrId + "' matches " + loose.size + " players; type the exact name or use #id");
+        }
+        if (loose.size == 1) return loose.first();
 
         // Console UUID / IP match
         if (!sender.isPlayer()) {

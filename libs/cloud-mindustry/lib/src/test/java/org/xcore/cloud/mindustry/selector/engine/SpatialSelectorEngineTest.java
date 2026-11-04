@@ -366,4 +366,14 @@ class SpatialSelectorEngineTest {
         assertEquals(single, engine.resolvePlayers(console, SelectorSyntaxParser.parse("Big Bob")).first());
         assertEquals(doubleSpaced, engine.resolvePlayers(console, SelectorSyntaxParser.parse("Big  Bob")).first());
     }
+
+    @Test
+    @DisplayName("a literal name that only loosely matches several players is ambiguous")
+    void resolve_literalAmbiguousLooseMatch() {
+        createMockPlayer(1, "Big  Bob", Team.sharded, 10, 10, false);
+        createMockPlayer(2, "Big Bob", Team.sharded, 20, 20, false);
+
+        assertThrows(org.xcore.cloud.mindustry.selector.exception.TooManyTargetsException.class,
+                () -> engine.resolvePlayers(new MindustrySender.ConsoleSender(), SelectorSyntaxParser.parse("big   bob")));
+    }
 }
