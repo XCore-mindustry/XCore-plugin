@@ -178,7 +178,7 @@ commands-badge-description = Адкрыць меню бэйджаў і кіра�
 commands-tr-success = [accent]Мова перакладчыка зменена на [grey]{ $translatorLanguage }[]!
 commands-tr-off = [accent]Перакладчык [scarlet]выключаны[]!
 commands-tr-not-found = [scarlet]⚠ Такой мовы няма.
-discord-chat-format = [#5865F2][DISCORD][] [lightgray]| [accent]{ $author }[lightgray] >> [white]{ $message }
+discord-chat-format = [#5865F2][DISCORD][] [lightgray]| [accent]{ ESCAPE($author) }[lightgray] >> [white]{ ESCAPE($message) }
 global-chat-format = [royal][[[orange]ГЛАБАЛЬНЫ [lightgray](з [accent]{ $server }[])[] { $author }[]]: [white]{ $message }
 private-message-received = [sky][АП][] [lightgray]ад [accent]{ $author } [gray]#{ $pid }[lightgray]: [white]{ $message }
 private-message-sent = [sky][АП][] [lightgray]для [accent]{ $target } [gray]#{ $pid }[lightgray]: [white]{ $message }
@@ -388,7 +388,7 @@ commands-votekick-description = Галасаванне за выключэнне
 commands-vote-description = Прагаласаваць у бягучым галасаванні.
 commands-vote-vote-with = [scarlet]⚠ Галасуйце праз [orange]/vote <y/n/c>
 votekick-vote =
-    { $starter } [grey]#[white]{ $starterId }[lightgray] прагаласаваў за выключэнне { $target } [grey]#[white]{ $targetId }[lightgray] з прычыны [orange]{ $reason }[lightgray]. ([accent]{ $votes }[]/[accent]{ $required }[])
+    { $starter } [grey]#[white]{ $starterId }[lightgray] прагаласаваў за выключэнне { $target } [grey]#[white]{ $targetId }[lightgray] з прычыны [orange]{ ESCAPE($reason) }[lightgray]. ([accent]{ $votes }[]/[accent]{ $required }[])
     [lightgray]Увядзіце [orange]/vote <y/n>[], каб прагаласаваць.
 votekick-left = { $player }[lightgray] выйшаў. Яго голас адменены. ([accent]{ $votes }[]/[accent]{ $required }[])
 votekick-fail = [lightgray]Галасаванне не прайшло. Недастаткова галасоў, каб выключыць { $target }[lightgray].

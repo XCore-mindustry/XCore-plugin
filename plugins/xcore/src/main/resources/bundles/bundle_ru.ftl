@@ -178,7 +178,7 @@ commands-badge-description = Открыть меню бейджей и упра�
 commands-tr-success = [accent]Язык переводчика был успешно изменен на [grey]{ $translatorLanguage }[]!
 commands-tr-off = [accent]Переводчик [scarlet]выключен[]!
 commands-tr-not-found = [scarlet]⚠ Нет такого языка
-discord-chat-format = [#5865F2][DISCORD][] [lightgray]| [accent]{ $author }[lightgray] >> [white]{ $message }
+discord-chat-format = [#5865F2][DISCORD][] [lightgray]| [accent]{ ESCAPE($author) }[lightgray] >> [white]{ ESCAPE($message) }
 global-chat-format = [royal][[[orange]GLOBAL [lightgray](из [accent]{ $server }[])[] { $author }[]]: [white]{ $message }
 private-message-received = [sky][ЛС][] [lightgray]от [accent]{ $author } [gray]#{ $pid }[lightgray]: [white]{ $message }
 private-message-sent = [sky][ЛС][] [lightgray]для [accent]{ $target } [gray]#{ $pid }[lightgray]: [white]{ $message }
@@ -386,7 +386,7 @@ commands-votekick-description = Голосование за кик игрока.
 commands-vote-description = Проголосовать в текущем активном голосовании
 commands-vote-vote-with = [scarlet]⚠ Голосуйте с помощью [orange]/vote <y/n/c>
 votekick-vote =
-    { $starter } [grey]#[white]{ $starterId }[lightgray] хочет выгнать { $target } [grey]#[white]{ $targetId }[lightgray]. Причина: [orange]{ $reason }[lightgray]. ([accent]{ $votes }[]/[accent]{ $required }[])
+    { $starter } [grey]#[white]{ $starterId }[lightgray] хочет выгнать { $target } [grey]#[white]{ $targetId }[lightgray]. Причина: [orange]{ ESCAPE($reason) }[lightgray]. ([accent]{ $votes }[]/[accent]{ $required }[])
     [lightgray]Напишите [orange]/vote <y/n>[], чтобы проголосовать.
 votekick-left = { $player }[lightgray] покинул игру. Голос аннулирован. ([accent]{ $votes }[]/[accent]{ $required }[])
 votekick-fail = [lightgray]Голосование не состоялось. Недостаточно голосов для изгнания { $target }[lightgray].

@@ -182,7 +182,7 @@ commands-badge-description = Відкрити меню відзнак і кер�
 commands-tr-success = [accent]Мову перекладача успішно змінено на [grey]{ $translatorLanguage }[]!
 commands-tr-off = [accent]Перекладач [scarlet]вимкнено[]!
 commands-tr-not-found = [scarlet]⚠ Такої мови не існує.
-discord-chat-format = [#5865F2][DISCORD][] [lightgray]| [accent]{ $author }[lightgray] >> [white]{ $message }
+discord-chat-format = [#5865F2][DISCORD][] [lightgray]| [accent]{ ESCAPE($author) }[lightgray] >> [white]{ ESCAPE($message) }
 global-chat-format = [royal][[[orange]GLOBAL [lightgray](з [accent]{ $server }[])[] { $author }[]]: [white]{ $message }
 private-message-received = [sky][ПП][] [lightgray]від [accent]{ $author } [gray]#{ $pid }[lightgray]: [white]{ $message }
 private-message-sent = [sky][ПП][] [lightgray]для [accent]{ $target } [gray]#{ $pid }[lightgray]: [white]{ $message }
@@ -394,7 +394,7 @@ commands-votekick-description = Голосування за вигнання г�
 commands-vote-description = Проголосувати в поточному активному голосуванні.
 commands-vote-vote-with = [scarlet]⚠ Голосуйте за допомогою [orange]/vote <y/n/c>
 votekick-vote =
-    { $starter } [grey]#[white]{ $starterId }[lightgray] хоче вигнати { $target } [grey]#[white]{ $targetId }[lightgray]. Причина: [orange]{ $reason }[lightgray]. ([accent]{ $votes }[]/[accent]{ $required }[])
+    { $starter } [grey]#[white]{ $starterId }[lightgray] хоче вигнати { $target } [grey]#[white]{ $targetId }[lightgray]. Причина: [orange]{ ESCAPE($reason) }[lightgray]. ([accent]{ $votes }[]/[accent]{ $required }[])
     [lightgray]Напишіть [orange]/vote <y/n>[], щоб проголосувати.
 votekick-left = { $player }[lightgray] покинув гру. Голос анульовано. ([accent]{ $votes }[]/[accent]{ $required }[])
 votekick-fail = [lightgray]Голосування не відбулося. Недостатньо голосів для вигнання { $target }[lightgray].

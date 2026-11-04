@@ -178,7 +178,7 @@ commands-badge-description = Öffnet das Abzeichenmenü und verwaltet dein aktiv
 commands-tr-success = [accent]Die Sprache des Übersetzers wurde auf [grey]{ $translatorLanguage }[] geändert!
 commands-tr-off = [accent]Der Übersetzer ist [scarlet]aus[]!
 commands-tr-not-found = [scarlet]⚠ Diese Sprache gibt es nicht.
-discord-chat-format = [#5865F2][DISCORD][] [lightgray]| [accent]{ $author }[lightgray] >> [white]{ $message }
+discord-chat-format = [#5865F2][DISCORD][] [lightgray]| [accent]{ ESCAPE($author) }[lightgray] >> [white]{ ESCAPE($message) }
 global-chat-format = [royal][[[orange]GLOBAL [lightgray](von [accent]{ $server }[])[] { $author }[]]: [white]{ $message }
 private-message-received = [sky][PN][] [lightgray]von [accent]{ $author } [gray]#{ $pid }[lightgray]: [white]{ $message }
 private-message-sent = [sky][PN][] [lightgray]an [accent]{ $target } [gray]#{ $pid }[lightgray]: [white]{ $message }
@@ -381,7 +381,7 @@ commands-votekick-description = Abstimmung, um einen Spieler vom Server zu kicke
 commands-vote-description = Stimme in der aktuellen Abstimmung ab.
 commands-vote-vote-with = [scarlet]⚠ Stimme mit [orange]/vote <y/n/c>[scarlet] ab
 votekick-vote =
-    { $starter } [grey]#[white]{ $starterId }[lightgray] hat dafür gestimmt, { $target } [grey]#[white]{ $targetId }[lightgray] wegen [orange]{ $reason }[lightgray] zu kicken. ([accent]{ $votes }[]/[accent]{ $required }[])
+    { $starter } [grey]#[white]{ $starterId }[lightgray] hat dafür gestimmt, { $target } [grey]#[white]{ $targetId }[lightgray] wegen [orange]{ ESCAPE($reason) }[lightgray] zu kicken. ([accent]{ $votes }[]/[accent]{ $required }[])
     [lightgray]Gib [orange]/vote <y/n>[] ein, um abzustimmen.
 votekick-left = { $player }[lightgray] ist gegangen. Die Stimme wurde zurückgezogen. ([accent]{ $votes }[]/[accent]{ $required }[])
 votekick-fail = [lightgray]Abstimmung gescheitert. Nicht genug Stimmen, um { $target }[lightgray] zu kicken.

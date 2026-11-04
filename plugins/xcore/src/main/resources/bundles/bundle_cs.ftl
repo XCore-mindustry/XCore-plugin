@@ -178,7 +178,7 @@ commands-badge-description = Otevře menu odznaků a správu aktivního odznaku.
 commands-tr-success = [accent]Jazyk překladače byl změněn na [grey]{ $translatorLanguage }[]!
 commands-tr-off = [accent]Překladač je [scarlet]vypnutý[]!
 commands-tr-not-found = [scarlet]⚠ Takový jazyk neexistuje.
-discord-chat-format = [#5865F2][DISCORD][] [lightgray]| [accent]{ $author }[lightgray] >> [white]{ $message }
+discord-chat-format = [#5865F2][DISCORD][] [lightgray]| [accent]{ ESCAPE($author) }[lightgray] >> [white]{ ESCAPE($message) }
 global-chat-format = [royal][[[orange]GLOBÁLNÍ [lightgray](z [accent]{ $server }[])[] { $author }[]]: [white]{ $message }
 private-message-received = [sky][SZ][] [lightgray]od [accent]{ $author } [gray]#{ $pid }[lightgray]: [white]{ $message }
 private-message-sent = [sky][SZ][] [lightgray]pro [accent]{ $target } [gray]#{ $pid }[lightgray]: [white]{ $message }
@@ -386,7 +386,7 @@ commands-votekick-description = Hlasování o vyhození hráče ze serveru.
 commands-vote-description = Hlasuj v probíhajícím hlasování.
 commands-vote-vote-with = [scarlet]⚠ Hlasuj pomocí [orange]/vote <y/n/c>
 votekick-vote =
-    { $starter } [grey]#[white]{ $starterId }[lightgray] hlasoval pro vyhození { $target } [grey]#[white]{ $targetId }[lightgray] z důvodu [orange]{ $reason }[lightgray]. ([accent]{ $votes }[]/[accent]{ $required }[])
+    { $starter } [grey]#[white]{ $starterId }[lightgray] hlasoval pro vyhození { $target } [grey]#[white]{ $targetId }[lightgray] z důvodu [orange]{ ESCAPE($reason) }[lightgray]. ([accent]{ $votes }[]/[accent]{ $required }[])
     [lightgray]Napiš [orange]/vote <y/n>[] a hlasuj.
 votekick-left = { $player }[lightgray] odešel. Jeho hlas byl zrušen. ([accent]{ $votes }[]/[accent]{ $required }[])
 votekick-fail = [lightgray]Hlasování neuspělo. Málo hlasů pro vyhození { $target }[lightgray].

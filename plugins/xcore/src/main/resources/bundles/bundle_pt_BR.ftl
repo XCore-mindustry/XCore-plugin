@@ -182,7 +182,7 @@ commands-badge-description = Abre o menu de emblemas e gerencia seu emblema ativ
 commands-tr-success = [accent]O idioma do tradutor foi alterado com sucesso para [grey]{ $translatorLanguage }[]!
 commands-tr-off = [accent]O tradutor está [scarlet]desativado[]!
 commands-tr-not-found = [scarlet]⚠ Este idioma não existe.
-discord-chat-format = [#5865F2][DISCORD][] [lightgray]| [accent]{ $author }[lightgray] >> [white]{ $message }
+discord-chat-format = [#5865F2][DISCORD][] [lightgray]| [accent]{ ESCAPE($author) }[lightgray] >> [white]{ ESCAPE($message) }
 global-chat-format = [royal][[[orange]GLOBAL [lightgray](de [accent]{ $server }[])[] { $author }[]]: [white]{ $message }
 private-message-received = [sky][MP][] [lightgray]de [accent]{ $author } [gray]#{ $pid }[lightgray]: [white]{ $message }
 private-message-sent = [sky][MP][] [lightgray]para [accent]{ $target } [gray]#{ $pid }[lightgray]: [white]{ $message }
@@ -390,7 +390,7 @@ commands-votekick-description = Votação para expulsar um jogador do servidor.
 commands-vote-description = Votar na votação ativa.
 commands-vote-vote-with = [scarlet]⚠ Vote usando [orange]/vote <y/n/c>
 votekick-vote =
-    { $starter } [grey]#[white]{ $starterId }[lightgray] votou para expulsar { $target } [grey]#[white]{ $targetId }[lightgray] por [orange]{ $reason }[lightgray]. ([accent]{ $votes }[]/[accent]{ $required }[])
+    { $starter } [grey]#[white]{ $starterId }[lightgray] votou para expulsar { $target } [grey]#[white]{ $targetId }[lightgray] por [orange]{ ESCAPE($reason) }[lightgray]. ([accent]{ $votes }[]/[accent]{ $required }[])
     [lightgray]Digite [orange]/vote <y/n>[] para votar.
 votekick-left = { $player }[lightgray] saiu. Seu voto foi cancelado. ([accent]{ $votes }[]/[accent]{ $required }[])
 votekick-fail = [lightgray]Votação falhou. Votos insuficientes para expulsar { $target }[lightgray].

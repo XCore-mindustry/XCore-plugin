@@ -178,7 +178,7 @@ commands-badge-description = Otwiera menu odznak i pozwala zarządzać aktywną 
 commands-tr-success = [accent]Język tłumacza zmieniono na [grey]{ $translatorLanguage }[]!
 commands-tr-off = [accent]Tłumacz jest [scarlet]wyłączony[]!
 commands-tr-not-found = [scarlet]⚠ Nie ma takiego języka.
-discord-chat-format = [#5865F2][DISCORD][] [lightgray]| [accent]{ $author }[lightgray] >> [white]{ $message }
+discord-chat-format = [#5865F2][DISCORD][] [lightgray]| [accent]{ ESCAPE($author) }[lightgray] >> [white]{ ESCAPE($message) }
 global-chat-format = [royal][[[orange]GLOBALNY [lightgray](z [accent]{ $server }[])[] { $author }[]]: [white]{ $message }
 private-message-received = [sky][PW][] [lightgray]od [accent]{ $author } [gray]#{ $pid }[lightgray]: [white]{ $message }
 private-message-sent = [sky][PW][] [lightgray]do [accent]{ $target } [gray]#{ $pid }[lightgray]: [white]{ $message }
@@ -388,7 +388,7 @@ commands-votekick-description = Głosowanie nad wyrzuceniem gracza z serwera.
 commands-vote-description = Oddaj głos w trwającym głosowaniu.
 commands-vote-vote-with = [scarlet]⚠ Głosuj za pomocą [orange]/vote <y/n/c>
 votekick-vote =
-    { $starter } [grey]#[white]{ $starterId }[lightgray] zagłosował za wyrzuceniem { $target } [grey]#[white]{ $targetId }[lightgray] z powodu: [orange]{ $reason }[lightgray]. ([accent]{ $votes }[]/[accent]{ $required }[])
+    { $starter } [grey]#[white]{ $starterId }[lightgray] zagłosował za wyrzuceniem { $target } [grey]#[white]{ $targetId }[lightgray] z powodu: [orange]{ ESCAPE($reason) }[lightgray]. ([accent]{ $votes }[]/[accent]{ $required }[])
     [lightgray]Wpisz [orange]/vote <y/n>[], aby zagłosować.
 votekick-left = { $player }[lightgray] wyszedł. Jego głos został anulowany. ([accent]{ $votes }[]/[accent]{ $required }[])
 votekick-fail = [lightgray]Głosowanie nieudane. Za mało głosów, aby wyrzucić { $target }[lightgray].

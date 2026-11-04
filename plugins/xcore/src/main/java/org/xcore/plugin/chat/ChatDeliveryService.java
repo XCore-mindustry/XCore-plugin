@@ -1,6 +1,7 @@
 package org.xcore.plugin.chat;
 
 import arc.util.Strings;
+import com.ospx.flubundle.mindustry.Markup;
 import io.avaje.inject.PreDestroy;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
@@ -314,7 +315,7 @@ public class ChatDeliveryService {
 
     /** Provider output is shown inside a colour span; a stray {@code [} must not open a tag. */
     private static String escape(String text) {
-        return text.replace("[", "[[");
+        return Markup.escape(text);
     }
 
     /** Number of lines waiting for a translation. Visible for tests. */
