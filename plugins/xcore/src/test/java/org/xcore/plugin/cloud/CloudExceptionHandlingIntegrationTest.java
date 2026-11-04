@@ -262,4 +262,27 @@ class CloudExceptionHandlingIntegrationTest {
         assertThat(CloudCaptionConfigurer.bundleKey(Caption.of("argument.parse.failure.selector.no_such_target")))
                 .isEqualTo("argument-parse-failure-selector-no-such-target");
     }
+
+    @Test
+    @DisplayName("a player name with spaces is read as typed or in quotes")
+    void playerNameWithSpaces() {
+        mindustry.gen.Groups.init();
+        Player bob = Player.create();
+        bob.id = 7;
+        bob.name = "[gold]Big Bob";
+        bob.add();
+        var targets = new ArrayList<String>();
+        parser.parse(new Object() {
+            @Command("look <target> [note]")
+            public void look(XCoreSender sender, @Argument("target") Player target, @Argument("note") String note) {
+                targets.add(target.plainName() + "|" + note);
+            }
+        });
+
+        runAsConsole("look Big Bob now");
+        runAsConsole("look \"big bob\"");
+
+        assertThat(targets).containsExactly("Big Bob|now", "Big Bob|null");
+        assertThat(consoleMessages).isEmpty();
+    }
 }

@@ -140,7 +140,8 @@ every team id.
 ### 7. Target selectors
 `Player`, `SinglePlayerSelector`, `MultiplePlayerSelector`, `SingleUnitSelector` and `MultipleUnitSelector`
 arguments accept selectors such as `@s`, `@p`, `@a[team=crux,distance=..20]` or `@e[type=dagger,limit=5]`,
-as well as player names and `#id`s.
+as well as player names and `#id`s. A name with spaces works without quotes when an online player has it
+(`/tp Some Name`), or in quotes (`/tp "Some Name"`); `PlayerNameInput` does this for your own parsers.
 
 For unit arguments, `@e` selects any unit, while `@s`, `@p`, `@r`, `@a`, names and `#id`s select the
 units of the matching players; players without a unit are skipped. A sorted selector
@@ -210,7 +211,7 @@ record of, online or not: by UUID, by any name they have used, by `#id` if they 
 console by IP.
 
 - A name or IP that matches several records is an error; the parser never picks one.
-- The argument is one token, so a name with spaces has to be given as a UUID or `#id`.
+- A name with spaces works as typed when some record has that name, or in quotes: `"Some Name"`.
 - Suggestions list online players only.
 
 ### 11. Threads
@@ -248,6 +249,8 @@ game state, but selector and `Player` arguments will fail under it.
   stops looking after the first 500 units.
 - A command queued from another thread that fails before Cloud has started on it (for example in the
   context consumer) now completes its future exceptionally and is logged, instead of never completing.
+- Player names with spaces: selector arguments and the `PlayerInfo` parser read a quoted name, or the longest
+  run of words that is a known name (`PlayerNameInput`).
 - Selector parsers only turn selector errors into argument failures. Anything else, such as resolving off the
   simulation thread, is an unexpected failure: the sender sees `exception.unexpected` instead of the
   exception's text as an "invalid argument".

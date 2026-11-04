@@ -32,8 +32,9 @@ import java.util.regex.Pattern;
  *     <li>a name the player has used, compared case-insensitively with and without color tags;</li>
  *     <li>an IP the player has connected from, for the console only.</li>
  * </ol>
- * A name or IP that matches more than one record is an error; the parser never picks one. The
- * argument is a single token, so a name containing spaces has to be given as a UUID or {@code #id}.
+ * A name or IP that matches more than one record is an error; the parser never picks one. A name
+ * with spaces is matched over several words when a record or online player has it, or can be
+ * quoted ({@code "Some Name"}); see {@link PlayerNameInput}.
  * <p>
  * Whether the sender may act on the player is the command's business, not the parser's.
  */
@@ -60,11 +61,13 @@ public final class PlayerInfoParser<C> implements ArgumentParser<C, PlayerInfo>,
             simulation.requireOnThread();
         }
 
-        String token = input.readString();
         Administration admins = administration.get();
         if (admins == null) {
-            return failure(Reason.NOT_FOUND, token, 0, context);
+            return failure(Reason.NOT_FOUND, input.readString(), 0, context);
         }
+        String token = input.peekString().startsWith("#")
+                ? input.readString()
+                : PlayerNameInput.read(input, knownNames(admins));
 
         if (token.startsWith("#")) {
             Player player = arc.util.Strings.canParseInt(token.substring(1))
@@ -99,6 +102,21 @@ public final class PlayerInfoParser<C> implements ArgumentParser<C, PlayerInfo>,
             return ArgumentParseResult.success(matches.get(0));
         }
         return failure(matches.isEmpty() ? Reason.NOT_FOUND : Reason.AMBIGUOUS, token, matches.size(), context);
+    }
+
+    /** Every name a record or an online player goes by, so a name with spaces needs no quotes. */
+    private static List<String> knownNames(Administration admins) {
+        List<String> names = new ArrayList<>();
+        for (Player player : Groups.player) {
+            names.add(player.plainName());
+        }
+        for (PlayerInfo info : admins.playerInfo.values()) {
+            if (info.lastName != null) names.add(info.lastName);
+            for (String used : info.names) {
+                names.add(used);
+            }
+        }
+        return names;
     }
 
     private static boolean hasName(PlayerInfo info, String name) {
