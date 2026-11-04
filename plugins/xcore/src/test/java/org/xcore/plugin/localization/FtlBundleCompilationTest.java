@@ -1,12 +1,9 @@
 package org.xcore.plugin.localization;
 
-import com.ospx.flubundle.compiler.CompilationResult;
-import com.ospx.flubundle.compiler.FtlCompiler;
-import com.ospx.flubundle.compiler.LocaleConsistencyChecker;
+import com.ospx.flubundle.compiler.BundleChecks;
+import org.incendo.cloud.caption.Caption;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-
-import org.incendo.cloud.caption.Caption;
 import org.xcore.cloud.mindustry.parser.MindustryCaptionKeys;
 import org.xcore.cloud.mindustry.selector.caption.SelectorCaptionKeys;
 import org.xcore.plugin.cloud.config.CloudCaptionConfigurer;
@@ -14,7 +11,6 @@ import org.xcore.plugin.cloud.config.CloudCaptionConfigurer;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
@@ -24,6 +20,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class FtlBundleCompilationTest {
 
     private static final Path BUNDLES_DIR = Path.of("src/main/resources/bundles");
+    private static final List<String> PRIMARY_LOCALES = List.of("en", "ru", "uk_UA");
     private static final Set<String> PRIMARY_CLOUD_CAPTION_KEYS = Set.of(
             "argument-parse-failure-boolean",
             "argument-parse-failure-number",
@@ -52,53 +49,17 @@ class FtlBundleCompilationTest {
     );
 
     @Test
-    @DisplayName("all FTL bundles compile without syntax errors, unknown functions, or invalid arguments")
-    void allFtlBundlesCompileCleanly() {
-        CompilationResult result = FtlCompiler.compile(BUNDLES_DIR);
-        assertThat(result.hasErrors())
-                .withFailMessage(result.formatReport())
-                .isFalse();
+    @DisplayName("bundles compile, resolve their references, use the English variables, and the primary "
+            + "locales translate every Cloud and cloud-mindustry caption")
+    void bundlesPassAllChecks() throws IllegalAccessException {
+        BundleChecks.of(BUNDLES_DIR)
+                .requireKeys(PRIMARY_LOCALES, PRIMARY_CLOUD_CAPTION_KEYS)
+                .requireKeys(PRIMARY_LOCALES, cloudMindustryCaptionKeys())
+                .assertValid();
     }
 
-    @Test
-    @DisplayName("translations use the same $variables as the English bundle")
-    void translationsUseEnglishVariables() {
-        CompilationResult result = LocaleConsistencyChecker.builder()
-                .baseLocale("en")
-                .reportMissingKeys(false)
-                .build()
-                .check(BUNDLES_DIR);
-        assertThat(result.hasErrors())
-                .withFailMessage(result.formatReport())
-                .isFalse();
-    }
-
-    @Test
-    @DisplayName("primary locales cover all standard cloud caption keys")
-    void primaryLocalesCoverAllStandardCloudCaptionKeys() {
-        CompilationResult result = FtlCompiler.compile(BUNDLES_DIR);
-        var primaryLocales = List.of("bundle_en.ftl", "bundle_ru.ftl", "bundle_uk_UA.ftl");
-        var missing = new ArrayList<String>();
-
-        for (var filename : primaryLocales) {
-            Set<String> keys = result.messageKeysForFile(BUNDLES_DIR.resolve(filename));
-            var missingKeys = new LinkedHashSet<>(PRIMARY_CLOUD_CAPTION_KEYS);
-            missingKeys.removeAll(keys);
-            if (!missingKeys.isEmpty()) {
-                missing.add(filename + " -> " + missingKeys);
-            }
-        }
-
-        assertThat(missing)
-                .withFailMessage("Primary locale bundles are missing standard cloud caption keys:%n%s",
-                        String.join(System.lineSeparator(), missing))
-                .isEmpty();
-    }
-
-    @Test
-    @DisplayName("primary locales cover every caption cloud-mindustry can show")
-    void primaryLocalesCoverCloudMindustryCaptions() throws IllegalAccessException {
-        // XCore renders its own help, so the MindustryHelp captions are not needed.
+    /** XCore renders its own help, so the MindustryHelp captions are not needed. */
+    private static Set<String> cloudMindustryCaptionKeys() throws IllegalAccessException {
         var keys = new LinkedHashSet<String>();
         for (Class<?> holder : List.of(MindustryCaptionKeys.class, SelectorCaptionKeys.class)) {
             for (Field field : holder.getFields()) {
@@ -111,20 +72,6 @@ class FtlBundleCompilationTest {
             }
         }
         assertThat(keys).isNotEmpty();
-
-        CompilationResult result = FtlCompiler.compile(BUNDLES_DIR);
-        var missing = new ArrayList<String>();
-        for (var filename : List.of("bundle_en.ftl", "bundle_ru.ftl", "bundle_uk_UA.ftl")) {
-            var missingKeys = new LinkedHashSet<>(keys);
-            missingKeys.removeAll(result.messageKeysForFile(BUNDLES_DIR.resolve(filename)));
-            if (!missingKeys.isEmpty()) {
-                missing.add(filename + " -> " + missingKeys);
-            }
-        }
-
-        assertThat(missing)
-                .withFailMessage("Primary locale bundles are missing cloud-mindustry caption keys:%n%s",
-                        String.join(System.lineSeparator(), missing))
-                .isEmpty();
+        return keys;
     }
 }

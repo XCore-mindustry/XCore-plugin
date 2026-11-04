@@ -108,10 +108,13 @@ bundle.formatAttribute(locale, "menu", "title", Args.empty());
 ```java
 @Test
 void bundles() {
-    FtlCompiler.check(Path.of("src/main/resources/bundles"));
-    LocaleConsistencyChecker.check(Path.of("src/main/resources/bundles"), "en").assertSuccess();
+    BundleChecks.of(Path.of("src/main/resources/bundles")).assertValid();
 }
 ```
+`BundleChecks` runs every check below and throws with the full report on an error. Options:
+`baseLocale("en")`, `externalReferences("-xcore")`, and `requireKeys(locales, keys)` for keys some
+locales must translate themselves. `FtlCompiler` and `LocaleConsistencyChecker` can also be run alone.
+
 `FtlCompiler` fails on syntax errors, unknown functions and options, and on references to messages,
 terms or attributes the locale does not define (`{ welcom }`, `{ -servr }`); files of one locale
 (`bundle_en.ftl`, `extra_en.ftl`) see each other's ids. An id defined twice is a warning. A reference
