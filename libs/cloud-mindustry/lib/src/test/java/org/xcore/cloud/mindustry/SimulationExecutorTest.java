@@ -212,6 +212,8 @@ class SimulationExecutorTest {
 
             assertEquals(List.of(), executed);
             assertEquals(1, messages.size(), messages.toString());
+            // A threading bug is an internal error, not an invalid argument, and its text stays in the log.
+            assertFalse(messages.get(0).contains("thread"), messages.toString());
         } finally {
             worker.queue.shutdownNow();
         }

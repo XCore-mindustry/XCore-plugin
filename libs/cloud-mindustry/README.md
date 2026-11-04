@@ -248,6 +248,9 @@ game state, but selector and `Player` arguments will fail under it.
   stops looking after the first 500 units.
 - A command queued from another thread that fails before Cloud has started on it (for example in the
   context consumer) now completes its future exceptionally and is logged, instead of never completing.
+- Selector parsers only turn selector errors into argument failures. Anything else, such as resolving off the
+  simulation thread, is an unexpected failure: the sender sees `exception.unexpected` instead of the
+  exception's text as an "invalid argument".
 
 ## Migrating from 0.3
 

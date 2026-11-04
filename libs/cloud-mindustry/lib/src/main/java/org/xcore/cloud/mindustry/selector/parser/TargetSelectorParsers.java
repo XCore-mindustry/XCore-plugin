@@ -89,9 +89,9 @@ public final class TargetSelectorParsers {
                 SelectorGuard.checkGuard(context, spec);
                 return ArgumentParseResult.success(value);
             } catch (SelectorException ex) {
+                // Anything else (a resolution off the simulation thread, a bug) is not the input's fault:
+                // it propagates and is reported as an unexpected failure, with its text kept in the log.
                 return ArgumentParseResult.failure(new SelectorParseException(getClass(), context, ex));
-            } catch (Exception ex) {
-                return ArgumentParseResult.failure(ex);
             }
         }
 
