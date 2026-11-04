@@ -3,13 +3,13 @@ package org.xcore.plugin.event.handler;
 import arc.util.Log;
 import arc.util.Strings;
 import com.ospx.flubundle.Bundle;
+import com.ospx.flubundle.mindustry.Messenger;
 import io.avaje.inject.PreDestroy;
 import jakarta.inject.Singleton;
 import mindustry.game.EventType.GameOverEvent;
 import mindustry.game.EventType.PlayEvent;
 import mindustry.game.Rules;
 import mindustry.game.Team;
-import mindustry.gen.Call;
 import mindustry.gen.Groups;
 import mindustry.io.JsonIO;
 import mindustry.net.Packets;
@@ -17,13 +17,10 @@ import org.xcore.protocol.generated.messages.server.ServerMessages.ServerActionV
 import org.xcore.plugin.common.PluginState;
 import org.xcore.plugin.concurrent.ScheduledTasks;
 import org.xcore.plugin.config.TomlXcoreConfig;
-import org.xcore.plugin.localization.Localization;
 import org.xcore.plugin.model.enums.FinishReason;
 import org.xcore.plugin.service.GameDataService;
 import org.xcore.plugin.service.MapStatsService;
 import org.xcore.plugin.service.NetworkService;
-import org.xcore.plugin.session.Session;
-import org.xcore.plugin.session.SessionService;
 import org.xcore.plugin.startup.ShutdownOrder;
 
 import java.util.concurrent.atomic.AtomicInteger;
@@ -37,7 +34,6 @@ public class GameLifecycleHandler {
     private final NetworkService network;
     private final TomlXcoreConfig config;
     private final Bundle bundle;
-    private final SessionService sessionService;
     private final PluginState pluginState;
     private final GameDataService gameDataService;
     private final MapStatsService mapStatsService;
@@ -45,14 +41,13 @@ public class GameLifecycleHandler {
 
     public GameLifecycleHandler(NetworkService network,
                                 TomlXcoreConfig config,
-                                Bundle bundle, SessionService sessionService,
+                                Bundle bundle,
                                 PluginState pluginState,
                                 GameDataService gameDataService,
                                 MapStatsService mapStatsService) {
         this.network = network;
         this.config = config;
         this.bundle = bundle;
-        this.sessionService = sessionService;
         this.pluginState = pluginState;
         this.gameDataService = gameDataService;
         this.mapStatsService = mapStatsService;
@@ -151,16 +146,10 @@ public class GameLifecycleHandler {
 
     private void restart() {
         AtomicInteger secondsLeft = new AtomicInteger(10);
+        Messenger messenger = Messenger.of(bundle);
         tasks.every(0, 1, () -> {
-            Groups.player.each((p) -> {
-                Session session = sessionService.get(p);
-                Localization systemLocal = new Localization(bundle);
-                var message = session == null
-                        ? systemLocal.format("server-restart-countdown",
-                        args("seconds", secondsLeft.get()))
-                        : session.locale().format("server-restart-countdown", args("seconds", secondsLeft.get()));
-                Call.announce(p.con, message);
-            });
+            // Each player in their selected language, also those whose session is not loaded yet.
+            messenger.all().announce("server-restart-countdown", args("seconds", secondsLeft.get()));
             if (secondsLeft.decrementAndGet() == 0) {
                 netServer.kickAll(Packets.KickReason.serverRestarting);
                 System.exit(0);
