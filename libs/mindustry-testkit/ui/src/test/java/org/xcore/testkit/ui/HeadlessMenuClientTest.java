@@ -238,6 +238,20 @@ class HeadlessMenuClientTest {
     }
 
     @Test
+    void aStacksOwnButtonIgnoresDisabled() {
+        var client = new HeadlessMenuClient();
+        client.show(MENU, 1, true, snap(UiBuilder.table()
+                .add(UiBuilder.stack().add(UiBuilder.button("Stacked").clicked("stacked").disabled(true)))
+                .add(UiBuilder.stack().add(UiBuilder.table()
+                        .add(UiBuilder.button("Celled").clicked("celled").disabled(true))))));
+
+        client.press(MENU, "stacked");
+        assertEquals("stacked", client.outbox().remove().action());
+        // A table inside the stack puts its button in a cell again.
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalStateException.class, () -> client.press(MENU, "celled"));
+    }
+
+    @Test
     void pressTakesTheEnabledOneOfTwoThatSendTheAction() {
         var client = new HeadlessMenuClient();
         client.show(MENU, 1, true, snap(UiBuilder.table()

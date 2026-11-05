@@ -33,6 +33,11 @@ final class ClientTree {
         final Pass pass;
         final List<Element> children = new ArrayList<>();
         boolean attached = true;
+        /**
+         * Whether a table put it in a cell. A stack adds its children without cells, and the client
+         * applies cell properties, {@code disabled} among them, only to a cell's element.
+         */
+        boolean inCell = true;
         /** What this input holds now: its initial value until the player enters another. */
         Object value;
 
@@ -61,10 +66,12 @@ final class ClientTree {
         }
 
         /**
-         * Whether the client disables it: {@code applyCellProp} runs for every entry, and each
-         * {@code disabled: true} disables it, so one true entry is enough whatever else is there.
+         * Whether the client disables it: {@code applyCellProp} runs for every entry of an element
+         * in a cell, and each {@code disabled: true} disables it, so one true entry is enough
+         * whatever else is there. A direct child of a stack is in no cell and stays enabled.
          */
         boolean disabled() {
+            if (!inCell) return false;
             for (Object[] e : entries(node)) {
                 if (e[0] == UiKey.disabled && Boolean.TRUE.equals(e[1])) return true;
             }
@@ -144,6 +151,7 @@ final class ClientTree {
             }
             Element element = new Element(key, child, pass);
             element.attached = parent.attached;
+            element.inCell = parent.type != UiKey.stack;
             parent.children.add(element);
             if (key == UiKey.table || key == UiKey.buttonTable || key == UiKey.pane || key == UiKey.stack) {
                 buildInto(element, child, pass, screen);

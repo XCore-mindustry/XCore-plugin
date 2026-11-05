@@ -247,6 +247,16 @@ class ActualMenusOracleTest {
     }
 
     @Test
+    void realMenusDisablesOnlyWhatATableHolds() {
+        Menus.menuBuilder(MENU, 1L, null, false, true, false, UiBuilder.table()
+                .add(UiBuilder.button("Celled").clicked("celled").disabled(false).disabled(true))
+                .add(UiBuilder.stack().add(UiBuilder.button("Stacked").clicked("stacked").disabled(true))));
+
+        assertTrue(findButton(Core.scene.root, "Celled").isDisabled(), "any true entry disables a cell's button");
+        assertFalse(findButton(Core.scene.root, "Stacked").isDisabled(), "a stack's own child is in no cell");
+    }
+
+    @Test
     void realMenusHideOnClickClosesWithoutReportingAClose() {
         Menus.menuBuilder(MENU, 3L, null, true, true, false,
                 UiBuilder.table().add(UiBuilder.button("Go").clicked("go")));
