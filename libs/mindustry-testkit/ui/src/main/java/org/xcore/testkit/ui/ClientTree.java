@@ -60,8 +60,15 @@ final class ClientTree {
             return type == UiKey.field ? str(node, UiKey.enter) : null;
         }
 
+        /**
+         * Whether the client disables it: {@code applyCellProp} runs for every entry, and each
+         * {@code disabled: true} disables it, so one true entry is enough whatever else is there.
+         */
         boolean disabled() {
-            return bool(node, UiKey.disabled);
+            for (Object[] e : entries(node)) {
+                if (e[0] == UiKey.disabled && Boolean.TRUE.equals(e[1])) return true;
+            }
+            return false;
         }
 
         /** A table the client clears and builds a patch into: a table, a button table, a pane's inner table. */

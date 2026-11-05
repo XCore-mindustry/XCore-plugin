@@ -226,6 +226,18 @@ class HeadlessMenuClientTest {
     }
 
     @Test
+    void anyTrueDisabledEntryDisables() {
+        var client = new HeadlessMenuClient();
+        client.show(MENU, 1, true, snap(UiBuilder.table()
+                .add(UiBuilder.button("Off").clicked("off").disabled(false).disabled(true))
+                .add(UiBuilder.button("On").clicked("on").disabled(false))));
+
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalStateException.class, () -> client.press(MENU, "off"));
+        client.press(MENU, "on");
+        assertEquals("on", client.outbox().remove().action());
+    }
+
+    @Test
     void pressTakesTheEnabledOneOfTwoThatSendTheAction() {
         var client = new HeadlessMenuClient();
         client.show(MENU, 1, true, snap(UiBuilder.table()
