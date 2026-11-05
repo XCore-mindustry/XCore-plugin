@@ -35,13 +35,14 @@ class ReadmeExampleTest {
     // ---- as in the README ----
     public static class PlayerSettingsScreen implements UiController<SettingsModel, SettingsEvent> {
 
+        public static final SlotKey<Object> SLOT_TABS = SlotKey.of("slot_tabs");
         public static final SlotKey<Object> SLOT_TAB = SlotKey.of("slot_tab");
 
         @Override
         public UpdateResult<SettingsModel> update(SettingsModel model, SettingsEvent event, ControllerContext ctx) {
             return switch (event) {
-                // Only slot_tab is sent again; the tab bar and the footer stay as they are.
-                case SelectTab(var tab) -> UpdateResult.patch(SettingsModel.ACTIVE_TAB.set(model, tab), SLOT_TAB);
+                // The tab bar and the tab are sent again; the footer stays as it is.
+                case SelectTab(var tab) -> UpdateResult.patch(SettingsModel.ACTIVE_TAB.set(model, tab), SLOT_TABS, SLOT_TAB);
                 case Save() -> UpdateResult.close(model);
             };
         }
@@ -51,11 +52,11 @@ class ReadmeExampleTest {
             return Ui.table(t -> {
                 t.layout(l -> l.width(500f).height(400f).pad(10f));
 
-                t.add(Ui.table(tabs -> {
-                    tabs.layout(l -> l.growX());
+                // The buttons show which tab is open, so they are in a slot of their own.
+                t.slot(SLOT_TABS, tabs -> {
                     tabs.button(Text.t("tab.profile"), "tab:profile", b -> b.checked("profile".equals(model.activeTab())));
                     tabs.button(Text.t("tab.chat"), "tab:chat", b -> b.checked("chat".equals(model.activeTab())));
-                }));
+                });
                 t.row();
 
                 t.slot(SLOT_TAB, tab -> tab.label(Text.t("tab." + model.activeTab() + ".body"), l -> l.grow()));
@@ -77,7 +78,7 @@ class ReadmeExampleTest {
     // ---- end of the README ----
 
     @Test
-    void selectingATabPatchesOnlyItsSlot() {
+    void selectingATabPatchesTheTabBarAndTheTab() {
         List<String> sent = new ArrayList<>();
         UiSession.DeliveryGateway gateway = new UiSession.DeliveryGateway() {
             @Override
@@ -112,7 +113,9 @@ class ReadmeExampleTest {
         session.handle(new MenuResult("tab:chat"));
         session.handle(new MenuResult("action:save"));
 
-        assertThat(sent).containsExactly("show", "update slot_tab", "hide");
+        assertThat(sent).first().isEqualTo("show");
+        assertThat(sent).last().isEqualTo("hide");
+        assertThat(sent).containsExactlyInAnyOrder("show", "update slot_tabs", "update slot_tab", "hide");
         assertThat(session.model().activeTab()).isEqualTo("chat");
     }
 }

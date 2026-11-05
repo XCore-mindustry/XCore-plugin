@@ -135,15 +135,21 @@ class TextureRegistryTest {
     @Test
     void registryKeepsItsOwnCopyOfTheBytes() {
         List<byte[]> sent = new ArrayList<>();
-        TextureRegistry registry = new TextureRegistry((con, region, bytes) -> sent.add(bytes));
+        TextureRegistry registry = new TextureRegistry((con, region, bytes) -> {
+            sent.add(bytes.clone());
+            bytes[2] = 0; // a sender that writes to what it was given
+        });
         byte[] png = {7, 8, 9};
 
         String name = registry.register(png);
         png[0] = 0;
         registry.bytes(name)[1] = 0;
         registry.ensureDeliveredName("conn", name);
+        registry.ensureDeliveredName("other", name);
 
-        assertThat(sent.getFirst()).containsExactly(7, 8, 9);
+        assertThat(sent).hasSize(2);
+        assertThat(sent.get(0)).containsExactly(7, 8, 9);
+        assertThat(sent.get(1)).containsExactly(7, 8, 9);
         assertThat(registry.contains(name)).isTrue();
         assertThat(registry.contains("net-xcore_unknown")).isFalse();
     }

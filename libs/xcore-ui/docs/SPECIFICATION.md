@@ -205,15 +205,19 @@ detached: a patch to it changes nothing on the screen.
 
 ### 6.2 What a Patch Sends
 `UiSession` keeps the slots of what it sent the client (each with the slots nested in it) and, for an
-update that names dirty slots:
-1. Drops a slot whose key path has a dirty ancestor (`SlotPruner`: `a/b` under `a`).
-2. Renders the new view. A dirty slot in neither the view nor what the client has is passed over: a
-   slot of a layout this view does not have, for example. A slot in only one of them (it came into
-   the view, or the view dropped it) cannot be patched, and the whole dialog is sent instead.
-3. Drops a slot nested inside another dirty slot of the new view, whatever their keys: the outer
-   patch carries it.
-4. Compiles every remaining body, checks each against the packet limit (`UiPackets`), then sends
+update that names dirty slots, renders the new view and then:
+1. Passes over a dirty slot in neither the view nor what the client has: a slot of a layout this
+   view does not have, for example.
+2. Drops a slot whose key path has a dirty ancestor (`SlotPruner`: `a/b` under `a`).
+3. Drops a slot carried by another dirty slot it can patch: one nested in that slot's new body, or
+   one its old body had that the view has dropped. Keys play no part here.
+4. Of what is left, a slot in only one of the view and the client (it came into the view, or the
+   view dropped it) cannot be patched, and the whole dialog is sent instead.
+5. Compiles every remaining body, checks each against the packet limit (`UiPackets`), then sends
    them. A body over the limit sends none of the patch.
+
+A patch of a slot drops what the client had inside it, at any depth, and records what its new body
+has.
 
 The view outside the dirty slots must not change: a patch replaces what is inside its slot only.
 

@@ -13,7 +13,7 @@ All notable changes to this project will be documented in this file.
 - Command errors no longer show exception text: a parser that fails with a plain exception gives "Invalid argument", and the console gets the same localized error, syntax and access messages as players instead of `System Error: ...` and raw keys. The details are logged.
 - Player lookups by record (`argument-parse-failure-player-info*`) and player-only commands have localized messages; a parser error XCore does not translate shows cloud-mindustry's English text instead of the raw key.
 - A menu update that brings a part of the menu in or takes one away now sends the whole menu: the client ignored a patch of a part it did not have and kept showing the old content (xcore-ui).
-- An image streamed to a player who was not online yet, such as a map preview, is sent once they are; it used to be counted as delivered and never sent (xcore-ui).
+- An image asked for a player who was not online yet, such as a map preview, is sent the next time it is shown once they are; it used to be counted as delivered and never sent (xcore-ui).
 
 ## [5.3.0] - 2026-11-01
 

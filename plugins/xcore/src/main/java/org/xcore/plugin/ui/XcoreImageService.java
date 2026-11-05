@@ -29,8 +29,8 @@ public class XcoreImageService {
 
     /**
      * Streams through {@link mindustry.core.NetServer#sendTexture}. A player the server does not
-     * have online yet gets nothing and the texture stays undelivered, so it is sent once the player
-     * is there.
+     * have online yet gets nothing and the texture stays undelivered, so the next time it is shown
+     * to that player once they are online, it is sent.
      */
     static final class NetworkSender implements TextureRegistry.TextureSender {
         @Override

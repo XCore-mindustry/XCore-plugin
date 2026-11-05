@@ -9,6 +9,7 @@ import org.xcore.ui.VNodes;
 import mindustry.ui.builder.UiBuilder;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -214,37 +215,49 @@ public final class UiSession<Model, Event> {
     }
 
     private void patchSlots(List<SlotKey<?>> dirty) {
-        List<SlotKey<Object>> minimal = SlotPruner.prune(dirty.stream()
-                .map(s -> new SlotKey<Object>(s.path()))
-                .toList());
-        if (minimal.isEmpty()) {
-            return;
-        }
         VNodeCompiler current = compiler;
         VNode tree = controller.render(model, RenderContext.of(current.resolver()));
         Map<String, VSlot> slots = VNodes.slotsByKey(tree);
 
-        Map<String, VSlot> targets = new LinkedHashMap<>();
+        // A slot in neither the view nor what the client has belongs to another view, such as a
+        // layout this one does not have. It goes before pruning, or it would take the slots under
+        // its path with it.
+        List<SlotKey<Object>> minimal = SlotPruner.prune(dirty.stream()
+                .map(s -> new SlotKey<Object>(s.path()))
+                .filter(key -> slots.containsKey(key.path()) || shownSlots.containsKey(key.path()))
+                .toList());
+        if (minimal.isEmpty()) {
+            return;
+        }
+
+        // What a slot this patch can send carries with it: the slots of its new body, and those of
+        // its old body that the view has dropped.
+        Set<String> carried = new HashSet<>();
         for (SlotKey<?> key : minimal) {
             VSlot slot = slots.get(key.path());
-            boolean shown = shownSlots.containsKey(key.path());
-            if (slot == null && !shown) {
-                continue; // a slot of another view, such as a layout this one does not have
+            if (slot != null && shownSlots.containsKey(key.path())) {
+                carried.addAll(nestedSlots(slot));
+                for (String old : shownUnder(key.path())) {
+                    if (!slots.containsKey(old)) {
+                        carried.add(old);
+                    }
+                }
             }
-            if (slot == null || !shown) {
+        }
+
+        Map<String, VSlot> targets = new LinkedHashMap<>();
+        for (SlotKey<?> key : minimal) {
+            if (carried.contains(key.path())) {
+                continue;
+            }
+            VSlot slot = slots.get(key.path());
+            if (slot == null || !shownSlots.containsKey(key.path())) {
                 // The client lacks the slot, or the view no longer has it: a patch cannot say so.
                 open();
                 return;
             }
             targets.put(key.path(), slot);
         }
-
-        // A slot inside another slot of this patch comes with it.
-        Set<String> carried = new LinkedHashSet<>();
-        for (VSlot slot : targets.values()) {
-            carried.addAll(nestedSlots(slot));
-        }
-        targets.keySet().removeAll(carried);
 
         // Compile every body before sending any, so a body over the packet limit sends none.
         Map<String, UiBuilder.NodeBuilder<?>> bodies = new LinkedHashMap<>();
@@ -267,12 +280,31 @@ public final class UiSession<Model, Event> {
         }
     }
 
-    /** Drops the slots nested in {@code key}: a patch of it replaces them. */
+    /**
+     * Drops {@code key} and what the client has inside it, at any depth: a patch of it replaces
+     * them. Each nested slot's own set is followed, so a slot an earlier patch put deeper down
+     * goes too, though the outer slot's set predates it.
+     */
     private void forget(String key) {
         Set<String> nested = shownSlots.remove(key);
         if (nested != null) {
-            shownSlots.keySet().removeAll(nested);
+            for (String inner : nested) {
+                forget(inner);
+            }
         }
+    }
+
+    /** The slots the client has inside {@code key}, at any depth. */
+    private Set<String> shownUnder(String key) {
+        Set<String> under = new LinkedHashSet<>();
+        java.util.ArrayDeque<String> pending = new java.util.ArrayDeque<>(shownSlots.getOrDefault(key, Set.of()));
+        while (!pending.isEmpty()) {
+            String next = pending.poll();
+            if (under.add(next)) {
+                pending.addAll(shownSlots.getOrDefault(next, Set.of()));
+            }
+        }
+        return under;
     }
 
     private static Set<String> nestedSlots(VSlot slot) {

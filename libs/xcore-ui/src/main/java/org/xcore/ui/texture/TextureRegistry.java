@@ -55,8 +55,10 @@ public final class TextureRegistry {
      */
     public String register(byte[] pngBytes) {
         Objects.requireNonNull(pngBytes, "pngBytes");
-        String name = NET_PREFIX + "xcore_" + sha256Hex16(pngBytes);
-        textures.computeIfAbsent(name, key -> pngBytes.clone());
+        // Hashed from the copy kept, so a caller writing to its array meanwhile cannot split them.
+        byte[] copy = pngBytes.clone();
+        String name = NET_PREFIX + "xcore_" + sha256Hex16(copy);
+        textures.putIfAbsent(name, copy);
         return name;
     }
 
@@ -93,7 +95,8 @@ public final class TextureRegistry {
         }
         boolean sent = false;
         try {
-            sent = sender.trySend(connectionId, regionName, bytes);
+            // A copy, so a sender that writes to it cannot change the texture other connections get.
+            sent = sender.trySend(connectionId, regionName, bytes.clone());
         } finally {
             if (!sent) {
                 // Not on the client: the next use streams it again.

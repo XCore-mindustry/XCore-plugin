@@ -81,14 +81,15 @@ FormSchema<SettingsModel> schema = new FormSchema<SettingsModel>()
 ```java
 public class SettingsScreen implements UiController<SettingsModel, SettingsEvent> {
 
+    public static final SlotKey<String> SLOT_TABS = SlotKey.of("slot_tabs");
     public static final SlotKey<String> SLOT_TAB = SlotKey.of("slot_tab");
 
     @Override
     public UpdateResult<SettingsModel> update(SettingsModel model, SettingsEvent event, ControllerContext ctx) {
         if (event instanceof SelectTab select) {
             SettingsModel updated = SettingsModel.ACTIVE_TAB.set(model, select.tab());
-            // Partial in-place patch: only slot_tab updates over the wire!
-            return UpdateResult.patch(updated, SLOT_TAB);
+            // Partial in-place patch: the tab bar (its checked button) and the tab content.
+            return UpdateResult.patch(updated, SLOT_TABS, SLOT_TAB);
         }
         return UpdateResult.of(model);
     }
@@ -97,12 +98,11 @@ public class SettingsScreen implements UiController<SettingsModel, SettingsEvent
         return Ui.table(t -> {
             t.layout(l -> l.width(500f).height(400f).pad(10f));
 
-            // Tab Bar
-            t.add(Ui.table(tb -> {
-                tb.layout(l -> l.growX());
+            // Tab Bar: in a slot, as the checked button changes with the tab
+            t.slot(SLOT_TABS, tb -> {
                 tb.button(Text.t("tab.general"), "tab:general", b -> b.checked("general".equals(model.activeTab())));
                 tb.button(Text.t("tab.audio"), "tab:audio", b -> b.checked("audio".equals(model.activeTab())));
-            }));
+            });
             t.row();
 
             // Dynamic Tab Content Slot
