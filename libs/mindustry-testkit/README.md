@@ -127,7 +127,10 @@ Client simulation, transport wire snapshots, and actual-client oracle tests.
   - Patches: `menuBuilderUpdate` clears the table built under the id and builds into it. An id the client has no table under is ignored (`ignoredPatches()`), and what the cleared table held leaves the screen (`isShown(menuId, id)`);
   - Form values: a press sends the fields, checks and sliders of the build the pressed element came from. A button the dialog was built with sends the dialog's fields and those of every patch since, since they share the dialog's id map. A button a patch built sends only that patch's fields.
 
-  `press(menuId, action[, entered])` acts as a player: it finds what sends `action` on the screen and fails when nothing does or it is disabled. It rejects an entered value for a field that build does not send, and fills in the initial values of the rest. `click(menuId, action[, values])` sends an answer as given, for transport tests and for answers a client sends late, after its button was gone.
+  - Disabled: any `disabled: true` entry disables an element in a table's cell; a stack's own child is in no cell and stays enabled;
+  - Entered values: a field drops line breaks and keeps at most its `maxLength` (capped at 1000, 1000 when unset); a slider rounds to its step and keeps within its range. What a player enters stays until a patch rebuilds the input.
+
+  `press(menuId, action[, entered])` acts as a player: it finds what sends `action` on the screen and fails when nothing does or all of it is disabled. It rejects an entered value for an input that build does not send, for one a patch removed, or one the input cannot hold, and sends what every other input holds. `click(menuId, action[, values])` sends an answer as given, for transport tests and for answers a client sends late, after its button was gone.
 
 ```java
 var client = new HeadlessMenuClient(ClientScreen.PHONE_PORTRAIT);

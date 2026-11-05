@@ -226,6 +226,19 @@ class HeadlessMenuClientTest {
     }
 
     @Test
+    void aFieldKeepsWhatItsLimitAllows() {
+        var client = new HeadlessMenuClient();
+        client.show(MENU, 1, true, snap(UiBuilder.table()
+                .add(UiBuilder.field("").id("short").maxLength(5))
+                .add(UiBuilder.field("").id("long"))
+                .add(UiBuilder.button("Send").clicked("send"))));
+
+        client.press(MENU, "send", java.util.Map.of("short", "abc\ndefgh", "long", "x".repeat(1200)));
+
+        assertEquals(java.util.Map.of("short", "abcde", "long", "x".repeat(1000)), client.outbox().remove().values());
+    }
+
+    @Test
     void anyTrueDisabledEntryDisables() {
         var client = new HeadlessMenuClient();
         client.show(MENU, 1, true, snap(UiBuilder.table()

@@ -237,6 +237,25 @@ class ActualMenusOracleTest {
     }
 
     @Test
+    void realMenusFieldKeepsWhatItsLimitAllows() {
+        Menus.menuBuilder(MENU, 1L, null, false, true, false, UiBuilder.table()
+                .add(UiBuilder.field("").id("short").maxLength(5))
+                .add(UiBuilder.field("").id("long"))
+                .add(UiBuilder.button("Send").clicked("send")));
+        for (var field : findFields(Core.scene.root)) {
+            field.setOnlyFontChars(false); // see realMenusSendsWithAPatchsButtonOnlyThatPatchsFields
+        }
+        typeInto("short", "abc\ndefgh");
+        typeInto("long", "x".repeat(1200));
+
+        findButton(Core.scene.root, "Send").fireClick();
+        var sent = outbox.poll();
+        assertNotNull(sent);
+        assertEquals("abcde", sent.results.values.get("short"), "line breaks dropped, cut at maxLength");
+        assertEquals("x".repeat(1000), sent.results.values.get("long"), "a field without maxLength holds 1000");
+    }
+
+    @Test
     void realMenusSkipsANodeWhoseConditionFails() {
         Menus.menuBuilder(MENU, 1L, null, false, true, false, UiBuilder.table()
                 .add(UiBuilder.button("Never").clicked("never").condition("width < 0"))

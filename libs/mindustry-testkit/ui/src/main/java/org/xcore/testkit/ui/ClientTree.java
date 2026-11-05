@@ -98,18 +98,35 @@ final class ClientTree {
         }
 
         /**
-         * Takes what the player entered, as the input would hold it: text for a field, a boolean
+         * Takes what the player entered, as the input would hold it: text for a field (see
+         * {@link #typed}), a boolean
          * for a check, and for a slider a number set as {@code Slider.setValue} sets it.
          *
          * @throws IllegalArgumentException when this input cannot hold {@code entered}
          */
         Object accept(Object entered) {
             return switch (type) {
-                case field -> entered instanceof String s ? s : reject(entered, "text");
+                case field -> entered instanceof String s ? typed(s) : reject(entered, "text");
                 case check -> entered instanceof Boolean b ? b : reject(entered, "a boolean");
                 case slider -> entered instanceof Number n ? sliderValue(n.floatValue()) : reject(entered, "a number");
                 default -> reject(entered, "nothing");
             };
+        }
+
+        /**
+         * What a field holds after {@code TextField.setText(text)}: line breaks are dropped and the
+         * text is cut at the field's limit. The client sets the limit to {@code maxLength} capped at
+         * 1000, or to 1000 when none is given; a limit of 0 or less is no limit.
+         */
+        private String typed(String text) {
+            Float max = num(node, UiKey.maxLength);
+            int limit = max == null ? 1000 : Math.min(max.intValue(), 1000);
+            StringBuilder held = new StringBuilder();
+            for (int i = 0; i < text.length() && (limit <= 0 || held.length() < limit); i++) {
+                char c = text.charAt(i);
+                if (c != '\r' && c != '\n') held.append(c);
+            }
+            return held.toString();
         }
 
         private Object reject(Object entered, String holds) {

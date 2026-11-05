@@ -73,14 +73,14 @@ class ReportUiControllerTest {
     }
 
     @Test void commentIsCappedServerSideAndPreservedOnEveryReasonClick() {
-        fixture.open(); fixture.click("action:pick:0"); fixture.click("action:reason:other", "a".repeat(999));
+        fixture.open(); fixture.click("action:pick:0"); fixture.unlimitedClick("action:reason:other", "a".repeat(999));
         assertThat(fixture.model().comment()).hasSize(300);
         for (ReportReason reason : ReportReason.values()) {
             fixture.click("action:reason:" + reason.code());
             assertThat(fixture.model().reason()).isEqualTo(reason);
             assertThat(fixture.model().comment()).hasSize(300);
         }
-        fixture.click("action:next", "b".repeat(500));
+        fixture.unlimitedClick("action:next", "b".repeat(500));
         assertThat(fixture.model().comment()).isEqualTo("b".repeat(300));
         fixture.click("action:back"); fixture.click("action:reason:griefing", ""); fixture.click("action:next");
         assertThat(fixture.model().stage()).isEqualTo(Stage.CONFIRM);
@@ -235,7 +235,7 @@ class ReportUiControllerTest {
 
     @Test void commentLimitDoesNotSplitSurrogatePair() {
         fixture.open(); fixture.click("action:pick:0");
-        fixture.click("action:reason:other", "a".repeat(299) + "\uD83D\uDE00");
+        fixture.unlimitedClick("action:reason:other", "a".repeat(299) + "\uD83D\uDE00");
         assertThat(fixture.model().comment()).isEqualTo("a".repeat(299));
     }
 

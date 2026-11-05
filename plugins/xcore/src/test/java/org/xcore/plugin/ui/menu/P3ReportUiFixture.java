@@ -108,6 +108,15 @@ final class P3ReportUiFixture implements AutoCloseable {
         assertThat(loop.stepClientToServer()).isTrue();
         drain();
     }
+    /**
+     * {@code action} with {@code comment} as the comment field, from a client that does not hold to
+     * the field's {@code maxLength}: a real one cuts the text there before it is sent.
+     */
+    void unlimitedClick(String action, String comment) {
+        loop.client().click(menus.getMenuBuilderId(), action, Map.of("field_comment", comment));
+        assertThat(loop.stepClientToServer()).isTrue();
+        drain();
+    }
     void confirm() {
         open(); click("action:pick:0"); click("action:reason:griefing"); click("action:next", "Broken core");
         assertThat(model().stage()).isEqualTo(ReportUiController.Stage.CONFIRM);
