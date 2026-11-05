@@ -190,6 +190,23 @@ class HeadlessMenuClientTest {
     }
 
     @Test
+    void anInputAPatchRemovedStillSendsItsValueButTakesNoMore() {
+        var client = new HeadlessMenuClient();
+        client.show(MENU, 1, true, snap(UiBuilder.table()
+                .add(UiBuilder.table().id("slot").add(UiBuilder.field("").id("note")))
+                .add(UiBuilder.button("Save").clicked("save"))));
+        client.press(MENU, "save", java.util.Map.of("note", "typed"));
+        client.outbox().remove();
+
+        client.update(MENU, "slot", snap(UiBuilder.table().add(UiBuilder.label("No field now"))));
+
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class,
+                () -> client.press(MENU, "save", java.util.Map.of("note", "more")));
+        client.press(MENU, "save");
+        assertEquals(java.util.Map.of("note", "typed"), client.outbox().remove().values());
+    }
+
+    @Test
     void pressRejectsAValueTheInputCannotHold() {
         var client = new HeadlessMenuClient();
         client.show(MENU, 1, true, snap(UiBuilder.table()

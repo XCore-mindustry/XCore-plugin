@@ -157,8 +157,9 @@ public final class HeadlessMenuClient {
      * @throws IllegalStateException when no dialog is visible, or none of its elements on the
      *         screen sends {@code action}, or the one that does is disabled
      * @throws IllegalArgumentException when {@code entered} names an element that is not a form
-     *         input of that build (the client would not send it), or gives an input a value it
-     *         cannot hold, such as a boolean for a field
+     *         input of that build (the client would not send it), names one a patch took off the
+     *         screen (it still sends what it held), or gives an input a value it cannot hold, such
+     *         as a boolean for a field
      */
     public void press(int menuId, String action, Map<String, ?> entered) {
         Objects.requireNonNull(action, "action");
@@ -187,6 +188,11 @@ public final class HeadlessMenuClient {
             if (!inputs.containsKey(id)) {
                 throw new IllegalArgumentException("'" + id + "' is not a form input built with '" + action
                         + "', so the client does not send it; that build has " + inputs.keySet());
+            }
+            if (!inputs.get(id).attached) {
+                // A patch cleared the table it was in: the client still sends what it held, but no
+                // one can type into it any more.
+                throw new IllegalArgumentException("'" + id + "' is no longer on the screen; a patch removed it");
             }
             accepted.put(inputs.get(id), inputs.get(id).accept(value));
         });
