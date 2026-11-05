@@ -149,13 +149,16 @@ public final class HeadlessMenuClient {
      * Presses the button, image button or button table whose answer is {@code action} (or presses
      * Enter in the field that sends it), after the player entered {@code entered} into the form,
      * keyed by element id. The answer carries the fields, checks and sliders of the build that
-     * element came from (for the dialog's, also those of every patch), with what the player
-     * entered in place of their initial values.
+     * element came from (for the dialog's, also those of every patch), each with what it holds:
+     * its initial value, or what the player entered now or in an earlier press of this dialog. A
+     * patch that rebuilds an input starts it over. A slider takes an entered number as
+     * {@code Slider.setValue} does, rounded to its step and held within its range.
      *
      * @throws IllegalStateException when no dialog is visible, or none of its elements on the
      *         screen sends {@code action}, or the one that does is disabled
      * @throws IllegalArgumentException when {@code entered} names an element that is not a form
-     *         input of that build: the client would not send it
+     *         input of that build (the client would not send it), or gives an input a value it
+     *         cannot hold, such as a boolean for a field
      */
     public void press(int menuId, String action, Map<String, ?> entered) {
         Objects.requireNonNull(action, "action");
@@ -164,9 +167,10 @@ public final class HeadlessMenuClient {
             throw new IllegalStateException("menu " + menuId + " is not on the screen");
         }
         List<ClientTree.Element> onScreen = ClientTree.attached(current.root);
+        // A player presses one they can: an enabled one if any sends the action.
         ClientTree.Element pressed = onScreen.stream()
                 .filter(e -> action.equals(e.clicked()) || action.equals(e.enter()))
-                .findFirst()
+                .min(java.util.Comparator.comparing(ClientTree.Element::disabled))
                 .orElseThrow(() -> new IllegalStateException("nothing in menu " + menuId + " sends '" + action
                         + "'; it shows " + onScreen.stream().map(ClientTree.Element::clicked)
                         .filter(Objects::nonNull).distinct().collect(Collectors.toList())));
@@ -174,18 +178,22 @@ public final class HeadlessMenuClient {
             throw new IllegalStateException("'" + action + "' is disabled in menu " + menuId);
         }
 
-        Map<String, Object> values = new LinkedHashMap<>();
+        Map<String, ClientTree.Element> inputs = new LinkedHashMap<>();
         pressed.pass.ids.forEach((id, element) -> {
-            Object value = element.initialValue();
-            if (value != null) values.put(id, value);
+            if (element.value != null) inputs.put(id, element);
         });
+        Map<ClientTree.Element, Object> accepted = new LinkedHashMap<>();
         entered.forEach((id, value) -> {
-            if (!values.containsKey(id)) {
+            if (!inputs.containsKey(id)) {
                 throw new IllegalArgumentException("'" + id + "' is not a form input built with '" + action
-                        + "', so the client does not send it; that build has " + values.keySet());
+                        + "', so the client does not send it; that build has " + inputs.keySet());
             }
-            values.put(id, value);
+            accepted.put(inputs.get(id), inputs.get(id).accept(value));
         });
+        // What the player enters stays in the input, for later presses too, until a patch rebuilds it.
+        accepted.forEach((element, value) -> element.value = value);
+        Map<String, Object> values = new LinkedHashMap<>();
+        inputs.forEach((id, element) -> values.put(id, element.value));
         answer(action, values);
     }
 

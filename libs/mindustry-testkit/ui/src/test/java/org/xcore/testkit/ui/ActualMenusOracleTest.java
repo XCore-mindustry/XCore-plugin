@@ -253,6 +253,8 @@ class ActualMenusOracleTest {
 
         findButton(Core.scene.root, "Go").fireClick();
         assertEquals("go", outbox.poll().results.result);
+        for (int i = 0; i < 10; i++) Core.scene.act(0.1f); // the dialog's hide action runs out
+        assertNull(findButton(Core.scene.root, "Go"), "the pressed dialog leaves the scene");
 
         Menus.hideMenuBuilder(MENU);
         assertTrue(outbox.isEmpty(), "the pressed dialog reports no close");

@@ -33,11 +33,14 @@ final class ClientTree {
         final Pass pass;
         final List<Element> children = new ArrayList<>();
         boolean attached = true;
+        /** What this input holds now: its initial value until the player enters another. */
+        Object value;
 
         Element(UiKey type, NodeBuilder<?> node, Pass pass) {
             this.type = type;
             this.node = node;
             this.pass = pass;
+            this.value = initialValue();
         }
 
         String id() {
@@ -67,18 +70,52 @@ final class ClientTree {
         }
 
         /** What this element sends with a press as a form value, or {@code null} if it sends none. */
-        Object initialValue() {
+        private Object initialValue() {
             return switch (type) {
                 case field -> str(node, UiKey.text) == null ? "" : str(node, UiKey.text);
                 case check -> bool(node, UiKey.checked);
                 case slider -> {
+                    // new Slider(min, max, step) starts at min, then setValue(defaultValue) if there is one.
                     Float def = num(node, UiKey.defaultValue);
-                    if (def != null) yield def;
-                    Float min = num(node, UiKey.min);
-                    yield min != null ? min : 0f;
+                    yield def == null ? sliderMin() : sliderValue(def);
                 }
                 default -> null;
             };
+        }
+
+        /**
+         * Takes what the player entered, as the input would hold it: text for a field, a boolean
+         * for a check, and for a slider a number set as {@code Slider.setValue} sets it.
+         *
+         * @throws IllegalArgumentException when this input cannot hold {@code entered}
+         */
+        Object accept(Object entered) {
+            return switch (type) {
+                case field -> entered instanceof String s ? s : reject(entered, "text");
+                case check -> entered instanceof Boolean b ? b : reject(entered, "a boolean");
+                case slider -> entered instanceof Number n ? sliderValue(n.floatValue()) : reject(entered, "a number");
+                default -> reject(entered, "nothing");
+            };
+        }
+
+        private Object reject(Object entered, String holds) {
+            throw new IllegalArgumentException("'" + id() + "' is a " + type + " and holds " + holds
+                    + "; a player cannot enter " + entered);
+        }
+
+        private float sliderMin() {
+            Float min = num(node, UiKey.min);
+            return min != null ? min : 0f;
+        }
+
+        /** {@code ProgressBar.setValue}: round to the step, then clamp to [min, max]. */
+        private float sliderValue(float raw) {
+            Float max = num(node, UiKey.max);
+            Float step = num(node, UiKey.step);
+            float hi = max != null ? max : 1f;
+            float size = step != null ? step : 0.1f;
+            float stepped = (float) Math.round(raw / size) * size;
+            return Math.max(sliderMin(), Math.min(hi, stepped));
         }
 
         void detach() {

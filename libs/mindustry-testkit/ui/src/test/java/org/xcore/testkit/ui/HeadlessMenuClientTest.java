@@ -134,9 +134,10 @@ class HeadlessMenuClientTest {
         var fromPatch = client.outbox().remove();
         assertEquals(java.util.Map.of("f_patch", "typed"), fromPatch.values());
 
+        // The text typed into the patch's field is still there.
         client.press(MENU, "dialog");
         var fromDialog = client.outbox().remove();
-        assertEquals(java.util.Map.of("f_dialog", "dialog text", "f_patch", "patch text"), fromDialog.values());
+        assertEquals(java.util.Map.of("f_dialog", "dialog text", "f_patch", "typed"), fromDialog.values());
     }
 
     @Test
@@ -160,11 +161,63 @@ class HeadlessMenuClientTest {
                 .add(UiBuilder.check("Chat").id("c").checked(true))
                 .add(UiBuilder.slider(5f, 10f, 1f).id("s"))
                 .add(UiBuilder.slider(0f, 10f, 1f).id("d").defaultValue(7f))
+                .add(UiBuilder.slider(0f, 10f, 1f).id("high").defaultValue(20f))
+                .add(UiBuilder.slider(0f, 10f, 1f).id("between").defaultValue(2.5f))
                 .add(UiBuilder.button("Go").clicked("go"))));
 
         client.press(MENU, "go");
 
-        assertEquals(java.util.Map.of("c", true, "s", 5f, "d", 7f), client.outbox().remove().values());
+        // A slider's default is set as Slider.setValue sets it: rounded to the step, within its range.
+        assertEquals(java.util.Map.of("c", true, "s", 5f, "d", 7f, "high", 10f, "between", 3f),
+                client.outbox().remove().values());
+    }
+
+    @Test
+    void enteredValuesStayUntilAPatchRebuildsTheInput() {
+        var client = new HeadlessMenuClient();
+        client.show(MENU, 1, true, snap(UiBuilder.table()
+                .add(UiBuilder.field("").id("name"))
+                .add(UiBuilder.slider(0f, 10f, 1f).id("level"))
+                .add(UiBuilder.table().id("slot").add(UiBuilder.field("old").id("note")))
+                .add(UiBuilder.button("Save").clicked("save"))));
+
+        client.press(MENU, "save", java.util.Map.of("name", "Osp", "level", 4.4, "note", "typed"));
+        assertEquals(java.util.Map.of("name", "Osp", "level", 4f, "note", "typed"), client.outbox().remove().values());
+
+        client.update(MENU, "slot", snap(UiBuilder.table().add(UiBuilder.field("fresh").id("note"))));
+        client.press(MENU, "save");
+        assertEquals(java.util.Map.of("name", "Osp", "level", 4f, "note", "fresh"), client.outbox().remove().values());
+    }
+
+    @Test
+    void pressRejectsAValueTheInputCannotHold() {
+        var client = new HeadlessMenuClient();
+        client.show(MENU, 1, true, snap(UiBuilder.table()
+                .add(UiBuilder.field("").id("name"))
+                .add(UiBuilder.check("Chat").id("chat"))
+                .add(UiBuilder.button("Save").clicked("save"))));
+
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class,
+                () -> client.press(MENU, "save", java.util.Map.of("name", true)));
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class,
+                () -> client.press(MENU, "save", java.util.Map.of("chat", "yes")));
+        assertTrue(client.outbox().isEmpty());
+
+        // A rejected press changes nothing: the field still holds its initial text.
+        client.press(MENU, "save");
+        assertEquals(java.util.Map.of("name", "", "chat", false), client.outbox().remove().values());
+    }
+
+    @Test
+    void pressTakesTheEnabledOneOfTwoThatSendTheAction() {
+        var client = new HeadlessMenuClient();
+        client.show(MENU, 1, true, snap(UiBuilder.table()
+                .add(UiBuilder.button("Off").clicked("go").disabled(true))
+                .add(UiBuilder.button("On").clicked("go"))));
+
+        client.press(MENU, "go");
+
+        assertEquals("go", client.outbox().remove().action());
     }
 
     @Test

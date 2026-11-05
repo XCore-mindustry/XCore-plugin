@@ -30,7 +30,9 @@ public record ClientScreen(float width, float height) {
     /**
      * Whether the client builds a node with {@code condition}. Mirrors
      * {@code UiTreeBuilder.evalCondition}: {@code portrait}, {@code landscape}, and
-     * {@code width|height <op> <number>}; anything it cannot read counts as true.
+     * {@code <dimension> <op> <number>}. A condition that is not three words, an operator other
+     * than {@code >= > <= <}, or a number it cannot read counts as true; a dimension other than
+     * {@code width} or {@code height} counts as 0, as on the client.
      */
     public boolean matches(String condition) {
         String cond = condition.trim();
