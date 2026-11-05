@@ -148,15 +148,15 @@ To show dynamic PNGs (e.g. Discord avatars or map previews):
 No Mindustry server or mocks required:
 ```java
 @Test
-void testTabSelectionPatchesSlot() {
+void testTabSelectionPatchesTheTabBarAndTheTab() {
     var screen = new SettingsScreen();
     var initial = new SettingsModel("Player", true, 80f, "general");
 
     var result = screen.update(initial, new SelectTab("audio"), null);
 
-    assertThat(result.nextState().activeTab()).isEqualTo("audio");
-    assertThat(result.dirtySlots()).containsExactly(SettingsScreen.SLOT_TAB);
-    assertThat(result.requiresFullRerender()).isFalse();
+    assertThat(result.model().activeTab()).isEqualTo("audio");
+    assertThat(result.dirtySlots()).containsExactly(SettingsScreen.SLOT_TABS, SettingsScreen.SLOT_TAB);
+    assertThat(result.fullRerender()).isFalse();
 }
 ```
 
