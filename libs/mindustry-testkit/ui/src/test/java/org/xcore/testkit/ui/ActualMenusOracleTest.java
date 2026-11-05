@@ -76,6 +76,11 @@ class ActualMenusOracleTest {
         Core.scene.addStyle(Button.ButtonStyle.class, textButtonStyle);
         Core.scene.addStyle(TextButton.TextButtonStyle.class, textButtonStyle);
 
+        arc.scene.ui.TextField.TextFieldStyle fieldStyle = new arc.scene.ui.TextField.TextFieldStyle();
+        fieldStyle.font = font;
+        fieldStyle.fontColor = Color.white;
+        Core.scene.addStyle(arc.scene.ui.TextField.TextFieldStyle.class, fieldStyle);
+
         Tex.whiteui = new BaseDrawable();
         Texture dummyTexture = new Texture(new Pixmap(16, 16));
         Icon.left = new TextureRegionDrawable(new TextureRegion(dummyTexture));
@@ -174,6 +179,86 @@ class ActualMenusOracleTest {
     }
 
     @Test
+    void realMenusIgnoresAPatchOfAnIdItDidNotBuildAsATable() {
+        Menus.menuBuilder(MENU, 1L, null, false, true, false,
+                UiBuilder.table().add(UiBuilder.label("Body").id("text")));
+
+        Menus.menuBuilderUpdate(MENU, "missing", UiBuilder.table().add(UiBuilder.label("Lost")));
+        Menus.menuBuilderUpdate(MENU, "text", UiBuilder.table().add(UiBuilder.label("Also lost")));
+
+        assertNull(findLabel(Core.scene.root, "Lost"), "a patch of an unknown id builds nothing");
+        assertNull(findLabel(Core.scene.root, "Also lost"), "a patch of a label builds nothing");
+        assertNotNull(findLabel(Core.scene.root, "Body"));
+        assertTrue(outbox.isEmpty());
+    }
+
+    @Test
+    void realMenusPatchReplacesWhatTheTableHeld() {
+        Menus.menuBuilder(MENU, 1L, null, false, true, false,
+                UiBuilder.table().add(UiBuilder.table().id("slot").add(UiBuilder.label("Old"))));
+
+        Menus.menuBuilderUpdate(MENU, "slot", UiBuilder.table().add(UiBuilder.label("New")));
+
+        assertNull(findLabel(Core.scene.root, "Old"));
+        assertNotNull(findLabel(Core.scene.root, "New"));
+    }
+
+    @Test
+    void realMenusSendsWithAPatchsButtonOnlyThatPatchsFields() {
+        Menus.menuBuilder(MENU, 1L, null, false, true, false, UiBuilder.table()
+                .add(UiBuilder.field("typed in the dialog").id("f_dialog"))
+                .add(UiBuilder.table().id("slot"))
+                .add(UiBuilder.button("InDialog").clicked("dialog")));
+        Menus.menuBuilderUpdate(MENU, "slot", UiBuilder.table()
+                .add(UiBuilder.field("typed in the patch").id("f_patch"))
+                .add(UiBuilder.button("InPatch").clicked("patch")));
+        // The mock font has no glyphs, and a field keeps only what its font can draw; a player's
+        // font has them all, so the text goes back in as typed.
+        for (var field : findFields(Core.scene.root)) {
+            field.setOnlyFontChars(false);
+        }
+        typeInto("f_dialog", "typed in the dialog");
+        typeInto("f_patch", "typed in the patch");
+
+        findButton(Core.scene.root, "InPatch").fireClick();
+        var fromPatch = outbox.poll();
+        assertNotNull(fromPatch);
+        assertEquals("patch", fromPatch.results.result);
+        assertEquals("typed in the patch", fromPatch.results.values.get("f_patch"));
+        assertFalse(fromPatch.results.values.containsKey("f_dialog"), "a field of the dialog's build is not sent");
+
+        // The dialog's build shares its id map with the dialog, which every patch adds its ids to:
+        // a button of the dialog sends the patches' fields as well.
+        findButton(Core.scene.root, "InDialog").fireClick();
+        var fromDialog = outbox.poll();
+        assertNotNull(fromDialog);
+        assertEquals("typed in the dialog", fromDialog.results.values.get("f_dialog"));
+        assertEquals("typed in the patch", fromDialog.results.values.get("f_patch"));
+    }
+
+    @Test
+    void realMenusSkipsANodeWhoseConditionFails() {
+        Menus.menuBuilder(MENU, 1L, null, false, true, false, UiBuilder.table()
+                .add(UiBuilder.button("Never").clicked("never").condition("width < 0"))
+                .add(UiBuilder.button("Always").clicked("always").condition("width >= 0")));
+
+        assertNull(findButton(Core.scene.root, "Never"));
+        assertNotNull(findButton(Core.scene.root, "Always"));
+    }
+
+    @Test
+    void realMenusHideOnClickClosesWithoutReportingAClose() {
+        Menus.menuBuilder(MENU, 3L, null, true, true, false,
+                UiBuilder.table().add(UiBuilder.button("Go").clicked("go")));
+
+        findButton(Core.scene.root, "Go").fireClick();
+        assertEquals("go", outbox.poll().results.result);
+
+        Menus.hideMenuBuilder(MENU);
+        assertTrue(outbox.isEmpty(), "the pressed dialog reports no close");
+    }
+
+    @Test
     void loadedArtifactFingerprintsMatchFingerprintedV160Jars() throws Exception {
         // Exact SHA-256 of the loaded JARs in the runtime classpath to detect cache drift
         assertJarSha256(Menus.class, "283c9b56fb22a01d4fb804618b9dd04ef3dba88a1dac9b1bc04d208628381dc5");
@@ -190,6 +275,38 @@ class ActualMenusOracleTest {
         }
         var actualHex = java.util.HexFormat.of().formatHex(digest.digest());
         assertEquals(expectedHex, actualHex, "SHA-256 fingerprint for " + clazz.getName());
+    }
+
+    private static void typeInto(String name, String text) {
+        for (var field : findFields(Core.scene.root)) {
+            if (name.equals(field.name)) {
+                field.setText(text);
+                return;
+            }
+        }
+        throw new AssertionError("no field " + name);
+    }
+
+    private static java.util.List<arc.scene.ui.TextField> findFields(arc.scene.Group group) {
+        var out = new java.util.ArrayList<arc.scene.ui.TextField>();
+        for (var child : group.getChildren()) {
+            if (child instanceof arc.scene.ui.TextField f) out.add(f);
+            if (child instanceof arc.scene.Group g) out.addAll(findFields(g));
+        }
+        return out;
+    }
+
+    private static Label findLabel(arc.scene.Group group, String text) {
+        for (var child : group.getChildren()) {
+            if (child instanceof Label l && !(child.parent instanceof TextButton) && text.equals(l.getText().toString())) {
+                return l;
+            }
+            if (child instanceof arc.scene.Group g) {
+                var found = findLabel(g, text);
+                if (found != null) return found;
+            }
+        }
+        return null;
     }
 
     private static TextButton findButton(arc.scene.Group group, String text) {

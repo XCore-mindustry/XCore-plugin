@@ -109,7 +109,7 @@ class ReportUiControllerTest {
         assertThat(draft.getValue().reason()).isEqualTo(ReportReason.GRIEFING);
         assertThat(draft.getValue().comment()).isEqualTo("Broken core");
         assertThat(fixture.lastDsl).contains("Report sent").doesNotContain("private-reporter-uuid", "private-target-uuid");
-        fixture.click("action:send");
+        fixture.lateClick("action:send");
         verify(fixture.reports, times(1)).submit(any(), any());
         fixture.click("action:close");
         assertThat(fixture.session.activeUiSession()).isNull();
@@ -228,7 +228,7 @@ class ReportUiControllerTest {
         assertThat(fixture.model().result()).isEqualTo(new ReportResult.Failed());
         assertThat(fixture.lastDsl).contains("Could not send the report");
         var result = fixture.model();
-        fixture.click("action:send");
+        fixture.lateClick("action:send");
         assertThat(fixture.model()).isSameAs(result);
         verify(fixture.reports, times(1)).submit(any(), any());
     }

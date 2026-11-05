@@ -162,7 +162,7 @@ class AuditHistoryUiClientIntegrationTest {
         assertThat(initialDsl).contains("action:inspect:audit-1");
 
         // 3. Client clicks BANS filter chip -> triggers slot update
-        loop.client().click(menuId, "action:filter:BANS");
+        loop.client().press(menuId, "action:filter:BANS");
         assertThat(loop.stepClientToServer()).isTrue();
         loop.deliverToClient();
 
@@ -170,7 +170,7 @@ class AuditHistoryUiClientIntegrationTest {
         assertThat(updateMsg.targetId()).matches("slot_audit_(tabs|list)_(wide|narrow|small)");
 
         // 4. Client clicks inspect record audit-1 -> transitions to in-dialog details
-        loop.client().click(menuId, "action:inspect:audit-1");
+        loop.client().press(menuId, "action:inspect:audit-1");
         assertThat(loop.stepClientToServer()).isTrue();
         loop.deliverToClient();
 
@@ -180,7 +180,7 @@ class AuditHistoryUiClientIntegrationTest {
         assertThat(detailsDsl).contains("action:copy_id:audit-1");
 
         // 5. Client clicks Back to History
-        loop.client().click(menuId, "action:back_to_list");
+        loop.client().press(menuId, "action:back_to_list");
         assertThat(loop.stepClientToServer()).isTrue();
         loop.deliverToClient();
 
@@ -189,6 +189,8 @@ class AuditHistoryUiClientIntegrationTest {
         assertThat(backDsl).contains("action:filter:ALL");
 
         // 6. Client clicks Close
+        // No button of the window sends it (the dialog closes itself); this drives the controller's close.
+
         loop.client().click(menuId, "action:close");
         assertThat(loop.stepClientToServer()).isTrue();
         loop.deliverToClient();

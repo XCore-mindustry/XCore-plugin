@@ -86,7 +86,7 @@ class UiSessionCloseTrackingTest {
     }
 
     private void press(int menuId, String action) {
-        loop.client().click(menuId, action);
+        loop.client().press(menuId, action);
         assertThat(loop.stepClientToServer()).isTrue();
         loop.deliverToClient(); // the patch or re-render the press caused
     }

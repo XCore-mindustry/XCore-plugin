@@ -67,8 +67,9 @@ public final class FormSchema<Model> {
 
     private <T> Model applyOne(Binding<Model, T> binding, Model model, MenuResult result, Map<String, String> errors) {
         if (result.values == null || !result.values.containsKey(binding.fieldId)) {
-            // The client sends only the fields it built alongside the pressed button: another tab or
-            // a patched slot leaves the rest out, and an absent field is no reason to clear the model.
+            // The client sends the fields of the build the pressed button came from: a button of the
+            // dialog sends the dialog's fields and every patch's, a button a patch built sends only
+            // that patch's. A field left out is no reason to clear the model.
             return model;
         }
         T decoded = binding.codec.decode(result, binding.fieldId);

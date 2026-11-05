@@ -175,7 +175,7 @@ class ReportMenuTest {
         assertThat(fixture.lastDsl).contains("Leaver", "Left recently", "#0").doesNotContain(
                 "staff-private", "left-private", "private-address", "reporter-address", "staff-address");
         fixture.click("action:pick:1"); fixture.click("action:reason:griefing"); fixture.click("action:next");
-        fixture.click("action:send"); fixture.click("action:send");
+        fixture.doubleClick("action:send");
         assertThat(fixture.model().stage()).isEqualTo(ReportUiController.Stage.SENDING);
         world.loop.drain(); fixture.drain();
         assertThat(fixture.model().result()).isEqualTo(new ReportResult.Sent());

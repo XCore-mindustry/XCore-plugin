@@ -152,7 +152,7 @@ class HelpUiClientIntegrationTest {
         int menuId = menuService.getMenuBuilderId();
 
         // Click on "hub" command card
-        loop.client().click(menuId, "action:cmd:hub");
+        loop.client().press(menuId, "action:cmd:hub");
         assertThat(loop.stepClientToServer()).isTrue();
 
         // Server processes and rerenders details view
@@ -172,7 +172,7 @@ class HelpUiClientIntegrationTest {
         helpMenu.open(session);
         assertThat(loop.stepServerToClient()).isTrue();
         int menuId = menuService.getMenuBuilderId();
-        loop.client().click(menuId, "action:search", Map.of("field_help_search", "resynchronize"));
+        loop.client().press(menuId, "action:search", Map.of("field_help_search", "resynchronize"));
         assertThat(loop.stepClientToServer()).isTrue();
         loop.deliverToClient();
         assertThat(loop.client().isVisible(menuId)).isTrue();
@@ -182,10 +182,10 @@ class HelpUiClientIntegrationTest {
                 .collect(java.util.stream.Collectors.joining("\n"));
         assertThat(patched).contains("resynchronize", "action:cmd:sync").doesNotContain("action:cmd:hub");
 
-        loop.client().click(menuId, "action:cmd:sync");
+        loop.client().press(menuId, "action:cmd:sync");
         assertThat(loop.stepClientToServer()).isTrue();
         loop.deliverToClient();
-        loop.client().click(menuId, "action:back");
+        loop.client().press(menuId, "action:back");
         assertThat(loop.stepClientToServer()).isTrue();
         loop.deliverToClient();
         var last = loop.transcript().lastShow();
@@ -204,12 +204,12 @@ class HelpUiClientIntegrationTest {
         int menuId = menuService.getMenuBuilderId();
 
         // Click on "customrun" card to open details
-        loop.client().click(menuId, "action:cmd:customrun");
+        loop.client().press(menuId, "action:cmd:customrun");
         assertThat(loop.stepClientToServer()).isTrue();
         assertThat(loop.stepServerToClient()).isTrue();
 
         // Click "Run" button
-        loop.client().click(menuId, "action:run:customrun");
+        loop.client().press(menuId, "action:run:customrun");
         assertThat(loop.stepClientToServer()).isTrue();
 
         // Server closes the UI and posts execution

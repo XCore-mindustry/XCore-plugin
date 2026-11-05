@@ -400,7 +400,10 @@ public class PlayerSettingsUiController implements UiController<PlayerSettingsUi
         return "FFD37F";
     }
 
-    /** The text fields of the settings. A press carries only the fields built alongside it; the rest keep their value. */
+    /**
+     * The text fields of the settings. A press carries the fields of the build its button came
+     * from (a button a patch built, only that patch's); the rest keep their value.
+     */
     private static final FormSchema<SettingsModel> FORM = new FormSchema<SettingsModel>()
             .bind("field_nickname", Lens.of(SettingsModel::customNickname, SettingsModel::withCustomNickname),
                     ValueCodec.string(), List.of())

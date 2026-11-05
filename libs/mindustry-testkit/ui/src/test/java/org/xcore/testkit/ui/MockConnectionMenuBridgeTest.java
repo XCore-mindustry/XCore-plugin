@@ -44,20 +44,24 @@ class MockConnectionMenuBridgeTest {
             }
         });
 
-        Call.menuBuilder(player.con(), menuId, 31L, "Profile", false, true, false,
-                UiBuilder.table().add(UiBuilder.label("Profile")));
+        Call.menuBuilder(player.con(), menuId, 31L, "Profile", false, true, false, UiBuilder.table()
+                .add(UiBuilder.label("Profile"))
+                .add(UiBuilder.table().id("slot_name"))
+                .add(UiBuilder.field("").id("field_name"))
+                .add(UiBuilder.button("Rename").clicked("action:rename"))
+                .add(UiBuilder.button("Close").clicked("action:close")));
         player.player().sendMessage("chat is not a menu packet");
         loop.runUntilIdle();
         assertTrue(loop.client().isVisible(menuId));
         assertTrue(loop.transcript().lastShow().dsl().contains("Profile"));
 
-        loop.client().click(menuId, "action:rename", Map.of("field_name", "Osp"));
+        loop.client().press(menuId, "action:rename", Map.of("field_name", "Osp"));
         loop.runUntilIdle();
         assertEquals("Osp", answers.get(0).getString("field_name"));
         assertEquals(31L, answers.get(0).token);
         assertTrue(loop.client().lastPatchDsl("slot_name").contains("Name: Osp"));
 
-        loop.client().click(menuId, "action:close");
+        loop.client().press(menuId, "action:close");
         loop.runUntilIdle();
         assertFalse(loop.client().isVisible(menuId));
         // The click marked the window hidden, so the server's hide sends no cancel back.

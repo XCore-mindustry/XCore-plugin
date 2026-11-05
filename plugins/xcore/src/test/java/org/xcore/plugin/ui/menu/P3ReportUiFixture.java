@@ -86,7 +86,25 @@ final class P3ReportUiFixture implements AutoCloseable {
     void open() { menu.open(session, null); drain(); }
     void click(String action) { click(action, null); }
     void click(String action, String comment) {
-        loop.client().click(menus.getMenuBuilderId(), action, comment == null ? Map.of() : Map.of("field_comment", comment));
+        loop.client().press(menus.getMenuBuilderId(), action, comment == null ? Map.of() : Map.of("field_comment", comment));
+        assertThat(loop.stepClientToServer()).isTrue();
+        drain();
+    }
+    /** Two presses of {@code action} before the server's answer to the first reaches the client. */
+    void doubleClick(String action) {
+        int menuId = menus.getMenuBuilderId();
+        loop.client().press(menuId, action);
+        loop.client().press(menuId, action);
+        assertThat(loop.stepClientToServer()).isTrue();
+        assertThat(loop.stepClientToServer()).isTrue();
+        drain();
+    }
+    /**
+     * {@code action} arriving after the client was shown that no button sends it any more: an
+     * answer from before that update, which the server must not take.
+     */
+    void lateClick(String action) {
+        loop.client().click(menus.getMenuBuilderId(), action);
         assertThat(loop.stepClientToServer()).isTrue();
         drain();
     }
