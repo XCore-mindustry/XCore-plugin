@@ -8,9 +8,14 @@ import org.xcore.ui.VSlot;
 import org.xcore.ui.VNodes;
 import mindustry.ui.builder.UiBuilder;
 
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -31,6 +36,13 @@ import java.util.concurrent.ConcurrentHashMap;
  * The effects of the update that closes the dialog still run, for what follows the close such as
  * going back to the previous menu; what they dispatch is dropped all the same.
  *
+ * <p>A patch reaches the client only where the client has the slot: it replaces the content of a
+ * table it built under that id, and an id it does not know is ignored. So the session keeps the
+ * slots of what it sent, and when a patch names a slot the new view has and the client has not, or
+ * one the client has and the new view has dropped, it sends the whole dialog instead. A slot in
+ * neither, such as one of a layout this view does not have, is passed over. A slot nested in
+ * another slot of the same patch is not sent again: the outer one carries it.
+ *
  * <p>Transmission is delegated to a {@link DeliveryGateway} so the runtime stays
  * testable without a live server.
  */
@@ -49,6 +61,12 @@ public final class UiSession<Model, Event> {
     private volatile boolean closeReported;
 
     private volatile Model model;
+
+    /**
+     * The slots of what the client was sent, each with the keys of the slots nested in it at any
+     * depth. Updated on the thread that runs the session, like the rest of it.
+     */
+    private final Map<String, Set<String>> shownSlots = new HashMap<>();
 
     private UiSession(UiController<Model, Event> controller, ControllerContext ctx,
                       DeliveryGateway gateway, VNodeCompiler compiler, long token, Model model) {
@@ -134,6 +152,8 @@ public final class UiSession<Model, Event> {
         UiBuilder.NodeBuilder<?> compiled = UiPackets.requireFits(current.compile(tree), "dialog");
         this.token = TOKEN_GENERATOR.incrementAndGet();
         this.closeReported = true;
+        shownSlots.clear();
+        remember(tree);
         gateway.show(ctx.playerId(), token, compiled);
     }
 
@@ -195,22 +215,108 @@ public final class UiSession<Model, Event> {
     }
 
     private void patchSlots(List<SlotKey<?>> dirty) {
+        VNodeCompiler current = compiler;
+        VNode tree = controller.render(model, RenderContext.of(current.resolver()));
+        Map<String, VSlot> slots = VNodes.slotsByKey(tree);
+
+        // A slot in neither the view nor what the client has belongs to another view, such as a
+        // layout this one does not have. It goes before pruning, or it would take the slots under
+        // its path with it.
         List<SlotKey<Object>> minimal = SlotPruner.prune(dirty.stream()
                 .map(s -> new SlotKey<Object>(s.path()))
+                .filter(key -> slots.containsKey(key.path()) || shownSlots.containsKey(key.path()))
                 .toList());
         if (minimal.isEmpty()) {
             return;
         }
-        VNodeCompiler current = compiler;
-        VNode tree = controller.render(model, RenderContext.of(current.resolver()));
+
+        // What a slot this patch can send carries with it: the slots of its new body, and those of
+        // its old body that the view has dropped.
+        Set<String> carried = new HashSet<>();
         for (SlotKey<?> key : minimal) {
-            VSlot slot = VNodes.findSlot(tree, key.path());
-            if (slot == null) {
-                continue; // slot not in current view; nothing to patch
+            VSlot slot = slots.get(key.path());
+            if (slot != null && shownSlots.containsKey(key.path())) {
+                carried.addAll(nestedSlots(slot));
+                for (String old : shownUnder(key.path())) {
+                    if (!slots.containsKey(old)) {
+                        carried.add(old);
+                    }
+                }
             }
-            UiBuilder.NodeBuilder<?> body = UiPackets.requireFits(current.compileSlotBody(slot), "slot " + key.path());
-            gateway.update(ctx.playerId(), token, key.path(), body);
         }
+
+        Map<String, VSlot> targets = new LinkedHashMap<>();
+        for (SlotKey<?> key : minimal) {
+            if (carried.contains(key.path())) {
+                continue;
+            }
+            VSlot slot = slots.get(key.path());
+            if (slot == null || !shownSlots.containsKey(key.path())) {
+                // The client lacks the slot, or the view no longer has it: a patch cannot say so.
+                open();
+                return;
+            }
+            targets.put(key.path(), slot);
+        }
+
+        // Compile every body before sending any, so a body over the packet limit sends none.
+        Map<String, UiBuilder.NodeBuilder<?>> bodies = new LinkedHashMap<>();
+        for (VSlot slot : targets.values()) {
+            bodies.put(slot.slotKey(), UiPackets.requireFits(current.compileSlotBody(slot), "slot " + slot.slotKey()));
+        }
+        for (Map.Entry<String, UiBuilder.NodeBuilder<?>> body : bodies.entrySet()) {
+            forget(body.getKey());
+            remember(targets.get(body.getKey()));
+            gateway.update(ctx.playerId(), token, body.getKey(), body.getValue());
+        }
+    }
+
+    /** Records every slot of {@code root}, itself included when it is one. */
+    private void remember(VNode root) {
+        for (VNode node : VNodes.walk(root)) {
+            if (node instanceof VSlot slot) {
+                shownSlots.put(slot.slotKey(), nestedSlots(slot));
+            }
+        }
+    }
+
+    /**
+     * Drops {@code key} and what the client has inside it, at any depth: a patch of it replaces
+     * them. Each nested slot's own set is followed, so a slot an earlier patch put deeper down
+     * goes too, though the outer slot's set predates it.
+     */
+    private void forget(String key) {
+        Set<String> nested = shownSlots.remove(key);
+        if (nested != null) {
+            for (String inner : nested) {
+                forget(inner);
+            }
+        }
+    }
+
+    /** The slots the client has inside {@code key}, at any depth. */
+    private Set<String> shownUnder(String key) {
+        Set<String> under = new LinkedHashSet<>();
+        java.util.ArrayDeque<String> pending = new java.util.ArrayDeque<>(shownSlots.getOrDefault(key, Set.of()));
+        while (!pending.isEmpty()) {
+            String next = pending.poll();
+            if (under.add(next)) {
+                pending.addAll(shownSlots.getOrDefault(next, Set.of()));
+            }
+        }
+        return under;
+    }
+
+    private static Set<String> nestedSlots(VSlot slot) {
+        Set<String> keys = new LinkedHashSet<>();
+        for (VNode child : slot.children()) {
+            for (VNode node : VNodes.walk(child)) {
+                if (node instanceof VSlot nested) {
+                    keys.add(nested.slotKey());
+                }
+            }
+        }
+        return keys;
     }
 
     /** Closes the dialog. */

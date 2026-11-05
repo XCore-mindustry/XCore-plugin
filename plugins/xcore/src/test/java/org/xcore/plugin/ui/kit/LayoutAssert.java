@@ -1,12 +1,12 @@
 package org.xcore.plugin.ui.kit;
 
 import arc.files.Fi;
-import arc.util.io.Writes;
 import com.ospx.flubundle.Bundle;
 import com.ospx.flubundle.LocaleCodes;
 import mindustry.ui.builder.UiDslWriter;
 import org.xcore.plugin.localization.Localization;
 import org.xcore.ui.LocalizerResolver;
+import org.xcore.ui.UiPackets;
 import org.xcore.ui.VButton;
 import org.xcore.ui.VButtonTable;
 import org.xcore.ui.VCheck;
@@ -20,8 +20,6 @@ import org.xcore.ui.runtime.RenderContext;
 import org.xcore.ui.VPane;
 import org.xcore.ui.VTable;
 
-import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -35,8 +33,8 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 public final class LayoutAssert {
 
-    /** A dialog travels as one packet and the client reads a packet into a 32 KB buffer; this leaves a margin. */
-    public static final int PACKET_LIMIT = 24_000;
+    /** What a dialog may take on the wire: {@link UiPackets#LIMIT}. */
+    public static final int PACKET_LIMIT = UiPackets.LIMIT;
 
     /** Every language the plugin has a bundle for, read from the files so a new one is checked as well. */
     public static final String[] LANGUAGES = new Fi("src/main/resources/bundles").seq()
@@ -112,11 +110,7 @@ public final class LayoutAssert {
 
     /** Bytes the dialog takes on the wire. */
     public static int packetSize(VNode root) {
-        var bytes = new ByteArrayOutputStream();
-        try (var writes = new Writes(new DataOutputStream(bytes))) {
-            new VNodeCompiler(LocalizerResolver.IDENTITY).compile(root).write(writes);
-        }
-        return bytes.size();
+        return UiPackets.size(new VNodeCompiler(LocalizerResolver.IDENTITY).compile(root));
     }
 
     /** The texts of every label and button, in the order they are drawn. */

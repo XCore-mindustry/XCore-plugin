@@ -81,34 +81,37 @@ FormSchema<SettingsModel> schema = new FormSchema<SettingsModel>()
 ```java
 public class SettingsScreen implements UiController<SettingsModel, SettingsEvent> {
 
+    public static final SlotKey<String> SLOT_TABS = SlotKey.of("slot_tabs");
     public static final SlotKey<String> SLOT_TAB = SlotKey.of("slot_tab");
 
     @Override
     public UpdateResult<SettingsModel> update(SettingsModel model, SettingsEvent event, ControllerContext ctx) {
         if (event instanceof SelectTab select) {
             SettingsModel updated = SettingsModel.ACTIVE_TAB.set(model, select.tab());
-            // Partial in-place patch: only slot_tab updates over the wire!
-            return UpdateResult.patch(updated, SLOT_TAB);
+            // Partial in-place patch: the tab bar (its checked button) and the tab content.
+            return UpdateResult.patch(updated, SLOT_TABS, SLOT_TAB);
         }
         return UpdateResult.of(model);
     }
 
     public VNode render(SettingsModel model) {
         return Ui.table(t -> {
-            t.size(500f, 400f).pad(10f);
+            t.layout(l -> l.width(500f).height(400f).pad(10f));
 
-            // Tab Bar
-            t.add(Ui.table(tb -> {
+            // Tab Bar: in a slot, as the checked button changes with the tab
+            t.slot(SLOT_TABS, tb -> {
                 tb.button(Text.t("tab.general"), "tab:general", b -> b.checked("general".equals(model.activeTab())));
                 tb.button(Text.t("tab.audio"), "tab:audio", b -> b.checked("audio".equals(model.activeTab())));
-            })).growX().row();
+            });
+            t.row();
 
             // Dynamic Tab Content Slot
-            t.slot("slot_tab", renderTabContent(model)).grow().row();
+            t.slot(SLOT_TAB, tab -> renderTabContent(tab, model));
+            t.row();
 
             // Footer
             t.button(Text.t("save"), "action:save", b -> b.style("green"));
-        }).build();
+        });
     }
 }
 ```
@@ -134,6 +137,9 @@ To show dynamic PNGs (e.g. Discord avatars or map previews):
    Events.on(WorldLoadEvent.class, e -> textureRegistry.resetAllDeliveries());
    ```
    `unregister(region)` forgets a texture you no longer show (e.g. when a cache evicts it).
+4. Say when a send cannot reach the player, such as one who is not online yet, by implementing
+   `TextureSender.trySend` and answering `false`: the texture then stays undelivered and the next
+   `ensureDelivered` sends it. A sender that throws is treated the same way.
 
 ---
 
@@ -142,15 +148,15 @@ To show dynamic PNGs (e.g. Discord avatars or map previews):
 No Mindustry server or mocks required:
 ```java
 @Test
-void testTabSelectionPatchesSlot() {
+void testTabSelectionPatchesTheTabBarAndTheTab() {
     var screen = new SettingsScreen();
     var initial = new SettingsModel("Player", true, 80f, "general");
 
     var result = screen.update(initial, new SelectTab("audio"), null);
 
-    assertThat(result.nextState().activeTab()).isEqualTo("audio");
-    assertThat(result.dirtySlots()).containsExactly(SettingsScreen.SLOT_TAB);
-    assertThat(result.requiresFullRerender()).isFalse();
+    assertThat(result.model().activeTab()).isEqualTo("audio");
+    assertThat(result.dirtySlots()).containsExactly(SettingsScreen.SLOT_TABS, SettingsScreen.SLOT_TAB);
+    assertThat(result.fullRerender()).isFalse();
 }
 ```
 

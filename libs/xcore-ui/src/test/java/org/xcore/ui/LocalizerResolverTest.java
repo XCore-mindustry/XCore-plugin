@@ -140,6 +140,20 @@ class LocalizerResolverTest {
     }
 
     @Test
+    void orElseFallsBackPastAFunctionThatGivesTheKeyBack() {
+        // A named formatter answers every key: a missing one comes back as the key itself.
+        Map<String, String> mod = Map.of("mod.title", "Mod");
+        LocalizerResolver primary = LocalizerResolver.from((key, args) -> mod.getOrDefault(key, key));
+        LocalizerResolver core = LocalizerResolver.from(Map.of("ok", "Okay")::get);
+
+        LocalizerResolver chained = primary.orElse(core);
+
+        assertThat(chained.format("mod.title")).isEqualTo("Mod");
+        assertThat(chained.format("ok")).isEqualTo("Okay");
+        assertThat(chained.format("missing")).isEqualTo("missing");
+    }
+
+    @Test
     void orElseChainsFallback() {
         LocalizerResolver primary = LocalizerResolver.from(Map.of("hello", "Hi")::get);
         LocalizerResolver secondary = LocalizerResolver.from(Map.of("world", "Earth")::get);

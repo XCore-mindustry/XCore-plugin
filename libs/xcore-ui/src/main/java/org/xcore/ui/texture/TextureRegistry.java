@@ -29,6 +29,16 @@ public final class TextureRegistry {
     @FunctionalInterface
     public interface TextureSender {
         void send(String connectionId, String regionName, byte[] pngBytes);
+
+        /**
+         * Sends the texture if the connection can take it now. A {@code false}, or an exception,
+         * leaves the texture undelivered, so the next {@link #ensureDeliveredName} tries again;
+         * the default sends and answers {@code true}.
+         */
+        default boolean trySend(String connectionId, String regionName, byte[] pngBytes) {
+            send(connectionId, regionName, pngBytes);
+            return true;
+        }
     }
 
     private final Map<String, byte[]> textures = new ConcurrentHashMap<>();
@@ -39,17 +49,28 @@ public final class TextureRegistry {
         this.sender = Objects.requireNonNull(sender, "sender");
     }
 
-    /** Registers PNG bytes and returns the region name (with {@code net-} prefix). */
+    /**
+     * Registers PNG bytes and returns the region name (with {@code net-} prefix). The registry keeps
+     * a copy, so the name stays true to the bytes whatever the caller does with its array.
+     */
     public String register(byte[] pngBytes) {
         Objects.requireNonNull(pngBytes, "pngBytes");
-        String name = NET_PREFIX + "xcore_" + sha256Hex16(pngBytes);
-        textures.put(name, pngBytes);
+        // Hashed from the copy kept, so a caller writing to its array meanwhile cannot split them.
+        byte[] copy = pngBytes.clone();
+        String name = NET_PREFIX + "xcore_" + sha256Hex16(copy);
+        textures.putIfAbsent(name, copy);
         return name;
     }
 
-    /** Returns registered bytes for a region name, or null. */
+    /** Returns a copy of the registered bytes for a region name, or null. */
     public byte[] bytes(String regionName) {
-        return textures.get(regionName);
+        byte[] bytes = textures.get(regionName);
+        return bytes == null ? null : bytes.clone();
+    }
+
+    /** Whether {@code regionName} is registered. */
+    public boolean contains(String regionName) {
+        return textures.containsKey(regionName);
     }
 
     /**
@@ -69,8 +90,18 @@ public final class TextureRegistry {
             throw new IllegalArgumentException("Unknown texture region: " + regionName);
         }
         Map<String, Boolean> seen = delivered.computeIfAbsent(regionName, k -> new ConcurrentHashMap<>());
-        if (seen.putIfAbsent(connectionId, Boolean.TRUE) == null) {
-            sender.send(connectionId, regionName, bytes);
+        if (seen.putIfAbsent(connectionId, Boolean.TRUE) != null) {
+            return;
+        }
+        boolean sent = false;
+        try {
+            // A copy, so a sender that writes to it cannot change the texture other connections get.
+            sent = sender.trySend(connectionId, regionName, bytes.clone());
+        } finally {
+            if (!sent) {
+                // Not on the client: the next use streams it again.
+                seen.remove(connectionId);
+            }
         }
     }
 

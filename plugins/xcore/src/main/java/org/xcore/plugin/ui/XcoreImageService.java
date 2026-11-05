@@ -24,15 +24,32 @@ public class XcoreImageService {
     private final EventSubscriptions subscriptions = new EventSubscriptions();
 
     public XcoreImageService() {
-        this((connectionId, regionName, bytes) -> {
+        this(new NetworkSender());
+    }
+
+    /**
+     * Streams through {@link mindustry.core.NetServer#sendTexture}. A player the server does not
+     * have online yet gets nothing and the texture stays undelivered, so the next time it is shown
+     * to that player once they are online, it is sent.
+     */
+    static final class NetworkSender implements TextureRegistry.TextureSender {
+        @Override
+        public void send(String connectionId, String regionName, byte[] pngBytes) {
+            trySend(connectionId, regionName, pngBytes);
+        }
+
+        @Override
+        public boolean trySend(String connectionId, String regionName, byte[] pngBytes) {
             Player player = Groups.player != null ? Groups.player.find(p -> Objects.equals(p.uuid(), connectionId)) : null;
-            if (player != null && player.con != null && Vars.netServer != null) {
-                String name = regionName.startsWith(TextureRegistry.NET_PREFIX)
-                        ? regionName.substring(TextureRegistry.NET_PREFIX.length())
-                        : regionName;
-                Vars.netServer.sendTexture(player.con, name, bytes);
+            if (player == null || player.con == null || Vars.netServer == null) {
+                return false;
             }
-        });
+            String name = regionName.startsWith(TextureRegistry.NET_PREFIX)
+                    ? regionName.substring(TextureRegistry.NET_PREFIX.length())
+                    : regionName;
+            Vars.netServer.sendTexture(player.con, name, pngBytes);
+            return true;
+        }
     }
 
     XcoreImageService(TextureRegistry.TextureSender sender) {
@@ -83,8 +100,7 @@ public class XcoreImageService {
     /** Ensures a pre-registered texture by its {@code net-} region name is streamed to the player. */
     public void ensureDeliveredName(Player player, String regionName) {
         if (player == null) return;
-        byte[] bytes = registry.bytes(regionName);
-        if (bytes != null) {
+        if (registry.contains(regionName)) {
             registry.ensureDeliveredName(player.uuid(), regionName);
         }
     }

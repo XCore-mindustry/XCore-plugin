@@ -14,7 +14,7 @@ import java.util.function.Function;
  * }
  * }</pre>
  *
- * <p>Lenses are the backbone of {@link FormSchema}: form fields bind directly to
+ * <p>Lenses are the backbone of {@link org.xcore.ui.form.FormSchema}: form fields bind directly to
  * lens targets, eliminating stringly-typed model access.
  *
  * @param <S> model (state) type

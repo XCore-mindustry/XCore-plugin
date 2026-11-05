@@ -25,7 +25,7 @@ public sealed interface VNode permits
     /** Layout properties for a node's parent cell. Immutable; use {@link UiLayout#mutate()} to derive. */
     UiLayout layout();
 
-    /** Unique element id within the dialog; used by {@code Call.menuBuilderUpdate} and {@link MenuResult} value maps. */
+    /** Unique element id within the dialog; used by {@code Call.menuBuilderUpdate} and {@link mindustry.ui.builder.MenuResult} value maps. */
     String id();
 
     /** Node kinds recognized by the runtime. Mirrors {@code mindustry.ui.builder.UiKey} node types. */

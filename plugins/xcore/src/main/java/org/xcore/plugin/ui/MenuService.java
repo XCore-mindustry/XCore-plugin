@@ -21,6 +21,7 @@ import org.xcore.plugin.ui.route.MenuRoute;
 import org.xcore.plugin.ui.route.RoutedMenuFlow;
 import org.xcore.plugin.ui.kit.Texts;
 import org.xcore.ui.LocalizerResolver;
+import org.xcore.ui.UiPackets;
 import org.xcore.ui.VNode;
 import org.xcore.ui.VNodeCompiler;
 import org.xcore.ui.runtime.ControllerContext;
@@ -202,7 +203,7 @@ public class MenuService {
         notifyMenuOpened(session);
 
         VNodeCompiler compiler = new VNodeCompiler(resolverFor(session));
-        var compiled = compiler.compile(node);
+        var compiled = UiPackets.requireFits(compiler.compile(node), "dialog");
         gateway.menuBuilder(session.player, globalMenuBuilderId, version, title, true, true, false, compiled);
     }
 
@@ -214,7 +215,7 @@ public class MenuService {
      */
     private boolean showBuilt(Session session, ActiveMenuScreen screen, VNode tree) {
         var compiled = new VNodeCompiler(resolverFor(session)).compile(tree);
-        if (MenuScreenToUiAdapter.packetSize(compiled) >= MenuScreenToUiAdapter.PACKET_LIMIT) {
+        if (!UiPackets.fits(compiled)) {
             return false;
         }
 

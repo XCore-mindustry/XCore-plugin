@@ -66,6 +66,20 @@ class FormSchemaTest {
     }
 
     @Test
+    void oneRejectedFieldLeavesTheValidOnesUnapplied() {
+        PlayerSettings initial = new PlayerSettings("OldNick", 50f, false, 5);
+        MenuResult result = new MenuResult();
+        result.values.put("f_nick", "NewNick"); // valid
+        result.values.put("f_vol", 150f);       // out of range
+        result.values.put("f_chat", true);      // valid
+
+        FormSchema.FormResult<PlayerSettings> res = schema.apply(initial, result);
+
+        assertThat(res.errors()).containsOnlyKeys("f_vol");
+        assertThat(res.model()).isSameAs(initial);
+    }
+
+    @Test
     void codecsFallBackGracefullyOnMalformedData() {
         assertThat(ValueCodec.integer().decode("not-a-number")).isEqualTo(0);
         assertThat(ValueCodec.integer().decode(42)).isEqualTo(42);

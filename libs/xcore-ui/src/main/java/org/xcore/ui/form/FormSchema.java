@@ -60,7 +60,9 @@ public final class FormSchema<Model> {
             current = applyOne(binding, current, result, errors);
         }
 
-        return new FormResult<>(current, errors);
+        // One rejected field leaves the whole form unapplied: the player corrects it and sends
+        // the form again, and the model never holds half of a submit.
+        return new FormResult<>(errors.isEmpty() ? current : model, errors);
     }
 
     private <T> Model applyOne(Binding<Model, T> binding, Model model, MenuResult result, Map<String, String> errors) {
