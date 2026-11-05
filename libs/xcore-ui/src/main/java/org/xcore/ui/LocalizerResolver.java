@@ -218,7 +218,9 @@ public interface LocalizerResolver {
     }
 
     /**
-     * Creates a composite resolver that queries resolvers in priority order until a valid translation is found.
+     * Creates a composite resolver that queries resolvers in priority order until a valid translation is found:
+     * one that is neither the key itself nor Arc's {@code ???key???}, which is how a resolver made with
+     * {@link #from(BiFunction)} says it lacks the key.
      */
     static LocalizerResolver composite(LocalizerResolver... resolvers) {
         Objects.requireNonNull(resolvers, "resolvers");
@@ -401,8 +403,15 @@ public interface LocalizerResolver {
             return key;
         }
 
+        /**
+         * Whether {@code result} is a text rather than a resolver's mark of a missing one. A resolver
+         * made from a function cannot tell whether it has a key, so it answers every key and gives
+         * the key itself back for one it lacks; Arc's bundle gives {@code ???key???}. Either way the
+         * next resolver is asked. A translation that is the key itself is taken from the last
+         * resolver that has the key, as the key is all that is left to show.
+         */
         private boolean isValidTranslation(String key, String result) {
-            return result != null && !result.equals("???" + key + "???");
+            return result != null && !result.equals(key) && !result.equals("???" + key + "???");
         }
     }
 }

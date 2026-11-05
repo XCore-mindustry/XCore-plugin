@@ -70,4 +70,12 @@ class XcoreImageServiceTest {
 
         assertThat(service.registry().bytes(region)).isNull();
     }
+
+    @Test
+    @DisplayName("a texture for a player who is not online stays undelivered, so it is sent once they are")
+    void playerWhoIsNotOnlineGetsTheTextureLater() {
+        var sender = new XcoreImageService.NetworkSender();
+
+        assertThat(sender.trySend("not-online", "net-xcore_0011223344556677", new byte[]{1})).isFalse();
+    }
 }

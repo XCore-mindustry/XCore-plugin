@@ -80,7 +80,7 @@ public record DialogMetrics(
         return truncate(text, textBudget);
     }
 
-    /** Truncates untrusted prose to {@link #reasonBudget()} without splitting a surrogate pair. */
+    /** Truncates untrusted prose to {@link #REASON_BUDGET} characters without splitting a surrogate pair. */
     public String truncateReason(String text) {
         return truncate(text, REASON_BUDGET);
     }

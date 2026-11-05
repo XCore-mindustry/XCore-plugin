@@ -11,16 +11,42 @@
 
 ## Highlights
 
-- **Zero-Flicker Partial Updates**: Emits granular `Call.menuBuilderUpdate` calls targeting dynamic slots. Preserves client scrollbar offsets and text field focus without dialog tearing.
-- **Pure Elm / MVI Architecture**: State transitions are pure functions `(Model, Event) -> UpdateResult<Model>`. Business logic is strictly decoupled from presentation.
-- **Type-Safe Record Lenses (`Lens<S, V>`)**: Binds UI inputs directly to immutable Java 25 record components with method references (`State::nickname`, `State::withNickname`), completely eliminating magic string typos.
-- **Dual-Source Presentation Engine**:
-  - **Fluent Java 25 DSL**: Compile-time checked, zero-allocation builder with lazy pluggable localization (Arc I18NBundle, FluBundle, or custom).
-  - **Hot-Reloadable `.msui` Templates**: External DSL files reloaded in sub-milliseconds via Java NIO `WatchService` without server restarts.
-- **Topological Subtree Pruning (`SlotPruner`)**: Automatically drops redundant descendant slot updates when an ancestor container is already dirty, preventing network packet collisions.
-- **Content-Addressable Asset Pipeline (`TextureRegistry`)**: Streams PNGs to client atlases (`net-<hash>`) with SHA-256 deduplication, BitSet connection delivery tracking, and virtual-thread I/O.
-- **100% Headless Testability**: The sealed Virtual DOM (`VNode`) runs under pure JUnit 5 in milliseconds without graphics contexts or mocks.
-- **Seamless Backward Compatibility**: `LegacyMenuScreenAdapter` transparently compiles pre-v160 `MenuScreen` records into v160 `NodeBuilder<?>` trees.
+- **Partial updates**: a reducer names the slots it changed and the session sends only those, with
+  `Call.menuBuilderUpdate`; the rest of the dialog keeps its scroll offsets and text field focus. The
+  session remembers which slots the client has, so a patch that cannot land (the slot is new, or the
+  view dropped it) is sent as the whole dialog instead of being lost.
+- **Elm / MVI controllers**: state transitions are `(Model, Event) -> UpdateResult<Model>`; I/O goes
+  out as effects, and a keyed effect supersedes the earlier one so a late answer never lands on a
+  dialog that has moved on.
+- **Record lenses and forms**: `Lens<S, V>` binds a field to a record component
+  (`Lens.of(State::nickname, State::withNickname)`); `FormSchema` decodes, validates and applies a
+  submit all or nothing.
+- **Java DSL with lazy localization**: `Ui.table(t -> ...)` builds an immutable `VNode` tree; `Text`
+  resolves at compile time against a pluggable `LocalizerResolver` (Arc `I18NBundle`, FluBundle or
+  your own).
+- **Layouts per screen width**: `Variants.byWidth` lays a dialog out once per class of screens and lets
+  the client build the one for its own; `Responsive` places single pieces under a client condition.
+- **Server-streamed textures**: `TextureRegistry` names PNGs by their SHA-256 (`net-xcore_<hash>`),
+  sends each one once per connection, and sends it again when a send could not reach the player.
+- **Packet guard**: `UiPackets` measures a compiled dialog and refuses one over the client's packet
+  buffer before anything is sent.
+- **Headless tests**: the sealed `VNode` tree compiles and runs under plain JUnit 5, no graphics.
+
+## Changes after 0.3.0 (unreleased)
+
+- A patch of a slot the client does not have, or one the new view no longer has, sends the whole
+  dialog: before, the client ignored it and kept showing the old content. A slot nested in another
+  slot of the same patch is sent once, inside the outer one, whatever their keys; and a patch whose
+  bodies do not all fit a packet sends none of them.
+- `FormSchema.apply` leaves the model unchanged when any field is rejected, as documented; before,
+  the valid fields of a rejected submit were applied.
+- `TextureRegistry` sends a texture again when the last send failed: `TextureSender.trySend` may
+  answer `false` (the player is not online yet), and a sender that throws leaves the texture
+  undelivered. The registry keeps a copy of the bytes it is given; `contains(region)` is new.
+- `LocalizerResolver.composite` / `orElse` asks the next resolver when one gives the key itself
+  back, which is how a resolver made with `from(BiFunction)` says it lacks a key.
+- `VImage` rejects an unknown `scaling` where the image is made, rather than when the dialog is
+  compiled; `VSpace` checks its id like the other nodes.
 
 ---
 
@@ -164,37 +190,49 @@ session.open();
 ```java
 public class PlayerSettingsScreen implements UiController<SettingsModel, SettingsEvent> {
 
-    public static final SlotKey<String> SLOT_TAB = SlotKey.of("slot_tab");
+    public static final SlotKey<Object> SLOT_TAB = SlotKey.of("slot_tab");
 
     @Override
     public UpdateResult<SettingsModel> update(SettingsModel model, SettingsEvent event, ControllerContext ctx) {
-        if (event instanceof SelectTab select) {
-            SettingsModel updated = SettingsModel.ACTIVE_TAB.set(model, select.tab());
-            // Partial in-place patch: only slot_tab updates over the wire!
-            return UpdateResult.patch(updated, SLOT_TAB);
-        }
-        return UpdateResult.of(model);
+        return switch (event) {
+            // Only slot_tab is sent again; the tab bar and the footer stay as they are.
+            case SelectTab(var tab) -> UpdateResult.patch(SettingsModel.ACTIVE_TAB.set(model, tab), SLOT_TAB);
+            case Save() -> UpdateResult.close(model);
+        };
     }
 
+    @Override
     public VNode render(SettingsModel model) {
         return Ui.table(t -> {
-            t.size(500f, 400f).pad(10f);
+            t.layout(l -> l.width(500f).height(400f).pad(10f));
 
-            // Tab Bar
-            t.add(Ui.table(tb -> {
-                tb.button(Text.t("tab.profile"), "tab:profile", b -> b.checked("profile".equals(model.activeTab())));
-                tb.button(Text.t("tab.chat"), "tab:chat", b -> b.checked("chat".equals(model.activeTab())));
-            })).growX().row();
+            t.add(Ui.table(tabs -> {
+                tabs.layout(l -> l.growX());
+                tabs.button(Text.t("tab.profile"), "tab:profile", b -> b.checked("profile".equals(model.activeTab())));
+                tabs.button(Text.t("tab.chat"), "tab:chat", b -> b.checked("chat".equals(model.activeTab())));
+            }));
+            t.row();
 
-            // Dynamic Tab Content Slot (patched in-place with zero flicker)
-            t.slot("slot_tab", renderTabContent(model)).grow().row();
+            t.slot(SLOT_TAB, tab -> tab.label(Text.t("tab." + model.activeTab() + ".body"), l -> l.grow()));
+            t.row();
 
-            // Footer
             t.button(Text.t("save"), "action:save", b -> b.style("green"));
-        }).build();
+        });
+    }
+
+    private static final ActionRouter<SettingsEvent> ACTIONS = ActionRouter.<SettingsEvent>create()
+            .on("action:save", Save::new)
+            .prefix("tab:", SelectTab::new);
+
+    @Override
+    public SettingsEvent parseEvent(MenuResult result) {
+        return ACTIONS.parse(result);
     }
 }
 ```
+
+The view outside the patched slots must stay the same: a patch replaces what is inside a slot and
+nothing else. Change anything around them with `UpdateResult.rerender(model)`.
 
 ---
 

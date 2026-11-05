@@ -26,9 +26,12 @@ Legacy menus (`Call.menu`, `Call.followUpMenu`, `Call.textInput`) and naive impe
 
 ### 1.3 The XUI Synthesis: Best of Three Paradigms
 `Xcore-UI` (XUI) is an independent Java 25 library that unifies three distinct software architectures:
-- **Paradigm 1 (Reactive Component Model)**: Encapsulated reusable components (`Component<Props>`), deterministic hierarchical keying (`_r/0/1`), pure virtual DOM AST (`VNode`), and topological dirty-tree pruning (`SlotPruner`).
+- **Paradigm 1 (Reactive Component Model)**: Encapsulated reusable components (`Component<Props>`), a pure virtual DOM AST (`VNode`), and dirty-slot pruning by nesting (§6).
 - **Paradigm 2 (Type-Safe Fluent DSL with Record Lenses & Zero-Allocation)**: Immutable Java 25 record models, functional optics lenses (`Lens<S, V>`), pattern-matching `ValueCodec<T>`, declarative `Validators`, lazy localized `Text` AST for pluggable bundles (Arc I18NBundle, FluBundle, or custom), and content-addressable `TextureRegistry`.
-- **Paradigm 3 (Server-Driven UI, Elm Controller & Hot-Reloadable Templates)**: Unidirectional Model-View-Update (Elm / MVI) controllers (`(Model, Event) -> UpdateResult<Model>`), atomic in-place sub-tree patching (`Call.menuBuilderUpdate`), and external `.msui` template hot-reloading via Java NIO `WatchService`.
+- **Paradigm 3 (Server-Driven UI & Elm Controller)**: Unidirectional Model-View-Update (Elm / MVI) controllers (`(Model, Event) -> UpdateResult<Model>`) and in-place sub-tree patching (`Call.menuBuilderUpdate`).
+
+The views are written in the Java DSL only. External `.msui` templates with live reload were part of
+the original design (ADR 0001) and were not built.
 
 ---
 
@@ -37,11 +40,11 @@ Legacy menus (`Call.menu`, `Call.followUpMenu`, `Call.textInput`) and naive impe
 ```
                            +-----------------------------------------------+
                            |                 VIEW SOURCES                  |
-                           |  [Java 25 Fluent DSL]   [External .msui Files]|
-                           +-------------------+---------------+-----------+
-                                               |               |
-                                     (Build)   |               | (Parse / Watch)
-                                               v               v
+                           |              [Java 25 Fluent DSL]             |
+                           +-----------------------+-----------------------+
+                                                   |
+                                                (Build)
+                                                   v
                            +-----------------------------------------------+
                            |          IMMUTABLE VIRTUAL DOM AST            |
                            |    Sealed VNode Hierarchy (Headless Testable) |
@@ -53,7 +56,7 @@ Legacy menus (`Call.menu`, `Call.followUpMenu`, `Call.textInput`) and naive impe
                            |  - Elm Controller: (Model, Msg) -> Update     |
                            |  - FormSchema: MenuResult -> Lens Application |
                            |  - Dynamic Slots & Hierarchical Keying        |
-                           |  - Topological Dirty-Tree Pruner              |
+                           |  - Slots the client has, pruning by nesting   |
                            +-----------+-----------------------+-----------+
                                        |                       |
                   (Render Full / Patch)|                       | (Async Stream)
@@ -61,8 +64,8 @@ Legacy menus (`Call.menu`, `Call.followUpMenu`, `Call.textInput`) and naive impe
                +-------------------------------+   +-------------------------------+
                |    VNode -> NodeBuilder<?>    |   |        TextureRegistry        |
                |       Mindustry Compiler      |   |  - SHA-256 Deduplication      |
-               +---------------+---------------+   |  - Per-Connection BitSets     |
-                               |                   |  - Virtual Thread PNG Stream  |
+               +---------------+---------------+   |  - Per-Connection Delivery    |
+                               |                   |  - Resend After a Failed Send |
                                v                   +---------------+---------------+
                +-------------------------------+                   |
                |     MindustryMenuGateway      |                   |
@@ -187,28 +190,32 @@ public final class FormSchema<Model> {
     public FormResult<Model> apply(Model currentModel, MenuResult result);
 }
 ```
-Validation runs atomically before any action executes. If any field fails validation, error tokens are populated into the state, and the form remains intact without lost inputs.
+Validation is all or nothing: when any field is rejected, `FormResult.model()` is the model as it was, and `errors()` holds a token for each rejected field. A field the result does not carry keeps its value: the client sends only the fields built alongside the pressed button, in the same dialog or in the same patch.
 
 ---
 
-## 6. Dynamic Slots & Topological Dirty-Tree Pruner
+## 6. Dynamic Slots and Patches
 
 ### 6.1 Dynamic Slots (`SlotKey<T>`)
 A slot defines a region that can be patched in-place via `Call.menuBuilderUpdate(con, menuId, slotId, subTree)` without touching surrounding UI elements.
 
-### 6.2 Topological Pruning Algorithm
-When an Elm update flags multiple dirty slots, sending nested updates causes race conditions and visual glitching.
+The client looks the slot up by its id among the elements it built, clears that table and builds the
+patch into it. An id it does not know is ignored, and a table a patch cleared stays in its id map,
+detached: a patch to it changes nothing on the screen.
 
-**Theorem**: Let $D$ be the set of dirty slot paths. For any pair $s_1, s_2 \in D$, if $s_2$ is a descendant of $s_1$ ($s_2$ starts with $s_1 + "/"`), updating $s_1$ replaces the entire inner DOM of $s_1$, destroying and recreating $s_2$.
+### 6.2 What a Patch Sends
+`UiSession` keeps the slots of what it sent the client (each with the slots nested in it) and, for an
+update that names dirty slots:
+1. Drops a slot whose key path has a dirty ancestor (`SlotPruner`: `a/b` under `a`).
+2. Renders the new view. A dirty slot in neither the view nor what the client has is passed over: a
+   slot of a layout this view does not have, for example. A slot in only one of them (it came into
+   the view, or the view dropped it) cannot be patched, and the whole dialog is sent instead.
+3. Drops a slot nested inside another dirty slot of the new view, whatever their keys: the outer
+   patch carries it.
+4. Compiles every remaining body, checks each against the packet limit (`UiPackets`), then sends
+   them. A body over the limit sends none of the patch.
 
-**Algorithm (`SlotPruner`)**:
-1. Sort candidate slot keys ascending by path length (ancestors before descendants).
-2. Maintain a `Set<SlotKey<?>> retained`.
-3. For each candidate, check if any existing element in `retained` is its ancestor.
-4. If yes, drop candidate; if no, add to `retained`.
-5. Return `retained` (strictly minimal set of update RPCs).
-
----
+The view outside the dirty slots must not change: a patch replaces what is inside its slot only.
 
 ## 7. Content-Addressable Asset Pipeline (`TextureRegistry`)
 
@@ -217,30 +224,25 @@ Mindustry v160 allows streaming raw PNG bytes to client atlases via `Vars.netSer
 
 `TextureRegistry` implements:
 1. **SHA-256 Content-Addressing**: Names are derived from PNG content hashes (`net-xcore_<sha256_16>`).
-2. **Per-Connection Delivery BitSets**: Server tracks delivered sequence IDs per player connection. A texture is transmitted over the wire **exactly once per session**.
-3. **Virtual-Thread Pipeline**: Disk I/O, resizing, and PNG compression run on virtual threads (`Thread.ofVirtual()`), never blocking the main tick thread.
-4. **LRU Cache & Disk Spillover**: Textures spill to `config/cache/textures/` to bound memory consumption.
+2. **Per-Connection Delivery**: the registry marks which connections have each texture and sends it to a connection once. A send that fails (`TextureSender.trySend` answers `false`, or the sender throws) leaves it unmarked, so the next use sends it again.
+3. **Resets**: the client drops server textures when it disconnects and whenever it loads a world, so the host calls `resetDelivery(connection)` and `resetAllDeliveries()` then.
+
+The registry holds the bytes in memory and does no I/O of its own; reading, resizing and encoding the PNG is the host's.
 
 ---
 
-## 8. Dual-Source View Engine: Fluent Java DSL & Hot-Reloadable `.msui`
+## 8. View Engine: the Java DSL
 
-### 8.1 Fluent Java 25 DSL
 ```java
 Ui.table(t -> {
-    t.size(600f, 450f).pad(12f);
-    t.label(Text.t("profile-title"), l -> l.growX()).row();
-    t.slot("slot_avatar", Ui.table(a -> {
-        a.add(new VImage("avatar", UiLayout.DEFAULT, "net-" + model.avatarHash(), "placeholder", Scaling.fit));
-    })).row();
+    t.layout(l -> l.width(600f).height(450f).pad(12f));
+    t.label(Text.t("profile-title"), l -> l.growX());
+    t.row();
+    t.slot(SLOT_AVATAR, a -> a.image("net-" + model.avatarHash(), i -> i.scaling(VImage.SCALING_FIT).placeholder("nomap")));
+    t.row();
     t.button(Text.t("save"), "action:save", b -> b.style("accent"));
-})
+});
 ```
-
-### 8.2 External `.msui` Templates with Java NIO `WatchService`
-Templates live in `config/templates/ui/*.msui`. When edited on a live server, `MsuiTemplateEngine` detects changes in sub-milliseconds, re-parses the AST, and notifies active player sessions to hot-swap their UI without server restarts.
-
----
 
 ## 9. Backward Compatibility & Gateway Modernization
 
@@ -250,8 +252,8 @@ The gateway is modernized with Mindustry v160 RPCs:
 - `void menuBuilderUpdate(Player player, int menuId, String elementId, NodeBuilder<?> ui)`
 - `void hideMenuBuilder(Player player, int menuId)`
 
-### 9.2 `LegacyMenuScreenAdapter`
-Pre-v160 `MenuScreen` instances automatically compile into `TableBuilder` trees with wrapped text panes and button matrices. Existing plugins continue functioning without code changes.
+Menus written as pre-v160 flows (`MenuScreen` in XCore) are drawn by the host: XCore's
+`MenuScreenToUiAdapter` turns them into `VNode` trees. The library has no adapter of its own.
 
 ---
 
@@ -263,5 +265,4 @@ Pre-v160 `MenuScreen` instances automatically compile into `TableBuilder` trees 
 | **Visual Dialog Flicker** | 100% on every interaction | 0% (in-place table swap) |
 | **Input Focus Retention** | Destroyed on every click | Fully preserved |
 | **Testing Environment** | Requires full server runtime | 100% Headless in JUnit 5 (<50ms) |
-| **Texture Delivery Redundancy** | Duplicate streaming on reopen | BitSet Deduplication (0% duplicate bytes) |
-| **Template Hot-Reload** | Requires JAR build & reboot | Sub-millisecond live watch event |
+| **Texture Delivery Redundancy** | Duplicate streaming on reopen | Sent once per connection, again after a failed send |

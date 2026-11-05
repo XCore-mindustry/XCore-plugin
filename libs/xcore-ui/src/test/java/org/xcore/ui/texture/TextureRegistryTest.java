@@ -88,4 +88,63 @@ class TextureRegistryTest {
 
         assertThat(sent).containsExactly("a", "a");
     }
+
+    @Test
+    void failedSendIsTriedAgainOnNextUse() {
+        List<String> attempts = new ArrayList<>();
+        boolean[] online = {false};
+        TextureRegistry registry = new TextureRegistry(new TextureRegistry.TextureSender() {
+            @Override
+            public void send(String connectionId, String regionName, byte[] pngBytes) {
+                throw new AssertionError("trySend is the one called");
+            }
+
+            @Override
+            public boolean trySend(String connectionId, String regionName, byte[] pngBytes) {
+                attempts.add(connectionId);
+                return online[0];
+            }
+        });
+        byte[] png = {1, 2, 3};
+
+        registry.ensureDelivered("conn", png);   // the player is not there yet
+        online[0] = true;
+        registry.ensureDelivered("conn", png);   // now it is
+        registry.ensureDelivered("conn", png);   // and it has the texture
+
+        assertThat(attempts).containsExactly("conn", "conn");
+    }
+
+    @Test
+    void sendThatThrowsLeavesTheTextureUndelivered() {
+        List<String> attempts = new ArrayList<>();
+        TextureRegistry registry = new TextureRegistry((con, region, bytes) -> {
+            attempts.add(con);
+            if (attempts.size() == 1) throw new IllegalStateException("connection closed");
+        });
+        byte[] png = {4, 5, 6};
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> registry.ensureDelivered("conn", png))
+                .isInstanceOf(IllegalStateException.class);
+        registry.ensureDelivered("conn", png);
+        registry.ensureDelivered("conn", png);
+
+        assertThat(attempts).hasSize(2);
+    }
+
+    @Test
+    void registryKeepsItsOwnCopyOfTheBytes() {
+        List<byte[]> sent = new ArrayList<>();
+        TextureRegistry registry = new TextureRegistry((con, region, bytes) -> sent.add(bytes));
+        byte[] png = {7, 8, 9};
+
+        String name = registry.register(png);
+        png[0] = 0;
+        registry.bytes(name)[1] = 0;
+        registry.ensureDeliveredName("conn", name);
+
+        assertThat(sent.getFirst()).containsExactly(7, 8, 9);
+        assertThat(registry.contains(name)).isTrue();
+        assertThat(registry.contains("net-xcore_unknown")).isFalse();
+    }
 }

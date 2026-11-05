@@ -1,7 +1,10 @@
 # ADR 0001: Hybrid Reactive Server UI Engine for Mindustry v160
 
 ## Status
-Accepted
+Accepted, amended: the library lives in the XCore monorepo (`libs/xcore-ui`), and the `.msui`
+templates, `LegacyMenuScreenAdapter` and the virtual-thread texture pipeline were not built. Views
+are written in the Java DSL; XCore draws its pre-v160 flows itself (`MenuScreenToUiAdapter`); the
+host reads and encodes PNGs and `TextureRegistry` only names and delivers them.
 
 ## Context
 In Mindustry v160, upstream introduced `mindustry.ui.builder` and soft-deprecated `Menus.registerMenu`. The old paradigm (`Call.menu`, `Call.followUpMenu`, `Call.textInput`) only permitted flat 2D matrices of text buttons, lacked inline form controls (checkboxes, sliders, text fields), and forced full dialog recreation on every user interaction.

@@ -95,20 +95,23 @@ public class SettingsScreen implements UiController<SettingsModel, SettingsEvent
 
     public VNode render(SettingsModel model) {
         return Ui.table(t -> {
-            t.size(500f, 400f).pad(10f);
+            t.layout(l -> l.width(500f).height(400f).pad(10f));
 
             // Tab Bar
             t.add(Ui.table(tb -> {
+                tb.layout(l -> l.growX());
                 tb.button(Text.t("tab.general"), "tab:general", b -> b.checked("general".equals(model.activeTab())));
                 tb.button(Text.t("tab.audio"), "tab:audio", b -> b.checked("audio".equals(model.activeTab())));
-            })).growX().row();
+            }));
+            t.row();
 
             // Dynamic Tab Content Slot
-            t.slot("slot_tab", renderTabContent(model)).grow().row();
+            t.slot(SLOT_TAB, tab -> renderTabContent(tab, model));
+            t.row();
 
             // Footer
             t.button(Text.t("save"), "action:save", b -> b.style("green"));
-        }).build();
+        });
     }
 }
 ```
@@ -134,6 +137,9 @@ To show dynamic PNGs (e.g. Discord avatars or map previews):
    Events.on(WorldLoadEvent.class, e -> textureRegistry.resetAllDeliveries());
    ```
    `unregister(region)` forgets a texture you no longer show (e.g. when a cache evicts it).
+4. Say when a send cannot reach the player, such as one who is not online yet, by implementing
+   `TextureSender.trySend` and answering `false`: the texture then stays undelivered and the next
+   `ensureDelivered` sends it. A sender that throws is treated the same way.
 
 ---
 

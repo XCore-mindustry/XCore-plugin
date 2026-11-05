@@ -1,6 +1,5 @@
 package org.xcore.plugin.ui.flow;
 
-import arc.util.io.Writes;
 import mindustry.gen.Iconc;
 import mindustry.ui.builder.UiBuilder.NodeBuilder;
 import org.xcore.plugin.ui.kit.Accent;
@@ -12,8 +11,6 @@ import org.xcore.ui.Ui;
 import org.xcore.ui.VNode;
 import org.xcore.ui.VNodeCompiler;
 
-import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -25,9 +22,6 @@ import java.util.List;
  * the client's own menu dialog would send.
  */
 public final class MenuScreenToUiAdapter {
-
-    /** A dialog travels as one packet and the client reads a packet into a 32 KB buffer; this leaves a margin. */
-    public static final int PACKET_LIMIT = 24_000;
 
     private static final String ACTION_BACK = "back";
     private static final String ACTION_CLOSE = "close";
@@ -153,14 +147,5 @@ public final class MenuScreenToUiAdapter {
 
     public static NodeBuilder<?> compile(MenuScreen screen) {
         return compile(screen, LocalizerResolver.IDENTITY);
-    }
-
-    /** Bytes {@code ui} takes on the wire. */
-    public static int packetSize(NodeBuilder<?> ui) {
-        var bytes = new ByteArrayOutputStream();
-        try (var writes = new Writes(new DataOutputStream(bytes))) {
-            ui.write(writes);
-        }
-        return bytes.size();
     }
 }

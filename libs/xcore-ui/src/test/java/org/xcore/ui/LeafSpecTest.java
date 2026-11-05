@@ -40,6 +40,15 @@ class LeafSpecTest {
     }
 
     @Test
+    void unknownScalingIsRejectedWhereTheImageIsMade() {
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> Ui.image("net-x", l -> l.scaling("contain")))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("contain")
+                .hasMessageContaining("fit");
+        assertThat(Ui.image("net-x", l -> l.scaling("stretchX")).scaling()).isEqualTo("stretchX");
+    }
+
+    @Test
     void defaultsApplyToTheCellsAfterThem() {
         String dsl = dsl(Ui.table(t -> {
             t.defaults(l -> l.padRight(4f));
