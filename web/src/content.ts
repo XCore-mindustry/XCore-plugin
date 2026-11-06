@@ -145,7 +145,7 @@ export const sample = {
 };
 
 export const libraries = [
-  { name: "xcore-ui", repo: "xcore-ui", coords: "org.xcore:xcore-ui:0.1.0" },
+  { name: "xcore-ui", repo: "xcore-ui", coords: "org.xcore:xcore-ui:0.4.0" },
   { name: "xcore-plugin-template", repo: "xcore-plugin-template" },
   { name: "mindustry-testkit", repo: "mindustry-testkit" },
   { name: "cloud-mindustry", repo: "cloud-mindustry" },

@@ -22,7 +22,7 @@ Add `xcore-ui` dependency:
 
 ```kotlin
 dependencies {
-    // If your plugin is loaded on a server with xcore-ui already in classpath
+    // If the server already provides xcore-ui 0.4.0 or a compatible version at runtime
     compileOnly("org.xcore:xcore-ui:0.4.0")
 
     // Or if you are shading it directly into your plugin jar:
