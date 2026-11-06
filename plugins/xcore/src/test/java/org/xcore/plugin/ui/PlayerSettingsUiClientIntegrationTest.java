@@ -151,7 +151,7 @@ class PlayerSettingsUiClientIntegrationTest {
         assertThat(loop.stepServerToClient()).isTrue();
 
         // Client clicks Badges tab
-        loop.client().click(menuId, "action:tab:badges");
+        loop.client().press(menuId, "action:tab:badges");
         assertThat(loop.stepClientToServer()).isTrue();
 
         // Server processes event and emits rerender

@@ -64,7 +64,7 @@ class UiSessionClientIntegrationTest {
 
         assertThat(gateway.lastShow).isNotNull();
 
-        gateway.client.click(MENU, "inc");
+        gateway.client.press(MENU, "inc");
         deliverNext(gateway.client, session);
 
         var patch = gateway.client.lastPatchDsl("slot_counter");
@@ -183,7 +183,7 @@ class UiSessionClientIntegrationTest {
         assertThat(loop.client().isVisible(MENU)).isTrue();
 
         // 3. Client clicks "+1": message is queued, server has not received it
-        loop.client().click(MENU, "inc");
+        loop.client().press(MENU, "inc");
         assertThat(loop.client().lastPatchDsl("slot_counter")).isNull();
 
         // 4. Step client->server: server processes "inc" and queues Update, but client hasn't received it yet

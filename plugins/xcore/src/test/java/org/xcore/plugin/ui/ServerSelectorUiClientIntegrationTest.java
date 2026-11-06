@@ -169,7 +169,7 @@ class ServerSelectorUiClientIntegrationTest {
         assertThat(loop.stepServerToClient()).isTrue();
 
         // Client chooses PvP tab
-        loop.client().click(menuId, "action:tab:pvp");
+        loop.client().press(menuId, "action:tab:pvp");
         assertThat(loop.stepClientToServer()).isTrue();
 
         // Server processes event and emits Show wire message with new active tab and filtered servers
@@ -188,7 +188,7 @@ class ServerSelectorUiClientIntegrationTest {
         serverMenu.open(session);
         int menuId = menuService.getMenuBuilderId();
         assertThat(loop.stepServerToClient()).isTrue();
-        loop.client().click(menuId, "action:connect:mini-pvp");
+        loop.client().press(menuId, "action:connect:mini-pvp");
         assertThat(loop.stepClientToServer()).isTrue();
         assertThat(loop.stepServerToClient()).isTrue();
         assertThat(loop.client().isVisible(menuId)).isTrue();

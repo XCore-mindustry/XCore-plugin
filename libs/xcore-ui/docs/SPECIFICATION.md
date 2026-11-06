@@ -190,7 +190,7 @@ public final class FormSchema<Model> {
     public FormResult<Model> apply(Model currentModel, MenuResult result);
 }
 ```
-Validation is all or nothing: when any field is rejected, `FormResult.model()` is the model as it was, and `errors()` holds a token for each rejected field. A field the result does not carry keeps its value: the client sends only the fields built alongside the pressed button, in the same dialog or in the same patch.
+Validation is all or nothing: when any field is rejected, `FormResult.model()` is the model as it was, and `errors()` holds a token for each rejected field. A field the result does not carry keeps its value. The client sends the fields of the build the pressed button came from: a button the dialog was built with sends the dialog's fields and those of every patch since (they share one id map), and a button a patch built sends only that patch's fields. A field in a variant the client did not build is never sent.
 
 ---
 

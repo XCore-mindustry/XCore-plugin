@@ -170,7 +170,7 @@ class TopUiClientIntegrationTest {
         assertThat(initialDsl).contains("action:tab:CUSTOM_PLAYTIME");
 
         // 2. Client clicks Next Page -> sends patch update
-        loop.client().click(menuId, "action:page:next");
+        loop.client().press(menuId, "action:page:next");
         assertThat(loop.stepClientToServer()).isTrue();
         loop.deliverToClient();
 
@@ -178,7 +178,7 @@ class TopUiClientIntegrationTest {
         assertThat(updateMsg).isNotNull();
 
         // 3. Client switches Category Tab to CustomPlaytime -> sends re-render show
-        loop.client().click(menuId, "action:tab:CUSTOM_PLAYTIME");
+        loop.client().press(menuId, "action:tab:CUSTOM_PLAYTIME");
         assertThat(loop.stepClientToServer()).isTrue();
         loop.deliverToClient();
 
@@ -187,17 +187,19 @@ class TopUiClientIntegrationTest {
         assertThat(catDsl).contains("Dave");
 
         // 4. Client switches back to CustomPvP and clicks a player row to inspect profile
-        loop.client().click(menuId, "action:tab:CUSTOM_PVP");
+        loop.client().press(menuId, "action:tab:CUSTOM_PVP");
         assertThat(loop.stepClientToServer()).isTrue();
         loop.deliverToClient();
 
-        loop.client().click(menuId, "action:inspect:viewer-uuid");
+        loop.client().press(menuId, "action:inspect:viewer-uuid");
         assertThat(loop.stepClientToServer()).isTrue();
 
         verify(playerMenu).openProfileUi(eq(session), eq(session.data));
         assertThat(session.hasHistory()).isTrue();
 
         // 5. Client closes dialog
+        // No button of the window sends it (the dialog closes itself); this drives the controller's close.
+
         loop.client().click(menuId, "action:close");
         assertThat(loop.stepClientToServer()).isTrue();
         loop.deliverToClient();

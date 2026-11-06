@@ -295,7 +295,6 @@ public class MenuService {
             @Override
             public void show(String playerId, long token, UiBuilder.NodeBuilder<?> ui) {
                 if (session.activeUiSession() != sessionRef[0]) return;
-                session.markUiShown();
                 gateway.menuBuilder(session.player, globalMenuBuilderId, token, null, false, true, fillScreen, ui);
             }
 
@@ -539,8 +538,8 @@ public class MenuService {
             var uiSession = session.activeUiSession();
             boolean currentWindow = result.token == 0 || result.token == uiSession.token();
             if (currentWindow && !result.wasCancelled()) {
-                // The client's dialog stops reporting its close once pressed (Menus.menuBuilder sets
-                // wasHidden), and a patch keeps that same dialog up.
+                // Whether the client still reports a close is the UI session's to know; the time of
+                // the press is what keeps its dialog counted as open once it no longer does.
                 session.markUiPressed();
             }
             // A close the client reports ends the session, which clears it here through its gateway.

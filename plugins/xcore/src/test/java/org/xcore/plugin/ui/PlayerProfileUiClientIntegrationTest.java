@@ -161,7 +161,7 @@ class PlayerProfileUiClientIntegrationTest {
         assertThat(dsl).contains("action:tab:players");
 
         // Client clicks STATS tab
-        loop.client().click(menuId, "action:tab:stats");
+        loop.client().press(menuId, "action:tab:stats");
         assertThat(loop.stepClientToServer()).isTrue();
         assertThat(loop.stepServerToClient()).isTrue();
 
@@ -170,7 +170,7 @@ class PlayerProfileUiClientIntegrationTest {
         assertThat(statsDsl).contains("action:tab:overview");
 
         // Client clicks PLAYERS tab
-        loop.client().click(menuId, "action:tab:players");
+        loop.client().press(menuId, "action:tab:players");
         assertThat(loop.stepClientToServer()).isTrue();
         assertThat(loop.stepServerToClient()).isTrue();
 
@@ -180,6 +180,8 @@ class PlayerProfileUiClientIntegrationTest {
         assertThat(playersDsl).contains("action:refresh_players");
 
         // Client clicks CLOSE
+        // No button of the window sends it (the dialog closes itself); this drives the controller's close.
+
         loop.client().click(menuId, "action:close");
         assertThat(loop.stepClientToServer()).isTrue();
         assertThat(loop.stepServerToClient()).isTrue();

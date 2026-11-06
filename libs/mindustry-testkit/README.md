@@ -14,6 +14,12 @@
 
 ---
 
+## Changes after 0.2.0 (unreleased)
+
+- `HeadlessMenuClient` builds what it is shown: conditions decided by a `ClientScreen`, patches applied only to a table the client built under that id, form values taken from the pressed element's build. `lastPatchDsl` is `null` for an ignored patch and starts empty with each dialog.
+- `press` presses as a player does and fails for what the screen does not show. `click` still sends any answer.
+- `UiWireMessage.Show` carries `hideOnClick` (`sendShow(..., hideOnClick, ui)`), and a dialog shown with it closes on a press, as on the client.
+
 ## Architecture & Components
 
 The toolkit is divided into three modules:
@@ -112,11 +118,25 @@ player.infoMessages();        // InfoMessageCallPacket texts only
 
 Client simulation, transport wire snapshots, and actual-client oracle tests.
 
-- **`HeadlessMenuClient`**: Semantic stand-in for the Mindustry client menu registry (`MenuDialog` + `Menus`). Reproduces exact recorded client semantics:
-  - Window display and replacement (`show` with `hidePrevious`);
+- **`HeadlessMenuClient`**: Semantic stand-in for the Mindustry client menu registry (`MenuDialog` + `Menus`) and `UiTreeBuilder`. It builds each dialog as the client does, with no geometry, and reproduces recorded client semantics. `ActualMenusOracleTest` checks each rule against the real `Menus`:
+  - Window display and replacement (`show` with `hidePrevious`), and `hideOnClick`: such a dialog closes on a press and reports no close;
   - Outbox queue for client responses (`MenuChoose`);
   - `wasHidden` cancellation suppression (closing or replacing a dialog after a button click does not emit cancel);
-  - Token-bound window lifecycle.
+  - Token-bound window lifecycle;
+  - Conditions: a node whose `condition` fails on the client's `ClientScreen` (`DESKTOP` by default, `PHONE_PORTRAIT`, `PHONE_LANDSCAPE` or your own size) is not built;
+  - Patches: `menuBuilderUpdate` clears the table built under the id and builds into it. An id the client has no table under is ignored (`ignoredPatches()`), and what the cleared table held leaves the screen (`isShown(menuId, id)`);
+  - Form values: a press sends the fields, checks and sliders of the build the pressed element came from. A button the dialog was built with sends the dialog's fields and those of every patch since, since they share the dialog's id map. A button a patch built sends only that patch's fields.
+
+  - Disabled: any `disabled: true` entry disables an element in a table's cell; a stack's own child is in no cell and stays enabled;
+  - Entered values: a field drops line breaks and keeps at most its `maxLength` (capped at 1000, 1000 when unset); a slider rounds to its step and keeps within its range. What a player enters stays until a patch rebuilds the input.
+
+  `press(menuId, action[, entered])` acts as a player: it finds what sends `action` on the screen and fails when nothing does or all of it is disabled. It rejects an entered value for an input that build does not send, for one a patch removed, or one the input cannot hold, and sends what every other input holds. `click(menuId, action[, values])` sends an answer as given, for transport tests and for answers a client sends late, after its button was gone.
+
+```java
+var client = new HeadlessMenuClient(ClientScreen.PHONE_PORTRAIT);
+client.show(menu, token, true, UiSnapshot.capture(ui));
+client.press(menu, "action:save", Map.of("field_name", "Osp")); // fails if no Save button is on this screen
+```
 - **`DeterministicUiLoop`**: Orchestrates two isolated FIFO transport queues (`serverToClient` and `clientToServer`) alongside a snapshot-drain `serverPost` queue. Enables exact step-by-step control over network propagation delays and interleaved async completions.
 - **`UiSnapshot`**: Immutable wire copy of `NodeBuilder<?>` trees captured at send time using Mindustry's native binary codec (`builder.write(Writes)` / `NodeBuilder.read(Reads)`). Completely eliminates mutable object reference leaks between server and client.
 - **`UiWireMessage` & `UiTranscript`**: Sealed wire message records (`Show`, `Update`, `Hide`, `Choose`) and an append-only transcript logging every transport step for deterministic test assertions. `Show`/`Update` expose `dsl()`; `Choose` carries the form `values` the client sent and turns into the server's `MenuResult` with `toMenuResult()`; `UiWireMessage.fromPacket` maps the `Call.menuBuilder*` packets. The transcript answers `lastShow()`, `lastUpdate()`, `shows()`, `updates()`, `chooses()`, `all(Type.class)` and `last(Type.class)`.

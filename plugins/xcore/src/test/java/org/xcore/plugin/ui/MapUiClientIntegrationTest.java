@@ -159,7 +159,7 @@ class MapUiClientIntegrationTest {
         assertThat(session.hasActiveUiSession()).isTrue();
 
         // 2. Client clicks "arena.msav"
-        loop.client().click(menuId, "action:select_map:arena.msav");
+        loop.client().press(menuId, "action:select_map:arena.msav");
 
         // Step client->server: server receives selection
         assertThat(loop.stepClientToServer()).isTrue();
@@ -258,7 +258,7 @@ class MapUiClientIntegrationTest {
         mapMenu.openMapBrowserUi(session, 1);
         loop.stepServerToClient();
 
-        loop.client().click(menuId, "action:select_map:canyon.msav");
+        loop.client().press(menuId, "action:select_map:canyon.msav");
         loop.stepClientToServer();
         loop.stepServerPost(); // Turn 1: posts requestDetailsAsync
         loop.stepServerToClient(); // initial details view with defaults
@@ -303,18 +303,18 @@ class MapUiClientIntegrationTest {
         int menuId = menuService.getMenuBuilderId();
         loop.stepServerToClient();
 
-        loop.client().click(menuId, "action:select_map:mapA.msav");
+        loop.client().press(menuId, "action:select_map:mapA.msav");
         loop.stepClientToServer();
         loop.stepServerPost(); // Turn 1: requestDetailsAsync for A pending
         loop.stepServerToClient(); // details for A (unresolved)
 
         // 2. User goes back to browser
-        loop.client().click(menuId, "action:back_to_list");
+        loop.client().press(menuId, "action:back_to_list");
         loop.stepClientToServer();
         loop.stepServerToClient(); // browser visible
 
         // 3. User clicks map B
-        loop.client().click(menuId, "action:select_map:mapB.msav");
+        loop.client().press(menuId, "action:select_map:mapB.msav");
         loop.stepClientToServer();
         loop.stepServerPost(); // Turn 1 for B
         loop.stepServerPost(); // Turn 2 for B (DetailsReady for B)
@@ -365,27 +365,29 @@ class MapUiClientIntegrationTest {
         int menuId = menuService.getMenuBuilderId();
         loop.stepServerToClient();
 
-        loop.client().click(menuId, "action:select_map:mapA.msav");
+        loop.client().press(menuId, "action:select_map:mapA.msav");
         loop.stepClientToServer();
         loop.stepServerPost(); // Turn 1: requestDetailsAsync attaches to pendingA1
         loop.stepServerToClient();
 
         // 2. User goes back to browser, then to B, then back to browser
-        loop.client().click(menuId, "action:back_to_list");
+        loop.client().press(menuId, "action:back_to_list");
         loop.stepClientToServer();
         loop.stepServerToClient();
 
-        loop.client().click(menuId, "action:select_map:mapB.msav");
+        loop.client().press(menuId, "action:select_map:mapB.msav");
         loop.stepClientToServer();
         loop.stepServerPost();
-        loop.stepServerToClient();
+        loop.deliverToClient(); // the details of B, and what they load: the player sees them before going back
 
-        loop.client().click(menuId, "action:back_to_list");
-        loop.stepClientToServer();
-        loop.stepServerToClient();
+        loop.client().press(menuId, "action:back_to_list");
+        // The loaded details replaced the loading ones, which the client reports closed; that cancel
+        // goes to the server ahead of the press.
+        while (loop.stepClientToServer()) { }
+        loop.deliverToClient();
 
         // 3. User clicks A again (request A2 begins)
-        loop.client().click(menuId, "action:select_map:mapA.msav");
+        loop.client().press(menuId, "action:select_map:mapA.msav");
         loop.stepClientToServer();
         loop.stepServerPost(); // Turn 1: requestDetailsAsync attaches to pendingA2
         loop.stepServerToClient();
@@ -433,6 +435,8 @@ class MapUiClientIntegrationTest {
         loop.stepServerToClient();
 
         // Client explicitly closes the menu
+        // No button of the window sends it (the dialog closes itself); this drives the controller's close.
+
         loop.client().click(menuId, "action:close");
         loop.stepClientToServer();
         assertThat(session.hasActiveUiSession()).isFalse();
@@ -519,6 +523,8 @@ class MapUiClientIntegrationTest {
         assertThat(session.hasActiveUiSession()).isTrue();
 
         // Client clicks the explicit close button
+        // No button of the window sends it (the dialog closes itself); this drives the controller's close.
+
         loop.client().click(menuId, "action:close");
         loop.stepClientToServer();
 
@@ -573,7 +579,7 @@ class MapUiClientIntegrationTest {
         loop.stepServerToClient();
 
         // Click map to enter details (triggers requestDetailsAsync)
-        loop.client().click(menuId, "action:select_map:arena.msav");
+        loop.client().press(menuId, "action:select_map:arena.msav");
         loop.stepClientToServer();
         loop.stepServerPost(); // Turn 1: requestDetailsAsync starts and attaches to pendingDetails
         loop.stepServerToClient(); // initial details view rendered

@@ -12,7 +12,16 @@ import java.util.Optional;
  * Immutable snapshot of one message traversing the client-server boundary.
  */
 public sealed interface UiWireMessage {
-    record Show(int menuId, long token, boolean hidePrevious, UiSnapshot body) implements UiWireMessage {
+    /**
+     * {@code Call.menuBuilder}: a dialog for {@code menuId}. With {@code hideOnClick} the client
+     * closes it on a press.
+     */
+    record Show(int menuId, long token, boolean hidePrevious, boolean hideOnClick, UiSnapshot body) implements UiWireMessage {
+        /** A dialog that stays up on a press. */
+        public Show(int menuId, long token, boolean hidePrevious, UiSnapshot body) {
+            this(menuId, token, hidePrevious, false, body);
+        }
+
         /** {@link UiSnapshot#dsl()} of the body. */
         public String dsl() { return body.dsl(); }
     }
@@ -57,7 +66,7 @@ public sealed interface UiWireMessage {
      */
     static Optional<UiWireMessage> fromPacket(Object packet) {
         return Optional.ofNullable(switch (packet) {
-            case MenuBuilderCallPacket p -> new Show(p.id, p.token, p.hidePrevious, UiSnapshot.capture(p.builder));
+            case MenuBuilderCallPacket p -> new Show(p.id, p.token, p.hidePrevious, p.hideOnClick, UiSnapshot.capture(p.builder));
             case MenuBuilderUpdateCallPacket p -> new Update(p.id, p.tableId, UiSnapshot.capture(p.builder));
             case HideMenuBuilderCallPacket p -> new Hide(p.menuId);
             case null, default -> null;

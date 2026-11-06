@@ -86,7 +86,12 @@ public final class DeterministicUiLoop {
 
     /** Queues a menu as {@code Call.menuBuilder} sends it, capturing {@code ui} now. */
     public void sendShow(int menuId, long token, boolean hidePrevious, NodeBuilder<?> ui) {
-        sendServerToClient(new UiWireMessage.Show(menuId, token, hidePrevious, UiSnapshot.capture(ui)));
+        sendShow(menuId, token, hidePrevious, false, ui);
+    }
+
+    /** Like {@link #sendShow(int, long, boolean, NodeBuilder)}, for a dialog that closes on a press when {@code hideOnClick}. */
+    public void sendShow(int menuId, long token, boolean hidePrevious, boolean hideOnClick, NodeBuilder<?> ui) {
+        sendServerToClient(new UiWireMessage.Show(menuId, token, hidePrevious, hideOnClick, UiSnapshot.capture(ui)));
     }
 
     /** Queues a slot patch as {@code Call.menuBuilderUpdate} sends it, capturing {@code ui} now. */
@@ -117,7 +122,7 @@ public final class DeterministicUiLoop {
         if (msg == null) return false;
         transcript.record(msg);
         switch (msg) {
-            case UiWireMessage.Show s -> client.show(s.menuId(), s.token(), s.hidePrevious(), s.body());
+            case UiWireMessage.Show s -> client.show(s.menuId(), s.token(), s.hidePrevious(), s.hideOnClick(), s.body());
             case UiWireMessage.Update u -> client.update(u.menuId(), u.targetId(), u.body());
             case UiWireMessage.Hide h -> client.hide(h.menuId());
             case UiWireMessage.Choose ignored -> {}
