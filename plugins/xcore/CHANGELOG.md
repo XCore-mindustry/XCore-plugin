@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [5.4.0] - 2026-11-06
+
 ### Added
 - `/unbanip <ban>` and the console command `unbanip <ban>` lift only the IP of one ban (`B-123`): the banned account stays banned by UUID, while other players on that address (a shared or mobile IP) can join again. Only active bans qualify; if other active bans still hold that IP, the reply names them. Needs `xcore.moderation.unban`, leaves a `NOTE` audit of kind `ban_ip_released` and sends no pardon. `tempbans` lists the ban number and IP of each ban.
 - Case notice `appeal_ip_released`, for an appeal accepted by releasing the IP of the ban.
