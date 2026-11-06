@@ -106,6 +106,48 @@ public class ModerationController implements CloudClientController {
         });
     }
 
+    /**
+     * Lifts only the IP of one ban: the banned account stays banned by UUID, and other players
+     * on that address (a shared or mobile IP) can join again.
+     */
+    @Permission(PermissionNodes.MODERATION_UNBAN)
+    @Command("unbanip <ban>")
+    public void unbanIp(XCoreSender sender, @Argument("ban") String ban) {
+        Session session = resolveActiveSession(sender);
+        if (session == null) return;
+        Localization local = session.locale();
+
+        Integer banId = ModerationService.parseBanId(ban);
+        if (banId == null) {
+            local.send("commands-unbanip-invalid", args());
+            return;
+        }
+
+        var actor = ModerationActor.of(sender.actor());
+        hierarchy.whenAllowed(session, () -> {
+            var found = moderationService.findBan(banId);
+            return found == null || found.uuid == null || found.uuid.isBlank() ? null : found.uuid;
+        }, PermissionNodes.MODERATION_UNBAN, () -> {
+            var result = moderationService.releaseBanIp(banId, actor.name(), actor.discordId());
+            if (result.isSuccess()) {
+                var released = result.getData().get();
+                local.send("commands-unbanip-success", args(
+                        "banId", banId,
+                        "nickname", released.name,
+                        "pid", released.pid == null ? "-" : released.pid
+                ));
+                return;
+            }
+            String key = switch (result.getMessage().orElse("")) {
+                case ModerationService.BAN_NOT_FOUND_MESSAGE -> "commands-unbanip-not-found";
+                case ModerationService.BAN_HAS_NO_IP_MESSAGE -> "commands-unbanip-no-ip";
+                case ModerationService.BAN_HAS_NO_UUID_MESSAGE -> "commands-unbanip-no-uuid";
+                default -> "error-processing-request";
+            };
+            local.send(key, args("banId", banId));
+        }, () -> local.send(TargetHierarchy.DENIED_KEY, args()));
+    }
+
     @Permission(PermissionNodes.MODERATION_MUTE)
     @Command("mute <target> <period> [reason]")
     public void mute(XCoreSender sender,

@@ -207,6 +207,18 @@ public class BanDataRepository extends DataRepository<BanData> {
         return collection.deleteMany(filter).getDeletedCount() > 0;
     }
 
+    /**
+     * Takes the IP off one ban; its UUID stays banned and other bans are not touched. The IP is
+     * matched too, so a ban whose IP changed since it was read is left alone.
+     */
+    public boolean releaseIp(int banId, String ip) {
+        if (ip == null || isReadOnly()) {
+            return false;
+        }
+        return collection.updateOne(and(eq("ban_id", banId), eq("ip", ip)), set("ip", null))
+                .getModifiedCount() > 0;
+    }
+
     public CompletionStage<Boolean> deleteAsync(String uuid, String ip) {
         var filter = identifierFilter(uuid, ip);
         if (filter == null) {

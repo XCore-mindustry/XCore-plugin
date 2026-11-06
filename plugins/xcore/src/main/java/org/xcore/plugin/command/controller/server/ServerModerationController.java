@@ -114,6 +114,23 @@ public class ServerModerationController implements CloudServerController {
         }
     }
 
+    @Command("unbanip <ban>")
+    @CommandDescription("Lifts only the IP of a ban; the banned UUID stays banned.")
+    public void unbanIp(XCoreSender sender,
+                        @Argument(value = "ban", description = "Ban number, e.g. B-123") String ban) {
+        Integer banId = ModerationService.parseBanId(ban);
+        if (banId == null) {
+            Log.err("Give a ban number such as B-123 or 123.");
+            return;
+        }
+        var result = moderationService.releaseBanIp(banId, sender.actor().auditName(), null);
+        if (result.isSuccess()) {
+            Log.info(result.getMessage().orElse("Released the IP of ban B-" + banId));
+        } else {
+            Log.err("Could not release the IP of ban B-@: @", banId, result.getMessage().orElse("unknown error"));
+        }
+    }
+
     @Command("tempbans [search]")
     @CommandDescription("Lists active temporary bans.")
     public void tempBans(XCoreSender sender,
@@ -123,7 +140,7 @@ public class ServerModerationController implements CloudServerController {
         if (q != null && !q.isBlank()) {
             bans.select(b -> deepEquals(b.name, q) || equalsNonEmpty(b.ip, q) || equalsNonEmpty(b.uuid, q));
         }
-        bans.each(b -> Log.info("Ban: @ (@) until @. Reason: @", b.name, b.uuid,
+        bans.each(b -> Log.info("Ban B-@: @ (@ / @) until @. Reason: @", b.banId, b.name, b.uuid, b.ip,
                 b.expireDate != null ? b.expireDate.atZone(ZoneId.systemDefault()).toLocalDateTime() : "Permanent", b.reason));
     }
 

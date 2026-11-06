@@ -68,7 +68,7 @@ class CommandPermissionFamiliesTest {
 
     /** The commands that asked for "admin" or an "xcore.admin.*" permission before. */
     private static final Set<String> STAFF_COMMANDS = Set.of(
-            "ban", "unban", "mute", "unmute", "audit",
+            "ban", "unban", "unbanip", "mute", "unmute", "audit",
             "tp", "bring", "tpto", "tppos",
             "heal", "kill", "killunits",
             "alert", "toast", "announcement",
