@@ -435,7 +435,9 @@ async def perform_release_ban_ip(
         )
     if check is not None:
         await check(ban)
-    if not await bot.container.punishments.release_ban_ip(ban_id=ban_id, ip=ban.ip):
+    # Match the IP as stored, so the guard sees the same value the ban holds.
+    stored_ip = ban.ip or ip_value
+    if not await bot.container.punishments.release_ban_ip(ban_id=ban_id, ip=stored_ip):
         raise BanNotFound("No active ban found")
     extra = _audit_extra(
         ban_id=ban_id, case_number=case_number, case_action_token=case_action_token
