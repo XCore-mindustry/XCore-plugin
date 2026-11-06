@@ -8,10 +8,13 @@ import pytest
 from backends import published, real_bot
 
 from xcore_discord_bot.handlers_moderation import (
+    MSG_INVALID_BAN_ID,
     MSG_NO_ACTIVE_BAN,
     MSG_NO_ACTIVE_MUTE,
     cmd_unban,
+    cmd_unban_ip,
     cmd_unmute,
+    parse_ban_id,
 )
 
 
@@ -159,3 +162,60 @@ async def test_cmd_unmute_no_active_mute_message() -> None:
         {"content": MSG_NO_ACTIVE_MUTE, "embed": None, "ephemeral": True}
     ]
     assert await db["moderation_audit"].count_documents({}) == 0
+
+
+@pytest.mark.parametrize(
+    "value,expected",
+    [
+        ("B-123", 123),
+        ("b123", 123),
+        (" #123 ", 123),
+        ("123", 123),
+        ("B-0", None),
+        ("-5", None),
+        ("abc", None),
+        ("99999999999", None),
+    ],
+)
+def test_parse_ban_id(value: str, expected: int | None) -> None:
+    assert parse_ban_id(value) == expected
+
+
+@pytest.mark.asyncio
+async def test_cmd_unban_ip_keeps_the_uuid_banned() -> None:
+    bot, db = await _bot(mute=False)
+    await db["bans"].update_one({}, {"$set": {"ban_id": 7, "pid": 123}})
+    interaction = _Interaction(id=42, user=_User(id=999, display_name="Admin"))
+
+    await cmd_unban_ip(bot, interaction, "B-7")
+
+    row = db["bans"].docs[0]
+    assert row["uuid"] == "uuid-123" and row["ip"] is None
+    embed = interaction.response.calls[0]["embed"]
+    assert embed.title == "IP released from ban B-7"
+    fields = {item.name: item.value for item in embed.fields}
+    assert fields["PID"] == "123" and fields["Released by"] == "Admin"
+    assert "1.2.3.4" not in str(embed.to_dict())
+    audit = db["moderation_audit"].docs[0]
+    assert audit["action"] == "NOTE"
+    assert audit["details"]["extra"] == {"ban_id": "7", "kind": "ban_ip_released"}
+    assert audit["target"]["ip_snapshot"] == "1.2.3.4"
+    assert not await published(bot.bus, PARDON)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "value,message", [("nope", MSG_INVALID_BAN_ID), ("B-8", MSG_NO_ACTIVE_BAN)]
+)
+async def test_cmd_unban_ip_refusals_are_ephemeral(value: str, message: str) -> None:
+    bot, db = await _bot(mute=False)
+    await db["bans"].update_one({}, {"$set": {"ban_id": 7}})
+    interaction = _Interaction(id=43, user=_User(id=999, display_name="Admin"))
+
+    await cmd_unban_ip(bot, interaction, value)
+
+    assert interaction.response.calls == [
+        {"content": message, "embed": None, "ephemeral": True}
+    ]
+    assert db["bans"].docs[0]["ip"] == "1.2.3.4"
+    assert not db["moderation_audit"].docs

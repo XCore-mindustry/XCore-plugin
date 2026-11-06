@@ -211,6 +211,17 @@ class PunishmentStore:
         )
         return result.modified_count > 0
 
+    async def release_ban_ip(self, *, ban_id: int, ip: str) -> bool:
+        """Take the IP off one ban. Its UUID stays banned; other bans are not touched.
+
+        Matching the IP as well as the ban ID keeps a concurrent edit of the ban from
+        being overwritten: a ban whose IP changed since it was read is left alone.
+        """
+        result = await self._store.database["bans"].update_one(
+            {"ban_id": ban_id, "ip": ip}, {"$set": {"ip": None}}
+        )
+        return result.modified_count > 0
+
     async def upsert_mute(
         self,
         *,

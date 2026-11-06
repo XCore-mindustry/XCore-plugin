@@ -13,8 +13,11 @@ from ...dto import BanRecord, MuteRecord, PlayerRecord
 from ...i18n import t
 from ...player_pids import NO_PID, or_none
 from ...staff_actions import (
+    BanHasNoIp,
+    BanHasNoUuid,
     BanNotFound,
     MuteNotFound,
+    perform_release_ban_ip,
     perform_shorten_ban,
     perform_shorten_mute,
     perform_unban,
@@ -744,6 +747,49 @@ async def unban(context):
     return await context.run(action)
 
 
+async def unban_ip(context):
+    """Free the IP of the appealed ban and keep its UUID banned.
+
+    For an appellant caught by another account's ban on a shared address: the
+    banned account stays banned, the appellant can join again.
+    """
+    if context.values.get("confirmed") != "yes":
+        ban = await _current(context, context.case)
+        if not str(ban.ip or "").strip():
+            raise ActionFailed(t(context.locale, "appeals-no-ip"))
+        if not str(ban.uuid or "").strip():
+            raise ActionFailed(t(context.locale, "appeals-ip-only-ban"))
+        await context.confirm(
+            t(
+                context.locale,
+                "appeals-confirm-unban-ip",
+                ban=context.case.payload["ban_id"],
+            )
+        )
+        return None
+
+    async def action(claimed):
+        ban = await _current(context, claimed)
+        try:
+            result = await perform_release_ban_ip(
+                context.service.bot,
+                ban.ban_id,
+                context.actor,
+                case_number=claimed.number,
+                case_action_token=claimed.pending_action["token"],
+                check=_still_current(context, claimed),
+            )
+        except BanNotFound as error:
+            raise ActionFailed(t(context.locale, "appeals-stale")) from error
+        except BanHasNoIp as error:
+            raise ActionFailed(t(context.locale, "appeals-no-ip")) from error
+        except BanHasNoUuid as error:
+            raise ActionFailed(t(context.locale, "appeals-ip-only-ban")) from error
+        return Resolution("ip_released", ban_id=ban.ban_id, audit_id=result.audit_id)
+
+    return await context.run(action)
+
+
 async def shorten(context):
     async def action(claimed):
         ban = await _current(context, claimed)
@@ -914,6 +960,7 @@ def outcomes(case):
     if not case.resolution or case.resolution.code not in {
         "unbanned",
         "shortened",
+        "ip_released",
         "unmuted",
         "mute_shortened",
         "rejected",
@@ -926,6 +973,7 @@ def outcomes(case):
         "shortened": "appeal_shortened",
         "unmuted": "appeal_unmuted",
         "mute_shortened": "appeal_mute_shortened",
+        "ip_released": "appeal_ip_released",
         "rejected": "discord",
     }[code]
     recipient = (
@@ -940,8 +988,9 @@ def outcomes(case):
             player_language=case.origin.locale,
         )
     ]
+    # Released IP: the punished account stays banned, so only the appellant is told.
     if (
-        code != "rejected"
+        code not in {"rejected", "ip_released"}
         and not recipient.player_uuid
         and case.subject
         and case.subject.player_uuid
@@ -965,6 +1014,12 @@ APPEAL_FLOW = flow_registry.register(
                 "cases-button-unban",
                 unban,
                 style=discord.ButtonStyle.success,
+                visible=_is_ban,
+            ),
+            Action(
+                "unban_ip",
+                "cases-button-unban-ip",
+                unban_ip,
                 visible=_is_ban,
             ),
             Action(

@@ -49,6 +49,14 @@ class InvalidBanExpiry(StaffActionError):
     pass
 
 
+class BanHasNoIp(StaffActionError):
+    pass
+
+
+class BanHasNoUuid(StaffActionError):
+    pass
+
+
 class BadgeNotFound(StaffActionError):
     pass
 
@@ -396,6 +404,69 @@ async def perform_shorten_ban(
             f"Shortened ban B-{ban_id} until {discord.utils.format_dt(expire, style='f')} "
             f"({discord.utils.format_dt(expire, style='R')})"
         ),
+    )
+
+
+async def perform_release_ban_ip(
+    bot: XCoreDiscordBot,
+    ban_id: int,
+    actor: Actor,
+    case_number: int | None = None,
+    *,
+    request_id: str | None = None,
+    case_action_token: str | None = None,
+    check: BanCheck | None = None,
+) -> BanResult:
+    """Lift the IP part of one ban and keep its UUID part.
+
+    For a player who was caught by somebody else's ban on a shared address: the banned
+    account stays banned, the address is free again. Other bans on the same IP are kept.
+    """
+    ban = await bot.container.punishments.find_ban_by_id(ban_id)
+    if ban is None:
+        raise BanNotFound("No active ban found")
+    uuid_value, ip_value = record_identifiers(ban)
+    if ip_value is None:
+        raise BanHasNoIp(f"Ban B-{ban_id} has no IP.")
+    if uuid_value is None:
+        raise BanHasNoUuid(
+            f"Ban B-{ban_id} has no UUID: without the IP nothing would be banned, "
+            "lift the whole ban instead."
+        )
+    if check is not None:
+        await check(ban)
+    if not await bot.container.punishments.release_ban_ip(ban_id=ban_id, ip=ban.ip):
+        raise BanNotFound("No active ban found")
+    extra = _audit_extra(
+        ban_id=ban_id, case_number=case_number, case_action_token=case_action_token
+    )
+    extra["kind"] = "ban_ip_released"
+    audit_id = await _append_audit(
+        bot,
+        action="NOTE",
+        player=ban,
+        reason=ban.reason,
+        actor=actor,
+        request_id=request_id,
+        extra=extra,
+    )
+    await post_ban_log(
+        bot,
+        pid=ban.pid,
+        name=ban.name,
+        admin_name=actor.name,
+        admin_discord_id=actor.discord_id,
+        reason=ban.reason,
+        expire=ban.expire_date if isinstance(ban.expire_date, datetime) else None,
+        ban_id=ban_id,
+        case_number=case_number,
+        title="Ban IP Released",
+        privacy_secrets=(ban.uuid or "", ban.ip or ""),
+    )
+    return BanResult(
+        replace(ban, ip=None),
+        audit_id,
+        f"Released the IP of ban B-{ban_id}: `{ban.name}` stays banned by UUID.",
     )
 
 

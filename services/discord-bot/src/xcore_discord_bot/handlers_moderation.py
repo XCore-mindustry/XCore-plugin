@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from dataclasses import replace
 from datetime import datetime, timedelta
 from typing import TYPE_CHECKING
@@ -21,9 +22,12 @@ from .moderation_views import BanConfirmView, MuteUndoView
 from .player_pids import is_assigned
 from .presentation import build_moderation_reversal_embed, format_ban_expire_date
 from .staff_actions import (
+    BanHasNoIp,
+    BanHasNoUuid,
     BanNotFound,
     StaffActionError,
     perform_mute,
+    perform_release_ban_ip,
     perform_unban,
 )
 from .staff_actions import (
@@ -36,6 +40,17 @@ if TYPE_CHECKING:
 
 MSG_NO_ACTIVE_BAN = "No active ban found"
 MSG_NO_ACTIVE_MUTE = "No active mute found"
+MSG_INVALID_BAN_ID = "Give a ban number such as `B-123` or `123`."
+_BAN_ID = re.compile(r"(?:#|b-?)?([1-9][0-9]{0,9})", re.IGNORECASE)
+
+
+def parse_ban_id(value: str) -> int | None:
+    """``B-123``, ``b123``, ``#123`` or ``123`` to 123; anything else to None."""
+    match = _BAN_ID.fullmatch(str(value or "").strip())
+    if match is None:
+        return None
+    ban_id = int(match[1])
+    return ban_id if ban_id < 2**31 else None
 
 
 def _normalize_audit_reason(reason: str | None) -> str:
@@ -222,6 +237,69 @@ async def cmd_unban(
         actor_label="Unbanned by",
         actor_name=interaction.user.display_name,
         format_expire_date=format_ban_expire_date,
+    )
+    await interaction.response.send_message(embed=embed)
+
+
+async def cmd_unban_ip(
+    bot: XCoreDiscordBot,
+    interaction: Interaction,
+    ban: str,
+) -> None:
+    """Lift only the IP of one ban: its UUID stays banned."""
+    ban_id = parse_ban_id(ban)
+    if ban_id is None:
+        await interaction.response.send_message(MSG_INVALID_BAN_ID, ephemeral=True)
+        return
+    if not await claim_mutation(
+        bot,
+        interaction,
+        operation="unban-ip",
+        scope=str(ban_id),
+    ):
+        return
+    try:
+        result = await perform_release_ban_ip(
+            bot,
+            ban_id,
+            Actor(str(interaction.user.id), interaction.user.display_name),
+            request_id=str(interaction.id),
+        )
+    except BanNotFound:
+        await interaction.response.send_message(MSG_NO_ACTIVE_BAN, ephemeral=True)
+        return
+    except (BanHasNoIp, BanHasNoUuid) as error:
+        await interaction.response.send_message(str(error), ephemeral=True)
+        return
+
+    released = result.ban
+    embed = discord.Embed(
+        title=f"IP released from ban B-{ban_id}",
+        description=(
+            f"`{released.name}` stays banned by UUID; other players on that IP "
+            "can join again."
+        ),
+        color=discord.Color.green(),
+    )
+    embed.add_field(name="PID", value=str(released.pid), inline=False)
+    embed.add_field(
+        name="Admin who banned",
+        value=format_admin_value(
+            admin_name=released.admin_name,
+            admin_discord_id=released.admin_discord_id,
+        ),
+        inline=False,
+    )
+    embed.add_field(name="Reason", value=released.reason, inline=False)
+    embed.add_field(
+        name="Expires",
+        value="Permanent"
+        if released.expire_date is None
+        else format_ban_expire_date(released.expire_date),
+        inline=False,
+    )
+    embed.add_field(
+        name="Released by", value=interaction.user.display_name, inline=False
     )
     await interaction.response.send_message(embed=embed)
 

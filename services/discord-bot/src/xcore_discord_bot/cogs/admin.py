@@ -108,6 +108,15 @@ class AdminCog(commands.Cog):
     async def cmd_unban(self, interaction: Interaction, player_id: int) -> None:
         await handlers_moderation.cmd_unban(self.bot, interaction, player_id)
 
+    @app_commands.command(
+        name="unban-ip",
+        description="Lift only the IP of a ban, the UUID stays banned (admin)",
+    )
+    @app_commands.describe(ban="Ban number, e.g. B-123")
+    @admin_check()
+    async def cmd_unban_ip(self, interaction: Interaction, ban: str) -> None:
+        await handlers_moderation.cmd_unban_ip(self.bot, interaction, ban)
+
     @app_commands.command(name="pardon", description="Pardon a player (admin)")
     @app_commands.describe(player_id="Numeric player ID")
     @app_commands.autocomplete(player_id=autocomplete_player_id)

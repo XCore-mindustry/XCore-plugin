@@ -2,7 +2,7 @@
 
 A running action holds a guard on the case (``pending_action``, with a token that the
 action's audit records carry). The audit trail is the proof that a ban, mute, unban,
-shortening, badge grant or map upload happened: recovery closes the case from a matching
+shortening, IP release, badge grant or map upload happened: recovery closes the case from a matching
 audit record and never runs the action again. Without one the outcome is unknown, and the
 guard is only released for a person to decide.
 """
@@ -42,6 +42,7 @@ AUDIT_RESOLUTIONS: dict[tuple[str, str | None, str], str] = {
     ("report", "MUTE", ""): "muted",
     ("appeal", "UNBAN", ""): "unbanned",
     ("appeal", "NOTE", "ban_shortened"): "shortened",
+    ("appeal", "NOTE", "ban_ip_released"): "ip_released",
     ("appeal", "UNMUTE", ""): "unmuted",
     ("appeal", "NOTE", "mute_shortened"): "mute_shortened",
     ("badge", "NOTE", "badge_granted"): "granted",
@@ -348,6 +349,7 @@ class CaseActions:
             "muted": "mute",
             "unbanned": "unban",
             "shortened": "shorten",
+            "ip_released": "unban_ip",
             "unmuted": "unmute",
             "mute_shortened": "shorten_mute",
             "granted": "grant",
