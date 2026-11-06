@@ -1,5 +1,6 @@
 package org.xcore.plugin.service.moderation;
 
+import arc.util.Log;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import org.xcore.plugin.config.TomlXcoreConfig;
@@ -367,7 +368,7 @@ public class ModerationService {
             // Without its IP the ban would hold nothing: that is an unban, not a release.
             return ModerationResult.failure(BAN_HAS_NO_UUID_MESSAGE);
         }
-        if (!banDataRepository.releaseIp(banId, ip)) {
+        if (!banDataRepository.releaseIp(banId, ip, ban.uuid)) {
             return ModerationResult.failure(BAN_UPDATE_FAILED_MESSAGE);
         }
         ban.ip = null;
@@ -385,7 +386,14 @@ public class ModerationService {
         );
         postAuditEvent(audit);
 
-        List<Integer> others = banDataRepository.activeBanIdsWithIp(ip, banId);
+        // The release is done and audited; the lookup only informs, so it may not fail it.
+        List<Integer> others;
+        try {
+            others = banDataRepository.activeBanIdsWithIp(ip, banId);
+        } catch (RuntimeException error) {
+            Log.warn("Ban B-@: could not read the other bans on its released IP: @", banId, error.toString());
+            others = List.of();
+        }
         String message = "Released IP " + ip + " of ban B-" + banId + "; '" + ban.name + "' stays banned by UUID"
                 + (others.isEmpty() ? "" : ". The IP is still banned by " + banList(others));
         return ModerationResult.success(message, new IpRelease(ban, ip, others));

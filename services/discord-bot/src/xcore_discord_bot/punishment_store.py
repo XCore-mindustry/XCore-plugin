@@ -219,10 +219,16 @@ class PunishmentStore:
         """
         bans = self._store.database["bans"]
         raw = await bans.find_one({"ban_id": ban_id})
-        if raw is None or str(raw.get("ip") or "").strip() != ip:
+        if (
+            raw is None
+            or str(raw.get("ip") or "").strip() != ip
+            or not str(raw.get("uuid") or "").strip()
+        ):
             return False
+        # The UUID is part of the guard too: never clear the last identifier of a ban.
         result = await bans.update_one(
-            {"_id": raw["_id"], "ip": raw["ip"]}, {"$set": {"ip": None}}
+            {"_id": raw["_id"], "ip": raw["ip"], "uuid": raw["uuid"]},
+            {"$set": {"ip": None}},
         )
         return result.modified_count > 0
 

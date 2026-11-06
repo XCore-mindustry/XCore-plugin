@@ -194,6 +194,7 @@ async def test_cmd_unban_ip_keeps_the_uuid_banned() -> None:
     assert row["uuid"] == "uuid-123" and row["ip"] is None
     embed = interaction.response.calls[0]["embed"]
     assert embed.title == "IP released from ban B-7"
+    assert "can join again" in embed.description
     fields = {item.name: item.value for item in embed.fields}
     assert fields["PID"] == "123" and fields["Released by"] == "Admin"
     assert "1.2.3.4" not in str(embed.to_dict())
@@ -246,6 +247,7 @@ async def test_cmd_unban_ip_warns_when_another_ban_holds_the_ip_and_hides_secret
     fields = {item.name: item.value for item in embed.fields}
     assert fields["PID"] == "-"
     assert "B-8" in fields["IP still banned"]
+    assert "can join" not in embed.description
     shown = str(embed.to_dict())
     assert "uuid-123" not in shown and "1.2.3.4" not in shown
     assert [row["ip"] for row in db["bans"].docs] == [None, "1.2.3.4"]

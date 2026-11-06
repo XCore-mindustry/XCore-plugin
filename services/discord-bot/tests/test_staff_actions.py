@@ -365,6 +365,39 @@ async def test_perform_release_ban_ip_leaves_and_names_other_active_bans_on_the_
     assert "still banned by B-72" in result.message
 
 
+async def test_perform_release_ban_ip_leaves_a_ban_with_a_non_date_expiry() -> None:
+    bot, db, _, _ = await _action_bot()
+    await db["bans"].insert_one(_ban(ban_id=71, expire_date=1_700_000_000_000))
+    with pytest.raises(BanNotFound):
+        await perform_release_ban_ip(bot, 71, ACTOR)
+    assert db["bans"].docs[0]["ip"] == "1.2.3.4"
+    assert not db["moderation_audit"].docs
+
+
+async def test_release_ban_ip_store_never_clears_the_last_identifier() -> None:
+    bot, db, _, _ = await _action_bot()
+    await db["bans"].insert_one(_ban(ban_id=71, uuid=""))
+    assert not await bot.container.punishments.release_ban_ip(ban_id=71, ip="1.2.3.4")
+    assert db["bans"].docs[0]["ip"] == "1.2.3.4"
+
+
+async def test_perform_release_ban_ip_survives_a_failed_log() -> None:
+    bot, db, _, channel = await _action_bot()
+    await db["bans"].insert_one(_ban(ban_id=71))
+    await db["bans"].insert_one(_ban(_id=2, ban_id=72, uuid="uuid-other"))
+
+    async def broken(*, embed):
+        raise RuntimeError("discord down")
+
+    channel.send = broken
+    result = await perform_release_ban_ip(bot, 71, ACTOR)
+    assert db["bans"].docs[0]["ip"] is None
+    assert (
+        db["moderation_audit"].docs[0]["details"]["extra"]["kind"] == "ban_ip_released"
+    )
+    assert result.other_ban_ids == (72,)
+
+
 async def test_perform_release_ban_ip_refuses_an_expired_ban() -> None:
     bot, db, _, channel = await _action_bot()
     await db["bans"].insert_one(_ban(ban_id=71, expire_date=NOW))

@@ -213,14 +213,15 @@ public class BanDataRepository extends DataRepository<BanData> {
     }
 
     /**
-     * Takes the IP off one ban; its UUID stays banned and other bans are not touched. The IP is
-     * matched too, so a ban whose IP changed since it was read is left alone.
+     * Takes the IP off one ban; its UUID stays banned and other bans are not touched. The IP and
+     * the UUID are matched too, so a ban changed since it was read is left alone and the last
+     * identifier of a ban is never cleared.
      */
-    public boolean releaseIp(int banId, String ip) {
-        if (ip == null || isReadOnly()) {
+    public boolean releaseIp(int banId, String ip, String uuid) {
+        if (ip == null || uuid == null || uuid.isBlank() || isReadOnly()) {
             return false;
         }
-        return collection.updateOne(and(eq("ban_id", banId), eq("ip", ip)), set("ip", null))
+        return collection.updateOne(and(eq("ban_id", banId), eq("ip", ip), eq("uuid", uuid)), set("ip", null))
                 .getModifiedCount() > 0;
     }
 

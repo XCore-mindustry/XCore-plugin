@@ -106,10 +106,15 @@ async def test_unban_ip_refuses_while_another_active_ban_holds_the_ip(confirmed)
     assert not db["moderation_audit"].docs
 
 
-async def test_unban_ip_refuses_an_ip_only_ban_before_confirming():
-    service, db, bot, *_ = await appeal_core(bans=[ban_row(ip=None)])
+@pytest.mark.parametrize(
+    ("missing", "error"), [("ip", "no IP"), ("uuid", "only an IP")]
+)
+async def test_unban_ip_refuses_a_ban_without_ip_or_uuid_before_confirming(
+    missing, error
+):
+    service, db, bot, *_ = await appeal_core(bans=[ban_row(**{missing: None})])
     case = await opened(service, bot)
-    with pytest.raises(ActionFailed, match="no IP"):
+    with pytest.raises(ActionFailed, match=error):
         await act(service, case, "unban_ip")
     assert (await service.get(case.number)).status == CaseStatus.OPEN
     assert not db["moderation_audit"].docs

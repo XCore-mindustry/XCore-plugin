@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import time
 from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import dataclass, replace
@@ -19,6 +20,8 @@ from .retry import TRANSIENT_EXCEPTIONS
 
 if TYPE_CHECKING:
     from .bot import XCoreDiscordBot
+
+logger = logging.getLogger(__name__)
 
 
 class StaffActionError(ValueError):
@@ -432,8 +435,10 @@ async def perform_release_ban_ip(
     """
     ban = await bot.container.punishments.find_ban_by_id(ban_id)
     now = _utc(bot.store.now_utc())
+    # An expiry that is not a date (a legacy number) cannot be judged: leave that ban alone.
     if ban is None or (
-        isinstance(ban.expire_date, datetime) and _utc(ban.expire_date) <= now
+        ban.expire_date is not None
+        and (not isinstance(ban.expire_date, datetime) or _utc(ban.expire_date) <= now)
     ):
         raise BanNotFound("No active ban found")
     uuid_value, ip_value = record_identifiers(ban)
@@ -461,24 +466,37 @@ async def perform_release_ban_ip(
         request_id=request_id,
         extra=extra,
     )
-    await post_ban_log(
-        bot,
-        pid=ban.pid,
-        name=ban.name,
-        admin_name=actor.name,
-        admin_discord_id=actor.discord_id,
-        reason=ban.reason,
-        expire=ban.expire_date if isinstance(ban.expire_date, datetime) else None,
-        ban_id=ban_id,
-        case_number=case_number,
-        title="Ban IP Released",
-        privacy_secrets=(ban.uuid or "", ban.ip or ""),
-    )
-    others = tuple(
-        await bot.container.punishments.active_ban_ids_with_ip(
-            ip=ip_value, exclude_ban_id=ban_id, now=now
+    # The release is done and audited: the log and the holder lookup only inform, so
+    # neither may turn it into a reported failure.
+    try:
+        await post_ban_log(
+            bot,
+            pid=ban.pid,
+            name=ban.name,
+            admin_name=actor.name,
+            admin_discord_id=actor.discord_id,
+            reason=ban.reason,
+            expire=ban.expire_date if isinstance(ban.expire_date, datetime) else None,
+            ban_id=ban_id,
+            case_number=case_number,
+            title="Ban IP Released",
+            privacy_secrets=(ban.uuid or "", ban.ip or ""),
         )
-    )
+    except Exception:
+        logger.warning(
+            "Ban B-%s: the IP release log was not sent", ban_id, exc_info=True
+        )
+    try:
+        others = tuple(
+            await bot.container.punishments.active_ban_ids_with_ip(
+                ip=ip_value, exclude_ban_id=ban_id, now=now
+            )
+        )
+    except Exception:
+        logger.warning(
+            "Ban B-%s: other bans on the IP were not read", ban_id, exc_info=True
+        )
+        others = ()
     message = f"Released the IP of ban B-{ban_id}; its UUID stays banned."
     if others:
         message += f" The IP is still banned by {ban_list(others)}."

@@ -286,10 +286,8 @@ async def cmd_unban_ip(
 
     embed = discord.Embed(
         title=f"IP released from ban B-{ban_id}",
-        description=(
-            f"{shown(released.name)} stays banned by UUID; other players on that IP "
-            "can join again."
-        ),
+        description=f"{shown(released.name)} stays banned by UUID."
+        + ("" if result.other_ban_ids else " Other players on that IP can join again."),
         color=discord.Color.green(),
     )
     pid = or_none(released.pid)
@@ -313,7 +311,7 @@ async def cmd_unban_ip(
         inline=False,
     )
     embed.add_field(
-        name="Released by", value=interaction.user.display_name, inline=False
+        name="Released by", value=shown(interaction.user.display_name), inline=False
     )
     if result.other_ban_ids:
         embed.color = discord.Color.orange()

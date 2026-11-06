@@ -288,7 +288,7 @@ class ModerationServiceAvajeTest {
         BanData ban = BanData.builder().banId(77).pid(236645).uuid("uuid-77").ip("10.0.0.7")
                 .name("Banned").reason("griefing").build();
         when(banDataRepository.findByBanId(77)).thenReturn(ban);
-        when(banDataRepository.releaseIp(77, "10.0.0.7")).thenReturn(true);
+        when(banDataRepository.releaseIp(77, "10.0.0.7", "uuid-77")).thenReturn(true);
 
         var result = moderationService.releaseBanIp(77, "admin", "123");
 
@@ -299,7 +299,7 @@ class ModerationServiceAvajeTest {
             assertThat(release.ip()).isEqualTo("10.0.0.7");
             assertThat(release.otherBanIds()).isEmpty();
         });
-        verify(banDataRepository).releaseIp(77, "10.0.0.7");
+        verify(banDataRepository).releaseIp(77, "10.0.0.7", "uuid-77");
         verify(banDataRepository, never()).delete(any(), any());
         verify(auditService).append(argThat(command ->
                 command.action() == AuditAction.NOTE
@@ -326,7 +326,7 @@ class ModerationServiceAvajeTest {
                 .contains(ModerationService.BAN_HAS_NO_IP_MESSAGE);
         assertThat(moderationService.releaseBanIp(3, "admin", null).getMessage())
                 .contains(ModerationService.BAN_HAS_NO_UUID_MESSAGE);
-        verify(banDataRepository, never()).releaseIp(org.mockito.ArgumentMatchers.anyInt(), any());
+        verify(banDataRepository, never()).releaseIp(org.mockito.ArgumentMatchers.anyInt(), any(), any());
         verifyNoInteractions(auditService);
     }
 
@@ -335,7 +335,7 @@ class ModerationServiceAvajeTest {
     void releaseBanIpReportsOtherBans() {
         when(banDataRepository.findByBanId(71)).thenReturn(
                 BanData.builder().banId(71).uuid("uuid-a").ip("10.0.0.1").name("A").build());
-        when(banDataRepository.releaseIp(71, "10.0.0.1")).thenReturn(true);
+        when(banDataRepository.releaseIp(71, "10.0.0.1", "uuid-a")).thenReturn(true);
         when(banDataRepository.activeBanIdsWithIp("10.0.0.1", 71))
                 .thenReturn(new java.util.ArrayList<>(java.util.Arrays.asList(72, null)));
 
@@ -347,6 +347,21 @@ class ModerationServiceAvajeTest {
     }
 
     @Test
+    @DisplayName("releaseBanIp still reports a done release when the lookup of other bans fails")
+    void releaseBanIpLookupFailure() {
+        when(banDataRepository.findByBanId(71)).thenReturn(
+                BanData.builder().banId(71).uuid("uuid-a").ip("10.0.0.1").name("A").build());
+        when(banDataRepository.releaseIp(71, "10.0.0.1", "uuid-a")).thenReturn(true);
+        when(banDataRepository.activeBanIdsWithIp("10.0.0.1", 71)).thenThrow(new IllegalStateException("db"));
+
+        var result = moderationService.releaseBanIp(71, "admin", null);
+
+        assertThat(result.isSuccess()).isTrue();
+        assertThat(result.getData().get().otherBanIds()).isEmpty();
+        verify(auditService).append(any());
+    }
+
+    @Test
     @DisplayName("releaseBanIp treats an expired ban as gone")
     void releaseBanIpExpired() {
         when(banDataRepository.findByBanId(9)).thenReturn(BanData.builder().banId(9).uuid("uuid-9")
@@ -354,7 +369,7 @@ class ModerationServiceAvajeTest {
 
         assertThat(moderationService.releaseBanIp(9, "admin", null).getMessage())
                 .contains(ModerationService.BAN_NOT_FOUND_MESSAGE);
-        verify(banDataRepository, never()).releaseIp(org.mockito.ArgumentMatchers.anyInt(), any());
+        verify(banDataRepository, never()).releaseIp(org.mockito.ArgumentMatchers.anyInt(), any(), any());
     }
 
     @Test
@@ -362,7 +377,7 @@ class ModerationServiceAvajeTest {
     void releaseBanIpLostRace() {
         when(banDataRepository.findByBanId(5)).thenReturn(
                 BanData.builder().banId(5).uuid("uuid-5").ip("10.0.0.5").build());
-        when(banDataRepository.releaseIp(5, "10.0.0.5")).thenReturn(false);
+        when(banDataRepository.releaseIp(5, "10.0.0.5", "uuid-5")).thenReturn(false);
 
         assertThat(moderationService.releaseBanIp(5, "admin", null).isSuccess()).isFalse();
         verifyNoInteractions(auditService);
