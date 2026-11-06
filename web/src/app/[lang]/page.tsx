@@ -318,7 +318,7 @@ export default async function Page({ params }: PageProps<"/[lang]">) {
                     {"repositories {\n    mavenCentral()\n    maven("}
                     <span className="s-str">&quot;https://maven.x-core.org/releases&quot;</span>
                     {")\n}\n\ndependencies {\n    compileOnly("}
-                    <span className="s-str">&quot;org.xcore:xcore-ui:0.1.0&quot;</span>
+                    <span className="s-str">&quot;org.xcore:xcore-ui:0.4.0&quot;</span>
                     {")\n}"}
                   </code>
                 </pre>

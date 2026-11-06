@@ -33,7 +33,7 @@ repositories {
 2. Add the library:
 ```kotlin
 dependencies {
-    implementation("org.xcore:cloud-mindustry:0.4.1")
+    implementation("org.xcore:cloud-mindustry:0.5.0")
 }
 ```
 
@@ -240,7 +240,7 @@ var mgr = new MindustryCommandManager<>(handler,
 A coordinator that moves the pipeline to other threads is still allowed for work that does not touch
 game state, but selector and `Player` arguments will fail under it.
 
-## Changes after 0.4.1 (unreleased)
+## Changes in 0.5.0
 
 - **Behaviour:** unit selectors honour the selector kind. `@s` used to resolve to whichever unit came
   first, and `@a`, `@p`, `@r` and player names to arbitrary units; they now select the units of the
