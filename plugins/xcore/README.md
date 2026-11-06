@@ -144,6 +144,7 @@ Multifunctional plugin for XCore Mindustry servers. Provides player profiles, cr
 |---------|-------------|
 | `/ban <id> <period> [reason]` | Ban a player by `#ID`. |
 | `/unban <id>` | Unban a player by `#ID`. |
+| `/unbanip <ban>` | Lift only the IP of ban `B-123`; the banned account stays banned by UUID. |
 | `/mute <id> <period> [reason]` | Mute a player by `#ID`. |
 | `/unmute <id>` | Unmute a player by `#ID`. |
 | `/set-team [teamId] [pid]` | Move a player to a different team. |
@@ -178,6 +179,7 @@ Multifunctional plugin for XCore Mindustry servers. Provides player profiles, cr
 | `trstats` | Show translation pipeline metrics. |
 | `tempban <target> <period> [reason]` | Temporarily ban by name/UUID/IP/`#ID`. |
 | `tempunban <type> <value>` | Unban by `uuid`, `ip`, or `id`. |
+| `unbanip <ban>` | Lift only the IP of ban `B-123`; the UUID stays banned. |
 | `tempbans [search]` | List active temporary bans. |
 | `mute <target> <period> [reason]` | Mute by `#ID`/UUID. |
 | `unmute <target>` | Unmute by `#ID`/UUID. |

@@ -132,6 +132,16 @@ async def _log_texts(
     return safe_name, admin_value, safe_reason or "No reason provided"
 
 
+def _expiry_text(expire: datetime | None) -> str:
+    if expire is None:
+        return "Permanent"
+    expire_utc = expire.replace(tzinfo=UTC) if expire.tzinfo is None else expire
+    return (
+        f"{discord.utils.format_dt(expire_utc, style='f')} "
+        f"({discord.utils.format_dt(expire_utc, style='R')})"
+    )
+
+
 async def post_ban_log(
     bot: XCoreDiscordBot,
     *,
@@ -140,7 +150,7 @@ async def post_ban_log(
     admin_name: str,
     admin_discord_id: str | None,
     reason: str,
-    expire: datetime,
+    expire: datetime | None,
     ban_id: int | None = None,
     case_number: int | None = None,
     title: str = "Ban Issued",
@@ -183,11 +193,7 @@ async def post_ban_log(
     violator_value = (
         f"{safe_name} (pid={safe_pid})" if safe_pid is not None else safe_name
     )
-    expire_utc = expire.replace(tzinfo=UTC) if expire.tzinfo is None else expire
-    unban_value = (
-        f"{discord.utils.format_dt(expire_utc, style='f')} "
-        f"({discord.utils.format_dt(expire_utc, style='R')})"
-    )
+    unban_value = _expiry_text(expire)
 
     embed = discord.Embed(title=title, color=discord.Color.red())
     if ban_id is not None:

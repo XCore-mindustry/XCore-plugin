@@ -211,6 +211,40 @@ class PunishmentStore:
         )
         return result.modified_count > 0
 
+    async def release_ban_ip(self, *, ban_id: int, ip: str) -> bool:
+        """Take the IP off one ban. Its UUID stays banned; other bans are not touched.
+
+        ``ip`` is the IP the caller read (records strip it). The write matches the IP as
+        stored, so a ban whose IP changed since it was read is left alone.
+        """
+        bans = self._store.database["bans"]
+        raw = await bans.find_one({"ban_id": ban_id})
+        if (
+            raw is None
+            or str(raw.get("ip") or "").strip() != ip
+            or not str(raw.get("uuid") or "").strip()
+        ):
+            return False
+        # The UUID is part of the guard too: never clear the last identifier of a ban.
+        result = await bans.update_one(
+            {"_id": raw["_id"], "ip": raw["ip"], "uuid": raw["uuid"]},
+            {"$set": {"ip": None}},
+        )
+        return result.modified_count > 0
+
+    async def active_ban_ids_with_ip(
+        self, *, ip: str, exclude_ban_id: int, now: datetime
+    ) -> list[int | None]:
+        """The other bans that still hold ``ip`` and have not expired; None for an unnumbered one."""
+        cursor = self._store.database["bans"].find(
+            {
+                "ip": ip,
+                "ban_id": {"$ne": exclude_ban_id},
+                "$or": [{"expire_date": None}, {"expire_date": {"$gt": now}}],
+            }
+        )
+        return [row.get("ban_id") for row in await cursor.to_list(length=None)]
+
     async def upsert_mute(
         self,
         *,

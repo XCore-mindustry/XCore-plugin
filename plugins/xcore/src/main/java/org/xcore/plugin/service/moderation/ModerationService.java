@@ -1,5 +1,6 @@
 package org.xcore.plugin.service.moderation;
 
+import arc.util.Log;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import org.xcore.plugin.config.TomlXcoreConfig;
@@ -30,8 +31,12 @@ import org.xcore.protocol.generated.messages.moderation.ModerationMessages.Moder
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Pattern;
 
 import static mindustry.Vars.netServer;
 
@@ -43,6 +48,11 @@ import static mindustry.Vars.netServer;
 public class ModerationService {
     public static final String PLAYER_NOT_FOUND_MESSAGE = "Player not found";
     public static final String MISSING_ACTOR_MESSAGE = "Moderation actor is missing";
+    public static final String BAN_NOT_FOUND_MESSAGE = "Ban not found";
+    public static final String BAN_HAS_NO_IP_MESSAGE = "Ban has no IP";
+    public static final String BAN_HAS_NO_UUID_MESSAGE = "Ban has no UUID";
+    /** {@code details.extra.kind} of the NOTE audit a released ban IP leaves. */
+    public static final String BAN_IP_RELEASED_KIND = "ban_ip_released";
     private static final String DEFAULT_REASON = "Not Specified";
     private static final String UNKNOWN_PLAYER_NAME = "Unknown";
     private static final String EMPTY_DISCORD_ID = "";
@@ -51,6 +61,9 @@ public class ModerationService {
     private static final String BAN_DELETE_FAILED_MESSAGE = "Failed to delete ban";
     private static final String MUTE_SAVE_FAILED_MESSAGE = "Failed to save mute";
     private static final String MUTE_DELETE_FAILED_MESSAGE = "Failed to delete mute";
+    private static final String BAN_UPDATE_FAILED_MESSAGE = "Failed to update ban";
+    // No "#": in the moderation commands "#123" is a player ID.
+    private static final Pattern BAN_ID = Pattern.compile("(?i)(?:b-?)?([1-9][0-9]{0,9})");
 
     private final PlayerDataRepository playerDataRepository;
     private final BanDataRepository banDataRepository;
@@ -318,6 +331,90 @@ public class ModerationService {
 
     public ModerationResult<PlayerData> unbanById(int id, String adminName, String adminDiscordId) {
         return unbanPlayer(playerDataRepository.findByPid(id), adminName, adminDiscordId);
+    }
+
+    /** The ban with this number ({@code B-123}), or null. */
+    public BanData findBan(int banId) {
+        return banDataRepository.findByBanId(banId);
+    }
+
+    /**
+     * What releasing the IP of a ban did: the ban without its IP, and the other active bans that
+     * still hold that IP. While any are left, the address stays banned.
+     */
+    public record IpRelease(BanData ban, String ip, List<Integer> otherBanIds) {
+        public IpRelease {
+            // A legacy ban may have no number yet, so the list can hold null: no List.copyOf.
+            otherBanIds = Collections.unmodifiableList(new ArrayList<>(otherBanIds));
+        }
+    }
+
+    /**
+     * Lifts the IP part of one active ban and keeps its UUID part: for a player caught by
+     * somebody else's ban on a shared address. The banned account stays banned; other bans on
+     * the same IP stay too, and the result names them. Leaves a NOTE audit of kind
+     * {@value #BAN_IP_RELEASED_KIND}.
+     */
+    public ModerationResult<IpRelease> releaseBanIp(int banId, String adminName, String adminDiscordId) {
+        BanData ban = banDataRepository.findByBanId(banId);
+        if (ban == null || ban.expired()) {
+            return ModerationResult.failure(BAN_NOT_FOUND_MESSAGE);
+        }
+        String ip = ban.ip;
+        if (ip == null || ip.isBlank()) {
+            return ModerationResult.failure(BAN_HAS_NO_IP_MESSAGE);
+        }
+        if (!hasUuid(ban.uuid)) {
+            // Without its IP the ban would hold nothing: that is an unban, not a release.
+            return ModerationResult.failure(BAN_HAS_NO_UUID_MESSAGE);
+        }
+        if (!banDataRepository.releaseIp(banId, ip, ban.uuid)) {
+            return ModerationResult.failure(BAN_UPDATE_FAILED_MESSAGE);
+        }
+        ban.ip = null;
+
+        var details = auditDetails(null, null);
+        details.extra = Map.of("ban_id", Integer.toString(banId), "kind", BAN_IP_RELEASED_KIND);
+        AuditRecord audit = appendAudit(
+                AuditAction.NOTE,
+                auditTarget(ban.uuid, ban.pid, ban.name, ip),
+                legacyActor(adminName, adminDiscordId),
+                legacyOrigin(adminName),
+                resolveReason(ban.reason),
+                details,
+                null
+        );
+        postAuditEvent(audit);
+
+        // The release is done and audited; the lookup only informs, so it may not fail it.
+        List<Integer> others;
+        try {
+            others = banDataRepository.activeBanIdsWithIp(ip, banId);
+        } catch (RuntimeException error) {
+            Log.warn("Ban B-@: could not read the other bans on its released IP: @", banId, error.toString());
+            others = List.of();
+        }
+        String message = "Released IP " + ip + " of ban B-" + banId + "; '" + ban.name + "' stays banned by UUID"
+                + (others.isEmpty() ? "" : ". The IP is still banned by " + banList(others));
+        return ModerationResult.success(message, new IpRelease(ban, ip, others));
+    }
+
+    /** {@code B-72, B-73}; a legacy ban without a number shows as {@code B-?}. */
+    public static String banList(List<Integer> banIds) {
+        return String.join(", ", banIds.stream().map(id -> "B-" + (id == null ? "?" : id)).toList());
+    }
+
+    /** {@code B-123}, {@code b123} or {@code 123} to 123; anything else, {@code #123} included, to null. */
+    public static Integer parseBanId(String value) {
+        if (value == null) {
+            return null;
+        }
+        var matcher = BAN_ID.matcher(value.trim());
+        if (!matcher.matches()) {
+            return null;
+        }
+        long id = Long.parseLong(matcher.group(1));
+        return id <= Integer.MAX_VALUE ? (int) id : null;
     }
 
     private void auditAndPublishPardon(AuditAction action, String uuid, Integer pid, String name, String ip,

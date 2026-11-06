@@ -17,12 +17,17 @@ import org.xcore.plugin.database.ReactiveMongoStore;
 import org.xcore.plugin.model.BanData;
 import org.xcore.plugin.model.PlayerPids;
 
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 
 import static com.mongodb.client.model.Filters.and;
 import static com.mongodb.client.model.Filters.eq;
 import static com.mongodb.client.model.Filters.exists;
+import static com.mongodb.client.model.Filters.gt;
+import static com.mongodb.client.model.Filters.ne;
 import static com.mongodb.client.model.Filters.or;
 import static com.mongodb.client.model.Updates.set;
 
@@ -205,6 +210,31 @@ public class BanDataRepository extends DataRepository<BanData> {
             return false;
         }
         return collection.deleteMany(filter).getDeletedCount() > 0;
+    }
+
+    /**
+     * Takes the IP off one ban; its UUID stays banned and other bans are not touched. The IP and
+     * the UUID are matched too, so a ban changed since it was read is left alone and the last
+     * identifier of a ban is never cleared.
+     */
+    public boolean releaseIp(int banId, String ip, String uuid) {
+        if (ip == null || uuid == null || uuid.isBlank() || isReadOnly()) {
+            return false;
+        }
+        return collection.updateOne(and(eq("ban_id", banId), eq("ip", ip), eq("uuid", uuid)), set("ip", null))
+                .getModifiedCount() > 0;
+    }
+
+    /** The numbers of the bans other than {@code banId} that still hold {@code ip} and have not expired. */
+    public List<Integer> activeBanIdsWithIp(String ip, int banId) {
+        List<Integer> ids = new ArrayList<>();
+        if (ip == null || ip.isBlank()) {
+            return ids;
+        }
+        collection.find(and(eq("ip", ip), ne("ban_id", banId),
+                        or(eq("expire_date", null), gt("expire_date", Instant.now()))))
+                .forEach(ban -> ids.add(ban.banId));
+        return ids;
     }
 
     public CompletionStage<Boolean> deleteAsync(String uuid, String ip) {

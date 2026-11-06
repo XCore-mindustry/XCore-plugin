@@ -41,6 +41,8 @@ Standalone Discord bot for XCore transport migration.
 - Moderation/admin slash commands (Mongo-backed):
   - `/stats`, `/search`, `/bans`
   - `/ban`, `/unban`, `/mute`, `/unmute`
+  - `/unban-ip <ban>`: lifts only the IP of one ban (`B-123`), the UUID stays banned; appeals have the same
+    action as the **Release IP** button (resolution `ip_released`)
   - `/admin add|remove|sync`, `/reset-password`
   - `/badge grant|revoke`
 

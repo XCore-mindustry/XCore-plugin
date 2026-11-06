@@ -106,7 +106,7 @@ async def test_one_linked_modal_first_response_no_io_and_registered_threads():
     assert {tag.name for tag in staff.applied_tags} == {"Appeal", "Open"}
     assert {
         child.verb for child in case_view(service.registry, case, "en").children
-    } == {"take", "unban", "shorten", "history", "reject"}
+    } == {"take", "unban", "unban_ip", "shorten", "history", "reject"}
     assert "issued_at" not in case.payload["ban_snapshot"]
     assert len(db["bans"].docs) == 1
 

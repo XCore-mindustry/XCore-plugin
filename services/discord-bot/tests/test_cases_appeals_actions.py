@@ -59,6 +59,67 @@ async def test_unban_confirmation_real_helper_delete_audit_before_pardon_and_not
     assert len(db["moderation_audit"].docs) == 1
 
 
+async def test_unban_ip_confirmation_keeps_uuid_audits_and_tells_only_the_appellant():
+    service, db, bot, bus, log = await appeal_core(discord_bans_channel_id=100)
+    case = await opened(service, bot)
+    assert await act(service, case, "unban_ip") is None
+    assert db["bans"].docs[0]["ip"] is not None
+    case = await act(service, case, "unban_ip", values={"confirmed": "yes"})
+    assert case.status == CaseStatus.RESOLVED and case.resolution.code == "ip_released"
+    assert case.resolution.ban_id == 101
+    row = db["bans"].docs[0]
+    assert row["ban_id"] == 101 and row["uuid"] == "private-1=" and row["ip"] is None
+    audit = db["moderation_audit"].docs[0]
+    token = next(
+        e["data"]["token"] for e in case.events if e["type"] == "action_started"
+    )
+    assert audit["action"] == "NOTE" and audit["details"]["extra"] == {
+        "ban_id": "101",
+        "case": str(case.number),
+        "case_action_token": token,
+        "kind": "ban_ip_released",
+    }
+    assert case.resolution.audit_id == audit["audit_id"]
+    assert not await bus.pardons()
+    assert len(log.embeds) == 1 and log.embeds[0].title == "Ban IP Released"
+    assert not bot.channels[100].messages
+    assert [notice["kind"] for notice in db["case_notices"].docs] == [
+        "appeal_ip_released"
+    ]
+
+
+@pytest.mark.parametrize("confirmed", [False, True])
+async def test_unban_ip_refuses_while_another_active_ban_holds_the_ip(confirmed):
+    service, db, bot, *_ = await appeal_core(
+        bans=[ban_row(), ban_row(2, ip="203.0.113.1")]
+    )
+    case = await opened(service, bot)
+    with pytest.raises(ActionFailed, match="B-102"):
+        await act(
+            service,
+            case,
+            "unban_ip",
+            values={"confirmed": "yes"} if confirmed else None,
+        )
+    assert (await service.get(case.number)).status == CaseStatus.OPEN
+    assert all(row["ip"] for row in db["bans"].docs)
+    assert not db["moderation_audit"].docs
+
+
+@pytest.mark.parametrize(
+    ("missing", "error"), [("ip", "no IP"), ("uuid", "only an IP")]
+)
+async def test_unban_ip_refuses_a_ban_without_ip_or_uuid_before_confirming(
+    missing, error
+):
+    service, db, bot, *_ = await appeal_core(bans=[ban_row(**{missing: None})])
+    case = await opened(service, bot)
+    with pytest.raises(ActionFailed, match=error):
+        await act(service, case, "unban_ip")
+    assert (await service.get(case.number)).status == CaseStatus.OPEN
+    assert not db["moderation_audit"].docs
+
+
 @pytest.mark.parametrize("verb", ["unban", "shorten"])
 @pytest.mark.parametrize("change", ["gone", "expired", "replacement", "subject"])
 async def test_missing_expired_replaced_subject_guard_stays_open_without_mutation(

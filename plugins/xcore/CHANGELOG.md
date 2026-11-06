@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+- `/unbanip <ban>` and the console command `unbanip <ban>` lift only the IP of one ban (`B-123`): the banned account stays banned by UUID, while other players on that address (a shared or mobile IP) can join again. Only active bans qualify; if other active bans still hold that IP, the reply names them. Needs `xcore.moderation.unban`, leaves a `NOTE` audit of kind `ban_ip_released` and sends no pardon. `tempbans` lists the ban number and IP of each ban.
+- Case notice `appeal_ip_released`, for an appeal accepted by releasing the IP of the ban.
+
 ### Changed
 - Play time stops counting after 5 minutes in which a player has not moved, aimed, started or stopped shooting, chatted or built, so idling no longer unlocks votekick, global chat or commands gated by play time.
 - The map rotation remembers the last 5 maps played, however they were chosen, across restarts and map reloads (server setting `xcore-recent-maps`), and is installed through `Maps.setMapProvider` instead of reflection.

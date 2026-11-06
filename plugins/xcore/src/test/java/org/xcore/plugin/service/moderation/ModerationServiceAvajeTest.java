@@ -283,6 +283,121 @@ class ModerationServiceAvajeTest {
     }
 
     @Test
+    @DisplayName("releaseBanIp takes the IP off one ban, keeps its UUID and leaves a NOTE audit")
+    void releaseBanIpKeepsUuid() {
+        BanData ban = BanData.builder().banId(77).pid(236645).uuid("uuid-77").ip("10.0.0.7")
+                .name("Banned").reason("griefing").build();
+        when(banDataRepository.findByBanId(77)).thenReturn(ban);
+        when(banDataRepository.releaseIp(77, "10.0.0.7", "uuid-77")).thenReturn(true);
+
+        var result = moderationService.releaseBanIp(77, "admin", "123");
+
+        assertThat(result.isSuccess()).isTrue();
+        assertThat(result.getData()).get().satisfies(release -> {
+            assertThat(release.ban().uuid).isEqualTo("uuid-77");
+            assertThat(release.ban().ip).isNull();
+            assertThat(release.ip()).isEqualTo("10.0.0.7");
+            assertThat(release.otherBanIds()).isEmpty();
+        });
+        verify(banDataRepository).releaseIp(77, "10.0.0.7", "uuid-77");
+        verify(banDataRepository, never()).delete(any(), any());
+        verify(auditService).append(argThat(command ->
+                command.action() == AuditAction.NOTE
+                        && "uuid-77".equals(command.target().uuid)
+                        && "10.0.0.7".equals(command.target().ipSnapshot)
+                        && "griefing".equals(command.reason())
+                        && "77".equals(command.details().extra.get("ban_id"))
+                        && ModerationService.BAN_IP_RELEASED_KIND.equals(command.details().extra.get("kind"))));
+        verify(network).post(argThat(event -> event instanceof ModerationAuditAppendedV1));
+        // The account is still banned: no pardon goes out to the servers.
+        verify(network, never()).post(argThat(event -> event instanceof ModerationPardonCommandV1));
+    }
+
+    @Test
+    @DisplayName("releaseBanIp refuses a missing ban, a ban without IP and an IP-only ban")
+    void releaseBanIpRefusals() {
+        when(banDataRepository.findByBanId(1)).thenReturn(null);
+        when(banDataRepository.findByBanId(2)).thenReturn(BanData.builder().banId(2).uuid("uuid-2").build());
+        when(banDataRepository.findByBanId(3)).thenReturn(BanData.builder().banId(3).uuid("").ip("10.0.0.3").build());
+
+        assertThat(moderationService.releaseBanIp(1, "admin", null).getMessage())
+                .contains(ModerationService.BAN_NOT_FOUND_MESSAGE);
+        assertThat(moderationService.releaseBanIp(2, "admin", null).getMessage())
+                .contains(ModerationService.BAN_HAS_NO_IP_MESSAGE);
+        assertThat(moderationService.releaseBanIp(3, "admin", null).getMessage())
+                .contains(ModerationService.BAN_HAS_NO_UUID_MESSAGE);
+        verify(banDataRepository, never()).releaseIp(org.mockito.ArgumentMatchers.anyInt(), any(), any());
+        verifyNoInteractions(auditService);
+    }
+
+    @Test
+    @DisplayName("releaseBanIp names the other active bans that still hold the IP")
+    void releaseBanIpReportsOtherBans() {
+        when(banDataRepository.findByBanId(71)).thenReturn(
+                BanData.builder().banId(71).uuid("uuid-a").ip("10.0.0.1").name("A").build());
+        when(banDataRepository.releaseIp(71, "10.0.0.1", "uuid-a")).thenReturn(true);
+        when(banDataRepository.activeBanIdsWithIp("10.0.0.1", 71))
+                .thenReturn(new java.util.ArrayList<>(java.util.Arrays.asList(72, null)));
+
+        var result = moderationService.releaseBanIp(71, "admin", null);
+
+        assertThat(result.isSuccess()).isTrue();
+        assertThat(result.getData().get().otherBanIds()).containsExactly(72, null);
+        assertThat(result.getMessage()).get().asString().contains("still banned by B-72, B-?");
+    }
+
+    @Test
+    @DisplayName("releaseBanIp still reports a done release when the lookup of other bans fails")
+    void releaseBanIpLookupFailure() {
+        when(banDataRepository.findByBanId(71)).thenReturn(
+                BanData.builder().banId(71).uuid("uuid-a").ip("10.0.0.1").name("A").build());
+        when(banDataRepository.releaseIp(71, "10.0.0.1", "uuid-a")).thenReturn(true);
+        when(banDataRepository.activeBanIdsWithIp("10.0.0.1", 71)).thenThrow(new IllegalStateException("db"));
+
+        var result = moderationService.releaseBanIp(71, "admin", null);
+
+        assertThat(result.isSuccess()).isTrue();
+        assertThat(result.getData().get().otherBanIds()).isEmpty();
+        verify(auditService).append(any());
+    }
+
+    @Test
+    @DisplayName("releaseBanIp treats an expired ban as gone")
+    void releaseBanIpExpired() {
+        when(banDataRepository.findByBanId(9)).thenReturn(BanData.builder().banId(9).uuid("uuid-9")
+                .ip("10.0.0.9").expireDate(Instant.now().minusSeconds(60)).build());
+
+        assertThat(moderationService.releaseBanIp(9, "admin", null).getMessage())
+                .contains(ModerationService.BAN_NOT_FOUND_MESSAGE);
+        verify(banDataRepository, never()).releaseIp(org.mockito.ArgumentMatchers.anyInt(), any(), any());
+    }
+
+    @Test
+    @DisplayName("releaseBanIp fails without an audit when the ban changed before the write")
+    void releaseBanIpLostRace() {
+        when(banDataRepository.findByBanId(5)).thenReturn(
+                BanData.builder().banId(5).uuid("uuid-5").ip("10.0.0.5").build());
+        when(banDataRepository.releaseIp(5, "10.0.0.5", "uuid-5")).thenReturn(false);
+
+        assertThat(moderationService.releaseBanIp(5, "admin", null).isSuccess()).isFalse();
+        verifyNoInteractions(auditService);
+    }
+
+    @Test
+    @DisplayName("parseBanId reads B-123, b123 and 123, and leaves #123 to player IDs")
+    void parseBanId() {
+        assertThat(ModerationService.parseBanId("B-123")).isEqualTo(123);
+        assertThat(ModerationService.parseBanId(" b123 ")).isEqualTo(123);
+        assertThat(ModerationService.parseBanId("#123")).isNull();
+        assertThat(ModerationService.parseBanId("123")).isEqualTo(123);
+        assertThat(ModerationService.parseBanId("B-0")).isNull();
+        assertThat(ModerationService.parseBanId("-5")).isNull();
+        assertThat(ModerationService.parseBanId("abc")).isNull();
+        assertThat(ModerationService.parseBanId("9999999999")).isNull();
+        assertThat(ModerationService.parseBanId(null)).isNull();
+    }
+
+    @Test
     @DisplayName("tempUnban still succeeds when audit append fails after delete")
     void tempUnbanAuditFailureDoesNotFlipResultToFailure() {
         when(banDataRepository.delete("uuid-2", null)).thenReturn(true);

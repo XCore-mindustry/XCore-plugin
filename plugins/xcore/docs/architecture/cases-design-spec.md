@@ -303,7 +303,7 @@ case_notices
   case_number       Int
   player_uuid       String
   kind              String    report_received | report_resolved | report_rejected | report_not_accepted |
-                              appeal_accepted | appeal_shortened | badge_granted | badge_rejected |
+                              appeal_accepted | appeal_shortened | appeal_ip_released | badge_granted | badge_rejected |
                               map_accepted | map_rejected | complaint_closed
   params            { String: String }    e.g. number, badge, map, server — only what the bundle text needs;
                                           report_rejected also carries reason (4.1 rejection code, see 7.7)
