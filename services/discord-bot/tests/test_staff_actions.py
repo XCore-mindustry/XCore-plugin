@@ -350,12 +350,35 @@ async def test_perform_release_ban_ip_keeps_uuid_audits_note_and_logs() -> None:
     assert not await game.kicks() and not await game.pardons()
 
 
-async def test_perform_release_ban_ip_leaves_other_bans_on_the_ip() -> None:
+async def test_perform_release_ban_ip_leaves_and_names_other_active_bans_on_the_ip() -> (
+    None
+):
     bot, db, _, _ = await _action_bot()
     await db["bans"].insert_one(_ban(ban_id=71))
     await db["bans"].insert_one(_ban(_id=2, ban_id=72, uuid="uuid-other"))
+    await db["bans"].insert_one(
+        _ban(_id=3, ban_id=73, uuid="uuid-old", expire_date=NOW - timedelta(days=1))
+    )
+    result = await perform_release_ban_ip(bot, 71, ACTOR)
+    assert [row["ip"] for row in db["bans"].docs] == [None, "1.2.3.4", "1.2.3.4"]
+    assert result.other_ban_ids == (72,) and result.released_ip == "1.2.3.4"
+    assert "still banned by B-72" in result.message
+
+
+async def test_perform_release_ban_ip_refuses_an_expired_ban() -> None:
+    bot, db, _, channel = await _action_bot()
+    await db["bans"].insert_one(_ban(ban_id=71, expire_date=NOW))
+    with pytest.raises(BanNotFound):
+        await perform_release_ban_ip(bot, 71, ACTOR)
+    assert db["bans"].docs[0]["ip"] == "1.2.3.4"
+    assert not db["moderation_audit"].docs and not channel.embeds
+
+
+async def test_perform_release_ban_ip_matches_a_stored_ip_with_spaces() -> None:
+    bot, db, _, _ = await _action_bot()
+    await db["bans"].insert_one(_ban(ban_id=71, ip=" 1.2.3.4 "))
     await perform_release_ban_ip(bot, 71, ACTOR)
-    assert [row["ip"] for row in db["bans"].docs] == [None, "1.2.3.4"]
+    assert db["bans"].docs[0]["ip"] is None
 
 
 async def test_perform_release_ban_ip_logs_a_permanent_ban() -> None:

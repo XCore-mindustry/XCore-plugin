@@ -293,9 +293,11 @@ class ModerationServiceAvajeTest {
         var result = moderationService.releaseBanIp(77, "admin", "123");
 
         assertThat(result.isSuccess()).isTrue();
-        assertThat(result.getData()).get().satisfies(released -> {
-            assertThat(released.uuid).isEqualTo("uuid-77");
-            assertThat(released.ip).isNull();
+        assertThat(result.getData()).get().satisfies(release -> {
+            assertThat(release.ban().uuid).isEqualTo("uuid-77");
+            assertThat(release.ban().ip).isNull();
+            assertThat(release.ip()).isEqualTo("10.0.0.7");
+            assertThat(release.otherBanIds()).isEmpty();
         });
         verify(banDataRepository).releaseIp(77, "10.0.0.7");
         verify(banDataRepository, never()).delete(any(), any());
@@ -329,6 +331,33 @@ class ModerationServiceAvajeTest {
     }
 
     @Test
+    @DisplayName("releaseBanIp names the other active bans that still hold the IP")
+    void releaseBanIpReportsOtherBans() {
+        when(banDataRepository.findByBanId(71)).thenReturn(
+                BanData.builder().banId(71).uuid("uuid-a").ip("10.0.0.1").name("A").build());
+        when(banDataRepository.releaseIp(71, "10.0.0.1")).thenReturn(true);
+        when(banDataRepository.activeBanIdsWithIp("10.0.0.1", 71))
+                .thenReturn(new java.util.ArrayList<>(java.util.Arrays.asList(72, null)));
+
+        var result = moderationService.releaseBanIp(71, "admin", null);
+
+        assertThat(result.isSuccess()).isTrue();
+        assertThat(result.getData().get().otherBanIds()).containsExactly(72, null);
+        assertThat(result.getMessage()).get().asString().contains("still banned by B-72, B-?");
+    }
+
+    @Test
+    @DisplayName("releaseBanIp treats an expired ban as gone")
+    void releaseBanIpExpired() {
+        when(banDataRepository.findByBanId(9)).thenReturn(BanData.builder().banId(9).uuid("uuid-9")
+                .ip("10.0.0.9").expireDate(Instant.now().minusSeconds(60)).build());
+
+        assertThat(moderationService.releaseBanIp(9, "admin", null).getMessage())
+                .contains(ModerationService.BAN_NOT_FOUND_MESSAGE);
+        verify(banDataRepository, never()).releaseIp(org.mockito.ArgumentMatchers.anyInt(), any());
+    }
+
+    @Test
     @DisplayName("releaseBanIp fails without an audit when the ban changed before the write")
     void releaseBanIpLostRace() {
         when(banDataRepository.findByBanId(5)).thenReturn(
@@ -340,11 +369,11 @@ class ModerationServiceAvajeTest {
     }
 
     @Test
-    @DisplayName("parseBanId reads B-123, b123, #123 and 123")
+    @DisplayName("parseBanId reads B-123, b123 and 123, and leaves #123 to player IDs")
     void parseBanId() {
         assertThat(ModerationService.parseBanId("B-123")).isEqualTo(123);
         assertThat(ModerationService.parseBanId(" b123 ")).isEqualTo(123);
-        assertThat(ModerationService.parseBanId("#123")).isEqualTo(123);
+        assertThat(ModerationService.parseBanId("#123")).isNull();
         assertThat(ModerationService.parseBanId("123")).isEqualTo(123);
         assertThat(ModerationService.parseBanId("B-0")).isNull();
         assertThat(ModerationService.parseBanId("-5")).isNull();

@@ -30,6 +30,9 @@ import org.xcore.protocol.generated.messages.moderation.ModerationMessages.Moder
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
@@ -58,7 +61,8 @@ public class ModerationService {
     private static final String MUTE_SAVE_FAILED_MESSAGE = "Failed to save mute";
     private static final String MUTE_DELETE_FAILED_MESSAGE = "Failed to delete mute";
     private static final String BAN_UPDATE_FAILED_MESSAGE = "Failed to update ban";
-    private static final Pattern BAN_ID = Pattern.compile("(?i)(?:#|b-?)?([1-9][0-9]{0,9})");
+    // No "#": in the moderation commands "#123" is a player ID.
+    private static final Pattern BAN_ID = Pattern.compile("(?i)(?:b-?)?([1-9][0-9]{0,9})");
 
     private final PlayerDataRepository playerDataRepository;
     private final BanDataRepository banDataRepository;
@@ -334,13 +338,25 @@ public class ModerationService {
     }
 
     /**
-     * Lifts the IP part of one ban and keeps its UUID part: for a player caught by somebody
-     * else's ban on a shared address. The banned account stays banned; other bans on the
-     * same IP stay too. Leaves a NOTE audit of kind {@value #BAN_IP_RELEASED_KIND}.
+     * What releasing the IP of a ban did: the ban without its IP, and the other active bans that
+     * still hold that IP. While any are left, the address stays banned.
      */
-    public ModerationResult<BanData> releaseBanIp(int banId, String adminName, String adminDiscordId) {
+    public record IpRelease(BanData ban, String ip, List<Integer> otherBanIds) {
+        public IpRelease {
+            // A legacy ban may have no number yet, so the list can hold null: no List.copyOf.
+            otherBanIds = Collections.unmodifiableList(new ArrayList<>(otherBanIds));
+        }
+    }
+
+    /**
+     * Lifts the IP part of one active ban and keeps its UUID part: for a player caught by
+     * somebody else's ban on a shared address. The banned account stays banned; other bans on
+     * the same IP stay too, and the result names them. Leaves a NOTE audit of kind
+     * {@value #BAN_IP_RELEASED_KIND}.
+     */
+    public ModerationResult<IpRelease> releaseBanIp(int banId, String adminName, String adminDiscordId) {
         BanData ban = banDataRepository.findByBanId(banId);
-        if (ban == null) {
+        if (ban == null || ban.expired()) {
             return ModerationResult.failure(BAN_NOT_FOUND_MESSAGE);
         }
         String ip = ban.ip;
@@ -351,7 +367,7 @@ public class ModerationService {
             // Without its IP the ban would hold nothing: that is an unban, not a release.
             return ModerationResult.failure(BAN_HAS_NO_UUID_MESSAGE);
         }
-        if (banDataRepository.isReadOnly() || !banDataRepository.releaseIp(banId, ip)) {
+        if (!banDataRepository.releaseIp(banId, ip)) {
             return ModerationResult.failure(BAN_UPDATE_FAILED_MESSAGE);
         }
         ban.ip = null;
@@ -369,11 +385,18 @@ public class ModerationService {
         );
         postAuditEvent(audit);
 
-        return ModerationResult.success("Released IP " + ip + " of ban B-" + banId
-                + "; '" + ban.name + "' stays banned by UUID", ban);
+        List<Integer> others = banDataRepository.activeBanIdsWithIp(ip, banId);
+        String message = "Released IP " + ip + " of ban B-" + banId + "; '" + ban.name + "' stays banned by UUID"
+                + (others.isEmpty() ? "" : ". The IP is still banned by " + banList(others));
+        return ModerationResult.success(message, new IpRelease(ban, ip, others));
     }
 
-    /** {@code B-123}, {@code b123}, {@code #123} or {@code 123} to 123; anything else to null. */
+    /** {@code B-72, B-73}; a legacy ban without a number shows as {@code B-?}. */
+    public static String banList(List<Integer> banIds) {
+        return String.join(", ", banIds.stream().map(id -> "B-" + (id == null ? "?" : id)).toList());
+    }
+
+    /** {@code B-123}, {@code b123} or {@code 123} to 123; anything else, {@code #123} included, to null. */
     public static Integer parseBanId(String value) {
         if (value == null) {
             return null;

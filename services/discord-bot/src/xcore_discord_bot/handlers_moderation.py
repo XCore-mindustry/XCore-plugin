@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 import discord
 from discord import Interaction
 
+from .cases.cards import safe_text
 from .command_helpers import (
     claim_mutation,
     get_player_or_reply,
@@ -19,13 +20,14 @@ from .command_helpers import (
 from .dto import Actor, BanRecord, PlayerRecord, record_identifiers
 from .moderation_logs import format_admin_value
 from .moderation_views import BanConfirmView, MuteUndoView
-from .player_pids import is_assigned
+from .player_pids import is_assigned, or_none
 from .presentation import build_moderation_reversal_embed, format_ban_expire_date
 from .staff_actions import (
     BanHasNoIp,
     BanHasNoUuid,
     BanNotFound,
     StaffActionError,
+    ban_list,
     perform_mute,
     perform_release_ban_ip,
     perform_unban,
@@ -41,11 +43,12 @@ if TYPE_CHECKING:
 MSG_NO_ACTIVE_BAN = "No active ban found"
 MSG_NO_ACTIVE_MUTE = "No active mute found"
 MSG_INVALID_BAN_ID = "Give a ban number such as `B-123` or `123`."
-_BAN_ID = re.compile(r"(?:#|b-?)?([1-9][0-9]{0,9})", re.IGNORECASE)
+# No "#": in the game's moderation commands "#123" is a player ID.
+_BAN_ID = re.compile(r"(?:b-?)?([1-9][0-9]{0,9})", re.IGNORECASE)
 
 
 def parse_ban_id(value: str) -> int | None:
-    """``B-123``, ``b123``, ``#123`` or ``123`` to 123; anything else to None."""
+    """``B-123``, ``b123`` or ``123`` to 123; anything else, ``#123`` included, to None."""
     match = _BAN_ID.fullmatch(str(value or "").strip())
     if match is None:
         return None
@@ -273,24 +276,35 @@ async def cmd_unban_ip(
         return
 
     released = result.ban
+    # A public reply: the UUID, the released IP and anything address-like stay hidden.
+    secrets = (released.uuid or "", result.released_ip or "")
+
+    def shown(value: object) -> str:
+        return (
+            safe_text(str(value or "").replace("`", ""), secrets=secrets) or "Unknown"
+        )
+
     embed = discord.Embed(
         title=f"IP released from ban B-{ban_id}",
         description=(
-            f"`{released.name}` stays banned by UUID; other players on that IP "
+            f"{shown(released.name)} stays banned by UUID; other players on that IP "
             "can join again."
         ),
         color=discord.Color.green(),
     )
-    embed.add_field(name="PID", value=str(released.pid), inline=False)
+    pid = or_none(released.pid)
+    embed.add_field(
+        name="PID", value=str(pid) if pid is not None else "-", inline=False
+    )
     embed.add_field(
         name="Admin who banned",
         value=format_admin_value(
-            admin_name=released.admin_name,
+            admin_name=shown(released.admin_name),
             admin_discord_id=released.admin_discord_id,
         ),
         inline=False,
     )
-    embed.add_field(name="Reason", value=released.reason, inline=False)
+    embed.add_field(name="Reason", value=shown(released.reason), inline=False)
     embed.add_field(
         name="Expires",
         value="Permanent"
@@ -301,6 +315,13 @@ async def cmd_unban_ip(
     embed.add_field(
         name="Released by", value=interaction.user.display_name, inline=False
     )
+    if result.other_ban_ids:
+        embed.color = discord.Color.orange()
+        embed.add_field(
+            name="IP still banned",
+            value=f"Also held by {ban_list(result.other_ban_ids)}: lift those to free it.",
+            inline=False,
+        )
     await interaction.response.send_message(embed=embed)
 
 

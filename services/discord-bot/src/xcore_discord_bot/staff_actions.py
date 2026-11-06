@@ -86,6 +86,14 @@ class BanResult:
     ban: BanRecord
     audit_id: str
     message: str
+    # After an IP release: the other active bans that still hold that IP (None: unnumbered).
+    other_ban_ids: tuple[int | None, ...] = ()
+    released_ip: str | None = None
+
+
+def ban_list(ban_ids: Sequence[int | None]) -> str:
+    """``B-72, B-73``; an unnumbered legacy ban shows as ``B-?``."""
+    return ", ".join(f"B-{'?' if ban_id is None else ban_id}" for ban_id in ban_ids)
 
 
 @dataclass(frozen=True)
@@ -423,7 +431,10 @@ async def perform_release_ban_ip(
     account stays banned, the address is free again. Other bans on the same IP are kept.
     """
     ban = await bot.container.punishments.find_ban_by_id(ban_id)
-    if ban is None:
+    now = _utc(bot.store.now_utc())
+    if ban is None or (
+        isinstance(ban.expire_date, datetime) and _utc(ban.expire_date) <= now
+    ):
         raise BanNotFound("No active ban found")
     uuid_value, ip_value = record_identifiers(ban)
     if ip_value is None:
@@ -435,9 +446,7 @@ async def perform_release_ban_ip(
         )
     if check is not None:
         await check(ban)
-    # Match the IP as stored, so the guard sees the same value the ban holds.
-    stored_ip = ban.ip or ip_value
-    if not await bot.container.punishments.release_ban_ip(ban_id=ban_id, ip=stored_ip):
+    if not await bot.container.punishments.release_ban_ip(ban_id=ban_id, ip=ip_value):
         raise BanNotFound("No active ban found")
     extra = _audit_extra(
         ban_id=ban_id, case_number=case_number, case_action_token=case_action_token
@@ -465,11 +474,15 @@ async def perform_release_ban_ip(
         title="Ban IP Released",
         privacy_secrets=(ban.uuid or "", ban.ip or ""),
     )
-    return BanResult(
-        replace(ban, ip=None),
-        audit_id,
-        f"Released the IP of ban B-{ban_id}: `{ban.name}` stays banned by UUID.",
+    others = tuple(
+        await bot.container.punishments.active_ban_ids_with_ip(
+            ip=ip_value, exclude_ban_id=ban_id, now=now
+        )
     )
+    message = f"Released the IP of ban B-{ban_id}; its UUID stays banned."
+    if others:
+        message += f" The IP is still banned by {ban_list(others)}."
+    return BanResult(replace(ban, ip=None), audit_id, message, others, ip_value)
 
 
 async def perform_mute(

@@ -88,6 +88,24 @@ async def test_unban_ip_confirmation_keeps_uuid_audits_and_tells_only_the_appell
     ]
 
 
+@pytest.mark.parametrize("confirmed", [False, True])
+async def test_unban_ip_refuses_while_another_active_ban_holds_the_ip(confirmed):
+    service, db, bot, *_ = await appeal_core(
+        bans=[ban_row(), ban_row(2, ip="203.0.113.1")]
+    )
+    case = await opened(service, bot)
+    with pytest.raises(ActionFailed, match="B-102"):
+        await act(
+            service,
+            case,
+            "unban_ip",
+            values={"confirmed": "yes"} if confirmed else None,
+        )
+    assert (await service.get(case.number)).status == CaseStatus.OPEN
+    assert all(row["ip"] for row in db["bans"].docs)
+    assert not db["moderation_audit"].docs
+
+
 async def test_unban_ip_refuses_an_ip_only_ban_before_confirming():
     service, db, bot, *_ = await appeal_core(bans=[ban_row(ip=None)])
     case = await opened(service, bot)

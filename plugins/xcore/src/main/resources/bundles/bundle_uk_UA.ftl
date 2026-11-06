@@ -278,6 +278,7 @@ commands-unban-description = Розблокувати гравця.
 commands-unban-success = { $nickname }[accent] #{ $pid } [green]успішно розблокований.
 commands-unbanip-description = Зняти з бану лише IP; заблокований акаунт лишається в бані.
 commands-unbanip-success = [green]IP бану [accent]B-{ $banId }[green] звільнено.[] { $nickname }[accent] #{ $pid }[] лишається заблокованим за UUID.
+commands-unbanip-still-banned = [orange]Цей IP досі в бані: { $bans }.
 commands-unbanip-invalid = [scarlet]Вкажіть номер бану, наприклад [accent]B-123[scarlet].
 commands-unbanip-not-found = [scarlet]Бан [accent]B-{ $banId }[scarlet] не знайдено.
 commands-unbanip-no-ip = [scarlet]Бан [accent]B-{ $banId }[scarlet] не має IP.

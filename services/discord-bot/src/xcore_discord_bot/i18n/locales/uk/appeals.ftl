@@ -28,6 +28,7 @@ appeals-confirm-unban = Зняти бан B-{ $ban }?
 appeals-confirm-unban-ip = Зняти IP з бану B-{ $ban }? Заблокований акаунт лишиться в бані за UUID; інші гравці з цього IP зможуть зайти.
 appeals-no-ip = Цей бан не має IP.
 appeals-ip-only-ban = Цей бан лише за IP: зніміть бан повністю.
+appeals-ip-other-bans = Цей IP є ще в банах { $bans }: зняття IP лише з цього бану не пустить апелянта. Спершу зніміть IP або бан з них.
 appeals-duration = Новий залишковий строк (10m, 1h, 1d)
 appeals-duration-invalid = Введіть додатний строк від поточного моменту, який закінчиться раніше поточного строку покарання.
 appeals-history-title = Останні покарання та попередні апеляції

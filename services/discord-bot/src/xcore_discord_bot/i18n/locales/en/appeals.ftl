@@ -28,6 +28,7 @@ appeals-confirm-unban = Lift ban B-{ $ban }?
 appeals-confirm-unban-ip = Release the IP of ban B-{ $ban }? The banned account stays banned by UUID; other players on that IP can join again.
 appeals-no-ip = This ban has no IP to release.
 appeals-ip-only-ban = This ban has only an IP: lift the whole ban instead.
+appeals-ip-other-bans = This IP is also held by { $bans }: releasing it from this ban alone would not let the appellant in. Release or lift those bans first.
 appeals-duration = New remaining duration (10m, 1h, 1d)
 appeals-duration-invalid = Enter a positive duration that ends before the current expiry, counted from now.
 appeals-history-title = Recent sanctions and earlier appeals

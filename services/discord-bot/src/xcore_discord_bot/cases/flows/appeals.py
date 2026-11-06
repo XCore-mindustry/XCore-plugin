@@ -17,6 +17,7 @@ from ...staff_actions import (
     BanHasNoUuid,
     BanNotFound,
     MuteNotFound,
+    ban_list,
     perform_release_ban_ip,
     perform_shorten_ban,
     perform_shorten_mute,
@@ -747,6 +748,19 @@ async def unban(context):
     return await context.run(action)
 
 
+async def _require_ip_only_in(context, ban: BanRecord) -> None:
+    """Refuse while other active bans hold the IP: releasing one would not free it."""
+    others = await context.service.punishments.active_ban_ids_with_ip(
+        ip=str(ban.ip or "").strip(),
+        exclude_ban_id=ban.ban_id,
+        now=utc(context.service.now()),
+    )
+    if others:
+        raise ActionFailed(
+            t(context.locale, "appeals-ip-other-bans", bans=ban_list(others))
+        )
+
+
 async def unban_ip(context):
     """Free the IP of the appealed ban and keep its UUID banned.
 
@@ -759,6 +773,7 @@ async def unban_ip(context):
             raise ActionFailed(t(context.locale, "appeals-no-ip"))
         if not str(ban.uuid or "").strip():
             raise ActionFailed(t(context.locale, "appeals-ip-only-ban"))
+        await _require_ip_only_in(context, ban)
         await context.confirm(
             t(
                 context.locale,
@@ -770,6 +785,8 @@ async def unban_ip(context):
 
     async def action(claimed):
         ban = await _current(context, claimed)
+        if str(ban.ip or "").strip():
+            await _require_ip_only_in(context, ban)
         try:
             result = await perform_release_ban_ip(
                 context.service.bot,

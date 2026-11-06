@@ -268,6 +268,7 @@ commands-unban-description = Unban a player.
 commands-unban-success = { $nickname }[accent] #{ $pid } [green]successfully unbanned.
 commands-unbanip-description = Lift only the IP of a ban; the banned account stays banned.
 commands-unbanip-success = [green]IP of ban [accent]B-{ $banId }[green] released.[] { $nickname }[accent] #{ $pid }[] stays banned by UUID.
+commands-unbanip-still-banned = [orange]The IP is still banned by { $bans }.
 commands-unbanip-invalid = [scarlet]Give a ban number such as [accent]B-123[scarlet].
 commands-unbanip-not-found = [scarlet]Ban [accent]B-{ $banId }[scarlet] not found.
 commands-unbanip-no-ip = [scarlet]Ban [accent]B-{ $banId }[scarlet] has no IP.

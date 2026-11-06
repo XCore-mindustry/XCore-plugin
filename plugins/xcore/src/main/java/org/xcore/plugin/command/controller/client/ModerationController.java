@@ -15,6 +15,7 @@ import org.xcore.plugin.command.controller.CloudClientController;
 import org.xcore.plugin.concurrent.Async;
 import org.xcore.plugin.localization.Localization;
 import org.xcore.plugin.model.PlayerData;
+import org.xcore.plugin.model.PlayerPids;
 import org.xcore.plugin.permission.PermissionNodes;
 import org.xcore.plugin.permission.TargetHierarchy;
 import org.xcore.plugin.service.FindService;
@@ -130,12 +131,17 @@ public class ModerationController implements CloudClientController {
         }, PermissionNodes.MODERATION_UNBAN, () -> {
             var result = moderationService.releaseBanIp(banId, actor.name(), actor.discordId());
             if (result.isSuccess()) {
-                var released = result.getData().get();
+                var release = result.getData().get();
+                var released = release.ban();
                 local.send("commands-unbanip-success", args(
                         "banId", banId,
                         "nickname", released.name,
-                        "pid", released.pid == null ? "-" : released.pid
+                        "pid", PlayerPids.isAssigned(released.pid) ? released.pid : "-"
                 ));
+                if (!release.otherBanIds().isEmpty()) {
+                    local.send("commands-unbanip-still-banned",
+                            args("bans", ModerationService.banList(release.otherBanIds())));
+                }
                 return;
             }
             String key = switch (result.getMessage().orElse("")) {

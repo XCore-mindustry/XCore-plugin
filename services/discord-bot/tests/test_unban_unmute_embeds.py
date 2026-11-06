@@ -169,7 +169,8 @@ async def test_cmd_unmute_no_active_mute_message() -> None:
     [
         ("B-123", 123),
         ("b123", 123),
-        (" #123 ", 123),
+        (" b-123 ", 123),
+        ("#123", None),
         ("123", 123),
         ("B-0", None),
         ("-5", None),
@@ -219,3 +220,32 @@ async def test_cmd_unban_ip_refusals_are_ephemeral(value: str, message: str) -> 
     ]
     assert db["bans"].docs[0]["ip"] == "1.2.3.4"
     assert not db["moderation_audit"].docs
+
+
+@pytest.mark.asyncio
+async def test_cmd_unban_ip_warns_when_another_ban_holds_the_ip_and_hides_secrets() -> (
+    None
+):
+    bot, db = await _bot(mute=False)
+    await db["bans"].update_one(
+        {},
+        {
+            "$set": {
+                "ban_id": 7,
+                "pid": -2147483648,
+                "reason": "alt of uuid-123 at 1.2.3.4",
+            }
+        },
+    )
+    await db["bans"].insert_one({**BAN, "_id": 2, "uuid": "uuid-other", "ban_id": 8})
+    interaction = _Interaction(id=44, user=_User(id=999, display_name="Admin"))
+
+    await cmd_unban_ip(bot, interaction, "7")
+
+    embed = interaction.response.calls[0]["embed"]
+    fields = {item.name: item.value for item in embed.fields}
+    assert fields["PID"] == "-"
+    assert "B-8" in fields["IP still banned"]
+    shown = str(embed.to_dict())
+    assert "uuid-123" not in shown and "1.2.3.4" not in shown
+    assert [row["ip"] for row in db["bans"].docs] == [None, "1.2.3.4"]
