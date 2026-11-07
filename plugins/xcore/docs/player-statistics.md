@@ -20,18 +20,18 @@ Server `xcore.toml`:
 ```toml
 [statistics]
 enabled = true
-readEnabled = false
-historyOwner = "map"
+read_enabled = false
+history_owner = "map"
 ```
 
-`historyOwner = "map"` makes the map lifecycle authoritative, including Mini-PvP. Its separate
+`history_owner = "map"` makes the map lifecycle authoritative, including Mini-PvP. Its separate
 rating report remains in `rating_matches`; it does not produce a second game in `games_v2`.
-Set `historyOwner = "external"` on HexedCore: round settlement owns its history and generic map
+Set `history_owner = "external"` on HexedCore: round settlement owns its history and generic map
 history is disabled. Update the satellite to use `recordMatchAsync`. Do not toggle owner in the
 middle of a match. A plugin-owned record must carry its own stable match ID.
-While `enabled = false`, `historyOwner` is ignored and the legacy rule holds: a plugin-owned
+While `enabled = false`, `history_owner` is ignored and the legacy rule holds: a plugin-owned
 record is stored only when no map-lifecycle game is running, and no game starts on `PlayEvent`.
-Set `historyOwner = "external"` on HexedCore in the same change that sets `enabled = true`.
+Set `history_owner = "external"` on HexedCore in the same change that sets `enabled = true`.
 
 Migration V8 creates indexes and marks the initial backfill due. An enabled plugin performs the
 scan off the game thread; no historical game is rewritten by the migration. After all old
@@ -41,7 +41,7 @@ writers and their queued writes have stopped, run `stats-rebuild all` for the fi
 backup before changing production policy. It prints counts, not player identifiers.
 
 Wait until `player_totals` has no `rebuild.dirty: true` documents and inspect errors/old leases.
-Compare sampled profiles against rebuild. Then set `statistics.readEnabled = true` on game
+Compare sampled profiles against rebuild. Then set `statistics.read_enabled = true` on game
 servers, `STATS_MATERIALIZED=true` for the Discord bot, and `XCORE_STATS_MATERIALIZED=true` for
 the web service. Restart the corresponding applications. A missing document means the player
 has no games yet, since every stored game upserts its owners in the same transaction. A pending

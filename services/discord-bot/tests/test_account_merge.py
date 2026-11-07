@@ -708,3 +708,18 @@ async def test_repeated_merges_chain_redirects() -> None:
     assert totals["source-uuid"]["redirect_uuid"] == "target-uuid"
     assert totals["source-uuid"]["rebuild"]["dirty"] is True
     assert totals["target-uuid"]["rebuild"]["dirty"] is True
+
+
+@pytest.mark.asyncio
+async def test_merge_keeps_the_queue_place_of_a_target_already_waiting() -> None:
+    store, db = await _merge_store()
+    await db["player_totals"].insert_one(
+        {"_id": "target-uuid", "rebuild": {"dirty": True, "queued_at": 5}}
+    )
+
+    result = await _merge(store)
+
+    assert result.success is True
+    totals = {doc["_id"]: doc for doc in db["player_totals"].docs}
+    assert totals["target-uuid"]["rebuild"]["queued_at"] == 5
+    assert totals["source-uuid"]["rebuild"]["queued_at"] > 5

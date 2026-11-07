@@ -181,6 +181,10 @@ public class AccountMergeService {
         if (source.uuid != null && source.uuid.startsWith("merged:")) {
             return MergeResult.failure("Source player #" + source.pid + " was already merged into another account.");
         }
+        // A closed account would take the source's games under its merged: UUID, out of every profile.
+        if (target.uuid != null && target.uuid.startsWith("merged:")) {
+            return MergeResult.failure("Target player #" + target.pid + " was merged into another account and is closed.");
+        }
 
         // Only the binding comes from Mongo; keep unsaved progress from the session cache.
         PlayerData sourceBinding = playerDataRepository.findByUuid(source.uuid);

@@ -855,6 +855,10 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
             body.add(Kit.note(screen.cards(), t(local, "player-stats-loading"))).row();
             return;
         }
+        // A ready projection being recalculated still shows its last figures, but says they are about to change.
+        if (model.stats() != null && "ready".equals(model.stats().status()) && model.stats().updating()) {
+            body.add(Kit.note(screen.cards(), t(local, "player-stats-rebuilding"))).row();
+        }
         if (model.stats() == null || hasNoGames(model.stats())) {
             body.add(Kit.note(screen.cards(), t(local, "player-stats-no-stats"))).row();
             return;

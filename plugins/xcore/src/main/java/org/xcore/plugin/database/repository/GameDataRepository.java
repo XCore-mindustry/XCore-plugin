@@ -215,7 +215,7 @@ public class GameDataRepository extends DataRepository<GameData> {
 
     public AggregatedPlayerStats aggregatePlayerStats(String uuid) {
         if (totalsStore != null && totalsStore.readsEnabled()) {
-            return PlayerTotalsView.overview(totalsStore.find(uuid)).overall();
+            return PlayerTotalsView.overview(totalsStore.read(uuid)).overall();
         }
         if (uuid == null || uuid.isBlank()) {
             return AggregatedPlayerStats.EMPTY;
@@ -260,7 +260,7 @@ public class GameDataRepository extends DataRepository<GameData> {
 
     public PlayerStatsOverview aggregatePlayerStatsOverview(String uuid) {
         if (totalsStore != null && totalsStore.readsEnabled()) {
-            var totals = totalsStore.find(uuid);
+            var totals = totalsStore.read(uuid);
             return PlayerTotalsView.overview(totals, recentMapNames(totals));
         }
         if (uuid == null || uuid.isBlank()) {

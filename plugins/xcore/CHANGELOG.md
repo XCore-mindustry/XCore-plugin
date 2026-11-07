@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Added
-- Materialized player statistics, off by default (`[statistics] enabled`, `readEnabled`, `historyOwner`). Each match is saved together with every participant's result in one transaction, and profiles read the stored totals instead of summing all games on every open. A reconnect no longer counts as another game, and a player who left before the end (`LEFT`) or joined for the last part of the match no longer gets the win. Policy and rollout: `docs/player-statistics.md`.
+- Materialized player statistics, off by default (`[statistics] enabled`, `read_enabled`, `history_owner`). Each match is saved together with every participant's result in one transaction, and profiles read the stored totals instead of summing all games on every open. A reconnect no longer counts as another game, and a player who left before the end (`LEFT`) or joined for the last part of the match no longer gets the win. Policy and rollout: `docs/player-statistics.md`.
 - Console commands `stats-rebuild <uuid>|all` and the read-only `stats-audit`; metrics `xcore_stats_writes_total`, `xcore_stats_rebuilds_total`, `xcore_stats_rebuild_duration_seconds`, `xcore_stats_dirty_players` and `xcore_stats_oldest_dirty_seconds`.
 - With materialized reading on, the profile shows win streaks, early leaves, minutes played, completed survival runs and the last five matches with their maps. While a player's totals are rebuilt it says so, and a player without counted games sees a note instead of a 0% win rate.
 

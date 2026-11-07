@@ -1,5 +1,5 @@
 import "server-only";
-import { overviewFromTotals } from "./player-totals";
+import { overviewFromTotals, readTotals } from "./player-totals";
 import { ObjectId, type Db, type Document } from "mongodb";
 import { getGameDb } from "./db";
 import type {
@@ -255,7 +255,15 @@ export async function getPlayerProfile(pid: number, db?: Db): Promise<PlayerProf
 
   const materialized = process.env.XCORE_STATS_MATERIALIZED === "true";
   const totals = materialized && playerUuid
-    ? await database.collection<Document & { _id: string }>("player_totals").findOne({ _id: playerUuid }, { maxTimeMS: PUBLIC_QUERY_TIMEOUT_MS })
+    ? await readTotals(
+        (uuid) => database.collection<Document & { _id: string }>("player_totals").findOne({ _id: uuid }, { maxTimeMS: PUBLIC_QUERY_TIMEOUT_MS }),
+        async () => {
+          const backfill = await database.collection<Document & { _id: string }>("settings")
+            .findOne({ _id: "player_totals_backfill" }, { maxTimeMS: PUBLIC_QUERY_TIMEOUT_MS });
+          return backfill === null || backfill.done === true;
+        },
+        playerUuid,
+      )
     : null;
 
   // Temporary legacy reader for a coordinated rollout.

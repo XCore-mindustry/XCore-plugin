@@ -145,6 +145,15 @@ def test_stats_embed_shows_participation_only_from_the_projection() -> None:
     ].endswith("Left early: 3 · Win streak: 2")
 
 
+def test_stats_embed_says_an_empty_projection_is_being_updated() -> None:
+    view = StatsView(player=PlayerRecord(pid=1, nickname="a"), placings=[])
+    games = GameStats(games=0, wins=0, detailed=True, updating=True)
+
+    assert _fields(build_stats_embed(replace(view, games=games)))["🎮 Games"].split(
+        "\n"
+    ) == ["No recorded games yet", "Statistics are being recalculated."]
+
+
 def test_stats_embed_shows_combat_figures_only_from_the_legacy_reader() -> None:
     view = StatsView(player=PlayerRecord(pid=1, nickname="a"), placings=[])
     legacy = GameStats(games=10, wins=4, blocks_destroyed=7, units_destroyed=3)

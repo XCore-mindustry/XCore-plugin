@@ -150,3 +150,28 @@ def test_percentage_rounding_matches_java_and_typescript() -> None:
     from xcore_discord_bot.game_stats import win_rate
 
     assert win_rate(1, 8) == 13
+
+
+@pytest.mark.asyncio
+async def test_materialized_store_follows_merges_and_waits_for_the_backfill() -> None:
+    store, db = await connected_store()
+    stats = GameStatsStore(store, materialized=True)
+    await db["settings"].insert_one({"_id": "player_totals_backfill", "done": False})
+    # the first scan may not have enrolled this player's old games yet
+    assert (await stats.overview("old-player")).status == "pending"
+    await db["settings"].update_one(
+        {"_id": "player_totals_backfill"}, {"$set": {"done": True}}
+    )
+    assert (await stats.overview("old-player")).status == "ready"
+
+    for doc in [
+        {"_id": "a", "schema_version": 1, "status": "ready", "redirect_uuid": "b"},
+        {"_id": "b", "schema_version": 1, "status": "ready", "redirect_uuid": "c"},
+        {"_id": "c", "schema_version": 1, "status": "ready", "all": {"games": 9}},
+    ]:
+        await db["player_totals"].insert_one(doc)
+    assert (await stats.overview("a")).games == 9
+
+    await db["player_totals"].update_one({"_id": "c"}, {"$set": {"redirect_uuid": "a"}})
+    with pytest.raises(ValueError):
+        await stats.overview("a")

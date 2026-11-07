@@ -24,7 +24,7 @@ public final class PlayerTotalsView {
 
     /** @param mapNames map names by the hex id stored in {@code recent.map_id} */
     public static PlayerStatsOverview overview(Document totals, Map<String, String> mapNames) {
-        // Every stored game upserts its owners in the same transaction, so no document means no games yet.
+        // The store answers pending while the backfill runs, so from here no document means no games yet.
         if (totals == null) return empty("ready", false);
         if (!"ready".equals(totals.getString("status"))) return empty("pending", true);
         if (number(totals, "schema_version") != 1) throw new IllegalStateException("Unsupported player totals schema");

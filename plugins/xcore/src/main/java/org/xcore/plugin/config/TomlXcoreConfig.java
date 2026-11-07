@@ -25,6 +25,15 @@ public class TomlXcoreConfig implements SelfNormalizing {
         public boolean readEnabled = false;
         /** map for ordinary servers/Mini-PvP; external for HexedCore-owned rounds. */
         public String historyOwner = "map";
+
+        /** A misspelt owner would let both the map lifecycle and the satellite write history, so it stops the boot. */
+        public void normalize() {
+            historyOwner = historyOwner == null || historyOwner.isBlank() ? "map" : historyOwner.trim().toLowerCase(Locale.ROOT);
+            if (!historyOwner.equals("map") && !historyOwner.equals("external")) {
+                throw new IllegalArgumentException("statistics.history_owner must be \"map\" or \"external\", not \""
+                        + historyOwner + "\"");
+            }
+        }
     }
     public ServerConfig server = new ServerConfig();
     public PathsConfig paths = new PathsConfig();
@@ -70,6 +79,7 @@ public class TomlXcoreConfig implements SelfNormalizing {
             permissions = new PermissionsConfig();
         }
 
+        statistics.normalize();
         server.normalize();
         paths.normalize();
         discord.normalize();

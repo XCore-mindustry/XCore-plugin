@@ -76,6 +76,28 @@ class PlayerTotalsStoreIntegrationTest {
         assertThat(number(store.find("b").get("all", Document.class), "games")).isEqualTo(4);
         assertThat(db.getCollection("games_v2").countDocuments(new Document("player_stats.uuid", "a"))).isZero();
     }
+    @Test void readersWaitForTheBackfillAndFollowMergeRedirects() {
+        // Until the first scan has enrolled everyone, a missing projection may still hide old games.
+        assertThat(store.read("nobody").getString("status")).isEqualTo("pending");
+        db.getCollection("settings").updateOne(new Document("_id", "player_totals_backfill"),
+                new Document("$set", new Document("done", true)));
+        assertThat(store.read("nobody")).isNull();
+
+        store.write(game("a", 101_000, true)); ready();
+        new MongoTransactions(client).runRequired(session -> {
+            store.merge(session, "a", "b");
+            db.getCollection("games_v2").updateMany(session, new Document("player_stats.uuid", "a"),
+                    new Document("$set", new Document("player_stats.$[].uuid", "b")));
+            return null;
+        });
+        ready();
+        assertThat(store.read("a").getString("_id")).isEqualTo("b");
+        assertThat(number(store.read("a").get("all", Document.class), "games")).isEqualTo(1);
+
+        db.getCollection("player_totals").updateOne(new Document("_id", "b"),
+                new Document("$set", new Document("redirect_uuid", "a")));
+        assertThatThrownBy(() -> store.read("a")).isInstanceOf(IllegalStateException.class);
+    }
     @Test void simultaneousWritersAndRebuildDoNotLoseGames() throws Exception {
         store.write(game("a", 101_000, true)); ready();
         try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {

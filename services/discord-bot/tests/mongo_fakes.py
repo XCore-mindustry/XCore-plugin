@@ -426,6 +426,12 @@ class Collection:
             assign(candidate, key, value)
         for key, value in update.get("$inc", {}).items():
             assign(candidate, key, get(candidate, key, 0) + value)
+        for op, pick in (("$min", min), ("$max", max)):
+            for key, value in update.get(op, {}).items():
+                current = get(candidate, key, None)
+                assign(
+                    candidate, key, value if current is None else pick(current, value)
+                )
         for key, value in update.get("$addToSet", {}).items():
             items = deepcopy(get(candidate, key, []))
             if value not in items:

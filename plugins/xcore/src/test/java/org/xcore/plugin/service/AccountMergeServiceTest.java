@@ -384,6 +384,22 @@ class AccountMergeServiceTest {
     }
 
     @Test
+    @DisplayName("A closed account cannot receive a merge, and nothing is written")
+    void merge_intoClosedAccount_fails() {
+        PlayerData source = createPlayer(10, "uuid-source", "ActivePlayer", 50, 1200, 2);
+        PlayerData target = createPlayer(20, "merged:uuid-old", "MergedPlayer", 0, 1000, 0);
+
+        when(findService.playerData("10")).thenReturn(source);
+        when(findService.playerData("20")).thenReturn(target);
+
+        var result = service.merge(new AccountMergeService.MergeRequest("10", "20", "Test", null));
+
+        assertThat(result.success()).isFalse();
+        assertThat(result.message()).contains("#20", "closed");
+        verifyNoInteractions(gameDataRepository);
+    }
+
+    @Test
     @DisplayName("Transfer active ban and mute if source was punished")
     void merge_transfersActivePunishments() {
         PlayerData source = createPlayer(10, "uuid-source", "BannedSource", 50, 1000, 0);

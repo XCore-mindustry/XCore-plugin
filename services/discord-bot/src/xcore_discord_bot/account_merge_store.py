@@ -326,11 +326,12 @@ class AccountMergeStore:
                     {"_id": uuid},
                     {
                         "$inc": {"revision": 1},
-                        "$set": {
-                            "rebuild.dirty": True,
+                        "$set": {"rebuild.dirty": True},
+                        # A player already waiting keeps its place, as in the plugin.
+                        "$min": {
                             "rebuild.queued_at": int(
                                 datetime.now(UTC).timestamp() * 1000
-                            ),
+                            )
                         },
                         "$setOnInsert": {"status": "pending", "schema_version": 1},
                     },

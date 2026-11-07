@@ -20,7 +20,7 @@ function mode(row: Document = {}): ModeStatsSummaryDTO {
 }
 export function overviewFromTotals(doc: Document | null): PlayerAggregateOverview {
   if (doc && doc.schema_version !== 1) throw new Error("Unsupported player_totals schema");
-  // Each stored game upserts its owners' totals, so a missing document means no games yet.
+  // readTotals answers pending while the backfill runs, so here a missing document means no games yet.
   const ready = doc === null || doc.status === "ready";
   const all = ready ? (doc?.all ?? {}) : {};
   const modes = ready ? (doc?.modes ?? {}) : {};
@@ -34,4 +34,23 @@ export function overviewFromTotals(doc: Document | null): PlayerAggregateOvervie
     },
     pvp: mode(modes.PVP), survival: mode(modes.SURVIVAL), hexed: mode(modes.HEXED),
   };
+}
+
+/** The surviving account's totals after merges, and pending until the first backfill has enrolled everyone. */
+export async function readTotals(
+  findTotals: (uuid: string) => Promise<Document | null>,
+  backfillDone: () => Promise<boolean>,
+  uuid: string,
+): Promise<Document | null> {
+  const seen = new Set<string>();
+  let doc = await findTotals(uuid);
+  while (doc && typeof doc.redirect_uuid === "string" && doc.redirect_uuid) {
+    if (seen.has(uuid)) throw new Error("Cyclic player_totals redirect");
+    seen.add(uuid);
+    uuid = doc.redirect_uuid;
+    doc = await findTotals(uuid);
+  }
+  if (doc) return doc;
+  // Every stored game upserts its owners, so once the backfill is done no document means no games yet.
+  return (await backfillDone()) ? null : { _id: uuid, schema_version: 1, status: "pending" };
 }

@@ -149,6 +149,9 @@ def _games(games: GameStats | None, locale: str) -> str:
     if games.status == "pending":
         return t(locale, "stats-rebuilding")
     if games.games <= 0:
+        # A merge can leave a ready, empty projection waiting for the moved games.
+        if games.updating:
+            return f"{t(locale, 'stats-games-none')}\n{t(locale, 'stats-rebuilding')}"
         return t(locale, "stats-games-none")
     lines = [
         t(

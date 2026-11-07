@@ -107,8 +107,32 @@ public class PlayerTotalsStore {
         return config.statistics.readEnabled;
     }
 
+    /** The stored projection of exactly this UUID; readers use {@link #read(String)}. */
     public Document find(String uuid) {
         return totals.find(eq("_id", uuid)).first();
+    }
+
+    /**
+     * What a profile shows: the surviving account's totals once a merge redirected this UUID, and a
+     * pending projection while the initial backfill has not yet enrolled every historical player.
+     */
+    public @Nullable Document read(String uuid) {
+        var seen = new HashSet<String>();
+        var current = find(uuid);
+        while (current != null) {
+            String next = current.getString("redirect_uuid");
+            if (next == null || next.isBlank()) return current;
+            if (!seen.add(uuid)) throw new IllegalStateException("Cyclic player redirect");
+            uuid = next;
+            current = find(uuid);
+        }
+        // Every stored game upserts its owners, so once the backfill is done no document means no games yet.
+        return backfillDone() ? null : new Document("_id", uuid).append("status", "pending");
+    }
+
+    private boolean backfillDone() {
+        var seed = settings.find(eq("_id", BACKFILL_ID)).first();
+        return seed == null || Boolean.TRUE.equals(seed.getBoolean("done"));
     }
 
     @PostConstruct

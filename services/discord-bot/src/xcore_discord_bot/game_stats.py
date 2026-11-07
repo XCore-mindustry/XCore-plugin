@@ -12,6 +12,7 @@ from typing import Any
 from .mongo_store import MongoStore
 
 GAMES = "games_v2"
+BACKFILL_ID = "player_totals_backfill"
 
 PVP = "PVP"
 SURVIVAL = "SURVIVAL"
@@ -148,7 +149,7 @@ def _pipeline(uuid: str) -> list[dict[str, Any]]:
 
 def game_stats_from_totals(doc: dict[str, Any] | None) -> GameStats:
     """Read the plugin's projection; no participation policy is duplicated here."""
-    # Each stored game upserts its owners' totals, so a missing document means no games yet.
+    # The store answers pending while the backfill runs, so here a missing document means no games.
     if doc is None:
         return GameStats(detailed=True)
     if doc.get("status") != "ready":
@@ -201,7 +202,25 @@ class GameStatsStore:
         if not uuid:
             return GameStats()
         if self._materialized:
-            doc = await self._store.database["player_totals"].find_one({"_id": uuid})
-            return game_stats_from_totals(doc)
+            return game_stats_from_totals(await self._totals(uuid))
         cursor = await self._store.database[GAMES].aggregate(_pipeline(uuid))
         return game_stats_from_rows([row async for row in cursor])
+
+    async def _totals(self, uuid: str) -> dict[str, Any] | None:
+        """The surviving account's totals, pending until the first backfill has run."""
+        database = self._store.database
+        seen: set[str] = set()
+        doc = await database["player_totals"].find_one({"_id": uuid})
+        while doc is not None and doc.get("redirect_uuid"):
+            if uuid in seen:
+                raise ValueError("Cyclic player_totals redirect")
+            seen.add(uuid)
+            uuid = doc["redirect_uuid"]
+            doc = await database["player_totals"].find_one({"_id": uuid})
+        if doc is not None:
+            return doc
+        # Every stored game upserts its owners, so once the backfill is done no document means no games.
+        backfill = await database["settings"].find_one({"_id": BACKFILL_ID})
+        if backfill is not None and backfill.get("done") is not True:
+            return {"_id": uuid, "status": "pending"}
+        return None
