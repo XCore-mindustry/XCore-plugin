@@ -221,14 +221,39 @@ def _building(games: GameStats | None, locale: str) -> str | None:
     """What the player built and lost; left out until there is something to count."""
     if games is None:
         return None
-    if games.blocks_built + games.blocks_deconstructed <= 0:
+    if games.detailed:
+        # The projection counts no destroyed blocks or units, so it shows none.
+        if games.blocks_built + games.blocks_deconstructed <= 0:
+            return None
+        return t(
+            locale,
+            "stats-building-counted",
+            built=games.blocks_built,
+            deconstructed=games.blocks_deconstructed,
+        )
+    blocks = games.blocks_built + games.blocks_deconstructed + games.blocks_destroyed
+    units = games.units_produced + games.units_destroyed
+    if blocks + units <= 0:
         return None
-    return t(
-        locale,
-        "stats-building-counted",
-        built=games.blocks_built,
-        deconstructed=games.blocks_deconstructed,
-    )
+    lines = [
+        t(
+            locale,
+            "stats-building-blocks",
+            built=games.blocks_built,
+            deconstructed=games.blocks_deconstructed,
+            destroyed=games.blocks_destroyed,
+        )
+    ]
+    if units > 0:
+        lines.append(
+            t(
+                locale,
+                "stats-building-units",
+                produced=games.units_produced,
+                destroyed=games.units_destroyed,
+            )
+        )
+    return "\n".join(lines)
 
 
 def _hexed_rank(player: PlayerRecord, locale: str) -> str | None:

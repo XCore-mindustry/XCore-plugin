@@ -67,8 +67,9 @@ async function Player({ lang, pid }: { lang: Locale; pid: number }) {
     [t.built, count(overview.blocksBuilt)],
     [t.deconstructed, count(overview.blocksDeconstructed)],
   ];
-  // Only the materialized totals record leaving and streaks; the legacy aggregation leaves them out.
+  // Only the materialized totals record leaving and streaks; only the legacy aggregation counts what was destroyed.
   if (overview.left !== undefined) facts.push([t.left, count(overview.left)], [t.streak, count(overview.streak ?? 0)]);
+  else facts.push([t.destroyed, count(overview.blocksDestroyed)], [t.units, count(overview.unitsDestroyed)]);
   // The all-modes rate mixes PvP with survival and Hexed, where a win is much rarer; per mode it reads plainly.
   // Event games have no bucket of their own: they are what the three modes leave of the total.
   const otherGames = Math.max(0, overview.gamesPlayed - pvp.gamesPlayed - survival.gamesPlayed - hexed.gamesPlayed);

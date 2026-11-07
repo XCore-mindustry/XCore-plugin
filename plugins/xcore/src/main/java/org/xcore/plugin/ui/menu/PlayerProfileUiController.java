@@ -943,13 +943,26 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
                             .append(nf.format(overall.blocksBuilt())).append("[]\n")
                             .append(t(local, "player-stats-blocks-deconstructed")).append(" [orange]")
                             .append(nf.format(overall.blocksDeconstructed())).append("[]");
+                    // Only the legacy reader counts destroyed blocks and units; the projection has no such counters.
+                    if (!overview.detailed()) {
+                        text.append('\n').append(t(local, "player-stats-blocks-destroyed")).append(" [scarlet]")
+                                .append(nf.format(overall.blocksDestroyed())).append("[]\n")
+                                .append(renderBlockRatioBar(overall.blocksBuilt(), overall.blocksDeconstructed(),
+                                        overall.blocksDestroyed(), 10))
+                                .append("  ").append(t(local, "player-stats-ratio-legend"));
+                        if (overall.unitsProduced() > 0 || overall.unitsDestroyed() > 0) {
+                            text.append('\n').append(t(local, "player-stats-units-produced")).append(" [sky]")
+                                    .append(nf.format(overall.unitsProduced())).append("[]\n")
+                                    .append(t(local, "player-stats-units-lost")).append(" [scarlet]")
+                                    .append(nf.format(overall.unitsDestroyed())).append("[]");
+                        }
+                    }
                     content.add(Kit.text(text.toString(), inner)).row();
                 }));
 
         body.add(Kit.columns(screen, left, right)).row();
     }
 
-    /** "Wins: 777 of 1,736 | 45% win rate": the rate next to both numbers it comes from. */
     /** A ready projection without games: a newcomer, or someone whose games all were excluded. */
     private static boolean hasNoGames(PlayerStatsOverview stats) {
         return "ready".equals(stats.status()) && stats.overall().gamesPlayed() == 0;
@@ -965,6 +978,7 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
         return TextWidth.fit("[white]" + TextWidth.escape(match.map()) + "[]", width) + "\n" + result;
     }
 
+    /** "Wins: 777 of 1,736 | 45% win rate": the rate next to both numbers it comes from. */
     private static String victories(Localization local, NumberFormat nf, long wins, long games, int winRate) {
         return t(local, "player-stats-victories-value",
                 args("wins", nf.format(wins), "games", nf.format(games), "winRate", winRate));

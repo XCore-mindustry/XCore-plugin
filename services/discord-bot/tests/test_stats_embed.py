@@ -122,7 +122,8 @@ def test_stats_embed_of_an_active_player() -> None:
         "⬡ **Hexed** · 30 games · 5 wins · best `#1` · top 3 ×9",
     ]
     assert fields["🧱 Building"].split("\n") == [
-        "Built: `12,345` · Deconstructed: `1,200`",
+        "Blocks: `12,345` built · `1,200` taken apart · `300` lost",
+        "Units: `40` produced · `25` lost",
     ]
     assert fields["🏆 Season ratings"].count("\n\n") == 1
     assert fields["⬡ Hexed rank"] == "**Veteran**\n22/25 wins to Devastator"
@@ -142,6 +143,30 @@ def test_stats_embed_shows_participation_only_from_the_projection() -> None:
     assert _fields(build_stats_embed(replace(view, games=detailed)))[
         "🎮 Games"
     ].endswith("Left early: 3 · Win streak: 2")
+
+
+def test_stats_embed_shows_combat_figures_only_from_the_legacy_reader() -> None:
+    view = StatsView(player=PlayerRecord(pid=1, nickname="a"), placings=[])
+    legacy = GameStats(games=10, wins=4, blocks_destroyed=7, units_destroyed=3)
+    detailed = GameStats(
+        games=10,
+        wins=4,
+        blocks_built=5,
+        blocks_destroyed=7,
+        units_destroyed=3,
+        detailed=True,
+    )
+
+    assert _fields(build_stats_embed(replace(view, games=legacy)))["🧱 Building"].split(
+        "\n"
+    ) == [
+        "Blocks: `0` built · `0` taken apart · `7` lost",
+        "Units: `0` produced · `3` lost",
+    ]
+    assert (
+        _fields(build_stats_embed(replace(view, games=detailed)))["🧱 Building"]
+        == "Built: `5` · Deconstructed: `0`"
+    )
 
 
 def test_stats_embed_of_a_new_player_leaves_the_empty_sections_out() -> None:

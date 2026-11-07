@@ -768,6 +768,29 @@ class PlayerProfileUiControllerTest {
     }
 
     @Test
+    @DisplayName("the legacy reader still shows destroyed blocks and units; the projection, which has no such counters, does not")
+    void window_combatFiguresOnlyFromLegacyReader() {
+        Session session = createTestSession("uuid-1", false);
+        var controller = new PlayerProfileUiController(null, null, null, null, session, session.data);
+        var overall = new AggregatedPlayerStats(1250, 730, 1_204_000, 220_000, 180_500, 5020, 4100);
+        var legacy = new PlayerStatsOverview(overall, ModeStatsSummary.EMPTY, ModeStatsSummary.EMPTY, ModeStatsSummary.EMPTY);
+        var materialized = new PlayerStatsOverview(overall, ModeStatsSummary.EMPTY, ModeStatsSummary.EMPTY,
+                ModeStatsSummary.EMPTY, "ready", false, true, 0, 0, List.of());
+        String destroyed = session.locale().t("player-stats-blocks-destroyed");
+        String unitsLost = session.locale().t("player-stats-units-lost");
+
+        var legacyModel = controller.createInitialModel(PlayerProfileUiController.Tab.STATS, new ProfileDetails(legacy, null, List.of()));
+        for (Screen screen : Screen.ALL) LayoutAssert.assertLaidOut(controller.window(legacyModel, screen), screen);
+        assertThat(LayoutAssert.allText(controller.window(legacyModel, Screen.SMALL)))
+                .contains(destroyed, unitsLost);
+
+        var materializedModel = controller.createInitialModel(PlayerProfileUiController.Tab.STATS,
+                new ProfileDetails(materialized, null, List.of()));
+        assertThat(LayoutAssert.allText(controller.window(materializedModel, Screen.SMALL)))
+                .doesNotContain(destroyed, unitsLost);
+    }
+
+    @Test
     @DisplayName("the profile offers what the viewer may do: settings for one's own, audit for an admin")
     void window_offersActionsByRole() {
         Session session = createTestSession("uuid-1", false);
