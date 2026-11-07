@@ -780,7 +780,6 @@ class PlayerProfileUiControllerTest {
         String unitsLost = session.locale().t("player-stats-units-lost");
 
         var legacyModel = controller.createInitialModel(PlayerProfileUiController.Tab.STATS, new ProfileDetails(legacy, null, List.of()));
-        for (Screen screen : Screen.ALL) LayoutAssert.assertLaidOut(controller.window(legacyModel, screen), screen);
         assertThat(LayoutAssert.allText(controller.window(legacyModel, Screen.SMALL)))
                 .contains(destroyed, unitsLost);
 
@@ -788,6 +787,12 @@ class PlayerProfileUiControllerTest {
                 new ProfileDetails(materialized, null, List.of()));
         assertThat(LayoutAssert.allText(controller.window(materializedModel, Screen.SMALL)))
                 .doesNotContain(destroyed, unitsLost);
+
+        // Figures in the millions still fit, in every language.
+        for (String language : LayoutAssert.LANGUAGES) {
+            session.localization = LayoutAssert.localization(language);
+            for (Screen screen : Screen.ALL) LayoutAssert.assertLaidOut(controller.window(legacyModel, screen), screen);
+        }
     }
 
     @Test
