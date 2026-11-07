@@ -3,7 +3,7 @@ plugins {
     id("xcore.publish") apply false
 }
 
-version = "0.2.0"
+version = "0.3.0"
 val junitBom = libs.junit.bom
 
 subprojects {

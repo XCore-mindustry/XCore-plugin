@@ -32,7 +32,7 @@
   buffer before anything is sent.
 - **Headless tests**: the sealed `VNode` tree compiles and runs under plain JUnit 5, no graphics.
 
-## Changes after 0.3.0 (unreleased)
+## Changes in 0.4.0
 
 - A patch of a slot the client does not have, or one the new view no longer has, sends the whole
   dialog: before, the client ignored it and kept showing the old content. A slot nested in another
@@ -60,7 +60,7 @@ repositories {
 }
 
 dependencies {
-    compileOnly("org.xcore:xcore-ui:0.3.0")
+    compileOnly("org.xcore:xcore-ui:0.4.0")
     // Or implementation(...) if you shade it into your plugin jar
 }
 ```
@@ -73,14 +73,14 @@ repositories {
 }
 
 dependencies {
-    compileOnly 'org.xcore:xcore-ui:0.3.0'
+    compileOnly 'org.xcore:xcore-ui:0.4.0'
 }
 ```
 
 ### Version Catalog (`libs.versions.toml`)
 ```toml
 [versions]
-xcore-ui = "0.3.0"
+xcore-ui = "0.4.0"
 
 [libraries]
 xcore-ui = { module = "org.xcore:xcore-ui", version.ref = "xcore-ui" }

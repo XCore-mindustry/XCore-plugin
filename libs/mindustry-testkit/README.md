@@ -14,7 +14,7 @@
 
 ---
 
-## Changes after 0.2.0 (unreleased)
+## Changes in 0.3.0
 
 - `HeadlessMenuClient` builds what it is shown: conditions decided by a `ClientScreen`, patches applied only to a table the client built under that id, form values taken from the pressed element's build. `lastPatchDsl` is `null` for an ignored patch and starts empty with each dialog.
 - `press` presses as a player does and fails for what the screen does not show. `click` still sends any answer.
@@ -193,9 +193,9 @@ repositories {
 }
 
 dependencies {
-    testImplementation("org.xcore.testkit:fixtures:0.2.0")
-    testImplementation("org.xcore.testkit:ui:0.2.0")
-    // or testImplementation("org.xcore.testkit:core:0.2.0") for core queue utilities
+    testImplementation("org.xcore.testkit:fixtures:0.3.0")
+    testImplementation("org.xcore.testkit:ui:0.3.0")
+    // or testImplementation("org.xcore.testkit:core:0.3.0") for core queue utilities
 }
 ```
 
