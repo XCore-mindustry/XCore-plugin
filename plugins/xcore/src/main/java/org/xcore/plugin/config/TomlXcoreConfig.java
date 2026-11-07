@@ -17,6 +17,24 @@ import java.util.Set;
 public class TomlXcoreConfig implements SelfNormalizing {
 
     public int version = 1;
+    public StatisticsConfig statistics = new StatisticsConfig();
+    public static class StatisticsConfig {
+        /** Enable only after every writer supports revision fencing and MongoDB transactions. */
+        public boolean enabled = false;
+        /** Switch readers after the initial backfill has completed. */
+        public boolean readEnabled = false;
+        /** map for ordinary servers/Mini-PvP; external for HexedCore-owned rounds. */
+        public String historyOwner = "map";
+
+        /** A misspelt owner would let both the map lifecycle and the satellite write history, so it stops the boot. */
+        public void normalize() {
+            historyOwner = historyOwner == null || historyOwner.isBlank() ? "map" : historyOwner.trim().toLowerCase(Locale.ROOT);
+            if (!historyOwner.equals("map") && !historyOwner.equals("external")) {
+                throw new IllegalArgumentException("statistics.history_owner must be \"map\" or \"external\", not \""
+                        + historyOwner + "\"");
+            }
+        }
+    }
     public ServerConfig server = new ServerConfig();
     public PathsConfig paths = new PathsConfig();
     public DiscordConfig discord = new DiscordConfig();
@@ -29,6 +47,7 @@ public class TomlXcoreConfig implements SelfNormalizing {
     public PermissionsConfig permissions = new PermissionsConfig();
 
     public void normalize() {
+        if (statistics == null) statistics = new StatisticsConfig();
         if (server == null) {
             server = new ServerConfig();
         }
@@ -60,6 +79,7 @@ public class TomlXcoreConfig implements SelfNormalizing {
             permissions = new PermissionsConfig();
         }
 
+        statistics.normalize();
         server.normalize();
         paths.normalize();
         discord.normalize();

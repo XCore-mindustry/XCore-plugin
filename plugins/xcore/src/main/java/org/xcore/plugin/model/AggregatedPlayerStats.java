@@ -1,13 +1,13 @@
 package org.xcore.plugin.model;
 
 public record AggregatedPlayerStats(
-        int gamesPlayed,
-        int gamesWon,
-        int blocksBuilt,
-        int blocksDeconstructed,
-        int blocksDestroyed,
-        int unitsProduced,
-        int unitsDestroyed
+        long gamesPlayed,
+        long gamesWon,
+        long blocksBuilt,
+        long blocksDeconstructed,
+        long blocksDestroyed,
+        long unitsProduced,
+        long unitsDestroyed
 ) {
 
     public static final AggregatedPlayerStats EMPTY = new AggregatedPlayerStats(0, 0, 0, 0, 0, 0, 0);
@@ -16,6 +16,6 @@ public record AggregatedPlayerStats(
         if (gamesPlayed <= 0) {
             return 0;
         }
-        return Math.round((gamesWon * 100f) / gamesPlayed);
+        return (int)Math.round((gamesWon * 100d) / gamesPlayed);
     }
 }

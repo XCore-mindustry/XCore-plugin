@@ -4,7 +4,9 @@ import arc.util.Log;
 import arc.util.Strings;
 import com.ospx.flubundle.Bundle;
 import com.ospx.flubundle.mindustry.Messenger;
+import io.avaje.inject.PostConstruct;
 import io.avaje.inject.PreDestroy;
+import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import mindustry.game.EventType.GameOverEvent;
 import mindustry.game.EventType.PlayEvent;
@@ -15,8 +17,11 @@ import mindustry.io.JsonIO;
 import mindustry.net.Packets;
 import org.xcore.protocol.generated.messages.server.ServerMessages.ServerActionV1;
 import org.xcore.plugin.common.PluginState;
+import org.xcore.plugin.concurrent.Async;
 import org.xcore.plugin.concurrent.ScheduledTasks;
 import org.xcore.plugin.config.TomlXcoreConfig;
+import org.xcore.plugin.database.repository.MapDataRepository;
+import org.xcore.plugin.model.GameData;
 import org.xcore.plugin.model.enums.FinishReason;
 import org.xcore.plugin.service.GameDataService;
 import org.xcore.plugin.service.MapStatsService;
@@ -31,6 +36,8 @@ import static mindustry.Vars.*;
 @Singleton
 public class GameLifecycleHandler {
 
+    private final Async async;
+    private final MapDataRepository maps;
     private final NetworkService network;
     private final TomlXcoreConfig config;
     private final Bundle bundle;
@@ -38,13 +45,20 @@ public class GameLifecycleHandler {
     private final GameDataService gameDataService;
     private final MapStatsService mapStatsService;
     private final ScheduledTasks tasks = new ScheduledTasks(GameLifecycleHandler.class);
+    /** Waits between map lookups for the running match; the last one repeats until the match ends. */
+    private static final float[] MAP_RETRY_SECONDS = {5, 30, 60};
 
-    public GameLifecycleHandler(NetworkService network,
+    @Inject
+    public GameLifecycleHandler(Async async,
+                                MapDataRepository maps,
+                                NetworkService network,
                                 TomlXcoreConfig config,
                                 Bundle bundle,
                                 PluginState pluginState,
                                 GameDataService gameDataService,
                                 MapStatsService mapStatsService) {
+        this.async = async;
+        this.maps = maps;
         this.network = network;
         this.config = config;
         this.bundle = bundle;
@@ -54,6 +68,18 @@ public class GameLifecycleHandler {
     }
 
     public void onPlayEvent(PlayEvent event) {
+        // Opt-in: with statistics off, HexedCore still relies on there being no lifecycle game.
+        if (async != null && config.statistics.enabled && gameDataService.getCurrent() == null && state.map != null
+                && state.map.file != null && !"external".equals(config.statistics.historyOwner)) {
+            var loadedMap = state.map;
+            String file = loadedMap.file.name(), name = loadedMap.plainName(), author = loadedMap.author();
+            // modeName classifies the game; the map record is keyed by the canonical mode, as everywhere else.
+            var game = gameDataService.startGameWithoutMap(state.rules.modeName);
+            if (game != null) {
+                Groups.player.each(gameDataService::addPlayer);
+                resolveMap(game, name, file, author, state.rules.mode().name(), 0);
+            }
+        }
         String mapName = state.map == null ? "<null>" : state.map.plainName();
         String mapFile = state.map == null || state.map.file == null ? "<null>" : state.map.file.name();
         String rawRules = state.map == null ? null : state.map.tags.get("rules");
@@ -72,6 +98,22 @@ public class GameLifecycleHandler {
             Log.info("@ banned blocks, @ banned units, @ revealed blocks",
                     mapRules.bannedBlocks.size, mapRules.bannedUnits.size, mapRules.revealedBlocks.size);
         }
+    }
+
+    /** Looks the map up off the game thread, retrying while the match runs; capture goes on meanwhile. */
+    private void resolveMap(GameData game, String name, String file, String author, String mode, int attempt) {
+        async.supply(() -> maps.findOrCreate(name, file, author, mode)).thenMain((map, error) -> {
+            if (gameDataService.getCurrent() != game) return;
+            if (error == null) {
+                gameDataService.attachMap(game, map);
+                return;
+            }
+            float delay = MAP_RETRY_SECONDS[Math.min(attempt, MAP_RETRY_SECONDS.length - 1)];
+            Log.err("[Stats] Cannot look up the map of the running match; retrying in @ s", delay, error);
+            tasks.after(delay, () -> {
+                if (gameDataService.getCurrent() == game) resolveMap(game, name, file, author, mode, attempt + 1);
+            });
+        });
     }
 
     public void onGameOver(GameOverEvent event) {
@@ -137,6 +179,11 @@ public class GameLifecycleHandler {
             }
         }
         gameDataService.finishGame(winner, FinishReason.NATURAL);
+    }
+
+    @PostConstruct
+    public void start() {
+        if (config.statistics.enabled) tasks.every(5, 5, gameDataService::syncTeams);
     }
 
     @PreDestroy(priority = ShutdownOrder.STOP_PRODUCERS)

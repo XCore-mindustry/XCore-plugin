@@ -102,3 +102,8 @@ stats-button-ban = Бан
 stats-button-mute = Мут
 stats-button-history = Історія
 stats-button-actions = Дії
+
+stats-rebuilding = Статистика перераховується.
+stats-participation = Виходи: { $left } · Серія перемог: { $streak }
+stats-building-counted = Побудовано: `{ NUMBER($built, useGrouping: 1) }` · Розібрано: `{ NUMBER($deconstructed, useGrouping: 1) }`
+stats-completed = Завершено: { $count } із { $games }

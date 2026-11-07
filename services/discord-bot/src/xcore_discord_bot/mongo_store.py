@@ -92,6 +92,10 @@ class AuditDoc(_MongoDoc):
 
 
 class MongoStore:
+    @property
+    def stats_materialized(self) -> bool:
+        return self._settings.stats_materialized
+
     def __init__(self, settings: Settings) -> None:
         self._settings = settings
         self._client: AsyncMongoClient | None = None

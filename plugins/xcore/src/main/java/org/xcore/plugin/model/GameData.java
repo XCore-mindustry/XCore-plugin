@@ -22,6 +22,9 @@ import java.util.List;
 @EqualsAndHashCode(callSuper = true)
 public class GameData extends ModelData {
 
+    /** The configured server name, stable across renames of the displayed one. */
+    @BsonProperty("server_id")
+    public String serverId;
     public ObjectId map;
     @BsonProperty("game_mode")
     @Builder.Default public String gameMode = "Unknown";

@@ -1507,3 +1507,14 @@ map-upload-current-creator = [accent]{ $map }[] — { $creator }
 
 discord-link-menu-website = Abrir el sitio de la cuenta
 commands-discord-link-website = [accent]Confirma la vinculación en el sitio web:[] { $url }
+
+# Materialized player statistics
+player-stats-rebuilding = Se están recalculando las estadísticas.
+player-stats-participation = Abandonos: { $left } · Racha de victorias: { $streak }
+player-stats-recent = Partidas recientes
+player-stats-outcome-win = Victoria
+player-stats-outcome-loss = Derrota
+player-stats-outcome-left = Abandono
+player-stats-outcome-not_counted = Sin contar
+player-stats-mode-participation = Mejor racha: { $streak } · Abandonos: { $left } · En partidas contadas: { $minutes } min
+player-stats-completed = Completadas: { $count } de { $games }

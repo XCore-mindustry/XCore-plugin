@@ -1521,3 +1521,14 @@ map-upload-current-creator = [accent]{ $map }[] — { $creator }
 
 discord-link-menu-website = Otevřít web účtu
 commands-discord-link-website = [accent]Potvrďte propojení na webu:[] { $url }
+
+# Materialized player statistics
+player-stats-rebuilding = Statistiky se přepočítávají.
+player-stats-participation = Odchody: { $left } · Série výher: { $streak }
+player-stats-recent = Poslední zápasy
+player-stats-outcome-win = Výhra
+player-stats-outcome-loss = Prohra
+player-stats-outcome-left = Odchod
+player-stats-outcome-not_counted = Nezapočítáno
+player-stats-mode-participation = Nejlepší série: { $streak } · Odchody: { $left } · V započítaných zápasech: { $minutes } min
+player-stats-completed = Dokončeno: { $count } z { $games }

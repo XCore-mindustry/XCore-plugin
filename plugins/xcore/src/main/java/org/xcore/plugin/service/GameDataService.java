@@ -1,11 +1,13 @@
 package org.xcore.plugin.service;
 
+import arc.util.Log;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import mindustry.game.Team;
 import mindustry.gen.Groups;
 import mindustry.gen.Player;
 import mindustry.net.Administration;
+import org.bson.types.ObjectId;
 import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.database.repository.GameDataRepository;
 import org.xcore.plugin.integration.gamehistory.MatchHistoryRecord;
@@ -14,9 +16,13 @@ import org.xcore.plugin.model.enums.FinishReason;
 import org.xcore.plugin.model.enums.GameStatsCategory;
 import org.xcore.plugin.model.enums.VictoryType;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 
 import static mindustry.Vars.state;
@@ -27,7 +33,7 @@ public class GameDataService {
     private final TomlXcoreConfig config;
     private final GameDataRepository gameDataRepository;
 
-    private GameData currentBag;
+    private volatile GameData currentBag;
 
     private final Map<String, PlayerGameStats> playerStatsCache = new HashMap<>();
 
@@ -38,12 +44,34 @@ public class GameDataService {
     }
 
     public void startNewGame(MapData map, String mode, EventData event) {
+        if (map == null) return;
+        begin(map.id, mode, event);
+    }
+
+    /**
+     * Starts capturing a match whose map record is still being looked up, so a slow or failing
+     * lookup loses no participation; {@link #attachMap} fills the map in once it is known.
+     */
+    public GameData startGameWithoutMap(String mode) {
+        begin(null, mode, null);
+        return currentBag;
+    }
+
+    /** Fills in the map of {@code game} while it is still the running match. */
+    public boolean attachMap(GameData game, MapData map) {
+        if (game == null || map == null || game != currentBag || game.map != null) return false;
+        game.map = map.id;
+        return true;
+    }
+
+    private void begin(ObjectId mapId, String mode, EventData event) {
         var now = System.currentTimeMillis();
 
-        if (map == null) return;
+        if (externalOwner()) return;
 
         currentBag = GameData.builder()
-            .map(map.id)
+            .serverId(config.server.name)
+            .map(mapId)
             .gameMode(mode)
             .serverName(resolveServerName())
             .statsCategory(resolveStatsCategory(mode, event != null))
@@ -63,30 +91,43 @@ public class GameDataService {
 
         if (currentBag == null) return;
 
-        PlayerGameStats stats = PlayerGameStats.builder()
-                .nickname(player.plainName())
-                .uuid(player.uuid())
-                .joinTime(now )
-                .initialTeam(player.team().name)
-                .finalTeam(player.team().name)
-                .build();
-
-        stats.teams.add(TeamGameData.builder().team(player.team().name).joinTime(now ).build());
-
-        playerStatsCache.put(stats.uuid, stats);
-        currentBag.getPlayerStats().add(stats);
+        var stats = playerStatsCache.get(player.uuid());
+        if (stats == null) {
+            stats = PlayerGameStats.builder()
+                    .nickname(player.plainName())
+                    .uuid(player.uuid())
+                    .participantUuid(player.uuid())
+                    .joinTime(now)
+                    .initialTeam(player.team().name)
+                    .finalTeam(player.team().name)
+                    .build();
+            playerStatsCache.put(stats.uuid, stats);
+            currentBag.getPlayerStats().add(stats);
+        }
+        // A reconnect continues the same row with a new presence interval.
+        if (!stats.presenceIntervals.isEmpty() && stats.presenceIntervals.getLast().leaveTime == 0) return;
+        stats.leaveTime = 0;
+        stats.finalTeam = player.team().name;
+        stats.presenceIntervals.add(TeamGameData.builder().team(player.team().name).joinTime(now).build());
+        stats.teams.add(TeamGameData.builder().team(player.team().name).joinTime(now).build());
     }
 
     public void recordLeave(Player player) {
-        var now = System.currentTimeMillis();
-        PlayerGameStats stats = playerStatsCache.get(player.uuid());
+        var stats = playerStatsCache.get(player.uuid());
+        if (stats == null || stats.presenceIntervals.isEmpty() || stats.presenceIntervals.getLast().leaveTime != 0) return;
+        long now = System.currentTimeMillis();
+        closePresence(stats, now);
+        stats.leaveTime = now;
+        stats.finalTeam = player.team().name;
+        if (!stats.teams.isEmpty()) stats.teams.getLast().leaveTime = now;
+    }
 
-        if (stats != null) {
-            stats.setLeaveTime(now);
-            stats.finalTeam = player.team().name;
-
-            if (!stats.teams.isEmpty()) {
-                stats.teams.getLast().setLeaveTime(now);
+    private static void closePresence(PlayerGameStats stats, long end) {
+        if (!stats.presenceIntervals.isEmpty()) {
+            var interval = stats.presenceIntervals.getLast();
+            if (interval.leaveTime == 0) {
+                interval.leaveTime = end;
+                stats.presentMs += Math.max(0, end - interval.joinTime);
             }
         }
     }
@@ -100,15 +141,32 @@ public class GameDataService {
     }
 
     public void finishGame(Team winner, FinishReason finishReason) {
-        finishGameResult(winner, finishReason);
+        finishGameAsync(winner, finishReason).exceptionally(error -> {
+            Log.err("[Stats] Failed to persist completed match", error);
+            return Optional.empty();
+        });
     }
 
     /**
+     * Legacy synchronous persistence API. Internal gameplay uses finishGameAsync.
      * Finishes the current game and returns the persisted snapshot to integrations
      * that need to correlate a match with an external settlement operation.
      * The legacy void method above intentionally remains for compatibility.
      */
+    @Deprecated
     public Optional<GameData> finishGameResult(Team winner, FinishReason finishReason) {
+        var result = finishSnapshot(winner, finishReason);
+        result.ifPresent(gameDataRepository::saveOnce);
+        return result;
+    }
+
+    public CompletionStage<Optional<GameData>> finishGameAsync(Team winner, FinishReason reason) {
+        var result = finishSnapshot(winner, reason);
+        if (result.isEmpty()) return CompletableFuture.completedFuture(result);
+        return gameDataRepository.saveOnceAsync(result.get()).thenApply(saved -> saved ? result : Optional.empty());
+    }
+
+    private Optional<GameData> finishSnapshot(Team winner, FinishReason finishReason) {
         var now = System.currentTimeMillis();
 
         if (currentBag == null) return Optional.empty();
@@ -124,7 +182,10 @@ public class GameDataService {
         markPlayersPlayedToEnd();
 
         GameData finished = currentBag;
-        gameDataRepository.save(finished);
+        for (var stats : finished.playerStats) {
+            closePresence(stats, now);
+            if (!stats.teams.isEmpty() && stats.teams.getLast().leaveTime == 0) stats.teams.getLast().leaveTime = now;
+        }
         currentBag = null;
         playerStatsCache.clear();
         return Optional.of(finished);
@@ -139,8 +200,29 @@ public class GameDataService {
             var stats = playerStatsCache.get(player.uuid());
             if (stats != null) {
                 stats.setFinalTeam(player.team().name);
+                // V1 outcomes use the final team; historical team intervals remain separate.
+                if (!stats.presenceIntervals.isEmpty() && stats.presenceIntervals.getLast().leaveTime == 0) {
+                    stats.presenceIntervals.getLast().team = player.team().name;
+                }
             }
         });
+    }
+
+    /** Team assignments happen in many places (observer mode, admin commands, game modes), so they are sampled. */
+    public void syncTeams() {
+        if (currentBag == null || Groups.player == null) return;
+        Groups.player.each(this::syncTeam);
+    }
+
+    public void syncTeam(Player player) {
+        var stats = playerStatsCache.get(player.uuid());
+        if (stats == null || stats.teams.isEmpty()) return;
+        var current = stats.teams.getLast();
+        String team = player.team().name;
+        if (current.leaveTime != 0 || team.equals(current.team)) return;
+        long now = System.currentTimeMillis();
+        current.leaveTime = now;
+        stats.teams.add(TeamGameData.builder().team(team).joinTime(now).build());
     }
 
     private VictoryType resolveVictoryType(Team winner) {
@@ -162,7 +244,7 @@ public class GameDataService {
         if (isMiniHexedServer() || configIsHexedMode(mode)) {
             return GameStatsCategory.HEXED;
         }
-        if (eventGame) {
+        if (eventGame || "event".equals(config.server.name)) {
             return GameStatsCategory.EVENT;
         }
         if (rules != null && rules.waves) {
@@ -251,22 +333,34 @@ public class GameDataService {
         }
     }
 
+    /** Until statistics are enabled, the legacy rule stands: record only when no lifecycle game is running. */
+    private boolean acceptsExternalHistory() {
+        return externalOwner() || !config.statistics.enabled && currentBag == null;
+    }
+
+    /** The owner switch is ignored while statistics are off, so it can be set ahead of the rollout. */
+    private boolean externalOwner() {
+        return config.statistics.enabled && "external".equals(config.statistics.historyOwner);
+    }
+
     /** Records a plugin-owned match without taking over the legacy current-game lifecycle. */
     public boolean recordMatch(MatchHistoryRecord record) {
-        if (record == null || currentBag != null) return false;
+        if (record == null || !acceptsExternalHistory()) return false;
         return gameDataRepository.saveOnce(buildGameData(record));
     }
 
     public CompletionStage<Boolean> recordMatchAsync(MatchHistoryRecord record) {
-        if (record == null || currentBag != null) {
-            return java.util.concurrent.CompletableFuture.completedFuture(false);
+        if (record == null || !acceptsExternalHistory()) {
+            return CompletableFuture.completedFuture(false);
         }
         return gameDataRepository.saveOnceAsync(buildGameData(record));
     }
 
     private GameData buildGameData(MatchHistoryRecord record) {
-        GameStatsCategory statsCategory = resolveStatsCategory(record.mode(), false);
+        GameStatsCategory statsCategory = record.mode() != null && record.mode().toLowerCase(Locale.ROOT).contains("hexed")
+                ? GameStatsCategory.HEXED : GameStatsCategory.PVP;
         GameData game = GameData.builder()
+                .serverId(config.server.name)
                 .gameMode(record.mode())
                 .matchId(record.matchId())
                 .serverName(resolveServerName())
@@ -281,14 +375,22 @@ public class GameDataService {
                 .victoryType(record.winnerUuid() == null ? VictoryType.INTERRUPTED : VictoryType.PVP_WIN)
                 .build();
         for (var participant : record.participants()) {
+            // Unknown times mean the whole match; known ones are kept inside it.
+            long joined = participant.joinedAt() > 0 ? Math.clamp(participant.joinedAt(), record.startedAt(), record.endedAt())
+                    : record.startedAt();
+            long left = participant.leftAt() > 0 ? Math.clamp(participant.leftAt(), joined, record.endedAt())
+                    : record.endedAt();
             game.playerStats.add(PlayerGameStats.builder()
                     .uuid(participant.uuid())
+                    .participantUuid(participant.uuid())
                     .nickname(participant.nickname() == null ? "Unknown" : participant.nickname())
                     .placement(participant.placement())
                     .isWinner(participant.winner())
                     .playedToEnd(participant.playedToEnd())
-                    .joinTime(record.startedAt())
-                    .leaveTime(record.endedAt())
+                    .joinTime(joined)
+                    .leaveTime(left)
+                    .presenceIntervals(new ArrayList<>(List.of(TeamGameData.builder().joinTime(joined).leaveTime(left).build())))
+                    .presentMs(left - joined)
                     .build());
         }
         return game;

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 
 from xcore_discord_bot.dto import BanRecord, MuteRecord, PlayerRecord
@@ -128,6 +129,53 @@ def test_stats_embed_of_an_active_player() -> None:
     assert fields["⬡ Hexed rank"] == "**Veteran**\n22/25 wins to Devastator"
     assert fields["🎖️ Badges"] == "**Developer** (shown) · mystery"
     assert "🔒 Staff notes" not in fields
+
+
+def test_stats_embed_shows_participation_only_from_the_projection() -> None:
+    view = StatsView(player=PlayerRecord(pid=1, nickname="a"), placings=[])
+    legacy = GameStats(games=10, wins=4)
+    detailed = GameStats(games=10, wins=4, left=3, streak=2, detailed=True)
+
+    assert (
+        "Left early"
+        not in _fields(build_stats_embed(replace(view, games=legacy)))["🎮 Games"]
+    )
+    assert _fields(build_stats_embed(replace(view, games=detailed)))[
+        "🎮 Games"
+    ].endswith("Left early: 3 · Win streak: 2")
+
+
+def test_stats_embed_says_an_empty_projection_is_being_updated() -> None:
+    view = StatsView(player=PlayerRecord(pid=1, nickname="a"), placings=[])
+    games = GameStats(games=0, wins=0, detailed=True, updating=True)
+
+    assert _fields(build_stats_embed(replace(view, games=games)))["🎮 Games"].split(
+        "\n"
+    ) == ["No recorded games yet", "Statistics are being recalculated."]
+
+
+def test_stats_embed_shows_combat_figures_only_from_the_legacy_reader() -> None:
+    view = StatsView(player=PlayerRecord(pid=1, nickname="a"), placings=[])
+    legacy = GameStats(games=10, wins=4, blocks_destroyed=7, units_destroyed=3)
+    detailed = GameStats(
+        games=10,
+        wins=4,
+        blocks_built=5,
+        blocks_destroyed=7,
+        units_destroyed=3,
+        detailed=True,
+    )
+
+    assert _fields(build_stats_embed(replace(view, games=legacy)))["🧱 Building"].split(
+        "\n"
+    ) == [
+        "Blocks: `0` built · `0` taken apart · `7` lost",
+        "Units: `0` produced · `3` lost",
+    ]
+    assert (
+        _fields(build_stats_embed(replace(view, games=detailed)))["🧱 Building"]
+        == "Built: `5` · Deconstructed: `0`"
+    )
 
 
 def test_stats_embed_of_a_new_player_leaves_the_empty_sections_out() -> None:

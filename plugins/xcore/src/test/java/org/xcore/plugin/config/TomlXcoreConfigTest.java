@@ -4,8 +4,26 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class TomlXcoreConfigTest {
+
+    @Test
+    @DisplayName("history_owner is trimmed and lowercased, blank means map, anything else stops the boot")
+    void historyOwner_isNormalizedOrRejected() {
+        TomlXcoreConfig toml = new TomlXcoreConfig();
+        toml.statistics.historyOwner = " External ";
+        toml.normalize();
+        assertThat(toml.statistics.historyOwner).isEqualTo("external");
+
+        toml.statistics.historyOwner = " ";
+        toml.normalize();
+        assertThat(toml.statistics.historyOwner).isEqualTo("map");
+
+        toml.statistics.historyOwner = "hexed";
+        assertThatThrownBy(toml::normalize).isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("statistics.history_owner");
+    }
 
     @Test
     @DisplayName("fresh instance has expected default values")

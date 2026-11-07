@@ -39,10 +39,18 @@ export type ModeStatsSummaryDTO = {
   averageWave: number;
   bestPlacement: number;
   top3Finishes: number;
+  left?: number;
+  streak?: number;
+  bestStreak?: number;
+  playMs?: number;
 };
 
 export type PlayerAggregateOverview = {
+  status?: "ready" | "pending";
+  updating?: boolean;
   overall: {
+    left?: number;
+    streak?: number;
     gamesPlayed: number;
     gamesWon: number;
     blocksBuilt: number;

@@ -64,9 +64,7 @@ public class PluginEventService {
         subscriptions.on(GameOverEvent.class, gameLifecycleHandler::onGameOver);
         subscriptions.on(String.class, gameLifecycleHandler::onWorldReload);
 
-        subscriptions.on(BlockBuildBeginEvent.class, gameDataHandler::onBlockBuildBegin);
         subscriptions.on(BlockBuildEndEvent.class, gameDataHandler::onBlockBuild);
-        subscriptions.on(PickupEvent.class, gameDataHandler::onPickup);
 
         if (ServerControl.instance != null) {
             serverControl = ServerControl.instance;

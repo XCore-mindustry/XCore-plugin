@@ -65,6 +65,7 @@ class MiniPvPRatingSettlerTest {
         playerRepo = mock(PlayerDataRepository.class);
         displayRefresh = mock(PlayerDisplayRefreshService.class);
         gameDataService = mock(GameDataService.class);
+        when(gameDataService.recordMatchAsync(any())).thenReturn(java.util.concurrent.CompletableFuture.completedFuture(true));
 
         TomlXcoreConfig config = new TomlXcoreConfig();
         config.server.name = "mini-pvp";
@@ -232,7 +233,7 @@ class MiniPvPRatingSettlerTest {
         verify(displayRefresh).refreshAll();
 
         var history = org.mockito.ArgumentCaptor.forClass(MatchHistoryRecord.class);
-        verify(gameDataService).recordMatch(history.capture());
+        verify(gameDataService).recordMatchAsync(history.capture());
         assertThat(history.getValue().participants()).hasSize(4);
 
         // Exactly once: a second call for the same match does nothing.
@@ -253,7 +254,7 @@ class MiniPvPRatingSettlerTest {
         assertThat(settler.settle(Team.sharded).join()).isFalse();
         assertThat(ladder.rating("p1")).isEqualTo(rating);
         assertThat(ladder.standing("p1").matches()).isEqualTo(1);
-        verify(gameDataService, times(1)).recordMatch(any());
+        verify(gameDataService, times(1)).recordMatchAsync(any());
         verify(displayRefresh, times(1)).refreshAll();
     }
 

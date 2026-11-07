@@ -87,3 +87,8 @@ stats-button-ban = Ban
 stats-button-mute = Mute
 stats-button-history = History
 stats-button-actions = Actions
+
+stats-rebuilding = Statistics are being recalculated.
+stats-participation = Left early: { $left } · Win streak: { $streak }
+stats-building-counted = Built: `{ NUMBER($built, useGrouping: 1) }` · Deconstructed: `{ NUMBER($deconstructed, useGrouping: 1) }`
+stats-completed = Completed: { $count } of { $games }

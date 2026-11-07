@@ -681,6 +681,25 @@ describe("XCore Stats Service - Safe Public DTO Privacy and Queries", () => {
   });
 
   // 3. Player Profile & Aggregations
+  it("reads materialized profile figures without aggregating legacy games", async () => {
+    const previous = process.env.XCORE_STATS_MATERIALIZED;
+    process.env.XCORE_STATS_MATERIALIZED = "true";
+    try {
+      const projectedDb = createMockDb({
+        players: [{ pid: 101, uuid: "materialized-player", nickname: "Projected" }],
+        player_totals: [{ _id: "materialized-player", schema_version: 1, status: "ready",
+          all: { games: 123, wins: 45 }, modes: {}, rebuild: { dirty: false } }],
+      });
+      const profile = await getPlayerProfile(101, projectedDb);
+      expect(profile?.overview.overall.gamesPlayed).toBe(123);
+      expect(profile?.overview.status).toBe("ready");
+      expect(JSON.stringify(profile)).not.toContain("materialized-player");
+    } finally {
+      if (previous === undefined) delete process.env.XCORE_STATS_MATERIALIZED;
+      else process.env.XCORE_STATS_MATERIALIZED = previous;
+    }
+  });
+
   describe("getPlayerProfile & Aggregations", () => {
     it("returns complete profile with aggregated games_v2 overview and ladder standings", async () => {
       const profile = await getPlayerProfile(101, db);

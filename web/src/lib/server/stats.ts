@@ -1,4 +1,5 @@
 import "server-only";
+import { overviewFromTotals, readTotals } from "./player-totals";
 import { ObjectId, type Db, type Document } from "mongodb";
 import { getGameDb } from "./db";
 import type {
@@ -252,7 +253,20 @@ export async function getPlayerProfile(pid: number, db?: Db): Promise<PlayerProf
 
   const playerUuid = String(playerDoc.uuid ?? "");
 
-  // 1. Aggregate overview across games_v2 (matching GameDataRepository logic)
+  const materialized = process.env.XCORE_STATS_MATERIALIZED === "true";
+  const totals = materialized && playerUuid
+    ? await readTotals(
+        (uuid) => database.collection<Document & { _id: string }>("player_totals").findOne({ _id: uuid }, { maxTimeMS: PUBLIC_QUERY_TIMEOUT_MS }),
+        async () => {
+          const backfill = await database.collection<Document & { _id: string }>("settings")
+            .findOne({ _id: "player_totals_backfill" }, { maxTimeMS: PUBLIC_QUERY_TIMEOUT_MS });
+          return backfill === null || backfill.done === true;
+        },
+        playerUuid,
+      )
+    : null;
+
+  // Temporary legacy reader for a coordinated rollout.
   let overall = {
     gamesPlayed: 0,
     gamesWon: 0,
@@ -269,7 +283,7 @@ export async function getPlayerProfile(pid: number, db?: Db): Promise<PlayerProf
     HEXED: { ...EMPTY_MODE_STATS },
   };
 
-  if (playerUuid) {
+  if (playerUuid && !materialized) {
     const [overallAgg, modeAgg] = await Promise.all([
       gamesCol
         .aggregate([
@@ -424,7 +438,7 @@ export async function getPlayerProfile(pid: number, db?: Db): Promise<PlayerProf
     onlineServer: playerDoc.online ? (playerDoc.online_server ? String(playerDoc.online_server) : null) : null,
     createdAt: safeIsoDate(playerDoc.created_at ?? playerDoc.created_model_time),
     standings: ladderStandings,
-    overview: {
+    overview: materialized ? overviewFromTotals(totals) : {
       overall,
       pvp: modeStatsMap.PVP ?? { ...EMPTY_MODE_STATS },
       survival: modeStatsMap.SURVIVAL ?? { ...EMPTY_MODE_STATS },
@@ -1037,12 +1051,13 @@ export async function getMatchDetail(
   if (Array.isArray(gameDoc?.player_stats)) {
     for (const ps of gameDoc.player_stats) {
       if (ps.uuid) {
+        const previous = inGameStatsMap.get(String(ps.uuid));
         inGameStatsMap.set(String(ps.uuid), {
-          blocksBuilt: safeInt(ps.blocks_built),
-          blocksDeconstructed: safeInt(ps.blocks_deconstructed),
-          blocksDestroyed: safeInt(ps.blocks_destroyed),
-          unitsProduced: safeInt(ps.units_produced),
-          unitsDestroyed: safeInt(ps.units_destroyed),
+          blocksBuilt: (previous?.blocksBuilt ?? 0) + safeInt(ps.blocks_built),
+          blocksDeconstructed: (previous?.blocksDeconstructed ?? 0) + safeInt(ps.blocks_deconstructed),
+          blocksDestroyed: (previous?.blocksDestroyed ?? 0) + safeInt(ps.blocks_destroyed),
+          unitsProduced: (previous?.unitsProduced ?? 0) + safeInt(ps.units_produced),
+          unitsDestroyed: (previous?.unitsDestroyed ?? 0) + safeInt(ps.units_destroyed),
           placement: ps.placement !== undefined && ps.placement !== null ? safeInt(ps.placement) : undefined,
           isWinner: Boolean(ps.isWinner),
         });

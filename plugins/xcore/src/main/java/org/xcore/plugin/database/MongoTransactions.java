@@ -52,6 +52,15 @@ public class MongoTransactions {
         }
     }
 
+    /** Strict atomic boundary: never silently replay a partial operation without a session. */
+    public <T> T runRequired(Function<ClientSession, T> body) {
+        if (client == null) throw new IllegalStateException("MongoDB transactions require a client and replica set");
+        try (ClientSession session = client.startSession()) {
+            return session.withTransaction(() -> body.apply(session), com.mongodb.TransactionOptions.builder()
+                    .readConcern(com.mongodb.ReadConcern.SNAPSHOT).writeConcern(com.mongodb.WriteConcern.MAJORITY).build());
+        }
+    }
+
     private static boolean isUnsupported(MongoException e) {
         if (e instanceof MongoCommandException command && command.getErrorCode() == ILLEGAL_OPERATION) {
             return true;

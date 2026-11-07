@@ -1,21 +1,30 @@
 package org.xcore.plugin.model;
 
 public record ModeStatsSummary(
-        int gamesPlayed,
-        int gamesWon,
+        long gamesPlayed,
+        long gamesWon,
         int bestWave,
         int averageWave,
         int bestPlacement,
-        int top3Finishes
+        long top3Finishes,
+        long left,
+        long streak,
+        long bestStreak,
+        long playMs,
+        boolean completedOnly
 ) {
 
+    public ModeStatsSummary(long games, long wins, int bestWave, int averageWave, int bestPlacement, long top3) {
+        this(games, wins, bestWave, averageWave, bestPlacement, top3, 0, 0, 0, 0, false);
+    }
     public static final ModeStatsSummary EMPTY = new ModeStatsSummary(0, 0, 0, 0, 0, 0);
 
     public int winRatePercent() {
-        if (gamesPlayed <= 0) {
+        long denominator = completedOnly ? gamesPlayed - left : gamesPlayed;
+        if (denominator <= 0) {
             return 0;
         }
-        return Math.round((gamesWon * 100f) / gamesPlayed);
+        return (int)Math.round((gamesWon * 100d) / denominator);
     }
 
     public boolean hasData() {
