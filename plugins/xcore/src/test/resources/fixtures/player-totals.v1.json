@@ -1,0 +1,12 @@
+{
+  "_id": "fixture-player", "schema_version": 1, "rules_version": 1, "revision": 9,
+  "status": "ready", "updated_at": 1000000, "rebuild": {"dirty": false},
+  "all": {"games": 8, "wins": 4, "losses": 2, "left": 2, "blocks_built": 3000000000, "blocks_deconstructed": 50, "streak": 1, "best_streak": 3, "play_ms": 600000},
+  "modes": {
+    "PVP": {"games": 4, "wins": 2, "losses": 1, "left": 1, "streak": 0, "best_streak": 2},
+    "SURVIVAL": {"games": 2, "wins": 1, "losses": 0, "left": 1, "wave_sum": 42, "wave_n": 1, "best_wave": 42},
+    "HEXED": {"games": 1, "wins": 1, "losses": 0, "left": 0, "best_place": 1, "top3": 1, "place_sum": 1, "place_n": 1},
+    "EVENT": {"games": 1, "wins": 0, "losses": 1, "left": 0}
+  },
+  "recent": [{"game_id": "000000000000000000000001", "ended_at": 1000000, "category": "HEXED", "outcome": "WIN", "map_id": null, "mode": "hexedcore"}]
+}

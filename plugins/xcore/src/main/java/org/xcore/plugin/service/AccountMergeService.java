@@ -218,7 +218,13 @@ public class AccountMergeService {
                 .build();
 
         // 2. Execute atomic transactional merge with MongoDB ClientSession
-        MergeExecutionOutcome outcome = executeAtomicMerge(oldSourceUuid, sourceBefore, targetBefore, sourceWorking, targetWorking, request, actor);
+        MergeExecutionOutcome outcome;
+        try {
+            outcome = executeAtomicMerge(oldSourceUuid, sourceBefore, targetBefore, sourceWorking, targetWorking, request, actor);
+        } catch (IllegalStateException e) {
+            // The non-transactional fallback refuses by throwing, like the transaction does inside withTransaction.
+            return MergeResult.failure(e.getMessage());
+        }
         if (!outcome.success()) {
             return MergeResult.failure(outcome.errorMessage());
         }
@@ -333,12 +339,15 @@ public class AccountMergeService {
             MergeRequest request,
             AuditActor actor
     ) {
+        if (config.statistics.enabled && mongoClient == null) {
+            return MergeExecutionOutcome.failure("Materialized statistics require a transactional account merge");
+        }
         if (mongoClient != null) {
             try (ClientSession session = mongoClient.startSession()) {
                 try {
                     return session.withTransaction(() -> executeMergeInSession(session, oldSourceUuid, sourceBefore, targetBefore, sourceWorking, targetWorking, request, actor));
                 } catch (MongoException ex) {
-                    if (isTransactionUnsupportedException(ex)) {
+                    if (!config.statistics.enabled && isTransactionUnsupportedException(ex)) {
                         Log.warn("[AccountMerge] MongoDB transactions unsupported (standalone mode?); falling back to non-transactional merge: @", ex.getMessage());
                         return executeMergeInSession(null, oldSourceUuid, sourceBefore, targetBefore, sourceWorking, targetWorking, request, actor);
                     }
@@ -349,7 +358,7 @@ public class AccountMergeService {
                     return MergeExecutionOutcome.failure("Transaction aborted: " + ex.getMessage());
                 }
             } catch (MongoException ex) {
-                if (isTransactionUnsupportedException(ex)) {
+                if (!config.statistics.enabled && isTransactionUnsupportedException(ex)) {
                     Log.warn("[AccountMerge] MongoDB sessions unsupported; falling back to non-transactional merge: @", ex.getMessage());
                     return executeMergeInSession(null, oldSourceUuid, sourceBefore, targetBefore, sourceWorking, targetWorking, request, actor);
                 }
@@ -371,6 +380,9 @@ public class AccountMergeService {
             MergeRequest request,
             AuditActor actor
     ) {
+        // Without a transaction a refusal after the first write would leave a half-merged account.
+        gameDataRepository.checkMerge(session, oldSourceUuid, targetWorking.uuid);
+
         // 1. Transfer active punishments
         boolean banTransferred = false;
         boolean muteTransferred = false;

@@ -1,6 +1,9 @@
 import type { Locale } from "./config";
 
 const en = {
+  deconstructed: "Deconstructed", left: "Left early", streak: "Win streak",
+  completed: "Completed",
+  statsRebuilding: "Statistics are being updated. The last completed totals may be shown.",
   skip: "Skip to content",
   navTop: "Top",
   navMe: "Account",
@@ -152,6 +155,9 @@ const en = {
 export type CommunityCopy = typeof en;
 
 const ru: CommunityCopy = {
+  deconstructed: "Разобрано", left: "Уходы", streak: "Серия побед",
+  completed: "Доиграно",
+  statsRebuilding: "Статистика обновляется. Могут отображаться последние рассчитанные итоги.",
   skip: "К содержанию",
   navTop: "Топ",
   navMe: "Аккаунт",
@@ -301,6 +307,9 @@ const ru: CommunityCopy = {
   unlinkFrom: "Отвязать Discord от",
 };
 const uk: CommunityCopy = {
+  deconstructed: "Розібрано", left: "Виходи", streak: "Серія перемог",
+  completed: "Завершено",
+  statsRebuilding: "Статистика оновлюється. Можуть відображатися останні розраховані підсумки.",
   skip: "До змісту",
   navTop: "Топ",
   navMe: "Акаунт",

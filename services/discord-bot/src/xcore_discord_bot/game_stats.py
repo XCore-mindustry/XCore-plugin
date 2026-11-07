@@ -20,8 +20,12 @@ HEXED = "HEXED"
 
 def _int(value: Any) -> int:
     try:
-        return 0 if value is None else round(float(value))
-    except (TypeError, ValueError):
+        return (
+            value
+            if isinstance(value, int)
+            else (0 if value is None else round(float(value)))
+        )
+    except (TypeError, ValueError, OverflowError):
         return 0
 
 
@@ -35,10 +39,17 @@ class ModeStats:
     average_wave: int = 0
     best_placement: int = 0
     top3: int = 0
+    left: int = 0
+    streak: int = 0
+    best_streak: int = 0
+    play_ms: int = 0
+    completed_only: bool = False
 
     @property
     def win_rate(self) -> int:
-        return win_rate(self.wins, self.games)
+        return win_rate(
+            self.wins, self.games - self.left if self.completed_only else self.games
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -55,6 +66,12 @@ class GameStats:
     pvp: ModeStats = ModeStats()
     survival: ModeStats = ModeStats()
     hexed: ModeStats = ModeStats()
+    left: int = 0
+    streak: int = 0
+    status: str = "ready"
+    updating: bool = False
+    # Left, streaks and play time exist only in the plugin's projection, not in the legacy rows.
+    detailed: bool = False
 
     @property
     def win_rate(self) -> int:
@@ -62,7 +79,7 @@ class GameStats:
 
 
 def win_rate(wins: int, games: int) -> int:
-    return round(wins * 100 / games) if games > 0 else 0
+    return (200 * wins + games) // (2 * games) if games > 0 else 0
 
 
 def _mode(row: dict[str, Any] | None) -> ModeStats:
@@ -129,12 +146,62 @@ def _pipeline(uuid: str) -> list[dict[str, Any]]:
     ]
 
 
+def game_stats_from_totals(doc: dict[str, Any] | None) -> GameStats:
+    """Read the plugin's projection; no participation policy is duplicated here."""
+    # Each stored game upserts its owners' totals, so a missing document means no games yet.
+    if doc is None:
+        return GameStats(detailed=True)
+    if doc.get("status") != "ready":
+        return GameStats(status="pending", updating=True, detailed=True)
+    if doc.get("schema_version") != 1:
+        raise ValueError("Unsupported player_totals schema")
+    overall = doc.get("all") or {}
+    modes = doc.get("modes") or {}
+
+    def mode(category: str) -> ModeStats:
+        row = modes.get(category) or {}
+        n = _int(row.get("wave_n"))
+        return ModeStats(
+            games=_int(row.get("games")),
+            wins=_int(row.get("wins")),
+            best_wave=_int(row.get("best_wave")),
+            average_wave=(2 * _int(row.get("wave_sum")) + n) // (2 * n) if n else 0,
+            best_placement=_int(row.get("best_place")),
+            top3=_int(row.get("top3")),
+            left=_int(row.get("left")),
+            streak=_int(row.get("streak")),
+            best_streak=_int(row.get("best_streak")),
+            play_ms=_int(row.get("play_ms")),
+            completed_only=category == SURVIVAL,
+        )
+
+    return GameStats(
+        games=_int(overall.get("games")),
+        wins=_int(overall.get("wins")),
+        blocks_built=_int(overall.get("blocks_built")),
+        blocks_deconstructed=_int(overall.get("blocks_deconstructed")),
+        pvp=mode(PVP),
+        survival=mode(SURVIVAL),
+        hexed=mode(HEXED),
+        left=_int(overall.get("left")),
+        streak=_int(overall.get("streak")),
+        updating=bool((doc.get("rebuild") or {}).get("dirty")),
+        detailed=True,
+    )
+
+
 class GameStatsStore:
-    def __init__(self, store: MongoStore) -> None:
+    def __init__(self, store: MongoStore, *, materialized: bool | None = None) -> None:
         self._store = store
+        self._materialized = (
+            store.stats_materialized if materialized is None else materialized
+        )
 
     async def overview(self, uuid: str) -> GameStats:
         if not uuid:
             return GameStats()
+        if self._materialized:
+            doc = await self._store.database["player_totals"].find_one({"_id": uuid})
+            return game_stats_from_totals(doc)
         cursor = await self._store.database[GAMES].aggregate(_pipeline(uuid))
         return game_stats_from_rows([row async for row in cursor])

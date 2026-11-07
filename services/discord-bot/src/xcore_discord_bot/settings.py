@@ -36,6 +36,7 @@ class Settings(BaseSettings):
     redis_consumer_name: str = "discord-bot"
     mongo_uri: str = "mongodb://127.0.0.1:27017"
     mongo_db_name: str = "xcore"
+    stats_materialized: bool = False
     rpc_timeout_ms: int = Field(default=5000, gt=0)
     # Channel ids of 0 disable the matching log.
     discord_bans_channel_id: int = 0

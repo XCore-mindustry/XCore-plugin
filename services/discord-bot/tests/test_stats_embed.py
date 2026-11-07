@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 
 from xcore_discord_bot.dto import BanRecord, MuteRecord, PlayerRecord
@@ -121,13 +122,26 @@ def test_stats_embed_of_an_active_player() -> None:
         "⬡ **Hexed** · 30 games · 5 wins · best `#1` · top 3 ×9",
     ]
     assert fields["🧱 Building"].split("\n") == [
-        "Blocks: `12,345` built · `1,200` taken apart · `300` lost",
-        "Units: `40` produced · `25` lost",
+        "Built: `12,345` · Deconstructed: `1,200`",
     ]
     assert fields["🏆 Season ratings"].count("\n\n") == 1
     assert fields["⬡ Hexed rank"] == "**Veteran**\n22/25 wins to Devastator"
     assert fields["🎖️ Badges"] == "**Developer** (shown) · mystery"
     assert "🔒 Staff notes" not in fields
+
+
+def test_stats_embed_shows_participation_only_from_the_projection() -> None:
+    view = StatsView(player=PlayerRecord(pid=1, nickname="a"), placings=[])
+    legacy = GameStats(games=10, wins=4)
+    detailed = GameStats(games=10, wins=4, left=3, streak=2, detailed=True)
+
+    assert (
+        "Left early"
+        not in _fields(build_stats_embed(replace(view, games=legacy)))["🎮 Games"]
+    )
+    assert _fields(build_stats_embed(replace(view, games=detailed)))[
+        "🎮 Games"
+    ].endswith("Left early: 3 · Win streak: 2")
 
 
 def test_stats_embed_of_a_new_player_leaves_the_empty_sections_out() -> None:

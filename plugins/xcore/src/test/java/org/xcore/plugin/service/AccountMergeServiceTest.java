@@ -222,6 +222,25 @@ class AccountMergeServiceTest {
     }
 
     @Test
+    @DisplayName("A refused redirect cycle writes nothing, even without a transaction")
+    void merge_redirectCycle_refusedBeforeAnyWrite() {
+        PlayerData source = createPlayer(10, "uuid-source", "OldPlayer", 120, 1400, 15);
+        PlayerData target = createPlayer(20, "uuid-target", "NewPlayer", 30, 1600, 10);
+        when(findService.playerData("10")).thenReturn(source);
+        when(findService.playerData("20")).thenReturn(target);
+        doThrow(new IllegalStateException("Target was merged into the source before"))
+                .when(gameDataRepository).checkMerge(isNull(), eq("uuid-source"), eq("uuid-target"));
+
+        var result = service.merge(new AccountMergeService.MergeRequest("10", "20", "test", null));
+
+        assertThat(result.success()).isFalse();
+        assertThat(result.message()).contains("merged into the source");
+        verify(playerDataRepository, never()).saveMergedPlayer(any(), any(), any());
+        verify(gameDataRepository, never()).reassignPlayerMatches(anyString(), anyString());
+        verifyNoInteractions(auditService);
+    }
+
+    @Test
     @DisplayName("Valid merge consolidates playtime, ratings, badges, and reassigns matches")
     void merge_validAccounts_mergesAllStatsCorrectly() {
         PlayerData source = createPlayer(10, "uuid-source", "OldPlayer", 120, 1400, 15);

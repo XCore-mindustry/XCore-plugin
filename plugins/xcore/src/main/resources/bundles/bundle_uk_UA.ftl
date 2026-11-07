@@ -1582,3 +1582,15 @@ admin-cmd-announcement-list = [accent]Активні оголошення ([gold
 admin-cmd-announcement-sent = [accent]Оголошення [white]'{ $key }'[accent] надіслано гравцям: [green]{ $count }[accent].
 admin-cmd-announcement-rotated = [accent]Надіслано оголошення з ротації: [white]'{ $key }'[accent].
 admin-cmd-announcement-skipped = [scarlet]Оголошення пропущено (вимкнено, немає гравців або гра не йде).
+
+
+# Materialized player statistics
+player-stats-rebuilding = Статистика перераховується.
+player-stats-participation = Виходи: { $left } · Серія перемог: { $streak }
+player-stats-recent = Останні матчі
+player-stats-outcome-win = Перемога
+player-stats-outcome-loss = Поразка
+player-stats-outcome-left = Вихід
+player-stats-outcome-not_counted = Не зараховано
+player-stats-mode-participation = Найкраща серія: { $streak } · Виходи: { $left } · У зарахованих матчах: { $minutes } хв
+player-stats-completed = Завершено: { $count } із { $games }

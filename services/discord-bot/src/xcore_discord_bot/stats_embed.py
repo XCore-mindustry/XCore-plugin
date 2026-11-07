@@ -146,6 +146,8 @@ def _discord(player: PlayerRecord, locale: str) -> str:
 def _games(games: GameStats | None, locale: str) -> str:
     if games is None:
         return t(locale, "stats-unavailable")
+    if games.status == "pending":
+        return t(locale, "stats-rebuilding")
     if games.games <= 0:
         return t(locale, "stats-games-none")
     lines = [
@@ -177,6 +179,15 @@ def _games(games: GameStats | None, locale: str) -> str:
                 average=games.survival.average_wave,
             )
         )
+    if games.survival.games > 0 and games.survival.completed_only:
+        lines.append(
+            t(
+                locale,
+                "stats-completed",
+                count=games.survival.games - games.survival.left,
+                games=games.survival.games,
+            )
+        )
     if games.hexed.games > 0:
         line = t(
             locale, "stats-games-hexed", games=games.hexed.games, wins=games.hexed.wins
@@ -190,36 +201,34 @@ def _games(games: GameStats | None, locale: str) -> str:
             )
             line += f" · {best}"
         lines.append(line)
+    lines += _projection_notes(games, locale)
     return "\n".join(lines)
+
+
+def _projection_notes(games: GameStats, locale: str) -> list[str]:
+    """Lines only the plugin's projection can fill; the legacy rows have no left or streaks."""
+    lines = []
+    if games.detailed:
+        lines.append(
+            t(locale, "stats-participation", left=games.left, streak=games.streak)
+        )
+    if games.updating:
+        lines.append(t(locale, "stats-rebuilding"))
+    return lines
 
 
 def _building(games: GameStats | None, locale: str) -> str | None:
     """What the player built and lost; left out until there is something to count."""
     if games is None:
         return None
-    blocks = games.blocks_built + games.blocks_deconstructed + games.blocks_destroyed
-    units = games.units_produced + games.units_destroyed
-    if blocks + units <= 0:
+    if games.blocks_built + games.blocks_deconstructed <= 0:
         return None
-    lines = [
-        t(
-            locale,
-            "stats-building-blocks",
-            built=games.blocks_built,
-            deconstructed=games.blocks_deconstructed,
-            destroyed=games.blocks_destroyed,
-        )
-    ]
-    if units > 0:
-        lines.append(
-            t(
-                locale,
-                "stats-building-units",
-                produced=games.units_produced,
-                destroyed=games.units_destroyed,
-            )
-        )
-    return "\n".join(lines)
+    return t(
+        locale,
+        "stats-building-counted",
+        built=games.blocks_built,
+        deconstructed=games.blocks_deconstructed,
+    )
 
 
 def _hexed_rank(player: PlayerRecord, locale: str) -> str | None:

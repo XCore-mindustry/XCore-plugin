@@ -804,7 +804,9 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
         // What the player has done so far: wins out of games, so the rate reads at a glance, and blocks built.
         if (model.isStatsLoading()) {
             left.add(Kit.note(card, t(local, "player-stats-loading")));
-        } else if (model.stats() != null) {
+        } else if (model.stats() == null || hasNoGames(model.stats())) {
+            left.add(Kit.note(card, t(local, "player-stats-no-stats")));
+        } else if ("ready".equals(model.stats().status())) {
             AggregatedPlayerStats overall = model.stats().overall();
             NumberFormat nf = Localization.integers(local != null ? local.getLocale() : Locale.ROOT);
             left.add(Kit.card(card, (content, inner) -> content.add(Kit.text(
@@ -812,8 +814,19 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
                             + t(local, "player-stats-all-modes-hint") + "\n"
                             + t(local, "player-stats-blocks-built") + " [lime]" + nf.format(overall.blocksBuilt()) + "[]",
                     inner)).row()));
-        } else {
-            left.add(Kit.note(card, t(local, "player-stats-no-stats")));
+        }
+
+        if (!model.isStatsLoading() && model.stats() != null) {
+            PlayerStatsOverview stats = model.stats();
+            if (stats.updating()) left.add(Kit.note(card, t(local, "player-stats-rebuilding")));
+            if ("ready".equals(stats.status()) && stats.detailed() && !hasNoGames(stats)) {
+                left.add(Kit.note(card, t(local, "player-stats-participation",
+                        args("left", stats.left(), "streak", stats.streak()))));
+                if (!stats.recent().isEmpty()) left.add(Kit.card(card, (content, inner) -> {
+                    content.add(Kit.text(t(local, "player-stats-recent"), inner)).row();
+                    for (var match : stats.recent()) content.add(Kit.text(recentMatch(match, local, inner), inner)).row();
+                }));
+            }
         }
 
         // One card per section the server's modes contribute (rating ladders).
@@ -830,27 +843,6 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
             }));
         }
 
-        // The rank of the old Hexed mode and the way to the next one.
-        right.add(Kit.card(card, (content, inner) -> {
-            HexedRank rank = model.hexedRank() != null ? model.hexedRank() : HexedRank.values()[0];
-            String rankName = t(local, "hexed-ranks-" + rank.name(), rank.name());
-            String points = t(local, "player-stats-hexed-points", args("points", model.hexedPoints()));
-            String progress;
-            if (!rank.hasNext()) {
-                progress = t(local, "player-stats-max-rank");
-            } else {
-                int remaining = Math.max(0, rank.next.requirements.wins() - model.hexedPoints());
-                String nextRank = t(local, "hexed-ranks-" + rank.next.name(), rank.next.name());
-                progress = renderHexedProgressBar(rank, model.hexedPoints(), 14, local) + "  "
-                        + t(local, "player-stats-hexed-wins-left", args("wins", remaining, "rank", nextRank));
-            }
-            content.add(Kit.text(t(local, "player-stats-hexed-rank") + " " + (rank.tag != null ? rank.tag : "")
-                    + " [white]" + rankName + "[] " + points + "\n"
-                    + t(local, "player-stats-hexed-leaderboard") + " [accent]"
-                    + (model.hexedTopRank() != null ? "#" + model.hexedTopRank() : "-") + "[]\n"
-                    + progress, inner)).row();
-        }));
-
         body.add(Kit.columns(screen, left, right)).row();
     }
 
@@ -861,6 +853,14 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
     private void stats(Ui.TableBuilder body, ProfileModel model, Screen screen, Localization local) {
         if (model.isStatsLoading()) {
             body.add(Kit.note(screen.cards(), t(local, "player-stats-loading"))).row();
+            return;
+        }
+        if (model.stats() == null || hasNoGames(model.stats())) {
+            body.add(Kit.note(screen.cards(), t(local, "player-stats-no-stats"))).row();
+            return;
+        }
+        if (!"ready".equals(model.stats().status())) {
+            body.add(Kit.note(screen.cards(), t(local, "player-stats-rebuilding"))).row();
             return;
         }
         float card = screen.card();
@@ -900,21 +900,30 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
                     + t(local, "player-stats-waves-summary",
                     args("best", nf.format(survival.bestWave()), "avg", nf.format(survival.averageWave())))
                     : t(local, "player-menu-player-no-mode-stats")));
+            if (survival.completedOnly() && survival.hasData()) modes.add(t(local, "player-stats-survival-summary") + " · "
+                    + t(local, "player-stats-completed", args("count", survival.gamesPlayed() - survival.left(), "games", survival.gamesPlayed())));
             ModeStatsSummary hexed = overview.hexed();
             modes.add("[purple]" + Iconc.star + "[] " + t(local, "player-stats-hexed-summary") + " "
                     + (hexed.hasData()
                     ? games(local, nf, hexed.gamesPlayed()) + SEPARATOR
                     + t(local, "player-stats-hexed-firsts",
-                    args("wins", nf.format(hexed.gamesWon()), "winRate", hexed.winRatePercent())) + SEPARATOR
-                    + t(local, "player-stats-hexed-top-placement",
-                    args("best", hexed.bestPlacement(), "top3", hexed.top3Finishes()))
+                    args("wins", nf.format(hexed.gamesWon()), "winRate", hexed.winRatePercent()))
+                    + (hexed.bestPlacement() > 0 ? SEPARATOR + t(local, "player-stats-hexed-top-placement",
+                    args("best", hexed.bestPlacement(), "top3", hexed.top3Finishes())) : "")
                     : t(local, "player-menu-player-no-mode-stats")));
-            int otherGames = overview.otherGamesPlayed();
+            long otherGames = overview.otherGamesPlayed();
             if (otherGames > 0) {
-                int otherWins = overview.otherGamesWon();
+                long otherWins = overview.otherGamesWon();
                 modes.add("[accent]" + Iconc.effect + "[] " + t(local, "player-stats-other-summary") + " "
                         + games(local, nf, otherGames) + SEPARATOR + t(local, "player-stats-mode-wins",
                         args("wins", nf.format(otherWins), "winRate", Math.round(otherWins * 100f / otherGames))));
+            }
+            var summaries = List.of(pvp, survival, hexed);
+            var labels = List.of("player-stats-pvp-summary", "player-stats-survival-summary", "player-stats-hexed-summary");
+            for (int i = 0; i < summaries.size(); i++) {
+                var summary = summaries.get(i);
+                if (overview.detailed() && summary.hasData()) modes.add(t(local, labels.get(i)) + " · " + t(local, "player-stats-mode-participation",
+                        args("streak", summary.bestStreak(), "left", summary.left(), "minutes", summary.playMs() / 60_000)));
             }
             for (int i = 0; i < modes.size(); i++) {
                 String mode = modes.get(i);
@@ -933,18 +942,7 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
                             .append(t(local, "player-stats-blocks-built")).append(" [lime]")
                             .append(nf.format(overall.blocksBuilt())).append("[]\n")
                             .append(t(local, "player-stats-blocks-deconstructed")).append(" [orange]")
-                            .append(nf.format(overall.blocksDeconstructed())).append("[]\n")
-                            .append(t(local, "player-stats-blocks-destroyed")).append(" [scarlet]")
-                            .append(nf.format(overall.blocksDestroyed())).append("[]\n")
-                            .append(renderBlockRatioBar(overall.blocksBuilt(), overall.blocksDeconstructed(),
-                                    overall.blocksDestroyed(), 10))
-                            .append("  ").append(t(local, "player-stats-ratio-legend"));
-                    if (overall.unitsProduced() > 0 || overall.unitsDestroyed() > 0) {
-                        text.append('\n').append(t(local, "player-stats-units-produced")).append(" [sky]")
-                                .append(nf.format(overall.unitsProduced())).append("[]\n")
-                                .append(t(local, "player-stats-units-lost")).append(" [scarlet]")
-                                .append(nf.format(overall.unitsDestroyed())).append("[]");
-                    }
+                            .append(nf.format(overall.blocksDeconstructed())).append("[]");
                     content.add(Kit.text(text.toString(), inner)).row();
                 }));
 
@@ -952,7 +950,22 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
     }
 
     /** "Wins: 777 of 1,736 | 45% win rate": the rate next to both numbers it comes from. */
-    private static String victories(Localization local, NumberFormat nf, int wins, int games, int winRate) {
+    /** A ready projection without games: a newcomer, or someone whose games all were excluded. */
+    private static boolean hasNoGames(PlayerStatsOverview stats) {
+        return "ready".equals(stats.status()) && stats.overall().gamesPlayed() == 0;
+    }
+
+    /** The map, then mode · result · date; map and mode names come from the database, so they are escaped. */
+    private static String recentMatch(PlayerStatsOverview.RecentMatch match, Localization local, float width) {
+        String outcome = match.outcome() == null ? "not_counted" : match.outcome().toLowerCase(Locale.ROOT);
+        String mode = match.mode() == null ? "" : "[lightgray]" + TextWidth.escape(match.mode()) + "[] · ";
+        String result = TextWidth.fit(mode + t(local, "player-stats-outcome-" + outcome)
+                + " · [lightgray]" + formatTimestamp(match.endedAt()) + "[]", width);
+        if (match.map() == null || match.map().isBlank()) return result;
+        return TextWidth.fit("[white]" + TextWidth.escape(match.map()) + "[]", width) + "\n" + result;
+    }
+
+    private static String victories(Localization local, NumberFormat nf, long wins, long games, int winRate) {
         return t(local, "player-stats-victories-value",
                 args("wins", nf.format(wins), "games", nf.format(games), "winRate", winRate));
     }

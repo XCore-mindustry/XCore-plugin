@@ -1519,3 +1519,14 @@ map-upload-date = Enviado em: [lightgray]{ $date }[] (UTC)
 map-upload-current-creator = [accent]{ $map }[] — { $creator }
 discord-link-menu-website = Abrir o site da conta
 commands-discord-link-website = [accent]Confirme a vinculação no site:[] { $url }
+
+# Materialized player statistics
+player-stats-rebuilding = Recalculando as estatísticas.
+player-stats-participation = Abandonos: { $left } · Sequência de vitórias: { $streak }
+player-stats-recent = Partidas recentes
+player-stats-outcome-win = Vitória
+player-stats-outcome-loss = Derrota
+player-stats-outcome-left = Abandono
+player-stats-outcome-not_counted = Não contada
+player-stats-mode-participation = Melhor sequência: { $streak } · Abandonos: { $left } · Em partidas contadas: { $minutes } min
+player-stats-completed = Concluídas: { $count } de { $games }

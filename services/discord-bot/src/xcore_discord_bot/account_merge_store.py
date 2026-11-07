@@ -165,6 +165,21 @@ class AccountMergeStore:
                 "and cannot receive a merge."
             )
 
+        # Statistics follow redirect_uuid chains; a target leading back to the source would loop.
+        seen: set[str] = set()
+        next_uuid = target_uuid
+        while next_uuid and next_uuid not in seen:
+            if next_uuid == source_uuid:
+                return (
+                    f"Target player #{target_pid} was merged into the source before. "
+                    "Merge in the other direction."
+                )
+            seen.add(next_uuid)
+            totals = await db["player_totals"].find_one(
+                {"_id": next_uuid}, session=session
+            )
+            next_uuid = str((totals or {}).get("redirect_uuid") or "").strip()
+
         online_pids = [
             pid
             for pid, doc in ((source_pid, source_raw), (target_pid, target_raw))
@@ -306,6 +321,27 @@ class AccountMergeStore:
                 session=session,
             )
             games_transferred = to_int(match_res.modified_count)
+            for uuid in (plan.source_uuid, plan.target_uuid):
+                await db["player_totals"].update_one(
+                    {"_id": uuid},
+                    {
+                        "$inc": {"revision": 1},
+                        "$set": {
+                            "rebuild.dirty": True,
+                            "rebuild.queued_at": int(
+                                datetime.now(UTC).timestamp() * 1000
+                            ),
+                        },
+                        "$setOnInsert": {"status": "pending", "schema_version": 1},
+                    },
+                    upsert=True,
+                    session=session,
+                )
+            await db["player_totals"].update_one(
+                {"_id": plan.source_uuid},
+                {"$set": {"redirect_uuid": plan.target_uuid}},
+                session=session,
+            )
             for collection in ("bans", "mutes"):
                 punishment_transfers[collection] = await self._transfer_punishment(
                     db, session, plan, collection

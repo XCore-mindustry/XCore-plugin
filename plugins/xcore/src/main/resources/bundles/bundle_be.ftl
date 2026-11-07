@@ -1533,3 +1533,14 @@ map-upload-current-creator = [accent]{ $map }[] — { $creator }
 
 discord-link-menu-website = Адкрыць сайт акаўнта
 commands-discord-link-website = [accent]Пацвердзіце прывязку на сайце:[] { $url }
+
+# Materialized player statistics
+player-stats-rebuilding = Статыстыка пералічваецца.
+player-stats-participation = Выхады: { $left } · Серыя перамог: { $streak }
+player-stats-recent = Апошнія матчы
+player-stats-outcome-win = Перамога
+player-stats-outcome-loss = Параза
+player-stats-outcome-left = Выхад
+player-stats-outcome-not_counted = Не залічана
+player-stats-mode-participation = Лепшая серыя: { $streak } · Выхады: { $left } · У залічаных матчах: { $minutes } хв
+player-stats-completed = Завершана: { $count } з { $games }

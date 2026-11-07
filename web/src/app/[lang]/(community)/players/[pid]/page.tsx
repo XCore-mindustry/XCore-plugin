@@ -65,9 +65,10 @@ async function Player({ lang, pid }: { lang: Locale; pid: number }) {
     ],
     [t.winRate, percent(overview.gamesWon, overview.gamesPlayed)],
     [t.built, count(overview.blocksBuilt)],
-    [t.destroyed, count(overview.blocksDestroyed)],
-    [t.units, count(overview.unitsDestroyed)],
+    [t.deconstructed, count(overview.blocksDeconstructed)],
   ];
+  // Only the materialized totals record leaving and streaks; the legacy aggregation leaves them out.
+  if (overview.left !== undefined) facts.push([t.left, count(overview.left)], [t.streak, count(overview.streak ?? 0)]);
   // The all-modes rate mixes PvP with survival and Hexed, where a win is much rarer; per mode it reads plainly.
   // Event games have no bucket of their own: they are what the three modes leave of the total.
   const otherGames = Math.max(0, overview.gamesPlayed - pvp.gamesPlayed - survival.gamesPlayed - hexed.gamesPlayed);
@@ -78,6 +79,7 @@ async function Player({ lang, pid }: { lang: Locale; pid: number }) {
       label: t.modeSurvival,
       games: survival.gamesPlayed,
       wins: survival.gamesWon,
+      ...(survival.left !== undefined ? { denominator: survival.gamesPlayed - survival.left } : {}),
       win: survival.bestWave ? `${t.winSurvival} · ${t.bestWave} ${count(survival.bestWave)}` : t.winSurvival,
     },
     { label: t.modeHexed, games: hexed.gamesPlayed, wins: hexed.gamesWon, win: t.winHexed },
@@ -130,7 +132,8 @@ async function Player({ lang, pid }: { lang: Locale; pid: number }) {
           </div>
           <section className="card" style={accent("gray")}>
             <Band as="h2" title={t.overall} />
-            <dl className="cx-facts cx-facts-wide">
+            {profile.overview.updating ? <p role="status" className="muted">{t.statsRebuilding}</p> : null}
+            {profile.overview.status !== "pending" ? <dl className="cx-facts cx-facts-wide">
               {facts.map(([label, value, note]) => (
                 <div key={label}>
                   <dt>{label}</dt>
@@ -140,7 +143,7 @@ async function Player({ lang, pid }: { lang: Locale; pid: number }) {
                   </dd>
                 </div>
               ))}
-            </dl>
+            </dl> : null}
             {overview.gamesPlayed ? <p className="cx-facts-note">{t.overallNote}</p> : null}
           </section>
           {modes.length ? (
@@ -151,13 +154,13 @@ async function Player({ lang, pid }: { lang: Locale; pid: number }) {
                   <div key={mode.label}>
                     <dt>{mode.label}</dt>
                     <dd>
-                      {percent(mode.wins, mode.games)}
+                      {percent(mode.wins, "denominator" in mode ? mode.denominator ?? mode.games : mode.games)}
                       <span className="muted">
                         {" "}
-                        {count(mode.wins)} {t.ofPlayers} {count(mode.games)}
+                        {count(mode.wins)} {t.ofPlayers} {count("denominator" in mode ? mode.denominator ?? mode.games : mode.games)}
                       </span>
                     </dd>
-                    <dd className="cx-fact-note">{mode.win}</dd>
+                    <dd className="cx-fact-note">{mode.win}{"denominator" in mode ? ` · ${t.completed}: ${count(mode.denominator ?? mode.games)} ${t.ofPlayers} ${count(mode.games)}` : ""}</dd>
                   </div>
                 ))}
               </dl>

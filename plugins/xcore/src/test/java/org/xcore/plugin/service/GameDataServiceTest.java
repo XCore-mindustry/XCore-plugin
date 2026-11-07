@@ -50,6 +50,8 @@ class GameDataServiceTest {
     @DisplayName("finishGame marks players on winning team before saving")
     void finishGameMarksWinningPlayersBeforeSaving() {
         var repository = mock(GameDataRepository.class);
+        org.mockito.Mockito.when(repository.saveOnceAsync(org.mockito.ArgumentMatchers.any()))
+                .thenReturn(java.util.concurrent.CompletableFuture.completedFuture(true));
         var config = config("mini-pvp");
         var service = new GameDataService(config, repository);
         var map = new MapData("Map", "map.msav", "Author", "pvp");
@@ -71,7 +73,7 @@ class GameDataServiceTest {
         assertThat(service.getCurrent()).isNull();
 
         var captor = ArgumentCaptor.forClass(GameData.class);
-        verify(repository).save(captor.capture());
+        verify(repository).saveOnceAsync(captor.capture());
         assertThat(captor.getValue().getWinningTeam()).isEqualTo(Team.sharded.name);
         assertThat(captor.getValue().getVictoryType()).isEqualTo(VictoryType.PVP_WIN);
         assertThat(captor.getValue().getStatsCategory()).isEqualTo(GameStatsCategory.PVP);
@@ -82,6 +84,8 @@ class GameDataServiceTest {
     @DisplayName("finishGame does not mark winners for derelict team")
     void finishGameDoesNotMarkWinnersForDerelictTeam() {
         var repository = mock(GameDataRepository.class);
+        org.mockito.Mockito.when(repository.saveOnceAsync(org.mockito.ArgumentMatchers.any()))
+                .thenReturn(java.util.concurrent.CompletableFuture.completedFuture(true));
         var config = config("mini-pvp");
         var service = new GameDataService(config, repository);
         var map = new MapData("Map", "map.msav", "Author", "pvp");
@@ -99,7 +103,7 @@ class GameDataServiceTest {
         assertThat(player.isWinner()).isFalse();
 
         var captor = ArgumentCaptor.forClass(GameData.class);
-        verify(repository).save(captor.capture());
+        verify(repository).saveOnceAsync(captor.capture());
         assertThat(captor.getValue().getWinningTeam()).isEqualTo(Team.derelict.name);
         assertThat(captor.getValue().getVictoryType()).isEqualTo(VictoryType.INTERRUPTED);
         assertThat(captor.getValue().getStatsCategory()).isEqualTo(GameStatsCategory.PVP);
@@ -131,6 +135,8 @@ class GameDataServiceTest {
     @DisplayName("finishGame stores wave metadata for survival defeat")
     void finishGameStoresWaveMetadataForSurvivalDefeat() {
         var repository = mock(GameDataRepository.class);
+        org.mockito.Mockito.when(repository.saveOnceAsync(org.mockito.ArgumentMatchers.any()))
+                .thenReturn(java.util.concurrent.CompletableFuture.completedFuture(true));
         var service = new GameDataService(config("server"), repository);
         var map = new MapData("Map", "map.msav", "Author", "survival");
 
@@ -144,7 +150,7 @@ class GameDataServiceTest {
         service.finishGame(Team.crux);
 
         var captor = ArgumentCaptor.forClass(GameData.class);
-        verify(repository).save(captor.capture());
+        verify(repository).saveOnceAsync(captor.capture());
         assertThat(captor.getValue().getWavesReached()).isEqualTo(42);
         assertThat(captor.getValue().getWinningTeam()).isEqualTo(Team.crux.name);
         assertThat(captor.getValue().getVictoryType()).isEqualTo(VictoryType.LOSE);
@@ -156,6 +162,8 @@ class GameDataServiceTest {
     @DisplayName("finishGame stores non-natural finish as not counted in stats")
     void finishGameStoresNonNaturalFinishAsNotCounted() {
         var repository = mock(GameDataRepository.class);
+        org.mockito.Mockito.when(repository.saveOnceAsync(org.mockito.ArgumentMatchers.any()))
+                .thenReturn(java.util.concurrent.CompletableFuture.completedFuture(true));
         var config = config("mini-pvp");
         var service = new GameDataService(config, repository);
         var map = new MapData("Map", "map.msav", "Author", "pvp");
@@ -167,7 +175,7 @@ class GameDataServiceTest {
         service.finishGame(null, FinishReason.RTV);
 
         var captor = ArgumentCaptor.forClass(GameData.class);
-        verify(repository).save(captor.capture());
+        verify(repository).saveOnceAsync(captor.capture());
         assertThat(captor.getValue().getFinishReason()).isEqualTo(FinishReason.RTV);
         assertThat(captor.getValue().isCountedInStats()).isFalse();
     }
@@ -206,6 +214,80 @@ class GameDataServiceTest {
 
         assertThat(service.getCurrent().getStatsCategory()).isEqualTo(GameStatsCategory.HEXED);
         assertThat(service.getCurrent().isRanked()).isTrue();
+    }
+
+    @Test
+    void reconnectReusesParticipantAndClosesEachIntervalOnlyOnce() {
+        var repository = mock(GameDataRepository.class);
+        org.mockito.Mockito.when(repository.saveOnceAsync(org.mockito.ArgumentMatchers.any()))
+                .thenReturn(java.util.concurrent.CompletableFuture.completedFuture(true));
+        var service = new GameDataService(config("mini-pvp"), repository);
+        state.rules.pvp = true;
+        service.startNewGame(new MapData("Map", "map.msav", "Author", "pvp"), "pvp", null);
+        var player = mock(mindustry.gen.Player.class);
+        org.mockito.Mockito.when(player.uuid()).thenReturn("reconnecting");
+        org.mockito.Mockito.when(player.plainName()).thenReturn("Name");
+        org.mockito.Mockito.when(player.team()).thenReturn(Team.sharded);
+        service.addPlayer(player);
+        service.addPlayer(player);
+        assertThat(service.getCurrent().playerStats).hasSize(1);
+        var stats = service.getStats("reconnecting");
+        stats.presenceIntervals.getLast().joinTime -= 120_000;
+        service.recordLeave(player);
+        long present = stats.presentMs;
+        service.recordLeave(player);
+        assertThat(stats.presentMs).isEqualTo(present);
+        service.addPlayer(player);
+        assertThat(stats.leaveTime).isZero();
+        assertThat(stats.presenceIntervals).hasSize(2);
+        service.finishGame(Team.sharded);
+        assertThat(stats.playedToEnd).isTrue();
+        assertThat(stats.presentMs).isGreaterThanOrEqualTo(120_000);
+    }
+
+    @Test
+    @DisplayName("syncTeam splits the team timeline only when the team changes")
+    void syncTeamSplitsTeamTimelineOnChange() {
+        var service = new GameDataService(config("mini-pvp"), mock(GameDataRepository.class));
+        service.startNewGame(new MapData("Map", "map.msav", "Author", "pvp"), "pvp", null);
+        var player = mock(mindustry.gen.Player.class);
+        org.mockito.Mockito.when(player.uuid()).thenReturn("switcher");
+        org.mockito.Mockito.when(player.plainName()).thenReturn("Name");
+        org.mockito.Mockito.when(player.team()).thenReturn(Team.sharded);
+        service.addPlayer(player);
+        var stats = service.getStats("switcher");
+
+        service.syncTeam(player);
+        assertThat(stats.teams).hasSize(1);
+
+        org.mockito.Mockito.when(player.team()).thenReturn(Team.crux);
+        service.syncTeam(player);
+        assertThat(stats.teams).extracting(t -> t.team).containsExactly(Team.sharded.name, Team.crux.name);
+        assertThat(stats.teams.getFirst().leaveTime).isEqualTo(stats.teams.getLast().joinTime);
+        assertThat(stats.presenceIntervals).hasSize(1);
+    }
+
+    @Test
+    @DisplayName("with statistics off, plugin-owned matches are recorded only while no lifecycle game runs")
+    void recordMatchKeepsLegacyRuleUntilStatisticsAreEnabled() {
+        var repository = mock(GameDataRepository.class);
+        org.mockito.Mockito.when(repository.saveOnce(org.mockito.ArgumentMatchers.any())).thenReturn(true);
+        var config = config("hexedcore");
+        var service = new GameDataService(config, repository);
+        var record = new org.xcore.plugin.integration.gamehistory.MatchHistoryRecord("m1", "hexedcore", "1", 1, 2,
+                "NATURAL", "a", List.of(new org.xcore.plugin.integration.gamehistory.MatchHistoryRecord
+                        .MatchParticipantRecord("a", "A", 1, true, true)), true);
+
+        assertThat(service.recordMatch(record)).isTrue();
+
+        service.startNewGame(new MapData("Map", "map.msav", "Author", "pvp"), "pvp", null);
+        assertThat(service.recordMatch(record)).isFalse();
+        // The owner may be set ahead of the rollout; it takes effect only with statistics on.
+        config.statistics.historyOwner = "external";
+        assertThat(service.recordMatch(record)).isFalse();
+
+        config.statistics.enabled = true;
+        assertThat(service.recordMatch(record)).isTrue();
     }
 
     private static PlayerGameStats playerStats(String uuid, String finalTeam) {

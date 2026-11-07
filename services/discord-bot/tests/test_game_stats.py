@@ -100,3 +100,53 @@ async def test_overview_of_a_player_without_a_uuid_is_empty() -> None:
     await db["games_v2"].insert_one(_game("PVP", {"uuid": "", "isWinner": True}))
 
     assert await GameStatsStore(store).overview("") == GameStats()
+
+
+def test_shared_materialized_fixture_and_states() -> None:
+    import json
+    from pathlib import Path
+
+    from xcore_discord_bot.game_stats import game_stats_from_totals
+
+    path = (
+        Path(__file__).resolve().parents[3]
+        / "plugins/xcore/src/test/resources/fixtures/player-totals.v1.json"
+    )
+    doc = json.loads(path.read_text())
+    stats = game_stats_from_totals(doc)
+    assert stats.games == 8
+    assert stats.blocks_built == 3_000_000_000
+    assert stats.survival.win_rate == 100
+    assert stats.hexed.best_placement == 1
+    newcomer = game_stats_from_totals(None)
+    assert (newcomer.status, newcomer.updating, newcomer.games) == ("ready", False, 0)
+    pending = game_stats_from_totals({"schema_version": 1, "status": "pending"})
+    assert (pending.status, pending.updating) == ("pending", True)
+    assert game_stats_from_totals({"schema_version": 1, "status": "ready"}).games == 0
+    with pytest.raises(ValueError):
+        game_stats_from_totals({**doc, "schema_version": 99})
+
+
+@pytest.mark.asyncio
+async def test_materialized_store_reads_the_projection_instead_of_legacy_games() -> (
+    None
+):
+    store, db = await connected_store()
+    await db["player_totals"].insert_one(
+        {
+            "_id": "uuid-1",
+            "schema_version": 1,
+            "status": "ready",
+            "all": {"games": 7, "wins": 4},
+        }
+    )
+    stats = await GameStatsStore(store, materialized=True).overview("uuid-1")
+    assert (stats.games, stats.wins) == (7, 4)
+    newcomer = await GameStatsStore(store, materialized=True).overview("new-player")
+    assert (newcomer.status, newcomer.games) == ("ready", 0)
+
+
+def test_percentage_rounding_matches_java_and_typescript() -> None:
+    from xcore_discord_bot.game_stats import win_rate
+
+    assert win_rate(1, 8) == 13

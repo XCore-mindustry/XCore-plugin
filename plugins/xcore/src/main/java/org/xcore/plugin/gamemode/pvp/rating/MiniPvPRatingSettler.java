@@ -294,7 +294,10 @@ public class MiniPvPRatingSettler {
                 true
         );
 
-        gameDataService.recordMatch(record);
+        gameDataService.recordMatchAsync(record).exceptionally(error -> {
+                Log.err("[Stats] Failed to record plugin-owned match", error);
+                return false;
+            });
     }
 
     private String resolvePlayerName(String uuid) {

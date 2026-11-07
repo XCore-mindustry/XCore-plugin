@@ -1542,3 +1542,15 @@ admin-cmd-announcement-list = [accent]Active announcements ([gold]{ $count }[acc
 admin-cmd-announcement-sent = [accent]Announcement [white]'{ $key }'[accent] sent to [green]{ $count } [accent]player(s).
 admin-cmd-announcement-rotated = [accent]Rotated announcement [white]'{ $key }'[accent] sent.
 admin-cmd-announcement-skipped = [scarlet]Announcement skipped (disabled, no players, or not in game).
+
+
+# Materialized player statistics
+player-stats-rebuilding = Statistics are being recalculated.
+player-stats-participation = Left early: { $left } · Win streak: { $streak }
+player-stats-recent = Recent matches
+player-stats-outcome-win = Win
+player-stats-outcome-loss = Loss
+player-stats-outcome-left = Left
+player-stats-outcome-not_counted = No result
+player-stats-mode-participation = Best streak: { $streak } · Left: { $left } · In counted matches: { $minutes } min
+player-stats-completed = Completed: { $count } of { $games }

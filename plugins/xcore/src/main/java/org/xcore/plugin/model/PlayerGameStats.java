@@ -13,6 +13,22 @@ import java.util.List;
 public class PlayerGameStats {
     public String nickname;
     public String uuid;
+    /** The account that played; {@link #uuid} is the owner after account merges. */
+    @BsonProperty("participant_uuid")
+    public String participantUuid;
+
+    /** One interval per connection; reconnects add intervals to the same row. */
+    @BsonProperty("presence_intervals")
+    @Builder.Default public List<TeamGameData> presenceIntervals = new ArrayList<>();
+    @BsonProperty("present_ms")
+    public long presentMs;
+
+    /** Written by the statistics policy at storage time; a rebuild recomputes it from the raw data. */
+    public String outcome;
+    @BsonProperty("outcome_reason")
+    public String outcomeReason;
+    @BsonProperty("outcome_rules_version")
+    public int outcomeRulesVersion;
 
     @BsonProperty("join_time")
     public long joinTime;

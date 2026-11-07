@@ -685,11 +685,18 @@ class PlayerProfileUiControllerTest {
                 "[accent]\uf7a9[] [white]Mini-PvP:[] [#b4c7dc]Титан III[] [accent]1642[]",
                 List.of("[white]112[] [gray]матчей[]", "[lime]61%[] [gray]побед[]", "[gray]место[] [accent]#4[]"),
                 List.of("[lightgray]Сезон 3 закончится через [white]12 д 4 ч[][]", "[lightgray]58 ELO до [white]Алмаз I[][]"));
+        var recent = new java.util.ArrayList<PlayerStatsOverview.RecentMatch>();
+        for (String outcome : List.of("WIN", "LOSS", "LEFT", "NOT_COUNTED", "WIN")) {
+            recent.add(new PlayerStatsOverview.RecentMatch("[scarlet]attack-and-defence-long-mode",
+                    outcome, 1_760_000_000_000L, "[#ff0000]Крепость на краю бесконечной пустыни v12"));
+        }
+        // Rebuilding, with every materialized figure filled: the most text the profile can show.
         var stats = new PlayerStatsOverview(
                 new AggregatedPlayerStats(1250, 730, 1_204_000, 220_000, 180_500, 5020, 4100),
-                new ModeStatsSummary(420, 260, 0, 0, 0, 0),
-                new ModeStatsSummary(315, 0, 250, 125, 0, 0),
-                new ModeStatsSummary(115, 40, 1, 38, 1, 38));
+                new ModeStatsSummary(420, 260, 0, 0, 0, 0, 88, 12, 31, 9_000_000_000L, false),
+                new ModeStatsSummary(315, 120, 250, 125, 0, 0, 140, 3, 17, 7_000_000_000L, true),
+                new ModeStatsSummary(115, 40, 1, 38, 1, 38, 20, 1, 9, 1_000_000_000L, false),
+                "ready", true, true, 248, 12, recent);
         List<PlayerProfileUiController.OnlinePlayerRow> online = new java.util.ArrayList<>();
         for (int i = 0; i < 20; i++) {
             online.add(new PlayerProfileUiController.OnlinePlayerRow("p-" + i, 100 + i,
@@ -727,6 +734,36 @@ class PlayerProfileUiControllerTest {
                     LayoutAssert.assertFitsPacket(controller.render(shown), language + " " + tab);
                 }
             }
+        }
+    }
+
+    @Test
+    @DisplayName("a player without counted games sees a note instead of a 0% win rate")
+    void window_newcomerHasNoWinRate() {
+        Session session = createTestSession("uuid-1", false);
+        var controller = new PlayerProfileUiController(null, null, null, null, session, session.data);
+        var newcomer = new PlayerStatsOverview(AggregatedPlayerStats.EMPTY, ModeStatsSummary.EMPTY,
+                ModeStatsSummary.EMPTY, ModeStatsSummary.EMPTY, "ready", false, true, 0, 0, List.of());
+        var model = controller.createInitialModel(PlayerProfileUiController.Tab.OVERVIEW, new ProfileDetails(newcomer, null, List.of()));
+        String noStats = session.locale().t("player-stats-no-stats");
+
+        for (var tab : List.of(PlayerProfileUiController.Tab.OVERVIEW, PlayerProfileUiController.Tab.STATS)) {
+            String text = LayoutAssert.allText(controller.window(model.withTab(tab), Screen.SMALL));
+            assertThat(text).contains(noStats).doesNotContain("0%");
+        }
+    }
+
+    @Test
+    @DisplayName("the legacy reader has no left or streak figures, so the profile shows none")
+    void window_legacyStatsShowNoParticipation() {
+        Session session = createTestSession("uuid-1", false);
+        var controller = new PlayerProfileUiController(null, null, null, null, session, session.data);
+        var model = controller.createInitialModel(PlayerProfileUiController.Tab.OVERVIEW,
+                new ProfileDetails(createSampleStats(), null, List.of()));
+
+        for (var tab : List.of(PlayerProfileUiController.Tab.OVERVIEW, PlayerProfileUiController.Tab.STATS)) {
+            String text = LayoutAssert.allText(controller.window(model.withTab(tab), Screen.SMALL));
+            assertThat(text).doesNotContain("Left early").doesNotContain("Best streak");
         }
     }
 

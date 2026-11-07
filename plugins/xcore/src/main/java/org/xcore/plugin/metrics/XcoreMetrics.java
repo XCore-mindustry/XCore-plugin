@@ -108,6 +108,42 @@ public final class XcoreMetrics {
             new double[]{0.001d, 0.005d, 0.01d, 0.025d, 0.05d, 0.1d, 0.25d, 0.5d, 1.0d, 2.5d, 5.0d, 10.0d}
     );
 
+    public static final CounterDef STATS_WRITES_TOTAL = new CounterDef(
+            "xcore_stats_writes_total",
+            "Match history writes by result: stored, duplicate, retried, failed",
+            "writes",
+            LabelSchema.of("result")
+    );
+
+    public static final CounterDef STATS_REBUILDS_TOTAL = new CounterDef(
+            "xcore_stats_rebuilds_total",
+            "Player totals rebuilds by result: published, superseded, failed",
+            "rebuilds",
+            LabelSchema.of("result")
+    );
+
+    public static final HistogramDef STATS_REBUILD_DURATION_SECONDS = new HistogramDef(
+            "xcore_stats_rebuild_duration_seconds",
+            "Duration of one player totals rebuild",
+            "seconds",
+            LabelSchema.empty(),
+            new double[]{0.01d, 0.05d, 0.1d, 0.25d, 0.5d, 1.0d, 2.5d, 5.0d, 10.0d, 30.0d, 60.0d}
+    );
+
+    public static final GaugeDef STATS_DIRTY_PLAYERS = new GaugeDef(
+            "xcore_stats_dirty_players",
+            "Player totals waiting for a rebuild",
+            "players",
+            LabelSchema.empty()
+    );
+
+    public static final GaugeDef STATS_OLDEST_DIRTY_SECONDS = new GaugeDef(
+            "xcore_stats_oldest_dirty_seconds",
+            "Age of the oldest player totals waiting for a rebuild",
+            "seconds",
+            LabelSchema.empty()
+    );
+
     private XcoreMetrics() {
     }
 }

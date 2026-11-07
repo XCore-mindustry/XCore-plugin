@@ -673,3 +673,38 @@ async def test_merge_without_replica_set_changes_nothing() -> None:
     assert result.success is False
     assert "replica set" in (result.error or "")
     assert _contents(db) == before
+
+
+@pytest.mark.asyncio
+async def test_merge_rejects_a_redirect_cycle() -> None:
+    store, db = await _merge_store()
+    await db["player_totals"].insert_one(
+        {"_id": "target-uuid", "redirect_uuid": "other-uuid"}
+    )
+    await db["player_totals"].insert_one(
+        {"_id": "other-uuid", "redirect_uuid": "source-uuid"}
+    )
+    before = _contents(db)
+
+    result = await _merge(store)
+
+    assert result.success is False
+    assert "other direction" in (result.error or "")
+    assert _contents(db) == before
+
+
+@pytest.mark.asyncio
+async def test_repeated_merges_chain_redirects() -> None:
+    store, db = await _merge_store()
+    await db["player_totals"].insert_one(
+        {"_id": "older-uuid", "redirect_uuid": "source-uuid"}
+    )
+
+    result = await _merge(store)
+
+    assert result.success is True
+    totals = {doc["_id"]: doc for doc in db["player_totals"].docs}
+    assert totals["older-uuid"]["redirect_uuid"] == "source-uuid"
+    assert totals["source-uuid"]["redirect_uuid"] == "target-uuid"
+    assert totals["source-uuid"]["rebuild"]["dirty"] is True
+    assert totals["target-uuid"]["rebuild"]["dirty"] is True
