@@ -21,6 +21,7 @@ import org.xcore.plugin.concurrent.Async;
 import org.xcore.plugin.concurrent.ScheduledTasks;
 import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.database.repository.MapDataRepository;
+import org.xcore.plugin.model.GameData;
 import org.xcore.plugin.model.enums.FinishReason;
 import org.xcore.plugin.service.GameDataService;
 import org.xcore.plugin.service.MapStatsService;
@@ -44,6 +45,8 @@ public class GameLifecycleHandler {
     private final GameDataService gameDataService;
     private final MapStatsService mapStatsService;
     private final ScheduledTasks tasks = new ScheduledTasks(GameLifecycleHandler.class);
+    /** Waits between map lookups for the running match; the last one repeats until the match ends. */
+    private static final float[] MAP_RETRY_SECONDS = {5, 30, 60};
 
     @Inject
     public GameLifecycleHandler(Async async,
@@ -70,14 +73,12 @@ public class GameLifecycleHandler {
                 && state.map.file != null && !"external".equals(config.statistics.historyOwner)) {
             var loadedMap = state.map;
             String file = loadedMap.file.name(), name = loadedMap.plainName(), author = loadedMap.author();
-            String mode = state.rules.modeName;
-            async.supply(() -> maps.findOrCreate(name, file, author, mode)).thenMain((map, error) -> {
-                if (error != null) { Log.err("[Stats] Cannot initialize map history", error); return; }
-                if (gameDataService.getCurrent() == null && state.map == loadedMap && !state.gameOver) {
-                    gameDataService.startNewGame(map, mode, null);
-                    Groups.player.each(gameDataService::addPlayer);
-                }
-            });
+            // modeName classifies the game; the map record is keyed by the canonical mode, as everywhere else.
+            var game = gameDataService.startGameWithoutMap(state.rules.modeName);
+            if (game != null) {
+                Groups.player.each(gameDataService::addPlayer);
+                resolveMap(game, name, file, author, state.rules.mode().name(), 0);
+            }
         }
         String mapName = state.map == null ? "<null>" : state.map.plainName();
         String mapFile = state.map == null || state.map.file == null ? "<null>" : state.map.file.name();
@@ -97,6 +98,22 @@ public class GameLifecycleHandler {
             Log.info("@ banned blocks, @ banned units, @ revealed blocks",
                     mapRules.bannedBlocks.size, mapRules.bannedUnits.size, mapRules.revealedBlocks.size);
         }
+    }
+
+    /** Looks the map up off the game thread, retrying while the match runs; capture goes on meanwhile. */
+    private void resolveMap(GameData game, String name, String file, String author, String mode, int attempt) {
+        async.supply(() -> maps.findOrCreate(name, file, author, mode)).thenMain((map, error) -> {
+            if (gameDataService.getCurrent() != game) return;
+            if (error == null) {
+                gameDataService.attachMap(game, map);
+                return;
+            }
+            float delay = MAP_RETRY_SECONDS[Math.min(attempt, MAP_RETRY_SECONDS.length - 1)];
+            Log.err("[Stats] Cannot look up the map of the running match; retrying in @ s", delay, error);
+            tasks.after(delay, () -> {
+                if (gameDataService.getCurrent() == game) resolveMap(game, name, file, author, mode, attempt + 1);
+            });
+        });
     }
 
     public void onGameOver(GameOverEvent event) {

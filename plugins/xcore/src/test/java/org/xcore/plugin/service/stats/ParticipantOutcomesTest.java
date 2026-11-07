@@ -44,6 +44,30 @@ class ParticipantOutcomesTest {
         assertThat(of(game, List.of(row(1_000, 501_000, false, "blue"), row(251_000, 0, true, "red"))).reason())
                 .isEqualTo("conflicting_participation");
     }
+    @Test void overlapIsJudgedByTheTeamTimelineNotTheFinalTeam() {
+        var game = game(1_001_000);
+        // Both merged accounts were blue together; one switched to red only after the other had left.
+        var stayed = row(1_000, 501_000, false, "blue")
+                .append("teams", List.of(new Document("team", "blue").append("join_time", 1_000L).append("leave_time", 501_000L)));
+        var switched = row(251_000, 0, true, "red").append("teams", List.of(
+                new Document("team", "blue").append("join_time", 251_000L).append("leave_time", 601_000L),
+                new Document("team", "red").append("join_time", 601_000L)));
+        var result = of(game, List.of(stayed, switched));
+        assertThat(result.reason()).isEqualTo("completed");
+        // The final team still decides the result.
+        assertThat(result.outcome()).isEqualTo(Outcome.LOSS);
+
+        // Red while the other account was still blue is a real conflict.
+        switched.put("teams", List.of(new Document("team", "red").append("join_time", 251_000L)));
+        assertThat(of(game, List.of(stayed, switched)).reason()).isEqualTo("conflicting_participation");
+    }
+    @Test void hexedWithoutPlacementIsReportedAsSuch() {
+        var hexed = game(1_001_000).append("stats_category", "HEXED");
+        var result = of(hexed, List.of(row(1_000, 0, true, "blue")));
+        assertThat(result.outcome()).isEqualTo(Outcome.WIN);
+        assertThat(result.reason()).isEqualTo("missing_placement");
+        assertThat(of(hexed, List.of(row(1_000, 0, true, "blue").append("placement", 1))).reason()).isEqualTo("placement");
+    }
     @Test void lastTeamWinsOverEarlierWinnerFlag() {
         var result = of(game(1_001_000), List.of(row(1_000, 501_000, false, "blue").append("isWinner", true),
                 row(601_000, 0, true, "red")));

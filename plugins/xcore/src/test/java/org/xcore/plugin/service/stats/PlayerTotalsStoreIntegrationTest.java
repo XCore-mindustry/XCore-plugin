@@ -165,6 +165,17 @@ class PlayerTotalsStoreIntegrationTest {
         var raw = db.getCollection("games_v2").find(new Document("match_id", "typed-contract")).first();
         assertThat(raw.getList("player_stats", Document.class).getFirst().getString("outcome")).isEqualTo("WIN");
         assertThat(store.write(frozen)).isFalse();
+
+        // The stored match, owner and outcome included, decoded and sent again is still the same match.
+        merge("typed", "survivor");
+        var stored = typed.getCollection("games_v2", org.xcore.plugin.model.GameData.class)
+                .find(new Document("match_id", "typed-contract")).first();
+        assertThat(stored.playerStats.getFirst().outcome).isEqualTo("WIN");
+        assertThat(repository.snapshot(stored).getString("payload_hash")).isEqualTo(frozen.getString("payload_hash"));
+        assertThat(store.write(repository.snapshot(stored))).isFalse();
+        // Different participation under the same ID is still refused.
+        stored.playerStats.getFirst().presenceIntervals.getFirst().leaveTime = 51_000;
+        assertThatThrownBy(() -> store.write(repository.snapshot(stored))).isInstanceOf(com.mongodb.MongoWriteException.class);
     }
 
     private void merge(String source, String target) {

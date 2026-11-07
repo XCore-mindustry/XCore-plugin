@@ -111,6 +111,25 @@ class GameDataServiceTest {
     }
 
     @Test
+    @DisplayName("a match starts before its map is known and takes the map only while it runs")
+    void matchWithoutMapTakesItsMapWhileRunning() {
+        var service = new GameDataService(config("server"), mock(GameDataRepository.class));
+        var map = new MapData("Map", "map.msav", "Author", "pvp");
+        map.id = new org.bson.types.ObjectId();
+
+        GameData game = service.startGameWithoutMap("pvp");
+
+        assertThat(game).isSameAs(service.getCurrent());
+        assertThat(game.map).isNull();
+        assertThat(service.attachMap(game, map)).isTrue();
+        assertThat(game.map).isEqualTo(map.id);
+        // A lookup that answers after the next match began must not touch it.
+        GameData next = service.startGameWithoutMap("pvp");
+        assertThat(service.attachMap(game, map)).isFalse();
+        assertThat(next.map).isNull();
+    }
+
+    @Test
     @DisplayName("markWinners only marks players whose final team matches winner")
     void markWinnersMatchesFinalTeam() {
         var service = new GameDataService(config("server"), mock(GameDataRepository.class));

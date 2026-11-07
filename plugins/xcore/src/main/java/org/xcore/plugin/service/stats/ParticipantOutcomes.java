@@ -41,6 +41,7 @@ public final class ParticipantOutcomes {
         long duration = end - start;
         String winningTeam = game.getString("winning_team");
         var intervals = new ArrayList<Interval>();
+        var timeline = new ArrayList<Interval>();
         long built = 0;
         long deconstructed = 0;
         long latest = Long.MIN_VALUE;
@@ -64,6 +65,7 @@ public final class ParticipantOutcomes {
                 if (from >= to) continue;
                 String team = span.getString("team") != null ? span.getString("team") : row.getString("final_team");
                 intervals.add(new Interval(from, to, team));
+                teams(row, from, to, team, timeline);
                 // The team of the latest presence decides the result.
                 if (to >= latest) {
                     latest = to;
@@ -75,7 +77,9 @@ public final class ParticipantOutcomes {
         }
 
         intervals.sort(Comparator.comparingLong(Interval::start).thenComparingLong(Interval::end));
-        conflict |= hasOpposingOverlap(intervals);
+        // The presence spans carry the final team; the sampled timeline shows who was where meanwhile.
+        timeline.sort(Comparator.comparingLong(Interval::start).thenComparingLong(Interval::end));
+        conflict |= hasOpposingOverlap(timeline);
         long present = union(intervals);
         String category = game.getString("stats_category");
 
@@ -101,7 +105,23 @@ public final class ParticipantOutcomes {
         if (present < (long) Math.ceil(duration * MIN_FINISHER_SHARE)) {
             return new Result(Outcome.NOT_COUNTED, "late_join", present, built, deconstructed, place);
         }
-        return new Result(won ? Outcome.WIN : Outcome.LOSS, "completed", present, built, deconstructed, place);
+        // Hexed decides by placement; a counted round without one falls back to the team, which the audit must show.
+        String reason = "HEXED".equals(category) ? "missing_placement" : "completed";
+        return new Result(won ? Outcome.WIN : Outcome.LOSS, reason, present, built, deconstructed, place);
+    }
+
+    /** The parts of the sampled team timeline inside one presence span; the span's own team where there are none. */
+    private static void teams(Document row, long from, long to, String fallback, List<Interval> out) {
+        boolean found = false;
+        for (var entry : row.getList("teams", Document.class, List.of())) {
+            String team = entry.getString("team");
+            long join = Math.max(from, number(entry, "join_time"));
+            long leave = number(entry, "leave_time") > 0 ? Math.min(to, number(entry, "leave_time")) : to;
+            if (team == null || join >= leave) continue;
+            out.add(new Interval(join, leave, team));
+            found = true;
+        }
+        if (!found) out.add(new Interval(from, to, fallback));
     }
 
     /** Rows written before presence intervals existed have a single join/leave pair. */

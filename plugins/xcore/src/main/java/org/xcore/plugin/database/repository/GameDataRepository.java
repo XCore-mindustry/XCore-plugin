@@ -16,6 +16,7 @@ import com.mongodb.client.model.UpdateOptions;
 import com.mongodb.client.model.Updates;
 import com.mongodb.MongoWriteException;
 import com.mongodb.client.MongoDatabase;
+import io.avaje.inject.PreDestroy;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import org.bson.BsonDocument;
@@ -38,6 +39,7 @@ import org.xcore.plugin.model.PlayerStatsOverview;
 import org.xcore.plugin.model.enums.GameStatsCategory;
 import org.xcore.plugin.service.stats.PlayerTotalsStore;
 import org.xcore.plugin.service.stats.PlayerTotalsView;
+import org.xcore.plugin.startup.ShutdownOrder;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -49,11 +51,15 @@ import java.util.HashMap;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.CompletionStage;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.function.Function;
 
 @Singleton
@@ -62,6 +68,15 @@ public class GameDataRepository extends DataRepository<GameData> {
 
     /** Delays before the second and third attempt of a match write. */
     long[] retryDelaysMs = {5_000, 30_000};
+    /** Written by the statistics policy at storage time, so a replay of a stored match carries them. */
+    private static final List<String> OUTCOME_FIELDS = List.of("outcome", "outcome_reason", "outcome_rules_version", "present_ms");
+    /** How long shutdown waits for accepted match writes before storage closes. */
+    long drainTimeoutMs = 15_000;
+
+    /** Match writes accepted and not yet finished, retries included. */
+    private final Set<CompletableFuture<Boolean>> pending = ConcurrentHashMap.newKeySet();
+    /** Completed on shutdown: a write waiting for its retry delay tries again at once. */
+    private final CompletableFuture<Void> draining = new CompletableFuture<>();
 
     private PlayerTotalsStore totalsStore;
     private StorageExecutor storage;
@@ -123,6 +138,14 @@ public class GameDataRepository extends DataRepository<GameData> {
         payload.remove("created_at");
         payload.remove("updated_at");
         payload.remove("deleted_at");
+        // A stored match, decoded and sent again, carries its owner and outcome; only who played and how is hashed.
+        for (var row : payload.getList("player_stats", Document.class, List.of())) {
+            String participant = row.getString("participant_uuid");
+            if (participant == null || participant.isBlank()) participant = row.getString("uuid");
+            row.remove("uuid");
+            row.put("participant_uuid", participant);
+            for (String calculated : OUTCOME_FIELDS) row.remove(calculated);
+        }
         try {
             byte[] digest = MessageDigest.getInstance("SHA-256").digest(payload.toJson().getBytes(StandardCharsets.UTF_8));
             doc.put("payload_hash", HexFormat.of().formatHex(digest));
@@ -143,7 +166,10 @@ public class GameDataRepository extends DataRepository<GameData> {
             } catch (RuntimeException error) {
                 return CompletableFuture.failedFuture(error);
             }
-            return store(snapshot, 0);
+            var write = store(snapshot, 0);
+            pending.add(write);
+            write.whenComplete((stored, error) -> pending.remove(write));
+            return write;
         }
         if (reactiveCollection == null) {
             return CompletableFuture.failedFuture(new IllegalStateException(
@@ -177,12 +203,32 @@ public class GameDataRepository extends DataRepository<GameData> {
                 countWrite("retried");
                 Log.warn("[Stats] Retrying match @ in @ ms: @", matchId, retryDelaysMs[attempt], cause.toString());
                 var later = CompletableFuture.delayedExecutor(retryDelaysMs[attempt], TimeUnit.MILLISECONDS);
-                return CompletableFuture.runAsync(() -> { }, later).thenCompose(ignored -> store(snapshot, attempt + 1));
+                // On shutdown the rest of the delay is skipped, so the retry runs while storage is still open.
+                return CompletableFuture.anyOf(CompletableFuture.runAsync(() -> { }, later), draining)
+                        .thenCompose(ignored -> store(snapshot, attempt + 1));
             }
             countWrite("failed");
             Log.err("[Stats] Match @ was not saved after @ attempt(s)", matchId, attempt + 1);
             return CompletableFuture.<Boolean>failedFuture(cause);
         }).thenCompose(Function.identity());
+    }
+
+    /** Runs before storage closes, so a match waiting for a retry is not lost on a graceful shutdown. */
+    @PreDestroy(priority = ShutdownOrder.DRAIN_WRITES)
+    public void drain() {
+        draining.complete(null);
+        var writes = pending.toArray(CompletableFuture[]::new);
+        if (writes.length == 0) return;
+        Log.info("[Stats] Waiting for @ match write(s) before closing storage", writes.length);
+        try {
+            CompletableFuture.allOf(writes).get(drainTimeoutMs, TimeUnit.MILLISECONDS);
+        } catch (TimeoutException e) {
+            Log.err("[Stats] @ match write(s) did not finish before shutdown", pending.size());
+        } catch (ExecutionException e) {
+            // Each failed write has already logged its match ID.
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
     }
 
     private boolean insert(Document snapshot) {

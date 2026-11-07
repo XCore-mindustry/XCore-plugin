@@ -7,6 +7,7 @@ import mindustry.game.Team;
 import mindustry.gen.Groups;
 import mindustry.gen.Player;
 import mindustry.net.Administration;
+import org.bson.types.ObjectId;
 import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.database.repository.GameDataRepository;
 import org.xcore.plugin.integration.gamehistory.MatchHistoryRecord;
@@ -41,13 +42,34 @@ public class GameDataService {
     }
 
     public void startNewGame(MapData map, String mode, EventData event) {
+        if (map == null) return;
+        begin(map.id, mode, event);
+    }
+
+    /**
+     * Starts capturing a match whose map record is still being looked up, so a slow or failing
+     * lookup loses no participation; {@link #attachMap} fills the map in once it is known.
+     */
+    public GameData startGameWithoutMap(String mode) {
+        begin(null, mode, null);
+        return currentBag;
+    }
+
+    /** Fills in the map of {@code game} while it is still the running match. */
+    public boolean attachMap(GameData game, MapData map) {
+        if (game == null || map == null || game != currentBag || game.map != null) return false;
+        game.map = map.id;
+        return true;
+    }
+
+    private void begin(ObjectId mapId, String mode, EventData event) {
         var now = System.currentTimeMillis();
 
-        if (map == null || externalOwner()) return;
+        if (externalOwner()) return;
 
         currentBag = GameData.builder()
             .serverId(config.server.name)
-            .map(map.id)
+            .map(mapId)
             .gameMode(mode)
             .serverName(resolveServerName())
             .statsCategory(resolveStatsCategory(mode, event != null))

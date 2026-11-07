@@ -122,4 +122,38 @@ class GameDataRepositoryLogicTest {
             storage.shutdown();
         }
     }
+
+    @Test
+    void shutdownRunsAPendingRetryBeforeStorageCloses() throws Exception {
+        MongoDatabase database = mock(MongoDatabase.class);
+        when(database.getCollection("games_v2", GameData.class)).thenReturn(collection);
+        when(collection.getCodecRegistry()).thenReturn(org.bson.codecs.configuration.CodecRegistries.fromRegistries(
+                com.mongodb.MongoClientSettings.getDefaultCodecRegistry(),
+                org.bson.codecs.configuration.CodecRegistries.fromProviders(
+                        org.bson.codecs.pojo.PojoCodecProvider.builder().automatic(true).build())));
+        var totals = mock(org.xcore.plugin.service.stats.PlayerTotalsStore.class);
+        when(totals.enabled()).thenReturn(true);
+        var firstAttempt = new java.util.concurrent.CountDownLatch(1);
+        var calls = new java.util.concurrent.atomic.AtomicInteger();
+        when(totals.write(any())).thenAnswer(invocation -> {
+            if (calls.getAndIncrement() > 0) return true;
+            firstAttempt.countDown();
+            throw new com.mongodb.MongoSocketReadException("reset", new com.mongodb.ServerAddress());
+        });
+        var storage = new org.xcore.plugin.concurrent.StorageExecutor(2);
+        var repository = new GameDataRepository(database, null, new TomlSecretsConfig(), totals, storage, null);
+        // Far longer than the test: only the shutdown can bring the retry forward.
+        repository.retryDelaysMs = new long[]{600_000};
+        try {
+            var write = repository.saveOnceAsync(GameData.builder().matchId("match-1").build()).toCompletableFuture();
+            assertThat(firstAttempt.await(5, java.util.concurrent.TimeUnit.SECONDS)).isTrue();
+
+            repository.drain();
+
+            assertThat(write).isCompletedWithValue(true);
+            verify(totals, org.mockito.Mockito.times(2)).write(any());
+        } finally {
+            storage.shutdown();
+        }
+    }
 }
