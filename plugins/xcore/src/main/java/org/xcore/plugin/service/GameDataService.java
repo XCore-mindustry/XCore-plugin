@@ -16,7 +16,9 @@ import org.xcore.plugin.model.enums.FinishReason;
 import org.xcore.plugin.model.enums.GameStatsCategory;
 import org.xcore.plugin.model.enums.VictoryType;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
@@ -373,6 +375,11 @@ public class GameDataService {
                 .victoryType(record.winnerUuid() == null ? VictoryType.INTERRUPTED : VictoryType.PVP_WIN)
                 .build();
         for (var participant : record.participants()) {
+            // Unknown times mean the whole match; known ones are kept inside it.
+            long joined = participant.joinedAt() > 0 ? Math.clamp(participant.joinedAt(), record.startedAt(), record.endedAt())
+                    : record.startedAt();
+            long left = participant.leftAt() > 0 ? Math.clamp(participant.leftAt(), joined, record.endedAt())
+                    : record.endedAt();
             game.playerStats.add(PlayerGameStats.builder()
                     .uuid(participant.uuid())
                     .participantUuid(participant.uuid())
@@ -380,8 +387,10 @@ public class GameDataService {
                     .placement(participant.placement())
                     .isWinner(participant.winner())
                     .playedToEnd(participant.playedToEnd())
-                    .joinTime(record.startedAt())
-                    .leaveTime(record.endedAt())
+                    .joinTime(joined)
+                    .leaveTime(left)
+                    .presenceIntervals(new ArrayList<>(List.of(TeamGameData.builder().joinTime(joined).leaveTime(left).build())))
+                    .presentMs(left - joined)
                     .build());
         }
         return game;

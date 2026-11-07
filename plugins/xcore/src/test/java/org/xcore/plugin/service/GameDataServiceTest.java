@@ -309,6 +309,32 @@ class GameDataServiceTest {
         assertThat(service.recordMatch(record)).isTrue();
     }
 
+    @Test
+    @DisplayName("a plugin-owned match keeps each participant's own presence; unknown times mean the whole match")
+    void recordMatchKeepsParticipantPresence() {
+        var repository = mock(GameDataRepository.class);
+        org.mockito.Mockito.when(repository.saveOnce(org.mockito.ArgumentMatchers.any())).thenReturn(true);
+        var config = config("hexedcore");
+        config.statistics.enabled = true;
+        config.statistics.historyOwner = "external";
+        var service = new GameDataService(config, repository);
+        var record = new org.xcore.plugin.integration.gamehistory.MatchHistoryRecord("m1", "hexedcore", "1", 1_000, 601_000,
+                "NATURAL", "a", List.of(
+                new org.xcore.plugin.integration.gamehistory.MatchHistoryRecord.MatchParticipantRecord("a", "A", 1, true, true),
+                new org.xcore.plugin.integration.gamehistory.MatchHistoryRecord.MatchParticipantRecord("b", "B", 2, false, false,
+                        301_000, 401_000)), true);
+
+        assertThat(service.recordMatch(record)).isTrue();
+
+        var captor = ArgumentCaptor.forClass(GameData.class);
+        verify(repository).saveOnce(captor.capture());
+        var rows = captor.getValue().getPlayerStats();
+        assertThat(rows.get(0).presentMs).isEqualTo(600_000);
+        assertThat(rows.get(1).presenceIntervals).singleElement()
+                .satisfies(span -> assertThat(List.of(span.joinTime, span.leaveTime)).containsExactly(301_000L, 401_000L));
+        assertThat(rows.get(1).presentMs).isEqualTo(100_000);
+    }
+
     private static PlayerGameStats playerStats(String uuid, String finalTeam) {
         return PlayerGameStats.builder()
                 .uuid(uuid)

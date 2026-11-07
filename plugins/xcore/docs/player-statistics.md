@@ -27,7 +27,8 @@ history_owner = "map"
 `history_owner = "map"` makes the map lifecycle authoritative, including Mini-PvP. Its separate
 rating report remains in `rating_matches`; it does not produce a second game in `games_v2`.
 Set `history_owner = "external"` on HexedCore: round settlement owns its history and generic map
-history is disabled. Update the satellite to use `recordMatchAsync`. Do not toggle owner in the
+history is disabled. Update the satellite to use `recordMatchAsync`, and pass each participant's `joinedAt`/`leftAt`: without them a
+participant is credited with the whole round's play time. Do not toggle owner in the
 middle of a match. A plugin-owned record must carry its own stable match ID.
 While `enabled = false`, `history_owner` is ignored and the legacy rule holds: a plugin-owned
 record is stored only when no map-lifecycle game is running, and no game starts on `PlayEvent`.

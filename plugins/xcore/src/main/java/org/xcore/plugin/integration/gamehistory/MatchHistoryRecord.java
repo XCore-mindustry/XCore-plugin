@@ -24,16 +24,29 @@ public record MatchHistoryRecord(
         participants = List.copyOf(Objects.requireNonNull(participants, "participants"));
     }
 
+    /**
+     * @param joinedAt when the participant joined the match, 0 when unknown (the match start)
+     * @param leftAt   when the participant left the match, 0 when unknown or still there at the end
+     */
     public record MatchParticipantRecord(
             String uuid,
             String nickname,
             int placement,
             boolean winner,
-            boolean playedToEnd
+            boolean playedToEnd,
+            long joinedAt,
+            long leftAt
     ) {
         public MatchParticipantRecord {
             if (uuid == null || uuid.isBlank()) throw new IllegalArgumentException("uuid must not be blank");
             if (placement < 1) throw new IllegalArgumentException("placement must be positive");
+            if (joinedAt < 0 || leftAt < 0) throw new IllegalArgumentException("presence times must not be negative");
+            if (joinedAt > 0 && leftAt > 0 && leftAt < joinedAt) throw new IllegalArgumentException("leftAt must not precede joinedAt");
+        }
+
+        /** A participant present for the whole match, as recorded before presence was part of the contract. */
+        public MatchParticipantRecord(String uuid, String nickname, int placement, boolean winner, boolean playedToEnd) {
+            this(uuid, nickname, placement, winner, playedToEnd, 0, 0);
         }
     }
 }
